@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Tracker</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
+
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Financial Tracker</h1>
+            <nav class="tab-nav">
+                <button class="tab-btn active" data-tab="dashboard" id="dashboard-tab-btn"
+                    aria-label="Dashboard tab">Dashboard</button>
+                <button class="tab-btn" data-tab="accounts" id="accounts-tab-btn"
+                    aria-label="Accounts tab">Accounts</button>
+                <button class="tab-btn" data-tab="transactions" id="transactions-tab-btn"
+                    aria-label="Transactions tab">Transactions</button>
+                <button class="tab-btn" data-tab="investments" id="investments-tab-btn"
+                    aria-label="Investments tab">Investments</button>
+                <button class="tab-btn" data-tab="debt" id="debt-tab-btn" aria-label="Debt tab">Debt</button>
+                <button class="tab-btn" data-tab="recurring" id="recurring-tab-btn"
+                    aria-label="Recurring Bills tab">Recurring Bills</button>
+            </nav>
+        </header>
+
+        <main class="main-content">
+            <div id="dashboard" class="tab-content active" role="region" aria-labelledby="dashboard-tab-btn">
+                <div class="dashboard-metrics">
+                    <div class="metric-card">
+                        <h3>Total Cash Balance</h3>
+                        <div class="metric-value" id="total-cash">$0.00</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Total Investment Value</h3>
+                        <div class="metric-value" id="total-investments">$0.00</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Total Debt</h3>
+                        <div class="metric-value debt-value" id="total-debt">$0.00</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Monthly Recurring Bills</h3>
+                        <div class="metric-value" id="monthly-recurring">$0.00</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Net Worth</h3>
+                        <div class="metric-value" id="net-worth">$0.00</div>
+                    </div>
+                </div>
+
+                <div class="financial-health-section">
+                    <h2 class="section-title">Financial Health Overview</h2>
+                    <div class="health-score-container">
+                        </div>
+                </div>
+
+                <div class="enhanced-charts-grid">
+                    <div class="chart-card-enhanced">
+                        <h3 class="chart-title-enhanced">Debt Health Gauge</h3>
+                        <div class="chart-container">
+                           <canvas id="debtHealthGauge"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card-enhanced">
+                        <h3 class="chart-title-enhanced">Investment Allocation</h3>
+                        <div class="chart-container">
+                           <canvas id="investmentAllocation"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bills-timeline-section">
+                    <h2 class="section-title">Upcoming Bills Timeline</h2>
+                    <div id="bills-timeline-container">
+                        </div>
+                </div>
+
+
+                <div class="charts-section">
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <h3>Net Worth Progress</h3>
+                            <div class="chart-container">
+                                <canvas id="netWorthChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Expense Categories</h3>
+                            <div class="chart-container">
+                                <canvas id="expenseCategoryChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Monthly Cash Flow</h3>
+                            <div class="chart-container">
+                                <canvas id="cashFlowChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Assets vs Debt</h3>
+                            <div class="chart-container">
+                                <canvas id="assetsDebtChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-transactions">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Recent Transactions</h3>
+                        </div>
+                        <div class="card__body">
+                            <div id="recent-transactions-list">
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="accounts" class="tab-content" role="region" aria-labelledby="accounts-tab-btn">
+                <div class="accounts-summary">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Account Summary</h3>
+                            <button class="btn btn--primary" id="add-cash-account-btn">Add New Account</button>
+                        </div>
+                        <div class="card__body">
+                            <div class="investment-metrics">
+                                <div class="metric-item">
+                                    <span class="metric-label">Total Cash Accounts:</span>
+                                    <span class="metric-value" id="accounts-total-value">$0.00</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Number of Accounts:</span>
+                                    <span class="metric-value" id="accounts-count">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cash-accounts mt-16">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Cash & Checking Accounts</h3>
+                        </div>
+                        <div class="card__body">
+                            <div id="cash-accounts-list">
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="transactions" class="tab-content" role="region" aria-labelledby="transactions-tab-btn">
+                <div class="transaction-form-section">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Add New Transaction</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="info-note">
+                                <strong>Tip:</strong> To make a debt payment, enter a negative amount and select "Debt"
+                                as the category, then choose the debt account.
+                            </div>
+                            <form id="transaction-form">
+                                <div class="form-group">
+                                    <label class="form-label" for="transaction-date">Date</label>
+                                    <input type="date" id="transaction-date" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="transaction-account">Account</label>
+                                    <select id="transaction-account" class="form-control" required>
+                                        <option value="" disabled selected>— Select account —</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="transaction-category">Category</label>
+                                    <select id="transaction-category" class="form-control" required>
+                                        <option value="" disabled selected>— Select category —</option>
+                                        <option value="Income">Income</option>
+                                        <option value="Bills">Bills</option>
+                                        <option value="Groceries">Groceries</option>
+                                        <option value="Transfer">Transfer</option>
+                                        <option value="Debt">Debt</option>
+                                        <option value="Interest">Interest</option>
+                                        <option value="Fees">Fees</option>
+                                        <option value="Misc">Misc</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="debt-account-group" style="display: none;">
+                                    <label class="form-label" for="debt-account-select">Debt Account</label>
+                                    <select id="debt-account-select" class="form-control">
+                                        <option value="">Select Debt Account</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="transaction-description">Description</label>
+                                    <input type="text" id="transaction-description" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="transaction-amount">Amount</label>
+                                    <input type="number" id="transaction-amount" class="form-control" step="0.01"
+                                        required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <input type="checkbox" id="transaction-cleared"> Cleared
+                                    </label>
+                                </div>
+                                <button type="submit" class="btn btn--primary">Add Transaction</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="transactions-list">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Transaction History</h3>
+                            <div class="transaction-filters">
+                                <select id="filter-category" class="form-control" aria-label="Filter by category">
+                                    <option value="">— All Categories —</option>
+                                    <option value="Income">Income</option>
+                                    <option value="Bills">Bills</option>
+                                    <option value="Groceries">Groceries</option>
+                                    <option value="Transfer">Transfer</option>
+                                    <option value="Debt">Debt</option>
+                                    <option value="Interest">Interest</option>
+                                    <option value="Fees">Fees</option>
+                                    <option value="Misc">Misc</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="card__body">
+                            <div class="transaction-table">
+                                <table id="transactions-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Account</th>
+                                            <th>Category</th>
+                                            <th>Description</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="transactions-table-body">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="investments" class="tab-content" role="region" aria-labelledby="investments-tab-btn">
+                <div class="investment-summary">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Investment Summary</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="investment-metrics">
+                                <div class="metric-item">
+                                    <span class="metric-label">Total Value:</span>
+                                    <span class="metric-value" id="investment-total-value">$0.00</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Day Change:</span>
+                                    <span class="metric-value" id="investment-day-change">$0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="savings-goals mt-16">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Savings Goals</h3>
+                            <button class="btn btn--primary" id="add-goal-btn">Add New Goal</button>
+                        </div>
+                        <div class="card__body">
+                            <div id="savings-goals-list" class="savings-goals-grid">
+                                </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="investment-accounts mt-16">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Investment Accounts</h3>
+                            <button class="btn btn--primary" id="add-investment-account-btn">Add New Account</button>
+                        </div>
+                        <div class="card__body">
+                            <div id="investment-accounts-list">
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="debt" class="tab-content" role="region" aria-labelledby="debt-tab-btn">
+                <div class="debt-summary">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Debt Summary</h3>
+                            <button class="btn btn--primary" id="add-debt-btn">Add New Debt Account</button>
+                        </div>
+                        <div class="card__body">
+                            <div class="debt-metrics">
+                                <div class="metric-item">
+                                    <span class="metric-label">Total Debt:</span>
+                                    <span class="metric-value debt-value" id="debt-total-value">$0.00</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Monthly Payments:</span>
+                                    <span class="metric-value" id="debt-monthly-payments">$0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="debt-accounts mt-16">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Debt Accounts</h3>
+                        </div>
+                        <div class="card__body">
+                            <div id="debt-accounts-list">
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="recurring" class="tab-content" role="region" aria-labelledby="recurring-tab-btn">
+                <div class="recurring-summary">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Recurring Bills Summary</h3>
+                            <button class="btn btn--primary" id="add-recurring-btn">Add New Recurring Bill</button>
+                        </div>
+                        <div class="card__body">
+                            <div class="recurring-metrics">
+                                <div class="metric-item">
+                                    <span class="metric-label">Monthly Total:</span>
+                                    <span class="metric-value" id="recurring-monthly-total">$0.00</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Annual Total:</span>
+                                    <span class="metric-value" id="recurring-annual-total">$0.00</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Active Bills:</span>
+                                    <span class="metric-value" id="recurring-count">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="upcoming-bills mt-16">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Upcoming Bills (Next 30 Days)</h3>
+                        </div>
+                        <div class="card__body">
+                            <div id="upcoming-bills-list">
+                                </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recurring-bills mt-16">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>All Recurring Bills</h3>
+                        </div>
+                        <div class="card__body">
+                            <div id="all-recurring-bills-list" class="recurring-bills-grid">
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="cash-account-modal" class="modal" tabindex="-1" role="dialog" aria-labelledby="cash-account-modal-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="cash-account-modal-title">Add New Cash Account</h3>
+                <button class="close-btn" id="close-cash-account-modal" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="cash-account-form">
+                    <input type="hidden" id="cash-account-id">
+                    <div class="form-group">
+                        <label class="form-label" for="cash-account-name">Account Name</label>
+                        <input type="text" id="cash-account-name" class="form-control" required
+                            placeholder="e.g., Main Checking, Emergency Fund">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cash-account-type">Account Type</label>
+                        <select id="cash-account-type" class="form-control" required>
+                            <option value="">Select Type</option>
+                            <option value="Checking">Checking Account</option>
+                            <option value="Savings">Savings Account</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Money Market">Money Market</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cash-account-institution">Bank/Institution</label>
+                        <input type="text" id="cash-account-institution" class="form-control"
+                            placeholder="e.g., Chase, Bank of America">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cash-account-initial-balance">Initial Balance</label>
+                        <input type="number" id="cash-account-initial-balance" class="form-control" step="0.01"
+                            value="0">
+                        <small class="form-text">This will create an initial transaction if not zero</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="cash-account-notes">Notes (Optional)</label>
+                        <textarea id="cash-account-notes" class="form-control" rows="2"
+                            placeholder="Account number, special features, etc."></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn--secondary" id="cancel-cash-account-btn">Cancel</button>
+                        <button type="submit" class="btn btn--primary" id="save-cash-account-btn">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="debt-modal" class="modal" tabindex="-1" role="dialog" aria-labelledby="debt-modal-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="debt-modal-title">Add New Debt Account</h3>
+                <button class="close-btn" id="close-debt-modal" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="debt-form">
+                    <input type="hidden" id="debt-id">
+                    <div class="form-group">
+                        <label class="form-label" for="debt-name">Account Name</label>
+                        <input type="text" id="debt-name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="debt-type">Debt Type</label>
+                        <select id="debt-type" class="form-control" required>
+                            <option value="">Select Type</option>
+                            <option value="Credit Card">Credit Card</option>
+                            <option value="Student Loan">Student Loan</option>
+                            <option value="Auto Loan">Auto Loan</option>
+                            <option value="Mortgage">Mortgage</option>
+                            <option value="Personal Loan">Personal Loan</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="debt-institution">Financial Institution</label>
+                        <input type="text" id="debt-institution" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="debt-balance">Current Balance</label>
+                        <input type="number" id="debt-balance" class="form-control" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="debt-interest-rate">Interest Rate (%)</label>
+                        <input type="number" id="debt-interest-rate" class="form-control" step="0.01" min="0" max="100"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="debt-minimum-payment">Minimum Monthly Payment</label>
+                        <input type="number" id="debt-minimum-payment" class="form-control" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="debt-due-date">Due Date</label>
+                        <input type="date" id="debt-due-date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="debt-credit-limit">Credit Limit (Optional)</label>
+                        <input type="number" id="debt-credit-limit" class="form-control" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="debt-notes">Notes (Optional)</label>
+                        <textarea id="debt-notes" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn--secondary" id="cancel-debt-btn">Cancel</button>
+                        <button type="submit" class="btn btn--primary" id="save-debt-btn">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="investment-account-modal" class="modal" tabindex="-1" role="dialog"
+        aria-labelledby="investment-account-modal-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="investment-account-modal-title">Add New Investment Account</h3>
+                <button class="close-btn" id="close-investment-account-modal" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="investment-account-form">
+                    <input type="hidden" id="investment-account-id">
+                    <div class="form-group">
+                        <label class="form-label" for="investment-account-name">Account Name</label>
+                        <input type="text" id="investment-account-name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="investment-account-institution">Institution</label>
+                        <input type="text" id="investment-account-institution" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="investment-account-type">Account Type</label>
+                        <select id="investment-account-type" class="form-control" required>
+                            <option value="">Select Type</option>
+                            <option value="Taxable Brokerage">Taxable Brokerage</option>
+                            <option value="Roth IRA">Roth IRA</option>
+                            <option value="Traditional IRA">Traditional IRA</option>
+                            <option value="401(k)">401(k)</option>
+                            <option value="403(b)">403(b)</option>
+                            <option value="HSA">HSA</option>
+                            <option value="529 Plan">529 Plan</option>
+                            <option value="Savings Account">Savings Account</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="investment-account-balance">Current Balance</label>
+                        <input type="number" id="investment-account-balance" class="form-control" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="investment-account-day-change">Day Change</label>
+                        <input type="number" id="investment-account-day-change" class="form-control" step="0.01"
+                            value="0">
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn--secondary"
+                            id="cancel-investment-account-btn">Cancel</button>
+                        <button type="submit" class="btn btn--primary" id="save-investment-account-btn">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="holding-modal" class="modal" tabindex="-1" role="dialog" aria-labelledby="holding-modal-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="holding-modal-title">Add New Holding</h3>
+                <button class="close-btn" id="close-holding-modal" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="holding-form">
+                    <input type="hidden" id="holding-account-id">
+                    <input type="hidden" id="holding-index">
+                    <div class="form-group">
+                        <label class="form-label" for="holding-symbol">Symbol</label>
+                        <input type="text" id="holding-symbol" class="form-control" required
+                            placeholder="e.g., AAPL, MSFT, VTI">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="holding-company">Company/Fund Name</label>
+                        <input type="text" id="holding-company" class="form-control"
+                            placeholder="e.g., Apple Inc., Microsoft Corporation">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="holding-shares">Shares</label>
+                        <input type="number" id="holding-shares" class="form-control" step="0.001" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="holding-price">Current Price</label>
+                        <input type="number" id="holding-price" class="form-control" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="holding-value">Total Value</label>
+                        <input type="number" id="holding-value" class="form-control" step="0.01" readonly>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn--secondary" id="cancel-holding-btn">Cancel</button>
+                        <button type="submit" class="btn btn--primary" id="save-holding-btn">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="recurring-modal" class="modal" tabindex="-1" role="dialog" aria-labelledby="recurring-modal-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="recurring-modal-title">Add New Recurring Bill</h3>
+                <button class="close-btn" id="close-recurring-modal" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="recurring-form">
+                    <input type="hidden" id="recurring-id">
+                    <div class="form-group">
+                        <label class="form-label" for="recurring-name">Bill Name</label>
+                        <input type="text" id="recurring-name" class="form-control" required
+                            placeholder="e.g., Netflix, Spotify, Rent">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="recurring-category">Category</label>
+                        <select id="recurring-category" class="form-control" required>
+                            <option value="">Select Category</option>
+                            <option value="Streaming">Streaming Services</option>
+                            <option value="Utilities">Utilities</option>
+                            <option value="Insurance">Insurance</option>
+                            <option value="Subscriptions">Subscriptions</option>
+                            <option value="Rent/Mortgage">Rent/Mortgage</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Fitness">Fitness & Health</option>
+                            <option value="Software">Software & Apps</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="recurring-amount">Amount</label>
+                        <input type="number" id="recurring-amount" class="form-control" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="recurring-frequency">Billing Frequency</label>
+                        <select id="recurring-frequency" class="form-control" required>
+                            <option value="">Select Frequency</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly (Every 3 months)</option>
+                            <option value="semi-annually">Semi-Annually (Every 6 months)</option>
+                            <option value="annually">Annually</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="recurring-next-due">Next Due Date</label>
+                        <input type="date" id="recurring-next-due" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="recurring-account">Payment Account</label>
+                        <select id="recurring-account" class="form-control" required>
+                            <option value="">Select Account</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="recurring-notes">Notes (Optional)</label>
+                        <textarea id="recurring-notes" class="form-control" rows="2"
+                            placeholder="Annual plan, auto-renews, etc."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="recurring-active" checked> Active
+                        </label>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn--secondary" id="cancel-recurring-btn">Cancel</button>
+                        <button type="submit" class="btn btn--primary" id="save-recurring-btn">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="goal-modal" class="modal" tabindex="-1" role="dialog" aria-labelledby="goal-modal-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="goal-modal-title">Add New Savings Goal</h3>
+                <button class="close-btn" id="close-goal-modal" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="goal-form">
+                    <input type="hidden" id="goal-id">
+                    <div class="form-group">
+                        <label class="form-label" for="goal-name">Goal Name</label>
+                        <input type="text" id="goal-name" class="form-control" required
+                            placeholder="e.g., Emergency Fund, Vacation, New Car">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="goal-target">Target Amount</label>
+                        <input type="number" id="goal-target" class="form-control" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="goal-account">Linked Savings Account</label>
+                        <select id="goal-account" class="form-control" required>
+                            <option value="">Select Savings Account</option>
+                        </select>
+                        <small class="form-text">Create a savings account in Investment Accounts if you don't see one
+                            listed.</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="goal-current">Current Amount</label>
+                        <input type="number" id="goal-current" class="form-control" step="0.01" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="goal-target-date">Target Date (Optional)</label>
+                        <input type="date" id="goal-target-date" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="goal-description">Description (Optional)</label>
+                        <textarea id="goal-description" class="form-control" rows="2"
+                            placeholder="What is this goal for?"></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn--secondary" id="cancel-goal-btn">Cancel</button>
+                        <button type="submit" class="btn btn--primary" id="save-goal-btn">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="contribution-modal" class="modal" tabindex="-1" role="dialog" aria-labelledby="contribution-modal-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="contribution-modal-title">Contribute to Goal</h3>
+                <button class="close-btn" id="close-contribution-modal" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="contribution-form">
+                    <input type="hidden" id="contribution-goal-id">
+                    <div class="form-group">
+                        <label class="form-label" for="contribution-amount">Contribution Amount</label>
+                        <input type="number" id="contribution-amount" class="form-control" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="contribution-source">Source Account</label>
+                        <select id="contribution-source" class="form-control" required>
+                            <option value="">Select Source Account</option>
+                        </select>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn--secondary" id="cancel-contribution-btn">Cancel</button>
+                        <button type="submit" class="btn btn--primary" id="save-contribution-btn">Contribute</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="error-banner" class="warning-banner" style="display: none;">
+        <span id="error-message"></span>
+        <button onclick="document.getElementById('error-banner').style.display='none'">&times;</button>
+    </div>
+
+    <div aria-live="polite" class="sr-only" id="screen-reader-announcer"></div>
+
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/database.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
