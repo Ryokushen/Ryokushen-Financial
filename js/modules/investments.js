@@ -1,7 +1,14 @@
-// js/modules/investments.js
+// js/modules/investments.js - Updated with Stock API Integration
 import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatCurrency } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
+import { stockApiService, HoldingsUpdater, formatLastUpdateTime } from './stockApi.js';
+
+// Initialize holdings updater (will be set with appState later)
+let holdingsUpdater = null;
+
+// Track last update time
+let lastUpdateTime = null;
 
 export function mapInvestmentAccount(account) {
     return {
@@ -82,17 +89,14 @@ async function handleInvestmentAccountSubmit(event, appState, onUpdate) {
     }
 }
 
-// FIX FOR ISSUE 3: Proper error handling and database updates for dependent data
 async function deleteInvestmentAccount(id, appState, onUpdate) {
     if (confirm(`Are you sure you want to delete this account? This will also unlink any savings goals.`)) {
         try {
-            // First, update all linked savings goals in the database
             const linkedGoals = appState.appData.savingsGoals.filter(goal => goal.linkedAccountId === id);
 
             for (const goal of linkedGoals) {
                 try {
                     await db.updateSavingsGoal(goal.id, { linked_account_id: null });
-                    // Update local state
                     goal.linkedAccountId = null;
                     goal.accountDeleted = true;
                 } catch (goalError) {
@@ -101,7 +105,6 @@ async function deleteInvestmentAccount(id, appState, onUpdate) {
                 }
             }
 
-            // Now delete the investment account
             await db.deleteInvestmentAccount(id);
             appState.appData.investmentAccounts = appState.appData.investmentAccounts.filter(a => a.id !== id);
 
@@ -159,7 +162,6 @@ async function handleHoldingSubmit(event, appState, onUpdate) {
             value: safeParseFloat(document.getElementById("holding-shares").value) * safeParseFloat(document.getElementById("holding-price").value)
         };
 
-        // Add validation to prevent bad data
         if (!holdingData.symbol) {
             showError("Holding symbol is required.");
             return;
@@ -180,10 +182,7 @@ async function handleHoldingSubmit(event, appState, onUpdate) {
                 account.holdings.push(mapHolding(savedHolding));
             }
 
-            // Recalculate account balance correctly
             account.balance = account.holdings.reduce((sum, h) => sum + h.value, 0);
-
-            // Use the correct, existing function to update the investment account
             await db.updateInvestmentAccount(accountId, account);
         }
 
@@ -196,7 +195,6 @@ async function handleHoldingSubmit(event, appState, onUpdate) {
     }
 }
 
-
 async function deleteHolding(accountId, holdingId, appState, onUpdate) {
     if (confirm("Are you sure you want to delete this holding?")) {
         try {
@@ -208,11 +206,9 @@ async function deleteHolding(accountId, holdingId, appState, onUpdate) {
 
             await db.deleteHolding(holdingId);
 
-            // Update local state
             account.holdings = account.holdings.filter(h => h.id !== holdingId);
             account.balance = account.holdings.reduce((sum, h) => sum + h.value, 0);
 
-            // Update account balance in database using the correct function
             await db.updateInvestmentAccount(accountId, account);
 
             await onUpdate();
@@ -221,6 +217,73 @@ async function deleteHolding(accountId, holdingId, appState, onUpdate) {
             console.error("Error deleting holding:", error);
             showError("Failed to delete holding. Please try again.");
         }
+    }
+}
+
+// NEW: Stock price update functions
+async function updateAllStockPrices(appState, onUpdate) {
+    if (!holdingsUpdater) {
+        showError("Stock API service not initialized. Please check your API configuration.");
+        return;
+    }
+
+    try {
+        // Show loading state
+        const updateBtn = document.getElementById('update-all-prices-btn');
+        if (updateBtn) {
+            updateBtn.disabled = true;
+            updateBtn.textContent = 'Updating...';
+        }
+
+        announceToScreenReader("Updating stock prices...");
+        
+        const results = await holdingsUpdater.updateAllHoldings();
+        lastUpdateTime = Date.now();
+        
+        await onUpdate();
+        
+        const message = `Updated ${results.updated} holdings, ${results.skipped} skipped, ${results.failed} failed`;
+        announceToScreenReader(message);
+        
+        // Show success message briefly
+        if (updateBtn) {
+            updateBtn.textContent = '✓ Updated';
+            setTimeout(() => {
+                updateBtn.textContent = 'Update Prices';
+                updateBtn.disabled = false;
+            }, 2000);
+        }
+        
+    } catch (error) {
+        console.error("Error updating stock prices:", error);
+        showError("Failed to update stock prices. Please check your internet connection and API key.");
+        
+        // Reset button
+        const updateBtn = document.getElementById('update-all-prices-btn');
+        if (updateBtn) {
+            updateBtn.textContent = 'Update Prices';
+            updateBtn.disabled = false;
+        }
+    }
+}
+
+async function updateSingleHolding(symbol, appState, onUpdate) {
+    if (!holdingsUpdater) {
+        showError("Stock API service not initialized.");
+        return;
+    }
+
+    try {
+        const success = await holdingsUpdater.updateHoldingBySymbol(symbol);
+        if (success) {
+            await onUpdate();
+            announceToScreenReader(`Updated ${symbol}`);
+        } else {
+            showError(`Failed to update ${symbol}. Symbol may not be found.`);
+        }
+    } catch (error) {
+        console.error(`Error updating ${symbol}:`, error);
+        showError(`Failed to update ${symbol}.`);
     }
 }
 
@@ -244,7 +307,22 @@ export function renderInvestmentAccountsEnhanced(appState) {
         return;
     }
 
-    list.innerHTML = investmentAccounts.map(account => `
+    // Add update button and last update info at the top
+    const updateControlsHTML = `
+        <div class="investment-update-controls" style="margin-bottom: 1rem; padding: 1rem; background: var(--color-secondary); border-radius: var(--radius-base);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <button id="update-all-prices-btn" class="btn btn--primary">Update All Prices</button>
+                <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+                    Last updated: ${formatLastUpdateTime(lastUpdateTime)}
+                </span>
+            </div>
+            <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">
+                Fetches real-time stock prices for all holdings with valid symbols
+            </div>
+        </div>
+    `;
+
+    list.innerHTML = updateControlsHTML + investmentAccounts.map(account => `
         <div class="investment-account" data-id="${account.id}">
             <div class="investment-account-header">
                 <h4>${escapeHtml(account.name)} <span class="account-type">(${escapeHtml(account.accountType)})</span></h4>
@@ -267,19 +345,26 @@ export function renderInvestmentAccountsEnhanced(appState) {
                 <table class="holdings-table">
                     <thead><tr><th>Symbol</th><th>Shares</th><th>Price</th><th>Value</th><th>Actions</th></tr></thead>
                     <tbody>
-                        ${account.holdings.map(h => `
+                        ${account.holdings.map(h => {
+                            const isValidSymbol = stockApiService.isValidSymbol(h.symbol);
+                            return `
                             <tr data-holding-id="${h.id}">
-                                <td>${escapeHtml(h.symbol)}</td>
+                                <td>
+                                    ${escapeHtml(h.symbol)}
+                                    ${isValidSymbol ? '<span style="color: var(--color-success); font-size: 0.8em;">📈</span>' : '<span style="color: var(--color-text-secondary); font-size: 0.8em;">—</span>'}
+                                </td>
                                 <td>${h.shares.toFixed(3)}</td>
                                 <td>${formatCurrency(h.currentPrice)}</td>
                                 <td>${formatCurrency(h.value)}</td>
                                 <td>
                                     <div class="holding-actions">
+                                        ${isValidSymbol ? `<button class="btn btn-small btn--secondary btn-update-holding" data-symbol="${h.symbol}" title="Update ${h.symbol} price">📊</button>` : ''}
                                         <button class="btn btn-small btn-edit-holding">Edit</button>
                                         <button class="btn btn-small btn-delete-holding">Delete</button>
                                     </div>
                                 </td>
-                            </tr>`).join('')}
+                            </tr>`;
+                        }).join('')}
                     </tbody>
                 </table>` : '<div class="empty-state empty-state--small">No holdings for this account.</div>'}
             </div>
@@ -288,6 +373,9 @@ export function renderInvestmentAccountsEnhanced(appState) {
 }
 
 export function setupEventListeners(appState, onUpdate) {
+    // Initialize holdings updater with appState
+    holdingsUpdater = new HoldingsUpdater(appState, stockApiService);
+
     document.getElementById("add-investment-account-btn")?.addEventListener("click", () => openInvestmentAccountModal(appState.appData));
     document.getElementById("close-investment-account-modal")?.addEventListener("click", () => closeModal('investment-account-modal'));
     document.getElementById("cancel-investment-account-btn")?.addEventListener("click", () => closeModal('investment-account-modal'));
@@ -311,6 +399,11 @@ export function setupEventListeners(appState, onUpdate) {
         } else if (target.classList.contains('btn-delete-holding')) {
             const holdingId = parseInt(target.closest('tr').getAttribute('data-holding-id'));
             deleteHolding(accountId, holdingId, appState, onUpdate);
+        } else if (target.classList.contains('btn-update-holding')) {
+            const symbol = target.getAttribute('data-symbol');
+            updateSingleHolding(symbol, appState, onUpdate);
+        } else if (target.id === 'update-all-prices-btn') {
+            updateAllStockPrices(appState, onUpdate);
         }
     });
 
