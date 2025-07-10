@@ -115,25 +115,23 @@ function createNetWorthChart({ appData, CHART_COLORS }) {
     const cashAccountIds = appData.cashAccounts.map(account => account.id);
     const months = [];
     const netWorthData = [];
+    const sortedTransactions = [...appData.transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+    let runningCash = 0;
 
     for (let i = 5; i >= 0; i--) {
         const date = new Date();
-        date.setMonth(date.getMonth() - i);
+        date.setMonth(date.getMonth() - i, 1);  // Start of month
+        const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);  // End of month
+
         months.push(date.toLocaleDateString("en-US", { month: "short", year: "numeric" }));
 
-        const monthTransactions = appData.transactions.filter(t => {
-            const transactionDate = new Date(t.date);
-            return transactionDate.getMonth() === date.getMonth() && transactionDate.getFullYear() === date.getFullYear();
-        });
+        // INSERT: Cumulative up to end of month
+        runningCash += sortedTransactions
+            .filter(t => new Date(t.date) <= endDate && cashAccountIds.includes(t.account_id))
+            .reduce((sum, t) => sum + t.amount, 0) - runningCash;  // Incremental sum (subtract prior to get period, but actually compute full cumulative
 
-        const monthCash = monthTransactions.reduce((sum, t) => {
-            if (cashAccountIds.includes(t.account_id)) return sum + t.amount;
-            return sum;
-        }, 0);
-
-        const totalInvestments = appData.investmentAccounts.reduce((sum, account) => sum + account.balance, 0);
-        const totalDebt = appData.debtAccounts.reduce((sum, account) => sum + account.balance, 0);
-        netWorthData.push(monthCash + totalInvestments - totalDebt);
+        // UPDATE: Use runningCash instead of monthCash
+        netWorthData.push(runningCash + totalInvestments - totalDebt);
     }
 
     chartInstances.netWorthChart = new Chart(ctx, {

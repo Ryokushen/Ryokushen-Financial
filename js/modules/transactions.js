@@ -59,12 +59,10 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
                 showError("Please select a debt account for this payment.");
                 return;
             }
-
-            const debtAccount = appState.appData.debtAccounts.find(d => d.name === debtAccountName);
-            if (debtAccount) {
-                transactionData.debt_account_id = debtAccount.id;
-            } else {
-                showError("Could not find the selected debt account. It may have been deleted.");
+            // INSERT: Additional check if no options available (empty select)
+            const debtAccountSelect = document.getElementById("debt-account-select");
+            if (debtAccountSelect.options.length <= 1) {  // Only the placeholder
+                showError("No debt accounts available. Please add one first.");
                 return;
             }
         }
