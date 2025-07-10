@@ -305,6 +305,14 @@ class FinancialDatabase {
             return true;
         } catch (error) { this.handleError('deleteSavingsGoal', error); }
     }
+    
+    async updateTransaction(id, updates) {
+    try {
+        const { data, error } = await this.supabase.from('transactions').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+    } catch (error) { this.handleError('updateTransaction', error); }
+}
 }
 
 const db = new FinancialDatabase();

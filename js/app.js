@@ -92,6 +92,8 @@ async function loadAllData() {
         console.error("Data Loading Error:", error);
         showError("Could not load financial data from the database.");
     }
+
+    await migrateDebtTransactions(appState.appData.transactions, appState.appData.debtAccounts);
 }
 
 // FIX FOR ISSUE 4: Separate balance calculation function with caching
@@ -242,4 +244,20 @@ function renderRecentTransactions(appData) {
                 </div>
             </div>`;
     }).join('');
+
+    
+}
+
+async function migrateDebtTransactions(transactions, debtAccounts) {
+    const db = (await import('./database.js')).default;  // Dynamic import if needed
+    for (const t of transactions.filter(t => t.category === 'Debt' && t.debt_account && !t.debt_account_id)) {
+        const debtAccount = debtAccounts.find(d => d.name === t.debt_account);
+        if (debtAccount) {
+            t.debt_account_id = debtAccount.id;
+            await db.updateTransaction(t.id, { debt_account_id: t.debt_account_id });  // Assume add updateTransaction to database.js if missing
+            delete t.debt_account;  // Clean up old field
+        } else {
+            console.warn(`Migration: No matching debt account for transaction ${t.id}`);
+        }
+    }
 }
