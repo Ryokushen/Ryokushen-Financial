@@ -365,6 +365,24 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
             }
         }
 
+        // FIXED: Determine transaction color based on whether it's a cash or credit card transaction
+        let amountClass;
+        let displayAmount;
+
+        if (t.account_id) {
+            // Regular cash account transaction: positive = income (green), negative = expense (red)
+            amountClass = t.amount >= 0 ? 'text-success' : 'text-error';
+            displayAmount = formatCurrency(t.amount);
+        } else if (t.debt_account_id) {
+            // Credit card transaction: positive = expense/debt increase (red), negative = payment/debt decrease (green)
+            amountClass = t.amount >= 0 ? 'text-error' : 'text-success';
+            displayAmount = formatCurrency(t.amount);
+        } else {
+            // Fallback for transactions without proper account assignment
+            amountClass = t.amount >= 0 ? 'text-success' : 'text-error';
+            displayAmount = formatCurrency(t.amount);
+        }
+
         // Highlight transaction being edited
         const isEditing = editingTransactionId === t.id;
         const rowClass = isEditing ? 'style="background-color: var(--color-secondary);"' : '';
@@ -375,7 +393,7 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
             <td>${accountName}</td>
             <td>${escapeHtml(t.category)}</td>
             <td>${description}</td>
-            <td class="${t.amount >= 0 ? 'text-success' : 'text-error'}">${formatCurrency(t.amount)}</td>
+            <td class="${amountClass}">${displayAmount}</td>
             <td class="${t.cleared ? 'status-cleared' : 'status-pending'}">${t.cleared ? "Cleared" : "Pending"}</td>
             <td>
                 <div class="transaction-actions">
