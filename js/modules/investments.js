@@ -182,8 +182,12 @@ async function handleHoldingSubmit(event, appState, onUpdate) {
                 account.holdings.push(mapHolding(savedHolding));
             }
 
-            account.balance = account.holdings.reduce((sum, h) => sum + h.value, 0);
-            await db.updateInvestmentAccount(accountId, account);
+            // FIXED: Only recalculate balance from holdings if this account has holdings
+            // For savings accounts and other accounts without holdings, preserve the manually set balance
+            if (account.holdings && account.holdings.length > 0) {
+                account.balance = account.holdings.reduce((sum, h) => sum + h.value, 0);
+                await db.updateInvestmentAccount(accountId, account);
+            }
         }
 
         closeModal('holding-modal');
@@ -207,9 +211,13 @@ async function deleteHolding(accountId, holdingId, appState, onUpdate) {
             await db.deleteHolding(holdingId);
 
             account.holdings = account.holdings.filter(h => h.id !== holdingId);
-            account.balance = account.holdings.reduce((sum, h) => sum + h.value, 0);
 
-            await db.updateInvestmentAccount(accountId, account);
+            // FIXED: Only recalculate balance from holdings if this account still has holdings
+            // If no holdings remain, preserve the account's balance (don't set to 0)
+            if (account.holdings && account.holdings.length > 0) {
+                account.balance = account.holdings.reduce((sum, h) => sum + h.value, 0);
+                await db.updateInvestmentAccount(accountId, account);
+            }
 
             await onUpdate();
             announceToScreenReader("Holding deleted");
@@ -236,15 +244,15 @@ async function updateAllStockPrices(appState, onUpdate) {
         }
 
         announceToScreenReader("Updating stock prices...");
-        
+
         const results = await holdingsUpdater.updateAllHoldings();
         lastUpdateTime = Date.now();
-        
+
         await onUpdate();
-        
+
         const message = `Updated ${results.updated} holdings, ${results.skipped} skipped, ${results.failed} failed`;
         announceToScreenReader(message);
-        
+
         // Show success message briefly
         if (updateBtn) {
             updateBtn.textContent = '✓ Updated';
@@ -253,11 +261,11 @@ async function updateAllStockPrices(appState, onUpdate) {
                 updateBtn.disabled = false;
             }, 2000);
         }
-        
+
     } catch (error) {
         console.error("Error updating stock prices:", error);
         showError("Failed to update stock prices. Please check your internet connection and API key.");
-        
+
         // Reset button
         const updateBtn = document.getElementById('update-all-prices-btn');
         if (updateBtn) {
@@ -346,8 +354,8 @@ export function renderInvestmentAccountsEnhanced(appState) {
                     <thead><tr><th>Symbol</th><th>Shares</th><th>Price</th><th>Value</th><th>Actions</th></tr></thead>
                     <tbody>
                         ${account.holdings.map(h => {
-                            const isValidSymbol = stockApiService.isValidSymbol(h.symbol);
-                            return `
+        const isValidSymbol = stockApiService.isValidSymbol(h.symbol);
+        return `
                             <tr data-holding-id="${h.id}">
                                 <td>
                                     ${escapeHtml(h.symbol)}
@@ -364,7 +372,7 @@ export function renderInvestmentAccountsEnhanced(appState) {
                                     </div>
                                 </td>
                             </tr>`;
-                        }).join('')}
+    }).join('')}
                     </tbody>
                 </table>` : '<div class="empty-state empty-state--small">No holdings for this account.</div>'}
             </div>
@@ -409,7 +417,7 @@ export function setupEventListeners(appState, onUpdate) {
         } else if (target.classList.contains('btn-update-holding')) {
             const symbol = target.getAttribute('data-symbol');
             updateSingleHolding(symbol, appState, onUpdate);
-        } 
+        }
     });
 
     document.getElementById("close-holding-modal")?.addEventListener("click", () => closeModal('holding-modal'));
