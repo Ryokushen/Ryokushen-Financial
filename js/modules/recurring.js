@@ -9,6 +9,11 @@ export function setupEventListeners(appState, onUpdate) {
     document.getElementById("cancel-recurring-btn")?.addEventListener("click", () => closeModal('recurring-modal'));
     document.getElementById("recurring-form")?.addEventListener("submit", (e) => handleRecurringSubmit(e, appState, onUpdate));
 
+    // NEW: Payment method change handler
+    document.getElementById("recurring-payment-method")?.addEventListener("change", function () {
+        togglePaymentMethodFields();
+    });
+
     document.getElementById("all-recurring-bills-list")?.addEventListener('click', (event) => {
         const id = parseInt(event.target.getAttribute('data-id'));
         if (!id) return;
@@ -18,9 +23,28 @@ export function setupEventListeners(appState, onUpdate) {
     });
 }
 
+// NEW: Toggle payment method fields based on selection
+function togglePaymentMethodFields() {
+    const paymentMethod = document.getElementById("recurring-payment-method").value;
+    const cashAccountGroup = document.getElementById("cash-account-group");
+    const creditAccountGroup = document.getElementById("credit-account-group");
+
+    if (paymentMethod === 'cash') {
+        cashAccountGroup.style.display = 'block';
+        creditAccountGroup.style.display = 'none';
+        // Clear credit card selection
+        document.getElementById("recurring-debt-account").value = '';
+    } else if (paymentMethod === 'credit') {
+        cashAccountGroup.style.display = 'none';
+        creditAccountGroup.style.display = 'block';
+        // Clear cash account selection
+        document.getElementById("recurring-account").value = '';
+    }
+}
+
 function openRecurringModal(appData, billId = null) {
-    // First populate the account dropdown
-    populateRecurringAccountDropdown(appData);
+    // First populate the account dropdowns
+    populateRecurringAccountDropdowns(appData);
 
     const form = document.getElementById("recurring-form");
     const title = document.getElementById("recurring-modal-title");
@@ -37,35 +61,62 @@ function openRecurringModal(appData, billId = null) {
             document.getElementById("recurring-amount").value = bill.amount;
             document.getElementById("recurring-frequency").value = bill.frequency;
             document.getElementById("recurring-next-due").value = bill.nextDue || bill.next_due;
-            document.getElementById("recurring-account").value = bill.account_id;
             document.getElementById("recurring-notes").value = bill.notes || "";
-            // FIX FOR ISSUE 2: Use 'active' consistently
             document.getElementById("recurring-active").checked = bill.active !== false;
+
+            // NEW: Set payment method and accounts
+            const paymentMethod = bill.payment_method || 'cash';
+            document.getElementById("recurring-payment-method").value = paymentMethod;
+
+            if (paymentMethod === 'cash') {
+                document.getElementById("recurring-account").value = bill.account_id;
+            } else {
+                document.getElementById("recurring-debt-account").value = bill.debt_account_id;
+            }
+
+            togglePaymentMethodFields();
         }
     } else {
         title.textContent = "Add New Recurring Bill";
         document.getElementById("recurring-active").checked = true;
-        // Set default next due date to today
+        document.getElementById("recurring-payment-method").value = 'cash';
         document.getElementById("recurring-next-due").value = new Date().toISOString().split('T')[0];
+        togglePaymentMethodFields();
     }
     openModal('recurring-modal');
 }
 
-function populateRecurringAccountDropdown(appData) {
-    const select = document.getElementById("recurring-account");
-    if (!select) return;
+// UPDATED: Populate both cash and debt account dropdowns
+function populateRecurringAccountDropdowns(appData) {
+    const cashSelect = document.getElementById("recurring-account");
+    const debtSelect = document.getElementById("recurring-debt-account");
 
+    if (!cashSelect || !debtSelect) return;
+
+    // Populate cash accounts
     const activeAccounts = appData.cashAccounts.filter(a => a.isActive);
-    const currentValue = select.value;
+    const currentCashValue = cashSelect.value;
 
-    select.innerHTML = '<option value="" disabled selected>Select Account</option>';
+    cashSelect.innerHTML = '<option value="" disabled selected>Select Cash Account</option>';
     activeAccounts.forEach(account => {
-        select.innerHTML += `<option value="${account.id}">${escapeHtml(account.name)}</option>`;
+        cashSelect.innerHTML += `<option value="${account.id}">${escapeHtml(account.name)}</option>`;
     });
 
-    // Restore previous selection if it exists
-    if (currentValue) {
-        select.value = currentValue;
+    if (currentCashValue) {
+        cashSelect.value = currentCashValue;
+    }
+
+    // NEW: Populate debt accounts (credit cards, etc.)
+    const creditCards = appData.debtAccounts.filter(d => d.type === 'Credit Card');
+    const currentDebtValue = debtSelect.value;
+
+    debtSelect.innerHTML = '<option value="" disabled selected>Select Credit Card</option>';
+    creditCards.forEach(account => {
+        debtSelect.innerHTML += `<option value="${account.id}">${escapeHtml(account.name)}</option>`;
+    });
+
+    if (currentDebtValue) {
+        debtSelect.value = currentDebtValue;
     }
 }
 
@@ -74,16 +125,11 @@ async function handleRecurringSubmit(event, appState, onUpdate) {
 
     try {
         const billId = document.getElementById("recurring-id").value;
-        const accountId = parseInt(document.getElementById("recurring-account").value);
+        const paymentMethod = document.getElementById("recurring-payment-method").value;
         const amount = safeParseFloat(document.getElementById("recurring-amount").value);
         const nextDue = document.getElementById("recurring-next-due").value;
 
         // Validation
-        if (!accountId || isNaN(accountId)) {
-            showError("Please select a valid payment account.");
-            return;
-        }
-
         if (amount <= 0) {
             showError("Amount must be greater than zero.");
             return;
@@ -94,16 +140,39 @@ async function handleRecurringSubmit(event, appState, onUpdate) {
             return;
         }
 
-        // FIX FOR ISSUE 2: Use 'active' consistently
+        // NEW: Validate payment method selection
+        let accountId = null;
+        let debtAccountId = null;
+
+        if (paymentMethod === 'cash') {
+            accountId = parseInt(document.getElementById("recurring-account").value);
+            if (!accountId || isNaN(accountId)) {
+                showError("Please select a valid cash account.");
+                return;
+            }
+        } else if (paymentMethod === 'credit') {
+            debtAccountId = parseInt(document.getElementById("recurring-debt-account").value);
+            if (!debtAccountId || isNaN(debtAccountId)) {
+                showError("Please select a valid credit card.");
+                return;
+            }
+        } else {
+            showError("Please select a payment method.");
+            return;
+        }
+
+        // UPDATED: Build bill data with payment method support
         const billData = {
             name: document.getElementById("recurring-name").value.trim(),
             category: document.getElementById("recurring-category").value,
             amount: amount,
             frequency: document.getElementById("recurring-frequency").value,
             next_due: nextDue,
+            payment_method: paymentMethod,
             account_id: accountId,
+            debt_account_id: debtAccountId,
             notes: document.getElementById("recurring-notes").value.trim(),
-            active: document.getElementById("recurring-active").checked  // Use 'active' directly
+            active: document.getElementById("recurring-active").checked
         };
 
         // Additional validation
@@ -122,7 +191,7 @@ async function handleRecurringSubmit(event, appState, onUpdate) {
             return;
         }
 
-        console.log("Submitting bill data:", billData); // Debug log
+        console.log("Submitting bill data:", billData);
 
         let savedBill;
         if (billId) {
@@ -133,7 +202,9 @@ async function handleRecurringSubmit(event, appState, onUpdate) {
                     ...savedBill,
                     amount: parseFloat(savedBill.amount),
                     nextDue: savedBill.next_due,
-                    active: savedBill.active  // Use 'active' consistently
+                    paymentMethod: savedBill.payment_method,
+                    debtAccountId: savedBill.debt_account_id,
+                    active: savedBill.active
                 };
             }
         } else {
@@ -142,7 +213,9 @@ async function handleRecurringSubmit(event, appState, onUpdate) {
                 ...savedBill,
                 amount: parseFloat(savedBill.amount),
                 nextDue: savedBill.next_due,
-                active: savedBill.active  // Use 'active' consistently
+                paymentMethod: savedBill.payment_method,
+                debtAccountId: savedBill.debt_account_id,
+                active: savedBill.active
             });
         }
 
@@ -173,41 +246,80 @@ async function deleteRecurringBill(id, appState, onUpdate) {
     }
 }
 
+// UPDATED: Support both cash and credit card payments
 async function payRecurringBill(id, appState, onUpdate) {
     const bill = appState.appData.recurringBills.find(b => b.id === id);
     if (!bill) return;
 
-    if (confirm(`Pay ${bill.name} for ${formatCurrency(bill.amount)}?`)) {
+    const paymentMethod = bill.paymentMethod || bill.payment_method || 'cash';
+
+    if (confirm(`Pay ${bill.name} for ${formatCurrency(bill.amount)} via ${paymentMethod === 'credit' ? 'credit card' : 'cash account'}?`)) {
         try {
-            const transaction = {
-                date: new Date().toISOString().split('T')[0],
-                account_id: bill.account_id,
-                category: bill.category,
-                description: `${bill.name} (Recurring)`,
-                amount: -bill.amount,
-                cleared: true
-            };
+            if (paymentMethod === 'cash') {
+                // Original cash payment logic
+                const transaction = {
+                    date: new Date().toISOString().split('T')[0],
+                    account_id: bill.account_id,
+                    category: bill.category,
+                    description: `${bill.name} (Recurring)`,
+                    amount: -bill.amount,
+                    cleared: true
+                };
 
-            const savedTransaction = await db.addTransaction(transaction);
-            appState.appData.transactions.unshift({ ...savedTransaction, amount: parseFloat(savedTransaction.amount) });
+                const savedTransaction = await db.addTransaction(transaction);
+                appState.appData.transactions.unshift({ ...savedTransaction, amount: parseFloat(savedTransaction.amount) });
 
-            // FIX FOR ISSUE 4: Use the balance update function if available
-            if (appState.updateAccountBalance) {
-                appState.updateAccountBalance(bill.account_id, -bill.amount);
-            } else {
-                const paymentAccount = appState.appData.cashAccounts.find(a => a.id === bill.account_id);
-                if (paymentAccount) {
-                    paymentAccount.balance -= bill.amount;
+                // Update cash account balance
+                if (appState.updateAccountBalance) {
+                    appState.updateAccountBalance(bill.account_id, -bill.amount);
+                } else {
+                    const paymentAccount = appState.appData.cashAccounts.find(a => a.id === bill.account_id);
+                    if (paymentAccount) {
+                        paymentAccount.balance -= bill.amount;
+                    }
+                }
+            } else if (paymentMethod === 'credit') {
+                // NEW: Credit card payment logic
+                const debtAccountId = bill.debtAccountId || bill.debt_account_id;
+                if (!debtAccountId) {
+                    showError("No credit card account found for this bill.");
+                    return;
+                }
+
+                // Create a debt transaction (increases debt)
+                const transaction = {
+                    date: new Date().toISOString().split('T')[0],
+                    account_id: null, // No cash account involved
+                    category: bill.category,
+                    description: `${bill.name} (Recurring - Credit Card)`,
+                    amount: bill.amount, // Positive amount increases debt
+                    cleared: true,
+                    debt_account_id: debtAccountId
+                };
+
+                const savedTransaction = await db.addTransaction(transaction);
+                appState.appData.transactions.unshift({ ...savedTransaction, amount: parseFloat(savedTransaction.amount) });
+
+                // Update credit card debt balance
+                const debtAccount = appState.appData.debtAccounts.find(d => d.id === debtAccountId);
+                if (debtAccount) {
+                    const newBalance = debtAccount.balance + bill.amount;
+                    await db.updateDebtBalance(debtAccount.id, newBalance);
+                    debtAccount.balance = newBalance;
                 }
             }
 
+            // Update next due date
             const newNextDue = getNextDueDate(bill.nextDue || bill.next_due, bill.frequency);
             bill.nextDue = newNextDue;
             bill.next_due = newNextDue;
 
             await db.updateRecurringBill(bill.id, {
                 next_due: newNextDue,
-                active: bill.active  // Maintain active status
+                active: bill.active,
+                payment_method: paymentMethod,
+                account_id: bill.account_id,
+                debt_account_id: bill.debtAccountId || bill.debt_account_id
             });
 
             onUpdate();
@@ -257,13 +369,24 @@ function renderUpcomingBills(appData) {
     }
 
     upcomingList.innerHTML = upcomingBills.map(bill => {
-        const account = appData.cashAccounts.find(a => a.id === bill.account_id);
+        const paymentMethod = bill.paymentMethod || bill.payment_method || 'cash';
+        let accountName = 'N/A';
+
+        if (paymentMethod === 'cash') {
+            const account = appData.cashAccounts.find(a => a.id === bill.account_id);
+            accountName = account ? escapeHtml(account.name) : 'N/A';
+        } else {
+            const debtAccountId = bill.debtAccountId || bill.debt_account_id;
+            const account = appData.debtAccounts.find(d => d.id === debtAccountId);
+            accountName = account ? `${escapeHtml(account.name)} (Credit Card)` : 'N/A';
+        }
+
         const dueDate = bill.nextDue || bill.next_due;
         return `
             <div class="transaction-item">
                 <div class="transaction-info">
                     <div class="transaction-description">${escapeHtml(bill.name)}</div>
-                    <div class="transaction-details">${formatDate(dueDate)} - ${account ? escapeHtml(account.name) : 'N/A'}</div>
+                    <div class="transaction-details">${formatDate(dueDate)} - ${accountName}</div>
                 </div>
                 <div class="transaction-amount negative">${formatCurrency(-bill.amount)}</div>
             </div>
@@ -271,6 +394,7 @@ function renderUpcomingBills(appData) {
     }).join('');
 }
 
+// UPDATED: Display payment method information
 function renderAllRecurringBills(appData) {
     const billsList = document.getElementById("all-recurring-bills-list");
     if (!billsList) return;
@@ -281,9 +405,19 @@ function renderAllRecurringBills(appData) {
     }
 
     billsList.innerHTML = appData.recurringBills.map(bill => {
-        const account = appData.cashAccounts.find(a => a.id === bill.account_id);
+        const paymentMethod = bill.paymentMethod || bill.payment_method || 'cash';
         const isActive = bill.active !== false;
         const dueDate = bill.nextDue || bill.next_due;
+
+        let accountInfo = '';
+        if (paymentMethod === 'cash') {
+            const account = appData.cashAccounts.find(a => a.id === bill.account_id);
+            accountInfo = account ? `${escapeHtml(account.name)} (Cash)` : 'N/A';
+        } else {
+            const debtAccountId = bill.debtAccountId || bill.debt_account_id;
+            const account = appData.debtAccounts.find(d => d.id === debtAccountId);
+            accountInfo = account ? `${escapeHtml(account.name)} (Credit Card)` : 'N/A';
+        }
 
         return `
         <div class="recurring-bill-card ${isActive ? '' : 'inactive'}" data-id="${bill.id}">
@@ -301,8 +435,8 @@ function renderAllRecurringBills(appData) {
                     <span class="value">${escapeHtml(bill.frequency)}</span>
                 </div>
                 <div class="recurring-bill-detail">
-                    <span class="label">Payment Account:</span>
-                    <span class="value">${account ? escapeHtml(account.name) : 'N/A'}</span>
+                    <span class="label">Payment Method:</span>
+                    <span class="value">${accountInfo}</span>
                 </div>
                 <div class="recurring-bill-detail">
                     <span class="label">Status:</span>

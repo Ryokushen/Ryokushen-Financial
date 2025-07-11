@@ -70,12 +70,14 @@ async function loadAllData() {
             dueDate: d.due_date
         }));
 
-        // FIX FOR ISSUE 2: Consistent property naming for recurring bills
+        // UPDATED: Handle new payment method fields for recurring bills
         appState.appData.recurringBills = recurringBills.map(b => ({
             ...b,
             amount: parseFloat(b.amount),
             nextDue: b.next_due,
-            active: b.active // Use 'active' consistently
+            active: b.active,
+            paymentMethod: b.payment_method || 'cash', // Default to cash for backward compatibility
+            debtAccountId: b.debt_account_id // Add debt account ID field
         }));
 
         appState.appData.savingsGoals = savingsGoals.map(g => ({
@@ -247,7 +249,7 @@ function renderRecentTransactions(appData) {
             </div>`;
     }).join('');
 
-    
+
 }
 
 async function migrateDebtTransactions(transactions, debtAccounts) {

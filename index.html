@@ -59,20 +59,20 @@
                 <div class="financial-health-section">
                     <h2 class="section-title">Financial Health Overview</h2>
                     <div class="health-score-container">
-                        </div>
+                    </div>
                 </div>
 
                 <div class="enhanced-charts-grid">
                     <div class="chart-card-enhanced">
                         <h3 class="chart-title-enhanced">Debt Health Gauge</h3>
                         <div class="chart-container">
-                           <canvas id="debtHealthGauge"></canvas>
+                            <canvas id="debtHealthGauge"></canvas>
                         </div>
                     </div>
                     <div class="chart-card-enhanced">
                         <h3 class="chart-title-enhanced">Investment Allocation</h3>
                         <div class="chart-container">
-                           <canvas id="investmentAllocation"></canvas>
+                            <canvas id="investmentAllocation"></canvas>
                         </div>
                     </div>
                 </div>
@@ -80,7 +80,7 @@
                 <div class="bills-timeline-section">
                     <h2 class="section-title">Upcoming Bills Timeline</h2>
                     <div id="bills-timeline-container">
-                        </div>
+                    </div>
                 </div>
 
 
@@ -120,7 +120,7 @@
                         </div>
                         <div class="card__body">
                             <div id="recent-transactions-list">
-                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -155,7 +155,7 @@
                         </div>
                         <div class="card__body">
                             <div id="cash-accounts-list">
-                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -293,7 +293,7 @@
                         </div>
                         <div class="card__body">
                             <div id="savings-goals-list" class="savings-goals-grid">
-                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -306,7 +306,7 @@
                         </div>
                         <div class="card__body">
                             <div id="investment-accounts-list">
-                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -341,7 +341,7 @@
                         </div>
                         <div class="card__body">
                             <div id="debt-accounts-list">
-                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -380,7 +380,7 @@
                         </div>
                         <div class="card__body">
                             <div id="upcoming-bills-list">
-                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -392,7 +392,7 @@
                         </div>
                         <div class="card__body">
                             <div id="all-recurring-bills-list" class="recurring-bills-grid">
-                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -606,6 +606,7 @@
         </div>
     </div>
 
+    <!-- UPDATED: Enhanced recurring bills modal with payment method selection -->
     <div id="recurring-modal" class="modal" tabindex="-1" role="dialog" aria-labelledby="recurring-modal-title">
         <div class="modal-content">
             <div class="modal-header">
@@ -654,12 +655,35 @@
                         <label class="form-label" for="recurring-next-due">Next Due Date</label>
                         <input type="date" id="recurring-next-due" class="form-control" required>
                     </div>
+
+                    <!-- NEW: Payment Method Selection -->
                     <div class="form-group">
-                        <label class="form-label" for="recurring-account">Payment Account</label>
-                        <select id="recurring-account" class="form-control" required>
-                            <option value="">Select Account</option>
+                        <label class="form-label" for="recurring-payment-method">Payment Method</label>
+                        <select id="recurring-payment-method" class="form-control" required>
+                            <option value="">Select Payment Method</option>
+                            <option value="cash">Cash Account</option>
+                            <option value="credit">Credit Card</option>
                         </select>
                     </div>
+
+                    <!-- Cash Account Selection (shown when payment method is 'cash') -->
+                    <div class="form-group" id="cash-account-group" style="display: none;">
+                        <label class="form-label" for="recurring-account">Cash Account</label>
+                        <select id="recurring-account" class="form-control">
+                            <option value="">Select Cash Account</option>
+                        </select>
+                    </div>
+
+                    <!-- Credit Card Selection (shown when payment method is 'credit') -->
+                    <div class="form-group" id="credit-account-group" style="display: none;">
+                        <label class="form-label" for="recurring-debt-account">Credit Card</label>
+                        <select id="recurring-debt-account" class="form-control">
+                            <option value="">Select Credit Card</option>
+                        </select>
+                        <small class="form-text">Only credit card debt accounts are shown. Add credit cards in the Debt
+                            section if needed.</small>
+                    </div>
+
                     <div class="form-group">
                         <label class="form-label" for="recurring-notes">Notes (Optional)</label>
                         <textarea id="recurring-notes" class="form-control" rows="2"
@@ -767,7 +791,7 @@
     <script type="module" src="js/app.js"></script>
 
     <script type="module" src="js/modules/stockApi.js"></script>
-    
+
 </body>
 
 </html>
