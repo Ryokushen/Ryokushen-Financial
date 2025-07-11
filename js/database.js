@@ -82,6 +82,23 @@ class FinancialDatabase {
         } catch (error) { this.handleError('addTransaction', error); }
     }
 
+    // NEW: Update transaction method
+    async updateTransaction(id, updates) {
+        try {
+            const { data, error } = await this.supabase.from('transactions').update({
+                date: updates.date,
+                account_id: updates.account_id,
+                category: updates.category,
+                description: updates.description,
+                amount: updates.amount,
+                cleared: updates.cleared,
+                debt_account_id: updates.debt_account_id || null
+            }).eq('id', id).select().single();
+            if (error) throw error;
+            return data;
+        } catch (error) { this.handleError('updateTransaction', error); }
+    }
+
     async deleteTransaction(id) {
         try {
             await this.supabase.from('transactions').delete().eq('id', id);
@@ -307,14 +324,6 @@ class FinancialDatabase {
             await this.supabase.from('savings_goals').delete().eq('id', id);
             return true;
         } catch (error) { this.handleError('deleteSavingsGoal', error); }
-    }
-
-    async updateTransaction(id, updates) {
-        try {
-            const { data, error } = await this.supabase.from('transactions').update(updates).eq('id', id).select().single();
-            if (error) throw error;
-            return data;
-        } catch (error) { this.handleError('updateTransaction', error); }
     }
 }
 

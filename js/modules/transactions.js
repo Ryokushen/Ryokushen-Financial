@@ -4,6 +4,8 @@ import { safeParseFloat, escapeHtml, formatDate, formatCurrency, getNextDueDate 
 import { showError, announceToScreenReader } from './ui.js';
 
 let currentCategoryFilter = "";
+let editingTransactionId = null;
+let originalTransaction = null;
 
 export function setupEventListeners(appState, onUpdate) {
     document.getElementById("transaction-form")?.addEventListener("submit", (e) => handleTransactionSubmit(e, appState, onUpdate));
@@ -18,19 +20,132 @@ export function setupEventListeners(appState, onUpdate) {
     });
 
     document.getElementById("transactions-table-body")?.addEventListener('click', (event) => {
+        const transactionId = parseInt(event.target.getAttribute('data-id'));
+
         if (event.target.classList.contains('btn-delete')) {
-            const transactionId = parseInt(event.target.getAttribute('data-id'));
             deleteTransaction(transactionId, appState, onUpdate);
+        } else if (event.target.classList.contains('btn-edit')) {
+            editTransaction(transactionId, appState);
         }
     });
+
+    // Cancel edit button
+    document.getElementById("cancel-edit-btn")?.addEventListener('click', () => {
+        cancelEdit();
+    });
+}
+
+function editTransaction(id, appState) {
+    const transaction = appState.appData.transactions.find(t => t.id === id);
+    if (!transaction) {
+        showError("Transaction not found.");
+        return;
+    }
+
+    // Store the original transaction for reverting changes
+    originalTransaction = { ...transaction };
+    editingTransactionId = id;
+
+    // Update form title and button text
+    const formTitle = document.querySelector('.card__header h3');
+    if (formTitle) {
+        formTitle.textContent = 'Edit Transaction';
+    }
+
+    const submitBtn = document.querySelector('#transaction-form button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.textContent = 'Update Transaction';
+    }
+
+    // Show cancel button
+    showCancelButton();
+
+    // Populate form with transaction data
+    document.getElementById("transaction-date").value = transaction.date;
+    document.getElementById("transaction-account").value = transaction.account_id || '';
+    document.getElementById("transaction-category").value = transaction.category;
+    document.getElementById("transaction-description").value = transaction.description;
+    document.getElementById("transaction-amount").value = transaction.amount;
+    document.getElementById("transaction-cleared").checked = transaction.cleared;
+
+    // Handle debt account selection
+    if (transaction.category === "Debt" && transaction.debt_account_id) {
+        document.getElementById("debt-account-group").style.display = "block";
+
+        // Find the debt account name for the dropdown
+        const debtAccount = appState.appData.debtAccounts.find(d => d.id === transaction.debt_account_id);
+        if (debtAccount) {
+            document.getElementById("debt-account-select").value = debtAccount.name;
+        }
+    } else {
+        document.getElementById("debt-account-group").style.display = "none";
+    }
+
+    // Scroll to form
+    document.getElementById("transaction-form").scrollIntoView({ behavior: 'smooth' });
+
+    announceToScreenReader("Transaction loaded for editing");
+}
+
+function cancelEdit() {
+    editingTransactionId = null;
+    originalTransaction = null;
+
+    // Reset form title and button text
+    const formTitle = document.querySelector('.card__header h3');
+    if (formTitle) {
+        formTitle.textContent = 'Add New Transaction';
+    }
+
+    const submitBtn = document.querySelector('#transaction-form button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.textContent = 'Add Transaction';
+    }
+
+    // Hide cancel button
+    hideCancelButton();
+
+    // Reset form
+    document.getElementById("transaction-form").reset();
+    document.getElementById("transaction-date").value = new Date().toISOString().split("T")[0];
+    document.getElementById("debt-account-group").style.display = "none";
+
+    announceToScreenReader("Edit cancelled");
+}
+
+function showCancelButton() {
+    let cancelBtn = document.getElementById("cancel-edit-btn");
+    if (!cancelBtn) {
+        // Create cancel button if it doesn't exist
+        const submitBtn = document.querySelector('#transaction-form button[type="submit"]');
+        cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.id = 'cancel-edit-btn';
+        cancelBtn.className = 'btn btn--secondary';
+        cancelBtn.textContent = 'Cancel Edit';
+        cancelBtn.style.marginLeft = '10px';
+
+        if (submitBtn && submitBtn.parentNode) {
+            submitBtn.parentNode.insertBefore(cancelBtn, submitBtn.nextSibling);
+        }
+    }
+    cancelBtn.style.display = 'inline-block';
+}
+
+function hideCancelButton() {
+    const cancelBtn = document.getElementById("cancel-edit-btn");
+    if (cancelBtn) {
+        cancelBtn.style.display = 'none';
+    }
 }
 
 async function handleTransactionSubmit(event, appState, onUpdate) {
     event.preventDefault();
+
     try {
         const transactionData = {
             date: document.getElementById("transaction-date").value,
-            account_id: parseInt(document.getElementById("transaction-account").value),
+            account_id: parseInt(document.getElementById("transaction-account").value) || null,
             category: document.getElementById("transaction-category").value,
             description: document.getElementById("transaction-description").value,
             amount: safeParseFloat(document.getElementById("transaction-amount").value),
@@ -38,11 +153,7 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
             debt_account_id: null
         };
 
-        if (!transactionData.account_id || isNaN(transactionData.account_id)) {
-            showError("Please select a valid account.");
-            return;
-        }
-
+        // Validation
         if (!transactionData.date || !transactionData.description) {
             showError("Please fill in all required fields.");
             return;
@@ -53,54 +164,149 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
             return;
         }
 
+        // Handle debt category
         if (transactionData.category === "Debt") {
             const debtAccountName = document.getElementById("debt-account-select").value;
             if (!debtAccountName) {
                 showError("Please select a debt account for this payment.");
                 return;
             }
-            // INSERT: Additional check if no options available (empty select)
-            const debtAccountSelect = document.getElementById("debt-account-select");
-            if (debtAccountSelect.options.length <= 1) {  // Only the placeholder
-                showError("No debt accounts available. Please add one first.");
+
+            const debtAccount = appState.appData.debtAccounts.find(d => d.name === debtAccountName);
+            if (debtAccount) {
+                transactionData.debt_account_id = debtAccount.id;
+            }
+        } else {
+            // Non-debt transactions need an account
+            if (!transactionData.account_id || isNaN(transactionData.account_id)) {
+                showError("Please select a valid account.");
                 return;
             }
         }
 
-        const savedTransaction = await db.addTransaction(transactionData);
-        const newTransaction = {
-            ...savedTransaction,
-            amount: parseFloat(savedTransaction.amount),
-        };
-
-        appState.appData.transactions.unshift(newTransaction);
-
-        if (appState.updateAccountBalance) {
-            appState.updateAccountBalance(newTransaction.account_id, newTransaction.amount);
+        if (editingTransactionId) {
+            // Update existing transaction
+            await updateTransaction(editingTransactionId, transactionData, appState, onUpdate);
         } else {
-            const account = appState.appData.cashAccounts.find(a => a.id === newTransaction.account_id);
-            if (account) {
-                account.balance = (account.balance || 0) + newTransaction.amount;
-            }
+            // Add new transaction
+            await addNewTransaction(transactionData, appState, onUpdate);
         }
 
-        if (newTransaction.category === 'Debt' && newTransaction.debt_account_id) {
-            const debtAccount = appState.appData.debtAccounts.find(d => d.id === newTransaction.debt_account_id);
-            if (debtAccount) {
-                const newBalance = debtAccount.balance + newTransaction.amount; // Amount is negative
-                await db.updateDebtBalance(debtAccount.id, newBalance);
-                debtAccount.balance = newBalance;
-            }
-        }
-
-        event.target.reset();
-        document.getElementById("transaction-date").value = new Date().toISOString().split("T")[0];
-        document.getElementById("debt-account-group").style.display = "none";
-        onUpdate();
-        announceToScreenReader("Transaction added successfully");
     } catch (error) {
-        console.error("Error adding transaction:", error);
-        showError("Failed to add transaction. " + error.message);
+        console.error("Error handling transaction:", error);
+        showError("Failed to save transaction. " + error.message);
+    }
+}
+
+async function addNewTransaction(transactionData, appState, onUpdate) {
+    const savedTransaction = await db.addTransaction(transactionData);
+    const newTransaction = {
+        ...savedTransaction,
+        amount: parseFloat(savedTransaction.amount),
+    };
+
+    appState.appData.transactions.unshift(newTransaction);
+
+    // Update balances
+    if (newTransaction.account_id) {
+        updateCashAccountBalance(newTransaction.account_id, newTransaction.amount, appState);
+    }
+
+    if (newTransaction.category === 'Debt' && newTransaction.debt_account_id) {
+        await updateDebtAccountBalance(newTransaction.debt_account_id, newTransaction.amount, appState);
+    }
+
+    // Reset form
+    document.getElementById("transaction-form").reset();
+    document.getElementById("transaction-date").value = new Date().toISOString().split("T")[0];
+    document.getElementById("debt-account-group").style.display = "none";
+
+    onUpdate();
+    announceToScreenReader("Transaction added successfully");
+}
+
+async function updateTransaction(id, newTransactionData, appState, onUpdate) {
+    if (!originalTransaction) {
+        showError("Original transaction data not found.");
+        return;
+    }
+
+    // First, reverse the effects of the original transaction
+    await reverseTransactionEffects(originalTransaction, appState);
+
+    // Update the transaction in the database
+    const updatedTransaction = await db.updateTransaction(id, newTransactionData);
+
+    // Update in app state
+    const index = appState.appData.transactions.findIndex(t => t.id === id);
+    if (index > -1) {
+        appState.appData.transactions[index] = {
+            ...updatedTransaction,
+            amount: parseFloat(updatedTransaction.amount)
+        };
+    }
+
+    // Apply the effects of the new transaction
+    await applyTransactionEffects(updatedTransaction, appState);
+
+    // Clean up edit state
+    cancelEdit();
+
+    onUpdate();
+    announceToScreenReader("Transaction updated successfully");
+}
+
+async function reverseTransactionEffects(transaction, appState) {
+    // Reverse cash account balance changes
+    if (transaction.account_id) {
+        updateCashAccountBalance(transaction.account_id, -transaction.amount, appState);
+    }
+
+    // Reverse debt account balance changes
+    if (transaction.debt_account_id) {
+        await updateDebtAccountBalance(transaction.debt_account_id, -transaction.amount, appState);
+    }
+
+    // Handle legacy debt transactions
+    if (transaction.category === 'Debt' && transaction.debt_account && !transaction.debt_account_id) {
+        const debtAccount = appState.appData.debtAccounts.find(d => d.name === transaction.debt_account);
+        if (debtAccount) {
+            await updateDebtAccountBalance(debtAccount.id, -transaction.amount, appState);
+        }
+    }
+}
+
+async function applyTransactionEffects(transaction, appState) {
+    const amount = parseFloat(transaction.amount);
+
+    // Apply cash account balance changes
+    if (transaction.account_id) {
+        updateCashAccountBalance(transaction.account_id, amount, appState);
+    }
+
+    // Apply debt account balance changes
+    if (transaction.debt_account_id) {
+        await updateDebtAccountBalance(transaction.debt_account_id, amount, appState);
+    }
+}
+
+function updateCashAccountBalance(accountId, amount, appState) {
+    if (appState.updateAccountBalance) {
+        appState.updateAccountBalance(accountId, amount);
+    } else {
+        const account = appState.appData.cashAccounts.find(a => a.id === accountId);
+        if (account) {
+            account.balance = (account.balance || 0) + amount;
+        }
+    }
+}
+
+async function updateDebtAccountBalance(debtAccountId, amount, appState) {
+    const debtAccount = appState.appData.debtAccounts.find(d => d.id === debtAccountId);
+    if (debtAccount) {
+        const newBalance = debtAccount.balance + amount;
+        await db.updateDebtBalance(debtAccount.id, newBalance);
+        debtAccount.balance = newBalance;
     }
 }
 
@@ -127,7 +333,7 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
     }
 
     tbody.innerHTML = transactions.map(t => {
-        // FIX 1: Handle both cash account transactions and credit card transactions
+        // Handle both cash account transactions and credit card transactions
         let accountName = 'Credit Card Transaction';
 
         if (t.account_id) {
@@ -142,15 +348,15 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
 
         let description = escapeHtml(t.description);
 
-        // FIX: Add backward compatibility for old and new data
+        // Add backward compatibility for old and new data
         if (t.category === "Debt") {
             let debtAccountName = '';
-            if (t.debt_account_id) { // Handle new transactions with an ID
+            if (t.debt_account_id) {
                 const debtAccount = appData.debtAccounts.find(d => d.id === t.debt_account_id);
                 if (debtAccount) {
                     debtAccountName = debtAccount.name;
                 }
-            } else if (t.debt_account) { // Handle old transactions with just a name
+            } else if (t.debt_account) {
                 debtAccountName = t.debt_account;
             }
 
@@ -159,15 +365,26 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
             }
         }
 
+        // Highlight transaction being edited
+        const isEditing = editingTransactionId === t.id;
+        const rowClass = isEditing ? 'style="background-color: var(--color-secondary);"' : '';
+
         return `
-        <tr>
+        <tr ${rowClass}>
             <td>${formatDate(t.date)}</td>
             <td>${accountName}</td>
             <td>${escapeHtml(t.category)}</td>
             <td>${description}</td>
             <td class="${t.amount >= 0 ? 'text-success' : 'text-error'}">${formatCurrency(t.amount)}</td>
             <td class="${t.cleared ? 'status-cleared' : 'status-pending'}">${t.cleared ? "Cleared" : "Pending"}</td>
-            <td><div class="transaction-actions"><button class="btn btn-small btn-delete" data-id="${t.id}">Delete</button></div></td>
+            <td>
+                <div class="transaction-actions">
+                    <button class="btn btn-small btn-edit" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>
+                        ${isEditing ? 'Editing...' : 'Edit'}
+                    </button>
+                    <button class="btn btn-small btn-delete" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>Delete</button>
+                </div>
+            </td>
         </tr>`;
     }).join('');
 }
@@ -180,25 +397,11 @@ async function deleteTransaction(id, appState, onUpdate) {
         try {
             await db.deleteTransaction(id);
 
-            // FIX 2: Handle both cash account and credit card transaction deletions
+            // Handle both cash account and credit card transaction deletions
             if (transactionToDelete.account_id) {
-                // Regular cash account transaction
-                if (appState.updateAccountBalance) {
-                    appState.updateAccountBalance(transactionToDelete.account_id, -transactionToDelete.amount);
-                } else {
-                    const account = appState.appData.cashAccounts.find(a => a.id === transactionToDelete.account_id);
-                    if (account) {
-                        account.balance -= transactionToDelete.amount;
-                    }
-                }
+                updateCashAccountBalance(transactionToDelete.account_id, -transactionToDelete.amount, appState);
             } else if (transactionToDelete.debt_account_id) {
-                // Credit card transaction - reduce the debt balance
-                const debtAccount = appState.appData.debtAccounts.find(d => d.id === transactionToDelete.debt_account_id);
-                if (debtAccount) {
-                    const newBalance = debtAccount.balance - transactionToDelete.amount; // Reverse the charge
-                    await db.updateDebtBalance(debtAccount.id, newBalance);
-                    debtAccount.balance = newBalance;
-                }
+                await updateDebtAccountBalance(transactionToDelete.debt_account_id, -transactionToDelete.amount, appState);
             }
 
             // Handle legacy debt transactions
@@ -216,16 +419,21 @@ async function deleteTransaction(id, appState, onUpdate) {
                 }
 
                 if (debtAccount) {
-                    const newBalance = debtAccount.balance - transactionToDelete.amount; // Reverses the payment
+                    const newBalance = debtAccount.balance - transactionToDelete.amount;
                     await db.updateDebtBalance(debtAccount.id, newBalance);
                     debtAccount.balance = newBalance;
                 }
             }
 
-            // FIX 3: Check if this was a recurring bill payment and revert the due date
+            // Check if this was a recurring bill payment and revert the due date
             await handleRecurringBillReversion(transactionToDelete, appState);
 
             appState.appData.transactions = appState.appData.transactions.filter(t => t.id !== id);
+
+            // Cancel edit if we're deleting the transaction being edited
+            if (editingTransactionId === id) {
+                cancelEdit();
+            }
 
             onUpdate();
             announceToScreenReader("Transaction deleted");
@@ -236,21 +444,18 @@ async function deleteTransaction(id, appState, onUpdate) {
     }
 }
 
-// FIX 3: New function to handle recurring bill due date reversion
+// Handle recurring bill due date reversion
 async function handleRecurringBillReversion(deletedTransaction, appState) {
-    // Check if this transaction was from a recurring bill payment
     const isRecurringPayment = deletedTransaction.description &&
         (deletedTransaction.description.includes('(Recurring)') ||
             deletedTransaction.description.includes('(Recurring - Credit Card)'));
 
     if (!isRecurringPayment) return;
 
-    // Extract the bill name from the description
     let billName = deletedTransaction.description
         .replace(' (Recurring)', '')
         .replace(' (Recurring - Credit Card)', '');
 
-    // Find the matching recurring bill
     const recurringBill = appState.appData.recurringBills.find(bill =>
         bill.name === billName || deletedTransaction.description.startsWith(bill.name)
     );
@@ -261,15 +466,12 @@ async function handleRecurringBillReversion(deletedTransaction, appState) {
     }
 
     try {
-        // Calculate what the previous due date should have been
         const currentDueDate = recurringBill.nextDue || recurringBill.next_due;
         const previousDueDate = calculatePreviousDueDate(currentDueDate, recurringBill.frequency);
 
-        // Update the bill's due date back to the previous date
         recurringBill.nextDue = previousDueDate;
         recurringBill.next_due = previousDueDate;
 
-        // Update in database
         await db.updateRecurringBill(recurringBill.id, {
             next_due: previousDueDate,
             active: recurringBill.active,
@@ -281,11 +483,9 @@ async function handleRecurringBillReversion(deletedTransaction, appState) {
         console.log(`Reverted ${billName} due date from ${currentDueDate} to ${previousDueDate}`);
     } catch (error) {
         console.error('Error reverting recurring bill due date:', error);
-        // Don't throw - this is a nice-to-have feature, don't break the deletion
     }
 }
 
-// Helper function to calculate the previous due date based on frequency
 function calculatePreviousDueDate(currentDateStr, frequency) {
     if (!currentDateStr || !frequency) return currentDateStr;
 
