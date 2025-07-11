@@ -113,7 +113,9 @@ function calculateAccountBalances() {
     // Calculate and cache balances
     appState.appData.cashAccounts.forEach(account => {
         const accountTransactions = transactionsByAccount.get(account.id) || [];
-        const balance = accountTransactions.reduce((sum, t) => sum + t.amount, 0);
+        const balance = accountTransactions
+            .filter(t => t.description !== 'Initial Balance')  // INSERT: Filter out initial transactions to prevent double-counting
+            .reduce((sum, t) => sum + t.amount, 0);
         account.balance = balance;
         appState.balanceCache.set(account.id, balance);
     });

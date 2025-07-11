@@ -182,18 +182,25 @@ async function deleteTransaction(id, appState, onUpdate) {
             // FIX: Add backward compatibility for old and new data
             if (transactionToDelete.category === 'Debt') {
                 let debtAccount;
-                if (transactionToDelete.debt_account_id) {  // DELETE: Remove else if (transactionToDelete.debt_account) block
+                if (transactionToDelete.debt_account_id) {
                     debtAccount = appState.appData.debtAccounts.find(d => d.id === transactionToDelete.debt_account_id);
-                } 
-
+                } else if (transactionToDelete.debt_account) {
+                    debtAccount = appState.appData.debtAccounts.find(d => d.name === transactionToDelete.debt_account);
+                    if (!debtAccount) {  // INSERT: Add error handling for no match
+                        console.error(`Debt account "${transactionToDelete.debt_account}" not found for reversal.`);
+                        showError("Could not reverse debt payment: Account not found.");
+                        return;  // Prevent proceeding if no match
+                    }
+                }
+                
                 if (debtAccount) {
                     const newBalance = debtAccount.balance - transactionToDelete.amount; // Reverses the payment
                     await db.updateDebtBalance(debtAccount.id, newBalance);
                     debtAccount.balance = newBalance;
-                } else {
-                    showError("Debt account not found for reversal.");  // INSERT: Add error if no ID match post-migration
                 }
             }
+
+
 
             appState.appData.transactions = appState.appData.transactions.filter(t => t.id !== id);
 
