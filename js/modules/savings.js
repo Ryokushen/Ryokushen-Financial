@@ -66,17 +66,28 @@ async function handleGoalSubmit(event, appState, onUpdate) {
     event.preventDefault();
     try {
         const goalId = document.getElementById("goal-id").value;
+        const linkedAccountId = parseInt(document.getElementById("goal-account").value);
+
         const goalData = {
             name: document.getElementById("goal-name").value,
             target_amount: safeParseFloat(document.getElementById("goal-target").value),
-            linked_account_id: parseInt(document.getElementById("goal-account").value),
+            linked_account_id: linkedAccountId,
             current_amount: safeParseFloat(document.getElementById("goal-current").value),
             target_date: document.getElementById("goal-target-date").value || null,
             description: document.getElementById("goal-description").value,
         };
 
-        if (!goalData.linked_account_id) {
+        if (!linkedAccountId) {
             showError("Please select a linked savings account.");
+            return;
+        }
+
+        // UPDATED: Check if the linked account exists in either cash accounts or investment accounts
+        const cashAccount = appState.appData.cashAccounts.find(acc => acc.id === linkedAccountId);
+        const investmentAccount = appState.appData.investmentAccounts.find(acc => acc.id === linkedAccountId);
+
+        if (!cashAccount && !investmentAccount) {
+            showError("Selected account not found. Please choose a valid savings account.");
             return;
         }
 
@@ -103,10 +114,36 @@ async function handleGoalSubmit(event, appState, onUpdate) {
 function openContributionModal(appData, goalId) {
     const goal = appData.savingsGoals.find(g => g.id === goalId);
     if (!goal) return;
+
+    // UPDATED: Populate contribution source dropdown to include cash accounts
+    populateContributionSourceDropdown(appData);
+
     document.getElementById("contribution-modal-title").textContent = `Contribute to: ${escapeHtml(goal.name)}`;
     document.getElementById("contribution-goal-id").value = goalId;
     document.getElementById("contribution-form").reset();
     openModal('contribution-modal');
+}
+
+// UPDATED: New function to populate contribution source dropdown
+function populateContributionSourceDropdown(appData) {
+    const select = document.getElementById("contribution-source");
+    if (!select) return;
+
+    select.innerHTML = "<option value=\"\" disabled selected>Select Source Account</option>";
+
+    // Add cash accounts as contribution sources
+    appData.cashAccounts
+        .filter(acc => acc.isActive)
+        .forEach(acc => {
+            select.innerHTML += `<option value="cash-${acc.id}">${escapeHtml(acc.name)} (Cash)</option>`;
+        });
+
+    // Add investment accounts as contribution sources (if any)
+    appData.investmentAccounts
+        .filter(acc => acc.accountType !== "Savings Account") // Don't allow transferring from savings to savings
+        .forEach(acc => {
+            select.innerHTML += `<option value="investment-${acc.id}">${escapeHtml(acc.name)} (Investment)</option>`;
+        });
 }
 
 async function handleContributionSubmit(event, appState, onUpdate) {
@@ -114,42 +151,120 @@ async function handleContributionSubmit(event, appState, onUpdate) {
     try {
         const goalId = parseInt(document.getElementById("contribution-goal-id").value);
         const amount = safeParseFloat(document.getElementById("contribution-amount").value);
-        const sourceAccountId = parseInt(document.getElementById("contribution-source").value);
+        const sourceValue = document.getElementById("contribution-source").value;
 
-        if (amount <= 0) { showError("Contribution must be positive."); return; }
-        if (!sourceAccountId) { showError("Please select a source account."); return; }
+        if (amount <= 0) {
+            showError("Contribution must be positive.");
+            return;
+        }
+
+        if (!sourceValue) {
+            showError("Please select a source account.");
+            return;
+        }
+
+        // UPDATED: Parse the source account type and ID
+        const [sourceType, sourceIdStr] = sourceValue.split('-');
+        const sourceAccountId = parseInt(sourceIdStr);
+
+        if (!sourceType || !sourceAccountId) {
+            showError("Invalid source account selected.");
+            return;
+        }
 
         const goal = appState.appData.savingsGoals.find(g => g.id === goalId);
-        const savingsAccount = appState.appData.investmentAccounts.find(acc => acc.id === goal.linkedAccountId);
-        const sourceAccount = appState.appData.cashAccounts.find(a => a.id === sourceAccountId);
+        if (!goal) {
+            showError("Savings goal not found.");
+            return;
+        }
 
-        const withdrawal = {
-            date: new Date().toISOString().split('T')[0],
-            account_id: sourceAccountId,
-            category: "Transfer",
-            description: `Transfer to ${savingsAccount.name}`,
-            amount: -amount,
-            cleared: true
-        };
-        const savedWithdrawal = await db.addTransaction(withdrawal);
-        appState.appData.transactions.unshift({ ...savedWithdrawal, amount: parseFloat(savedWithdrawal.amount) });
+        // UPDATED: Find the target account (could be cash or investment account)
+        const targetCashAccount = appState.appData.cashAccounts.find(acc => acc.id === goal.linkedAccountId);
+        const targetInvestmentAccount = appState.appData.investmentAccounts.find(acc => acc.id === goal.linkedAccountId);
 
-        if (sourceAccount) sourceAccount.balance -= amount;
+        const targetAccount = targetCashAccount || targetInvestmentAccount;
+        const isTargetCashAccount = !!targetCashAccount;
 
-        savingsAccount.balance += amount;
-        await db.updateInvestmentAccount(savingsAccount.id, { balance: savingsAccount.balance });
+        if (!targetAccount) {
+            showError("Target savings account not found.");
+            return;
+        }
 
+        // UPDATED: Find the source account
+        let sourceAccount;
+        let isSourceCashAccount = false;
+
+        if (sourceType === 'cash') {
+            sourceAccount = appState.appData.cashAccounts.find(a => a.id === sourceAccountId);
+            isSourceCashAccount = true;
+        } else if (sourceType === 'investment') {
+            sourceAccount = appState.appData.investmentAccounts.find(a => a.id === sourceAccountId);
+            isSourceCashAccount = false;
+        }
+
+        if (!sourceAccount) {
+            showError("Source account not found.");
+            return;
+        }
+
+        // Create withdrawal transaction from source
+        if (isSourceCashAccount) {
+            const withdrawal = {
+                date: new Date().toISOString().split('T')[0],
+                account_id: sourceAccountId,
+                category: "Transfer",
+                description: `Transfer to ${targetAccount.name}`,
+                amount: -amount,
+                cleared: true
+            };
+            const savedWithdrawal = await db.addTransaction(withdrawal);
+            appState.appData.transactions.unshift({ ...savedWithdrawal, amount: parseFloat(savedWithdrawal.amount) });
+
+            // Update source account balance
+            sourceAccount.balance -= amount;
+        } else {
+            // For investment accounts, just reduce the balance
+            sourceAccount.balance -= amount;
+            await db.updateInvestmentAccount(sourceAccount.id, { balance: sourceAccount.balance });
+        }
+
+        // Update target account balance
+        if (isTargetCashAccount) {
+            // Create deposit transaction for cash savings account
+            const deposit = {
+                date: new Date().toISOString().split('T')[0],
+                account_id: goal.linkedAccountId,
+                category: "Transfer",
+                description: `Contribution to ${goal.name}`,
+                amount: amount,
+                cleared: true
+            };
+            const savedDeposit = await db.addTransaction(deposit);
+            appState.appData.transactions.unshift({ ...savedDeposit, amount: parseFloat(savedDeposit.amount) });
+
+            targetAccount.balance += amount;
+        } else {
+            // For investment savings accounts, just update the balance
+            targetAccount.balance += amount;
+            await db.updateInvestmentAccount(targetAccount.id, { balance: targetAccount.balance });
+        }
+
+        // Update savings goal progress
         goal.currentAmount += amount;
         if (goal.currentAmount >= goal.targetAmount && !goal.completedDate) {
             goal.completedDate = new Date().toISOString().split('T')[0];
         }
-        await db.updateSavingsGoal(goal.id, { current_amount: goal.currentAmount, completed_date: goal.completedDate });
+        await db.updateSavingsGoal(goal.id, {
+            current_amount: goal.currentAmount,
+            completed_date: goal.completedDate
+        });
 
         closeModal('contribution-modal');
         onUpdate();
         announceToScreenReader("Contribution saved.");
 
     } catch (error) {
+        console.error("Error processing contribution:", error);
         showError("Failed to process contribution.");
     }
 }
@@ -160,7 +275,9 @@ async function deleteSavingsGoal(id, appState, onUpdate) {
             await db.deleteSavingsGoal(id);
             appState.appData.savingsGoals = appState.appData.savingsGoals.filter(g => g.id !== id);
             onUpdate();
-        } catch (error) { showError("Failed to delete savings goal."); }
+        } catch (error) {
+            showError("Failed to delete savings goal.");
+        }
     }
 }
 
@@ -177,9 +294,15 @@ export function renderSavingsGoals(appState) {
         const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
         const clampedProgress = Math.min(progress, 100);
 
+        // UPDATED: Check if linked account exists and show appropriate status
+        const cashAccount = appState.appData.cashAccounts.find(acc => acc.id === goal.linkedAccountId);
+        const investmentAccount = appState.appData.investmentAccounts.find(acc => acc.id === goal.linkedAccountId);
+        const linkedAccount = cashAccount || investmentAccount;
+        const accountDeleted = !linkedAccount;
+
         return `
-        <div class="savings-goal-card ${goal.completedDate ? 'completed' : ''} ${goal.accountDeleted ? 'error' : ''}" data-id="${goal.id}">
-            ${goal.accountDeleted ? '<div class="goal-error-notice">Linked account was deleted!</div>' : ''}
+        <div class="savings-goal-card ${goal.completedDate ? 'completed' : ''} ${accountDeleted ? 'error' : ''}" data-id="${goal.id}">
+            ${accountDeleted ? '<div class="goal-error-notice">Linked account was deleted!</div>' : ''}
             <div class="savings-goal-header">
                 <h5>${escapeHtml(goal.name)}</h5>
             </div>
@@ -198,7 +321,7 @@ export function renderSavingsGoals(appState) {
             </div>
 
             <div class="savings-goal-actions">
-                <button class="btn btn--primary btn--sm btn-contribute" data-id="${goal.id}" ${goal.accountDeleted ? 'disabled' : ''}>Contribute</button>
+                <button class="btn btn--primary btn--sm btn-contribute" data-id="${goal.id}" ${accountDeleted ? 'disabled' : ''}>Contribute</button>
                 <button class="btn btn--secondary btn--sm btn-edit-goal" data-id="${goal.id}">Edit</button>
                 <button class="btn btn--outline btn--sm btn-delete-goal" data-id="${goal.id}">Delete</button>
             </div>
@@ -207,13 +330,24 @@ export function renderSavingsGoals(appState) {
     }).join('');
 }
 
+// UPDATED: Modified to include both cash and investment savings accounts
 function populateGoalAccountDropdown(appData) {
     const select = document.getElementById("goal-account");
     if (!select) return;
+
     select.innerHTML = "<option value=\"\" disabled selected>Select Savings Account</option>";
+
+    // Add cash accounts with type "Savings Account"
+    appData.cashAccounts
+        .filter(acc => acc.type === "Savings" && acc.isActive)
+        .forEach(acc => {
+            select.innerHTML += `<option value="${acc.id}">${escapeHtml(acc.name)} (Cash Savings)</option>`;
+        });
+
+    // Add investment accounts with type "Savings Account"
     appData.investmentAccounts
         .filter(acc => acc.accountType === "Savings Account")
         .forEach(acc => {
-            select.innerHTML += `<option value="${acc.id}">${escapeHtml(acc.name)}</option>`;
+            select.innerHTML += `<option value="${acc.id}">${escapeHtml(acc.name)} (Investment Savings)</option>`;
         });
 }
