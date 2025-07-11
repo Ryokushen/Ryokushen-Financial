@@ -13,8 +13,10 @@ class FinancialDatabase {
     // --- CASH ACCOUNTS ---
     async getCashAccounts() {
         try {
+            console.log('Fetching cash accounts from database...');
             const { data, error } = await this.supabase.from('cash_accounts').select('*').order('created_at', { ascending: true });
             if (error) throw error;
+            console.log('Cash accounts fetched:', data);
             return data || [];
         } catch (error) { this.handleError('getCashAccounts', error); }
     }
@@ -49,8 +51,61 @@ class FinancialDatabase {
 
     async deleteCashAccount(id) {
         try {
-            await this.supabase.from('transactions').delete().eq('account_id', id);
-            await this.supabase.from('cash_accounts').delete().eq('id', id);
+            console.log(`Attempting to delete cash account with id: ${id}`);
+
+            // First, verify the account exists
+            const { data: accountCheck, error: checkError } = await this.supabase
+                .from('cash_accounts')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (checkError || !accountCheck) {
+                console.error('Account not found or error checking:', checkError);
+                throw new Error('Account not found');
+            }
+
+            console.log('Account to delete:', accountCheck);
+
+            // Delete transactions first
+            const { error: transError, count: transCount } = await this.supabase
+                .from('transactions')
+                .delete()
+                .eq('account_id', id);
+
+            if (transError) {
+                console.error('Error deleting transactions:', transError);
+                throw transError;
+            }
+
+            console.log(`Deleted ${transCount || 0} transactions`);
+
+            // Then delete the account
+            const { error: accountError, data: deletedData } = await this.supabase
+                .from('cash_accounts')
+                .delete()
+                .eq('id', id)
+                .select();
+
+            if (accountError) {
+                console.error('Error deleting account:', accountError);
+                throw accountError;
+            }
+
+            console.log('Account deleted successfully:', deletedData);
+
+            // Verify deletion
+            const { data: verifyData, error: verifyError } = await this.supabase
+                .from('cash_accounts')
+                .select('*')
+                .eq('id', id);
+
+            if (!verifyError && verifyData && verifyData.length === 0) {
+                console.log('Deletion verified - account no longer exists');
+            } else {
+                console.warn('Account may still exist after deletion attempt:', verifyData);
+            }
+
             return true;
         } catch (error) {
             this.handleError('deleteCashAccount', error);
@@ -75,7 +130,7 @@ class FinancialDatabase {
                 description: transaction.description,
                 amount: transaction.amount,
                 cleared: transaction.cleared,
-                debt_account_id: transaction.debt_account_id || null // FIX: Save the ID, not the name
+                debt_account_id: transaction.debt_account_id || null
             }).select().single();
             if (error) throw error;
             return data;
@@ -202,7 +257,6 @@ class FinancialDatabase {
     }
 
     // --- RECURRING BILLS ---
-    // FIX FOR ISSUE 2: Consistent schema mapping
     async getRecurringBills() {
         try {
             const { data, error } = await this.supabase.from('recurring_bills').select('*');
@@ -213,7 +267,6 @@ class FinancialDatabase {
 
     async addRecurringBill(bill) {
         try {
-            // FIX: Consistent mapping to 'active' column
             const billData = {
                 name: bill.name,
                 category: bill.category,
@@ -222,7 +275,7 @@ class FinancialDatabase {
                 next_due: bill.next_due,
                 account_id: bill.account_id,
                 notes: bill.notes || null,
-                active: bill.active !== undefined ? bill.active : true  // Simplified, using 'active' directly
+                active: bill.active !== undefined ? bill.active : true
             };
 
             console.log('Database: Inserting bill data:', billData);
@@ -241,7 +294,6 @@ class FinancialDatabase {
 
     async updateRecurringBill(id, bill) {
         try {
-            // FIX: Consistent mapping to 'active' column
             const billData = {
                 name: bill.name,
                 category: bill.category,
@@ -250,7 +302,7 @@ class FinancialDatabase {
                 next_due: bill.next_due,
                 account_id: bill.account_id,
                 notes: bill.notes || null,
-                active: bill.active !== undefined ? bill.active : true  // Simplified, using 'active' directly
+                active: bill.active !== undefined ? bill.active : true
             };
 
             console.log('Database: Updating bill data:', billData);
@@ -305,14 +357,14 @@ class FinancialDatabase {
             return true;
         } catch (error) { this.handleError('deleteSavingsGoal', error); }
     }
-    
+
     async updateTransaction(id, updates) {
-    try {
-        const { data, error } = await this.supabase.from('transactions').update(updates).eq('id', id).select().single();
-        if (error) throw error;
-        return data;
-    } catch (error) { this.handleError('updateTransaction', error); }
-}
+        try {
+            const { data, error } = await this.supabase.from('transactions').update(updates).eq('id', id).select().single();
+            if (error) throw error;
+            return data;
+        } catch (error) { this.handleError('updateTransaction', error); }
+    }
 }
 
 const db = new FinancialDatabase();
