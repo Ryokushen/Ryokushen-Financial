@@ -1,7 +1,6 @@
 @font-face {
   font-family: 'FKGroteskNeue';
-  src: url('https://r2cdn.perplexity.ai/fonts/FKGroteskNeue.woff2')
-    format('woff2');
+  src: url('https://r2cdn.perplexity.ai/fonts/FKGroteskNeue.woff2') format('woff2');
 }
 
 :root {
@@ -144,6 +143,22 @@
     --color-warning-rgb: 230, 129, 97;
     --color-info-rgb: 167, 169, 169;
   }
+
+  .status-excellent {
+    background-color: rgba(var(--color-success-rgb), 0.15);
+  }
+
+  .status-good {
+    background-color: rgba(var(--color-info-rgb), 0.15);
+  }
+
+  .status-fair {
+    background-color: rgba(var(--color-warning-rgb), 0.15);
+  }
+
+  .status-needs {
+    background-color: rgba(var(--color-error-rgb), 0.15);
+  }
 }
 
 /* Base styles */
@@ -185,18 +200,23 @@ h6 {
 h1 {
   font-size: var(--font-size-4xl);
 }
+
 h2 {
   font-size: var(--font-size-3xl);
 }
+
 h3 {
   font-size: var(--font-size-2xl);
 }
+
 h4 {
   font-size: var(--font-size-xl);
 }
+
 h5 {
   font-size: var(--font-size-lg);
 }
+
 h6 {
   font-size: var(--font-size-md);
 }
@@ -394,43 +414,31 @@ select.form-control {
 }
 
 .status--success {
-  background-color: rgba(
-    var(--color-success-rgb, 33, 128, 141),
-    var(--status-bg-opacity)
-  );
+  background-color: rgba(var(--color-success-rgb, 33, 128, 141),
+      var(--status-bg-opacity));
   color: var(--color-success);
-  border: 1px solid
-    rgba(var(--color-success-rgb, 33, 128, 141), var(--status-border-opacity));
+  border: 1px solid rgba(var(--color-success-rgb, 33, 128, 141), var(--status-border-opacity));
 }
 
 .status--error {
-  background-color: rgba(
-    var(--color-error-rgb, 192, 21, 47),
-    var(--status-bg-opacity)
-  );
+  background-color: rgba(var(--color-error-rgb, 192, 21, 47),
+      var(--status-bg-opacity));
   color: var(--color-error);
-  border: 1px solid
-    rgba(var(--color-error-rgb, 192, 21, 47), var(--status-border-opacity));
+  border: 1px solid rgba(var(--color-error-rgb, 192, 21, 47), var(--status-border-opacity));
 }
 
 .status--warning {
-  background-color: rgba(
-    var(--color-warning-rgb, 168, 75, 47),
-    var(--status-bg-opacity)
-  );
+  background-color: rgba(var(--color-warning-rgb, 168, 75, 47),
+      var(--status-bg-opacity));
   color: var(--color-warning);
-  border: 1px solid
-    rgba(var(--color-warning-rgb, 168, 75, 47), var(--status-border-opacity));
+  border: 1px solid rgba(var(--color-warning-rgb, 168, 75, 47), var(--status-border-opacity));
 }
 
 .status--info {
-  background-color: rgba(
-    var(--color-info-rgb, 98, 108, 113),
-    var(--status-bg-opacity)
-  );
+  background-color: rgba(var(--color-info-rgb, 98, 108, 113),
+      var(--status-bg-opacity));
   color: var(--color-info);
-  border: 1px solid
-    rgba(var(--color-info-rgb, 98, 108, 113), var(--status-border-opacity));
+  border: 1px solid rgba(var(--color-info-rgb, 98, 108, 113), var(--status-border-opacity));
 }
 
 /* Container layout */
@@ -447,16 +455,19 @@ select.form-control {
     max-width: var(--container-sm);
   }
 }
+
 @media (min-width: 768px) {
   .container {
     max-width: var(--container-md);
   }
 }
+
 @media (min-width: 1024px) {
   .container {
     max-width: var(--container-lg);
   }
 }
+
 @media (min-width: 1280px) {
   .container {
     max-width: var(--container-xl);
@@ -546,133 +557,161 @@ select.form-control {
 .financial-health-section,
 .enhanced-charts-grid,
 .bills-timeline-section {
-    margin-bottom: var(--space-24);
+  margin-bottom: var(--space-24);
 }
 
 .enhanced-charts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: var(--space-24);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-24);
 }
 
 .chart-card-enhanced {
-    background: var(--color-surface-translucent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--color-card-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-16);
-    box-shadow: var(--shadow-sm);
+  background: var(--color-surface-translucent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-16);
+  box-shadow: var(--shadow-sm);
 }
 
 .chart-title-enhanced {
-    text-align: center;
-    font-size: var(--font-size-lg);
-    margin-bottom: var(--space-16);
-    color: var(--color-text-secondary);
-    font-weight: var(--font-weight-medium);
+  text-align: center;
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--space-16);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
 }
 
 .bills-timeline-section {
-    margin-bottom: var(--space-24);
+  margin-bottom: var(--space-24);
 }
 
 .section-title {
-    font-size: var(--font-size-2xl);
-    margin-bottom: var(--space-16);
-    color: var(--color-text);
+  font-size: var(--font-size-2xl);
+  margin-bottom: var(--space-16);
+  color: var(--color-text);
 }
 
 .health-score-container {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: var(--space-24);
-    align-items: center;
-    background: var(--color-surface-translucent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    padding: var(--space-24);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-card-border);
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--space-24);
+  align-items: center;
+  background: var(--color-surface-translucent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: var(--space-24);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-card-border);
 }
 
 .health-indicator-enhanced {
-    text-align: center;
+  text-align: center;
 }
 
 .health-score-value {
-    font-size: 56px;
-    font-weight: var(--font-weight-bold);
-    line-height: 1;
+  font-size: 56px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
 }
 
 .health-score-label {
-    font-size: var(--font-size-base);
-    color: var(--color-text-secondary);
-    margin-top: var(--space-8);
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-8);
 }
 
 .health-score-status {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    margin-top: var(--space-4);
-    padding: var(--space-2) var(--space-8);
-    border-radius: var(--radius-full);
-    display: inline-block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  margin-top: var(--space-4);
+  padding: var(--space-2) var(--space-8);
+  border-radius: var(--radius-full);
+  display: inline-block;
 }
 
 /* Status Colors */
-.excellent, .status-excellent { color: var(--color-success); }
-.good, .status-good { color: var(--color-info); }
-.fair, .status-fair { color: var(--color-warning); }
-.needs, .status-needs { color: var(--color-error); } /* handles "needs improvement" */
+.excellent,
+.status-excellent {
+  color: var(--color-success);
+}
 
-.status-excellent { background-color: rgba(var(--color-success-rgb), 0.1); }
-.status-good { background-color: rgba(var(--color-info-rgb), 0.1); }
-.status-fair { background-color: rgba(var(--color-warning-rgb), 0.1); }
-.status-needs { background-color: rgba(var(--color-error-rgb), 0.1); }
+.good,
+.status-good {
+  color: var(--color-info);
+}
+
+.fair,
+.status-fair {
+  color: var(--color-warning);
+}
+
+.needs,
+.status-needs {
+  color: var(--color-error);
+}
+
+/* handles "needs improvement" */
+
+.status-excellent {
+  background-color: rgba(var(--color-success-rgb), 0.1);
+}
+
+.status-good {
+  background-color: rgba(var(--color-info-rgb), 0.1);
+}
+
+.status-fair {
+  background-color: rgba(var(--color-warning-rgb), 0.1);
+}
+
+.status-needs {
+  background-color: rgba(var(--color-error-rgb), 0.1);
+}
 
 .kpi-details-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-16);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-16);
 }
 
 .kpi-metric-card {
-    background: var(--color-secondary);
-    padding: var(--space-16);
-    border-radius: var(--radius-base);
-    text-align: center;
+  background: var(--color-secondary);
+  padding: var(--space-16);
+  border-radius: var(--radius-base);
+  text-align: center;
 }
 
 .kpi-label {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-secondary);
-    margin-bottom: var(--space-8);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-8);
 }
 
 .kpi-value {
-    font-size: var(--font-size-2xl);
-    font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
 }
 
 .section-title {
-    font-size: var(--font-size-2xl);
-    margin-bottom: var(--space-16);
-    color: var(--color-text);
+  font-size: var(--font-size-2xl);
+  margin-bottom: var(--space-16);
+  color: var(--color-text);
 }
 
 .health-score-container {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: var(--space-24);
-    align-items: center;
-    background: var(--color-surface-translucent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    padding: var(--space-24);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-card-border);
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--space-24);
+  align-items: center;
+  background: var(--color-surface-translucent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: var(--space-24);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-card-border);
 }
 
 .metric-card {
@@ -1081,137 +1120,137 @@ select.form-control {
 
 /* Investment Account Management Styles */
 .investment-account-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .investment-account-header h4 {
-    margin: 0;
-    color: var(--color-text);
-    font-size: var(--font-size-lg);
-    font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
 }
 
 .investment-account-actions {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .holdings-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
-    margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  margin-top: 1rem;
 }
 
 .holdings-header h5 {
-    margin: 0;
-    color: var(--color-text);
-    font-size: var(--font-size-base);
-    font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  font-weight: 600;
 }
 
 .holdings-count {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-secondary);
-    background: var(--color-secondary);
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-secondary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
 }
 
 .empty-holdings {
-    text-align: center;
-    padding: 2rem 1rem;
-    color: var(--color-text-secondary);
-    background: var(--color-secondary);
-    border-radius: 8px;
-    margin-top: 0.5rem;
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--color-text-secondary);
+  background: var(--color-secondary);
+  border-radius: 8px;
+  margin-top: 0.5rem;
 }
 
 .empty-holdings .btn {
-    margin-top: 0.75rem;
+  margin-top: 0.75rem;
 }
 
 .holdings-table th:nth-child(6),
 .holdings-table td:nth-child(6) {
-    text-align: center;
-    width: 120px;
+  text-align: center;
+  width: 120px;
 }
 
 .holding-actions {
-    display: flex;
-    gap: 0.25rem;
-    justify-content: center;
+  display: flex;
+  gap: 0.25rem;
+  justify-content: center;
 }
 
 .holding-actions .btn {
-    padding: 0.25rem 0.5rem;
-    font-size: var(--font-size-xs);
+  padding: 0.25rem 0.5rem;
+  font-size: var(--font-size-xs);
 }
 
 /* Modal enhancements for investment forms */
 .form-group input[readonly] {
-    background-color: var(--color-secondary);
-    color: var(--color-text-secondary);
-    cursor: not-allowed;
+  background-color: var(--color-secondary);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
 }
 
 /* Enhanced empty state styling */
 .empty-state {
-    text-align: center;
-    padding: 3rem 2rem;
-    color: var(--color-text-secondary);
-    background: var(--color-secondary);
-    border-radius: 8px;
-    margin: 1rem 0;
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--color-text-secondary);
+  background: var(--color-secondary);
+  border-radius: 8px;
+  margin: 1rem 0;
 }
 
 .empty-state .btn {
-    margin-top: 1rem;
+  margin-top: 1rem;
 }
 
 /* Investment account card spacing */
 .investment-account {
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--color-border);
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .investment-account:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 /* Enhanced table styling for holdings */
 .holdings-table {
-    margin-top: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .holdings-table th {
-    font-weight: 600;
-    color: var(--color-text);
-    background-color: var(--color-secondary);
+  font-weight: 600;
+  color: var(--color-text);
+  background-color: var(--color-secondary);
 }
 
 .holdings-table td:first-child {
-    font-weight: 600;
-    color: var(--color-primary);
+  font-weight: 600;
+  color: var(--color-primary);
 }
 
 /* Text color utilities with higher specificity */
 .text-success {
-    color: var(--color-success);
+  color: var(--color-success);
 }
 
 .text-error {
-    color: var(--color-error);
+  color: var(--color-error);
 }
 
 /* Information note styling */
@@ -1296,53 +1335,53 @@ select.form-control {
 
 /* NEW Progress Ring Styles */
 .savings-goal-progress-ring {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-12);
-    margin: var(--space-16) 0;
-    justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-12);
+  margin: var(--space-16) 0;
+  justify-content: center;
 }
 
 .progress-ring {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    background: conic-gradient(var(--color-success) var(--progress-percent, 0%), var(--color-secondary) 0);
-    transition: background 0.5s var(--ease-standard);
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(var(--color-success) var(--progress-percent, 0%), var(--color-secondary) 0);
+  transition: background 0.5s var(--ease-standard);
 }
 
 .progress-ring-inner {
-    width: 90px;
-    height: 90px;
-    background: var(--color-surface);
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
+  width: 90px;
+  height: 90px;
+  background: var(--color-surface);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
 }
 
 .progress-ring-percent {
-    font-size: var(--font-size-xl);
-    font-weight: var(--font-weight-bold);
-    color: var(--color-success);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-success);
 }
 
 .progress-ring-text {
-    text-align: center;
-    font-size: var(--font-size-sm);
-    color: var(--color-text-secondary);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
 }
 
 .progress-ring-text .progress-current {
-    font-weight: var(--font-weight-bold);
-    color: var(--color-text);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
 }
 
 .progress-ring-text .progress-target {
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
 }
 
 .savings-goal-actions {
@@ -1456,95 +1495,105 @@ select.form-control {
 
 /* Bills Timeline Styles */
 .timeline {
-    position: relative;
-    padding: var(--space-16) 0;
-    margin-top: var(--space-16);
+  position: relative;
+  padding: var(--space-16) 0;
+  margin-top: var(--space-16);
 }
 
 .timeline::before {
-    content: '';
-    position: absolute;
-    left: 11px; /* Center on the dot */
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: var(--color-border);
+  content: '';
+  position: absolute;
+  left: 11px;
+  /* Center on the dot */
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-border);
 }
 
 .timeline-item {
-    position: relative;
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-24);
-    margin-bottom: var(--space-24);
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-24);
+  margin-bottom: var(--space-24);
 }
 
 .timeline-item:last-child {
-    margin-bottom: 0;
+  margin-bottom: 0;
 }
 
 .timeline-dot {
-    position: absolute;
-    left: 0;
-    top: 4px;
-    width: 24px;
-    height: 24px;
-    background-color: var(--color-secondary);
-    border: 3px solid var(--color-primary);
-    border-radius: 50%;
-    z-index: 1;
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 24px;
+  height: 24px;
+  background-color: var(--color-secondary);
+  border: 3px solid var(--color-primary);
+  border-radius: 50%;
+  z-index: 1;
 }
 
 .timeline-content {
-    background: var(--color-surface-translucent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--color-card-border);
-    border-radius: var(--radius-base);
-    padding: var(--space-12);
-    flex-grow: 1;
-    margin-left: 36px; /* Space for the dot and line */
+  background: var(--color-surface-translucent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-base);
+  padding: var(--space-12);
+  flex-grow: 1;
+  margin-left: 36px;
+  /* Space for the dot and line */
 }
 
 .timeline-title {
-    font-weight: var(--font-weight-semibold);
-    font-size: var(--font-size-lg);
-    margin-bottom: var(--space-4);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--space-4);
 }
 
 .timeline-amount {
-    font-weight: var(--font-weight-medium);
-    color: var(--color-error);
-    margin-bottom: var(--space-8);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-error);
+  margin-bottom: var(--space-8);
 }
 
 .timeline-date {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
 }
 
 /* Interactivity & Hover Effects */
-.card, .metric-card, .chart-card-enhanced, .btn, .tab-btn, .timeline-content {
-    transition: all 0.2s ease-in-out;
+.card,
+.metric-card,
+.chart-card-enhanced,
+.btn,
+.tab-btn,
+.timeline-content {
+  transition: all 0.2s ease-in-out;
 }
 
-.card:hover, .metric-card:hover, .chart-card-enhanced:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
+.card:hover,
+.metric-card:hover,
+.chart-card-enhanced:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
 }
 
-.btn:hover, .tab-btn:not(.active):hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+.btn:hover,
+.tab-btn:not(.active):hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .transaction-table tbody tr:hover {
-    background-color: var(--color-secondary);
+  background-color: var(--color-secondary);
 }
 
 .timeline-content:hover {
-    transform: scale(1.02);
-    box-shadow: var(--shadow-md);
+  transform: scale(1.02);
+  box-shadow: var(--shadow-md);
 }
 
 /* Responsive Design */
@@ -1552,78 +1601,78 @@ select.form-control {
   .dashboard-metrics {
     grid-template-columns: 1fr;
   }
-  
+
   .charts-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .chart-container {
     height: 250px;
   }
-  
+
   .tab-nav {
     flex-direction: column;
     gap: var(--space-4);
   }
-  
+
   .tab-btn {
     width: 100%;
     max-width: 300px;
     margin: 0 auto;
   }
-  
+
   .transaction-table {
     font-size: var(--font-size-sm);
   }
-  
+
   .transaction-actions {
     flex-direction: column;
     gap: var(--space-4);
   }
-  
+
   .investment-metrics,
   .debt-metrics,
   .recurring-metrics {
     flex-direction: column;
     gap: var(--space-16);
   }
-  
+
   .account-info {
     grid-template-columns: 1fr;
   }
-  
+
   .debt-actions {
     flex-direction: column;
   }
-  
+
   .modal-content {
     width: 95%;
     margin: var(--space-16);
   }
-  
+
   .investment-account-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
   }
-  
+
   .investment-account-actions {
     width: 100%;
     justify-content: flex-start;
     flex-wrap: wrap;
   }
-  
+
   .holdings-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .holding-actions {
     flex-direction: column;
     gap: 0.25rem;
   }
-  
+
   .holding-actions .btn {
     width: 100%;
     min-width: 60px;
@@ -1632,21 +1681,21 @@ select.form-control {
   .recurring-bills-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .savings-goals-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .recurring-bill-actions,
   .savings-goal-actions {
     flex-direction: column;
   }
-  
+
   .recurring-bill-actions .btn,
   .savings-goal-actions .btn {
     width: 100%;
   }
-  
+
   .recurring-bill-header {
     flex-direction: column;
     align-items: flex-start;
@@ -1719,4 +1768,17 @@ select.form-control {
   line-height: 1;
   cursor: pointer;
   padding-left: 1rem;
+}
+
+@media print {
+  body {
+    color: black;
+    background: white;
+  }
+
+  .no-print {
+    display: none;
+  }
+
+  /* Add class="no-print" to tabs/charts in index.html if needed */
 }

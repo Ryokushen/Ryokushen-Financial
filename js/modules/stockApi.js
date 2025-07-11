@@ -11,11 +11,11 @@ export class StockApiService {
         this.cache = new Map();
         this.cacheExpiry = 5 * 60 * 1000; // 5 minutes cache
         this.rateLimitDelay = 100; // 100ms between requests to respect rate limits
-        
+
         // Validate API key on initialization
         this.isConfigured = this.validateApiKey();
     }
-    
+
     validateApiKey() {
         if (!this.apiKey || this.apiKey === 'YOUR_API_KEY_HERE' || this.apiKey.trim() === '') {
             console.warn('Finnhub API key not configured. Stock price updates will be disabled.');
@@ -44,10 +44,10 @@ export class StockApiService {
             }
 
             const url = `${this.baseUrl}/quote?symbol=${encodeURIComponent(symbol)}&token=${this.apiKey}`;
-            
+
             console.log(`Fetching price for ${symbol}...`);
             const response = await fetch(url);
-            
+
             if (!response.ok) {
                 if (response.status === 429) {
                     console.warn(`Rate limit hit for ${symbol}, retrying...`);
@@ -58,7 +58,7 @@ export class StockApiService {
             }
 
             const data = await response.json();
-            
+
             // Finnhub returns { c: currentPrice, d: change, dp: changePercent, h: high, l: low, o: open, pc: previousClose }
             if (!data.c || data.c === 0) {
                 console.warn(`No valid price data for symbol: ${symbol}`);
@@ -76,7 +76,7 @@ export class StockApiService {
 
             // Cache the result
             this.cache.set(symbol.toUpperCase(), result);
-            
+
             return result;
 
         } catch (error) {
@@ -93,12 +93,12 @@ export class StockApiService {
     async fetchMultipleStockPrices(symbols) {
         const results = new Map();
         const uniqueSymbols = [...new Set(symbols.map(s => s.toUpperCase()))];
-        
+
         console.log(`Fetching prices for ${uniqueSymbols.length} symbols...`);
-        
+
         for (let i = 0; i < uniqueSymbols.length; i++) {
             const symbol = uniqueSymbols[i];
-            
+
             try {
                 const priceData = await this.fetchStockPrice(symbol);
                 if (priceData) {
@@ -107,17 +107,17 @@ export class StockApiService {
                 } else {
                     console.log(`✗ ${symbol}: No data available`);
                 }
-                
+
                 // Rate limiting: wait between requests (except for last one)
                 if (i < uniqueSymbols.length - 1) {
                     await this.delay(this.rateLimitDelay);
                 }
-                
+
             } catch (error) {
                 console.error(`Failed to fetch ${symbol}:`, error);
             }
         }
-        
+
         return results;
     }
 
@@ -127,13 +127,13 @@ export class StockApiService {
     getCachedPrice(symbol) {
         const cached = this.cache.get(symbol.toUpperCase());
         if (!cached) return null;
-        
+
         const isExpired = Date.now() - cached.timestamp > this.cacheExpiry;
         if (isExpired) {
             this.cache.delete(symbol.toUpperCase());
             return null;
         }
-        
+
         return cached;
     }
 
@@ -158,17 +158,17 @@ export class StockApiService {
      */
     isValidSymbol(symbol) {
         if (!symbol || typeof symbol !== 'string') return false;
-        
+
         // Basic validation: 1-5 characters, letters only, common patterns
         const trimmed = symbol.trim().toUpperCase();
-        
+
         // Must be 1-5 characters, letters only
         if (!/^[A-Z]{1,5}$/.test(trimmed)) return false;
-        
+
         // Skip obviously invalid symbols
         const invalidPatterns = ['N/A', 'NULL', 'CASH', 'USD', 'PENDING'];
         if (invalidPatterns.includes(trimmed)) return false;
-        
+
         return true;
     }
 }
@@ -194,13 +194,13 @@ export class HoldingsUpdater {
         }
 
         this.isUpdating = true;
-        
+
         try {
             console.log('Starting holdings update...');
-            
+
             // Collect all unique stock symbols from all holdings
             const allSymbols = this.collectStockSymbols();
-            
+
             if (allSymbols.length === 0) {
                 console.log('No stock symbols found to update');
                 return { updated: 0, failed: 0, skipped: 0 };
@@ -208,13 +208,13 @@ export class HoldingsUpdater {
 
             // Fetch current prices
             const priceData = await this.stockApi.fetchMultipleStockPrices(allSymbols);
-            
+
             // Update holdings with new prices
             const updateResults = await this.updateHoldingsWithPrices(priceData);
-            
+
             console.log('Holdings update completed:', updateResults);
             return updateResults;
-            
+
         } catch (error) {
             console.error('Error updating holdings:', error);
             throw error;
@@ -229,7 +229,7 @@ export class HoldingsUpdater {
      */
     collectStockSymbols() {
         const symbols = new Set();
-        
+
         this.appState.appData.investmentAccounts.forEach(account => {
             if (account.holdings && Array.isArray(account.holdings)) {
                 account.holdings.forEach(holding => {
@@ -239,7 +239,7 @@ export class HoldingsUpdater {
                 });
             }
         });
-        
+
         return Array.from(symbols);
     }
 
@@ -316,10 +316,10 @@ export class HoldingsUpdater {
                 try {
                     const newBalance = account.holdings.reduce((sum, h) => sum + (h.value || 0), 0);
                     const oldBalance = account.balance;
-                    
+
                     account.balance = newBalance;
                     account.dayChange = newBalance - oldBalance;
-                    
+
                     accountUpdatePromises.push(
                         db.updateInvestmentAccount(account.id, {
                             balance: account.balance,
@@ -359,10 +359,10 @@ export class HoldingsUpdater {
 
             const priceMap = new Map();
             priceMap.set(symbol.toUpperCase(), priceData);
-            
+
             const results = await this.updateHoldingsWithPrices(priceMap);
             return results.updated > 0;
-            
+
         } catch (error) {
             console.error(`Error updating ${symbol}:`, error);
             return false;
@@ -379,18 +379,18 @@ export const holdingsUpdater = new HoldingsUpdater(null, stockApiService); // Wi
  */
 export function formatLastUpdateTime(timestamp) {
     if (!timestamp) return 'Never';
-    
+
     const now = Date.now();
     const diff = now - timestamp;
     const minutes = Math.floor(diff / (1000 * 60));
-    
+
     if (minutes < 1) return 'Just now';
     if (minutes === 1) return '1 minute ago';
     if (minutes < 60) return `${minutes} minutes ago`;
-    
+
     const hours = Math.floor(minutes / 60);
     if (hours === 1) return '1 hour ago';
     if (hours < 24) return `${hours} hours ago`;
-    
+
     return new Date(timestamp).toLocaleDateString();
 }

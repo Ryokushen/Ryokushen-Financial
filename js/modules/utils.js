@@ -21,9 +21,9 @@ export function escapeHtml(text) {
 }
 
 export function formatCurrency(amount) {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat(navigator.language, {
         style: "currency",
-        currency: "USD"
+        currency: "USD"  // Change to dynamic if needed, e.g., localStorage.get('currency') || 'USD'
     }).format(amount);
 }
 
@@ -32,7 +32,7 @@ export function formatDate(dateString) {
     const date = new Date(dateString);
     const timezoneOffset = date.getTimezoneOffset();
     const adjustedDate = new Date(date.getTime() + (timezoneOffset * 60 * 1000));
-    return adjustedDate.toLocaleDateString("en-US", {
+    return adjustedDate.toLocaleDateString(navigator.language, {
         year: "numeric",
         month: "short",
         day: "numeric"

@@ -67,6 +67,15 @@ export function switchTab(tabName, appState) {
         activeButton.classList.add("active");
     }
 
+    tabButtons.forEach(button => {
+        button.classList.remove("active");
+        button.setAttribute('aria-selected', 'false');  // Add
+    });
+    if (activeButton) {
+        activeButton.classList.add("active");
+        activeButton.setAttribute('aria-selected', 'true');  // Add
+    }
+
     announceToScreenReader(`Switched to ${tabName} tab`);
 
     // CORRECTED LOGIC: Call specific renderers for each tab
@@ -102,3 +111,10 @@ export function closeModal(modalId) {
         modal.classList.remove('active');
     }
 }
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        const activeModal = document.querySelector('.modal.active');
+        if (activeModal) closeModal(activeModal.id);
+    }
+});
