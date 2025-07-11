@@ -9,7 +9,7 @@ export function setupEventListeners(appState, onUpdate) {
     document.getElementById("cancel-cash-account-btn")?.addEventListener("click", () => closeModal('cash-account-modal'));
     document.getElementById("cash-account-form")?.addEventListener("submit", (e) => handleCashAccountSubmit(e, appState, onUpdate));
 
-    // NEW: Transfer functionality
+    // Transfer functionality
     document.getElementById("transfer-to-investment-btn")?.addEventListener("click", () => openTransferModal(appState.appData));
     document.getElementById("close-transfer-modal")?.addEventListener("click", () => closeModal('transfer-modal'));
     document.getElementById("cancel-transfer-btn")?.addEventListener("click", () => closeModal('transfer-modal'));
@@ -26,7 +26,6 @@ export function setupEventListeners(appState, onUpdate) {
         if (target.classList.contains('btn-delete-account')) {
             deleteCashAccount(id, appState, onUpdate);
         }
-        // NEW: Transfer button handler
         if (target.classList.contains('btn-transfer-account')) {
             openTransferModal(appState.appData, id);
         }
@@ -125,18 +124,27 @@ async function deleteCashAccount(id, appState, onUpdate) {
     }
 }
 
-// NEW: Transfer functionality
+// Transfer functionality
 function openTransferModal(appData, sourceAccountId = null) {
     populateTransferDropdowns(appData);
     const form = document.getElementById("transfer-form");
-    form.reset();
+    if (form) {
+        form.reset();
+    }
 
     // If called from a specific account's transfer button, pre-select it
     if (sourceAccountId) {
-        document.getElementById("transfer-from-account").value = sourceAccountId;
+        const transferFromSelect = document.getElementById("transfer-from-account");
+        if (transferFromSelect) {
+            transferFromSelect.value = `cash-${sourceAccountId}`;
+        }
     }
 
-    document.getElementById("transfer-date").value = new Date().toISOString().split('T')[0];
+    const transferDateInput = document.getElementById("transfer-date");
+    if (transferDateInput) {
+        transferDateInput.value = new Date().toISOString().split('T')[0];
+    }
+
     openModal('transfer-modal');
 }
 
@@ -146,33 +154,53 @@ function populateTransferDropdowns(appData) {
 
     if (!fromSelect || !toSelect) return;
 
-    // Populate source accounts (cash accounts)
+    // Clear existing options
     fromSelect.innerHTML = '<option value="" disabled selected>Select Source Account</option>';
+    toSelect.innerHTML = '<option value="" disabled selected>Select Target Account</option>';
+
+    // Populate source accounts (cash accounts)
     appData.cashAccounts
         .filter(acc => acc.isActive)
         .forEach(acc => {
-            fromSelect.innerHTML += `<option value="${acc.id}">${escapeHtml(acc.name)} - ${formatCurrency(acc.balance || 0)}</option>`;
+            fromSelect.innerHTML += `<option value="cash-${acc.id}">${escapeHtml(acc.name)} - ${formatCurrency(acc.balance || 0)}</option>`;
         });
 
-    // Populate target accounts (investment accounts)
-    toSelect.innerHTML = '<option value="" disabled selected>Select Target Account</option>';
+    // Add investment accounts to source
     appData.investmentAccounts.forEach(acc => {
-        toSelect.innerHTML += `<option value="${acc.id}">${escapeHtml(acc.name)} (${escapeHtml(acc.accountType)})</option>`;
+        fromSelect.innerHTML += `<option value="investment-${acc.id}">${escapeHtml(acc.name)} (${escapeHtml(acc.accountType)}) - ${formatCurrency(acc.balance)}</option>`;
     });
+
+    // Populate target accounts (investment accounts)
+    appData.investmentAccounts.forEach(acc => {
+        toSelect.innerHTML += `<option value="investment-${acc.id}">${escapeHtml(acc.name)} (${escapeHtml(acc.accountType)})</option>`;
+    });
+
+    // Add cash accounts to target as well
+    appData.cashAccounts
+        .filter(acc => acc.isActive)
+        .forEach(acc => {
+            toSelect.innerHTML += `<option value="cash-${acc.id}">${escapeHtml(acc.name)} (Cash)</option>`;
+        });
 }
 
 async function handleTransferSubmit(event, appState, onUpdate) {
     event.preventDefault();
 
     try {
-        const fromAccountId = parseInt(document.getElementById("transfer-from-account").value);
-        const toAccountId = parseInt(document.getElementById("transfer-to-account").value);
+        const fromAccountValue = document.getElementById("transfer-from-account").value;
+        const toAccountValue = document.getElementById("transfer-to-account").value;
         const amount = safeParseFloat(document.getElementById("transfer-amount").value);
         const date = document.getElementById("transfer-date").value;
-        const description = document.getElementById("transfer-description").value || "Transfer to Investment Account";
+        const description = document.getElementById("transfer-description").value || "Transfer between accounts";
+
+        // Parse account types and IDs
+        const [fromType, fromIdStr] = fromAccountValue.split('-');
+        const [toType, toIdStr] = toAccountValue.split('-');
+        const fromAccountId = parseInt(fromIdStr);
+        const toAccountId = parseInt(toIdStr);
 
         // Validation
-        if (!fromAccountId || !toAccountId) {
+        if (!fromAccountValue || !toAccountValue) {
             showError("Please select both source and target accounts.");
             return;
         }
@@ -182,14 +210,25 @@ async function handleTransferSubmit(event, appState, onUpdate) {
             return;
         }
 
-        if (fromAccountId === toAccountId) {
+        if (fromAccountId === toAccountId && fromType === toType) {
             showError("Cannot transfer to the same account.");
             return;
         }
 
         // Find accounts
-        const fromAccount = appState.appData.cashAccounts.find(a => a.id === fromAccountId);
-        const toAccount = appState.appData.investmentAccounts.find(a => a.id === toAccountId);
+        let fromAccount, toAccount;
+
+        if (fromType === 'cash') {
+            fromAccount = appState.appData.cashAccounts.find(a => a.id === fromAccountId);
+        } else {
+            fromAccount = appState.appData.investmentAccounts.find(a => a.id === fromAccountId);
+        }
+
+        if (toType === 'cash') {
+            toAccount = appState.appData.cashAccounts.find(a => a.id === toAccountId);
+        } else {
+            toAccount = appState.appData.investmentAccounts.find(a => a.id === toAccountId);
+        }
 
         if (!fromAccount || !toAccount) {
             showError("One or both selected accounts not found.");
@@ -202,33 +241,65 @@ async function handleTransferSubmit(event, appState, onUpdate) {
             return;
         }
 
-        // Create withdrawal transaction (negative amount)
-        const withdrawalTransaction = {
-            date: date,
-            account_id: fromAccountId,
-            category: "Transfer",
-            description: `Transfer to ${toAccount.name}`,
-            amount: -amount,
-            cleared: true
-        };
+        // Create withdrawal transaction (for cash accounts only)
+        if (fromType === 'cash') {
+            const withdrawalTransaction = {
+                date: date,
+                account_id: fromAccountId,
+                category: "Transfer",
+                description: `Transfer to ${toAccount.name}`,
+                amount: -amount,
+                cleared: true
+            };
 
-        const savedWithdrawal = await db.addTransaction(withdrawalTransaction);
-        appState.appData.transactions.unshift({
-            ...savedWithdrawal,
-            amount: parseFloat(savedWithdrawal.amount)
-        });
+            const savedWithdrawal = await db.addTransaction(withdrawalTransaction);
+            appState.appData.transactions.unshift({
+                ...savedWithdrawal,
+                amount: parseFloat(savedWithdrawal.amount)
+            });
 
-        // Update cash account balance
-        fromAccount.balance -= amount;
-        if (appState.updateAccountBalance) {
-            appState.updateAccountBalance(fromAccountId, -amount);
+            // Update cash account balance
+            fromAccount.balance -= amount;
+            if (appState.updateAccountBalance) {
+                appState.updateAccountBalance(fromAccountId, -amount);
+            }
+        } else {
+            // Investment account - update balance directly
+            fromAccount.balance -= amount;
+            await db.updateInvestmentAccount(fromAccountId, {
+                balance: fromAccount.balance
+            });
         }
 
-        // Update investment account balance
-        toAccount.balance += amount;
-        await db.updateInvestmentAccount(toAccountId, {
-            balance: toAccount.balance
-        });
+        // Create deposit transaction (for cash accounts only)
+        if (toType === 'cash') {
+            const depositTransaction = {
+                date: date,
+                account_id: toAccountId,
+                category: "Transfer",
+                description: `Transfer from ${fromAccount.name}`,
+                amount: amount,
+                cleared: true
+            };
+
+            const savedDeposit = await db.addTransaction(depositTransaction);
+            appState.appData.transactions.unshift({
+                ...savedDeposit,
+                amount: parseFloat(savedDeposit.amount)
+            });
+
+            // Update cash account balance
+            toAccount.balance += amount;
+            if (appState.updateAccountBalance) {
+                appState.updateAccountBalance(toAccountId, amount);
+            }
+        } else {
+            // Investment account - update balance directly
+            toAccount.balance += amount;
+            await db.updateInvestmentAccount(toAccountId, {
+                balance: toAccount.balance
+            });
+        }
 
         closeModal('transfer-modal');
         onUpdate();
@@ -252,18 +323,15 @@ export function renderCashAccounts(appState) {
     document.getElementById("accounts-total-value").textContent = formatCurrency(totalValue);
     document.getElementById("accounts-count").textContent = appData.cashAccounts.length;
 
-    // NEW: Add transfer button to header
+    // Add transfer button to header if it doesn't exist
     const accountsCard = document.querySelector('.accounts-summary .card__header');
-    if (accountsCard) {
-        // Check if transfer button already exists
-        if (!document.getElementById("transfer-to-investment-btn")) {
-            const transferBtn = document.createElement('button');
-            transferBtn.id = 'transfer-to-investment-btn';
-            transferBtn.className = 'btn btn--secondary';
-            transferBtn.textContent = 'Transfer to Investment';
-            transferBtn.style.marginLeft = '10px';
-            accountsCard.appendChild(transferBtn);
-        }
+    if (accountsCard && !document.getElementById("transfer-to-investment-btn")) {
+        const transferBtn = document.createElement('button');
+        transferBtn.id = 'transfer-to-investment-btn';
+        transferBtn.className = 'btn btn--secondary';
+        transferBtn.textContent = 'Transfer Between Accounts';
+        transferBtn.style.marginLeft = '10px';
+        accountsCard.appendChild(transferBtn);
     }
 
     cashAccountsList.innerHTML = appData.cashAccounts.map(account => {
@@ -306,49 +374,4 @@ export function populateAccountDropdowns(appData) {
             if (currentValue) select.value = currentValue;
         }
     });
-
-    // NEW: Populate transfer dropdowns
-    populateTransferDropdowns(appData);
-}
-
-// NEW: Populate transfer-specific dropdowns
-function populateTransferDropdowns(appData) {
-    const transferFromSelect = document.getElementById("transfer-from-account");
-    const transferToSelect = document.getElementById("transfer-to-account");
-
-    if (!transferFromSelect || !transferToSelect) return;
-
-    // Populate FROM dropdown (all accounts)
-    let fromOptions = '<option value="" disabled selected>— Select source account —</option>';
-
-    // Add cash accounts
-    appData.cashAccounts
-        .filter(acc => acc.isActive)
-        .forEach(acc => {
-            fromOptions += `<option value="${acc.id}">${escapeHtml(acc.name)} (Cash) - ${formatCurrency(acc.balance || 0)}</option>`;
-        });
-
-    // Add investment accounts
-    appData.investmentAccounts.forEach(acc => {
-        fromOptions += `<option value="${acc.id}">${escapeHtml(acc.name)} (${escapeHtml(acc.accountType)}) - ${formatCurrency(acc.balance)}</option>`;
-    });
-
-    transferFromSelect.innerHTML = fromOptions;
-
-    // Populate TO dropdown (all accounts)
-    let toOptions = '<option value="" disabled selected>— Select destination account —</option>';
-
-    // Add cash accounts
-    appData.cashAccounts
-        .filter(acc => acc.isActive)
-        .forEach(acc => {
-            toOptions += `<option value="${acc.id}">${escapeHtml(acc.name)} (Cash)</option>`;
-        });
-
-    // Add investment accounts  
-    appData.investmentAccounts.forEach(acc => {
-        toOptions += `<option value="${acc.id}">${escapeHtml(acc.name)} (${escapeHtml(acc.accountType)})</option>`;
-    });
-
-    transferToSelect.innerHTML = toOptions;
 }

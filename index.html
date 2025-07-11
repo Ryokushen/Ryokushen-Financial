@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Financial Tracker</title>
+    <title>Ryokushen Financial Tracker</title>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
@@ -177,6 +177,18 @@
                                     <label class="form-label" for="transaction-date">Date</label>
                                     <input type="date" id="transaction-date" class="form-control" required>
                                 </div>
+                                <div class="form-group" id="transfer-from-group" style="display: none;">
+                                    <label class="form-label" for="transfer-from-account-tx">From Account</label>
+                                    <select id="transfer-from-account-tx" class="form-control">
+                                        <option value="">Select Source Account</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="transfer-to-group" style="display: none;">
+                                    <label class="form-label" for="transfer-to-account-tx">To Account</label>
+                                    <select id="transfer-to-account-tx" class="form-control">
+                                        <option value="">Select Destination Account</option>
+                                    </select>
+                                </div>
                                 <div class="form-group">
                                     <label class="form-label" for="transaction-account">Account</label>
                                     <select id="transaction-account" class="form-control" required>
@@ -190,6 +202,9 @@
                                         <option value="Income">Income</option>
                                         <option value="Bills">Bills</option>
                                         <option value="Groceries">Groceries</option>
+                                        <option value="Entertainment">Entertainment</option>
+                                        <option value="Shopping">Shopping</option>
+                                        <option value="Dining">Dining</option>
                                         <option value="Transfer">Transfer</option>
                                         <option value="Debt">Debt</option>
                                         <option value="Interest">Interest</option>
