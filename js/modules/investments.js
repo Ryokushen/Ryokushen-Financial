@@ -376,6 +376,13 @@ export function setupEventListeners(appState, onUpdate) {
     // Initialize holdings updater with appState
     holdingsUpdater = new HoldingsUpdater(appState, stockApiService);
 
+    // Add a DIRECT event listener for the update prices button
+    document.addEventListener('click', event => {
+        if (event.target.id === 'update-all-prices-btn') {
+            updateAllStockPrices(appState, onUpdate);
+        }
+    });
+
     document.getElementById("add-investment-account-btn")?.addEventListener("click", () => openInvestmentAccountModal(appState.appData));
     document.getElementById("close-investment-account-modal")?.addEventListener("click", () => closeModal('investment-account-modal'));
     document.getElementById("cancel-investment-account-btn")?.addEventListener("click", () => closeModal('investment-account-modal'));
@@ -402,9 +409,7 @@ export function setupEventListeners(appState, onUpdate) {
         } else if (target.classList.contains('btn-update-holding')) {
             const symbol = target.getAttribute('data-symbol');
             updateSingleHolding(symbol, appState, onUpdate);
-        } else if (target.id === 'update-all-prices-btn') {
-            updateAllStockPrices(appState, onUpdate);
-        }
+        } 
     });
 
     document.getElementById("close-holding-modal")?.addEventListener("click", () => closeModal('holding-modal'));

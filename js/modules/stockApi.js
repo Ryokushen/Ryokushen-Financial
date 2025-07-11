@@ -1,21 +1,27 @@
 // js/modules/stockApi.js - Finnhub Stock API Integration
 
-const FINNHUB_CONFIG = {
-    baseUrl: 'https://finnhub.io/api/v1',
-    // You'll need to get this from https://finnhub.io/dashboard
-    apiKey: 'd1nf631r01qovv8itiogd1nf631r01qovv8itip0'
-};
-
 /**
  * Stock API service for fetching real-time stock prices from Finnhub
  */
 export class StockApiService {
-    constructor(apiKey = FINNHUB_CONFIG.apiKey) {
-        this.apiKey = apiKey;
-        this.baseUrl = FINNHUB_CONFIG.baseUrl;
+    constructor(apiKey = null) {
+        // Get API key from config if not provided
+        this.apiKey = apiKey || (window.finnhubConfig ? window.finnhubConfig.apiKey : null);
+        this.baseUrl = window.finnhubConfig ? window.finnhubConfig.baseUrl : 'https://finnhub.io/api/v1';
         this.cache = new Map();
         this.cacheExpiry = 5 * 60 * 1000; // 5 minutes cache
         this.rateLimitDelay = 100; // 100ms between requests to respect rate limits
+        
+        // Validate API key on initialization
+        this.isConfigured = this.validateApiKey();
+    }
+    
+    validateApiKey() {
+        if (!this.apiKey || this.apiKey === 'YOUR_API_KEY_HERE' || this.apiKey.trim() === '') {
+            console.warn('Finnhub API key not configured. Stock price updates will be disabled.');
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -25,6 +31,11 @@ export class StockApiService {
      */
     async fetchStockPrice(symbol) {
         try {
+            // First check if we're configured properly
+            if (!this.isConfigured) {
+                throw new Error('API key not configured');
+            }
+
             // Check cache first
             const cached = this.getCachedPrice(symbol);
             if (cached) {
@@ -245,10 +256,14 @@ export class HoldingsUpdater {
         // Import the database module
         const { default: db } = await import('../database.js');
 
+        // Use Promise.all to properly track all account update operations
+        const accountUpdatePromises = [];
+
         for (const account of this.appState.appData.investmentAccounts) {
             if (!account.holdings || !Array.isArray(account.holdings)) continue;
 
             let accountBalanceChanged = false;
+            const holdingUpdatePromises = [];
 
             for (const holding of account.holdings) {
                 try {
@@ -273,21 +288,28 @@ export class HoldingsUpdater {
                     holding.currentPrice = stockData.price;
                     holding.value = holding.shares * stockData.price;
 
-                    // Update in database
-                    await db.updateHolding(holding.id, {
-                        current_price: holding.currentPrice,
-                        value: holding.value
-                    });
-
-                    console.log(`Updated ${symbol}: $${oldPrice} → $${holding.currentPrice}`);
-                    updated++;
-                    accountBalanceChanged = true;
-
+                    // Queue the database update
+                    holdingUpdatePromises.push(
+                        db.updateHolding(holding.id, {
+                            current_price: holding.currentPrice,
+                            value: holding.value
+                        }).then(() => {
+                            console.log(`Updated ${symbol}: $${oldPrice} → $${holding.currentPrice}`);
+                            updated++;
+                            accountBalanceChanged = true;
+                        }).catch(error => {
+                            console.error(`Failed to update holding ${holding.symbol}:`, error);
+                            failed++;
+                        })
+                    );
                 } catch (error) {
                     console.error(`Failed to update holding ${holding.symbol}:`, error);
                     failed++;
                 }
             }
+
+            // Wait for all holding updates to complete before updating account balance
+            await Promise.all(holdingUpdatePromises);
 
             // Update account balance if any holdings changed
             if (accountBalanceChanged) {
@@ -296,19 +318,26 @@ export class HoldingsUpdater {
                     const oldBalance = account.balance;
                     
                     account.balance = newBalance;
-                    account.dayChange = newBalance - oldBalance; // Simple day change calculation
+                    account.dayChange = newBalance - oldBalance;
                     
-                    await db.updateInvestmentAccount(account.id, {
-                        balance: account.balance,
-                        day_change: account.dayChange
-                    });
-                    
-                    console.log(`Updated account ${account.name} balance: $${oldBalance} → $${newBalance}`);
+                    accountUpdatePromises.push(
+                        db.updateInvestmentAccount(account.id, {
+                            balance: account.balance,
+                            day_change: account.dayChange
+                        }).then(() => {
+                            console.log(`Updated account ${account.name} balance: $${oldBalance} → $${newBalance}`);
+                        }).catch(error => {
+                            console.error(`Failed to update account balance for ${account.name}:`, error);
+                        })
+                    );
                 } catch (error) {
                     console.error(`Failed to update account balance for ${account.name}:`, error);
                 }
             }
         }
+
+        // Wait for all account updates to complete
+        await Promise.all(accountUpdatePromises);
 
         return { updated, failed, skipped };
     }
