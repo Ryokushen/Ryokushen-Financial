@@ -7,7 +7,7 @@ class FinancialDatabase {
     // Helper method for error handling
     handleError(operation, error) {
         console.error(`Error in ${operation}:`, error);
-        throw new Error(`Database operation failed: ${operation}`);
+        throw new Error(`Database operation failed: ${operation} - ${error.message}`);
     }
 
     // --- CASH ACCOUNTS ---
@@ -243,16 +243,10 @@ class FinancialDatabase {
                 active: bill.active !== undefined ? bill.active : true
             };
 
-            console.log('Database: Inserting bill data:', billData);
-
             const { data, error } = await this.supabase.from('recurring_bills').insert(billData).select().single();
-            if (error) {
-                console.error('Supabase insert error:', error);
-                throw error;
-            }
+            if (error) throw error;
             return data;
         } catch (error) {
-            console.error('addRecurringBill error:', error);
             this.handleError('addRecurringBill', error);
         }
     }
@@ -273,16 +267,10 @@ class FinancialDatabase {
                 active: bill.active !== undefined ? bill.active : true
             };
 
-            console.log('Database: Updating bill data:', billData);
-
             const { data, error } = await this.supabase.from('recurring_bills').update(billData).eq('id', id).select().single();
-            if (error) {
-                console.error('Supabase update error:', error);
-                throw error;
-            }
+            if (error) throw error;
             return data;
         } catch (error) {
-            console.error('updateRecurringBill error:', error);
             this.handleError('updateRecurringBill', error);
         }
     }

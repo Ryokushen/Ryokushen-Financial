@@ -22,7 +22,6 @@ const appState = {
         savingsGoals: []
     },
     CHART_COLORS: CHART_COLORS,
-    // FIX FOR ISSUE 4: Add balance cache
     balanceCache: new Map()
 };
 
@@ -39,12 +38,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function initializeApp() {
     await loadAllData();
 
-    // FIX FOR ISSUE 4: Calculate initial balances only once and cache them
     calculateAccountBalances();
 
     await updateAllDisplays(appState); // Initial render
-    document.getElementById("transaction-date").value = new Date().toISOString().split("T")[0];
-    console.log("App initialized successfully");
+    const transactionDate = document.getElementById("transaction-date");
+    if (transactionDate) {
+        transactionDate.value = new Date().toISOString().split("T")[0];
+    }
 }
 
 async function loadAllData() {
@@ -90,15 +90,22 @@ async function loadAllData() {
             completedDate: g.completed_date
         }));
 
+        await migrateDebtTransactions(appState.appData.transactions, appState.appData.debtAccounts);
     } catch (error) {
         console.error("Data Loading Error:", error);
-        showError("Could not load financial data from the database.");
+        showError("Could not load financial data from the database. Please refresh the page.");
+        // Prevent app from proceeding with empty state
+        appState.appData = {
+            transactions: [],
+            cashAccounts: [],
+            investmentAccounts: [],
+            debtAccounts: [],
+            recurringBills: [],
+            savingsGoals: []
+        };
     }
-
-    await migrateDebtTransactions(appState.appData.transactions, appState.appData.debtAccounts);
 }
 
-// FIX FOR ISSUE 4: Separate balance calculation function with caching
 function calculateAccountBalances() {
     appState.balanceCache.clear();
 
@@ -106,24 +113,23 @@ function calculateAccountBalances() {
     const transactionsByAccount = new Map();
 
     appState.appData.transactions.forEach(transaction => {
-        if (!transactionsByAccount.has(transaction.account_id)) {
-            transactionsByAccount.set(transaction.account_id, []);
+        if (transaction.account_id) {  // Only group cash transactions
+            if (!transactionsByAccount.has(transaction.account_id)) {
+                transactionsByAccount.set(transaction.account_id, []);
+            }
+            transactionsByAccount.get(transaction.account_id).push(transaction);
         }
-        transactionsByAccount.get(transaction.account_id).push(transaction);
     });
 
     // Calculate and cache balances
     appState.appData.cashAccounts.forEach(account => {
         const accountTransactions = transactionsByAccount.get(account.id) || [];
-        // FIXED: Include ALL transactions, including Initial Balance transactions
-        // The initial balance transaction is what gives savings accounts their starting balance
         const balance = accountTransactions.reduce((sum, t) => sum + t.amount, 0);
         account.balance = balance;
         appState.balanceCache.set(account.id, balance);
     });
 }
 
-// FIX FOR ISSUE 4: Add method to update single account balance
 function updateAccountBalance(accountId, amountChange) {
     const account = appState.appData.cashAccounts.find(a => a.id === accountId);
     if (account) {
@@ -156,13 +162,27 @@ function setupEventListeners() {
 // This function just re-renders the components with the current state.
 async function updateAllDisplays(state) {
     updateDashboard(state);
-    Accounts.renderCashAccounts(state);
-    Transactions.renderTransactions(state);
-    Investments.renderInvestmentAccountsEnhanced(state);
-    Savings.renderSavingsGoals(state);
-    Debt.renderDebtAccounts(state);
-    Recurring.renderRecurringBills(state);
-    createCharts(state);
+    const cashList = document.getElementById("cash-accounts-list");
+    if (cashList) Accounts.renderCashAccounts(state);
+
+    const transactionsBody = document.getElementById("transactions-table-body");
+    if (transactionsBody) Transactions.renderTransactions(state);
+
+    const investmentsList = document.getElementById("investment-accounts-list");
+    if (investmentsList) Investments.renderInvestmentAccountsEnhanced(state);
+
+    const savingsList = document.getElementById("savings-goals-list");
+    if (savingsList) Savings.renderSavingsGoals(state);
+
+    const debtList = document.getElementById("debt-accounts-list");
+    if (debtList) Debt.renderDebtAccounts(state);
+
+    const recurringList = document.getElementById("all-recurring-bills-list");
+    if (recurringList) Recurring.renderRecurringBills(state);
+
+    const netWorthCanvas = document.getElementById("netWorthChart");
+    if (netWorthCanvas) createCharts(state);
+
     Accounts.populateAccountDropdowns(state.appData);
     Debt.populateDebtAccountDropdown(state.appData);
 }
@@ -186,7 +206,7 @@ function renderFinancialHealth(kpiResults) {
             </div>
             <div class="kpi-metric-card">
                 <div class="kpi-label">Emergency Fund</div>
-                <div class="kpi-value">${isFinite(emergencyRatio) ? emergencyRatio.toFixed(1) : '∞'} mos</div>
+                <div class="kpi-value">${isFinite(emergencyRatio) ? emergencyRatio.toFixed(1) : 'N/A'} mos</div>
             </div>
             <div class="kpi-metric-card">
                 <div class="kpi-label">Debt-to-Income</div>
@@ -204,23 +224,29 @@ export function updateDashboard({ appData }) {
     const monthlyRecurring = appData.recurringBills.filter(b => b.active !== false).reduce((sum, b) => sum + convertToMonthly(b.amount, b.frequency), 0);
     const netWorth = totalCash + totalInvestments - totalDebt;
 
-    // --- START: ADD NEW CODE ---
-    // Calculate all KPIs
     const emergencyRatio = KPIs.calculateEmergencyFundRatio(appData);
     const dti = KPIs.calculateDebtToIncomeRatio(appData);
     const savingsRate = KPIs.calculateSavingsRate(appData);
     const healthScore = KPIs.calculateOverallHealthScore({ emergencyRatio, dti, savingsRate });
 
-    // Render the new Financial Health section
     renderFinancialHealth({ emergencyRatio, dti, savingsRate, healthScore });
     renderBillsTimeline({ appData });
-    // --- END: ADD NEW CODE ---
 
-    document.getElementById("total-cash").textContent = formatCurrency(totalCash);
-    document.getElementById("total-investments").textContent = formatCurrency(totalInvestments);
-    document.getElementById("total-debt").textContent = formatCurrency(totalDebt);
-    document.getElementById("monthly-recurring").textContent = formatCurrency(monthlyRecurring);
-    document.getElementById("net-worth").textContent = formatCurrency(netWorth);
+    const totalCashEl = document.getElementById("total-cash");
+    if (totalCashEl) totalCashEl.textContent = formatCurrency(totalCash);
+
+    const totalInvestmentsEl = document.getElementById("total-investments");
+    if (totalInvestmentsEl) totalInvestmentsEl.textContent = formatCurrency(totalInvestments);
+
+    const totalDebtEl = document.getElementById("total-debt");
+    if (totalDebtEl) totalDebtEl.textContent = formatCurrency(totalDebt);
+
+    const monthlyRecurringEl = document.getElementById("monthly-recurring");
+    if (monthlyRecurringEl) monthlyRecurringEl.textContent = formatCurrency(monthlyRecurring);
+
+    const netWorthEl = document.getElementById("net-worth");
+    if (netWorthEl) netWorthEl.textContent = formatCurrency(netWorth);
+
     renderRecentTransactions(appData);
 }
 
@@ -235,7 +261,7 @@ function renderRecentTransactions(appData) {
     }
     list.innerHTML = recent.map(t => {
         const account = appData.cashAccounts.find(a => a.id === t.account_id);
-        const accountName = account ? account.name : "Unknown";
+        const accountName = account ? escapeHtml(account.name) : "Unknown";
         const isPositive = t.amount >= 0;
         return `
             <div class="transaction-item">
@@ -248,17 +274,16 @@ function renderRecentTransactions(appData) {
                 </div>
             </div>`;
     }).join('');
-
-
 }
 
 async function migrateDebtTransactions(transactions, debtAccounts) {
-    const db = (await import('./database.js')).default;  // Dynamic import if needed
+    // Make migration idempotent: only migrate if debt_account exists and debt_account_id is null
+    const db = (await import('./database.js')).default;
     for (const t of transactions.filter(t => t.category === 'Debt' && t.debt_account && !t.debt_account_id)) {
         const debtAccount = debtAccounts.find(d => d.name === t.debt_account);
         if (debtAccount) {
             t.debt_account_id = debtAccount.id;
-            await db.updateTransaction(t.id, { debt_account_id: t.debt_account_id });  // Assume add updateTransaction to database.js if missing
+            await db.updateTransaction(t.id, { debt_account_id: t.debt_account_id });
             delete t.debt_account;  // Clean up old field
         } else {
             console.warn(`Migration: No matching debt account for transaction ${t.id}`);

@@ -11,7 +11,10 @@ export function setupEventListeners(appState, onUpdate) {
     document.getElementById("transaction-form")?.addEventListener("submit", (e) => handleTransactionSubmit(e, appState, onUpdate));
 
     document.getElementById("transaction-category")?.addEventListener("change", function () {
-        document.getElementById("debt-account-group").style.display = this.value === "Debt" ? "block" : "none";
+        const debtGroup = document.getElementById("debt-account-group");
+        if (debtGroup) {
+            debtGroup.style.display = this.value === "Debt" ? "block" : "none";
+        }
     });
 
     document.getElementById("filter-category")?.addEventListener("change", (e) => {
@@ -61,28 +64,46 @@ function editTransaction(id, appState) {
     showCancelButton();
 
     // Populate form with transaction data
-    document.getElementById("transaction-date").value = transaction.date;
-    document.getElementById("transaction-account").value = transaction.account_id || '';
-    document.getElementById("transaction-category").value = transaction.category;
-    document.getElementById("transaction-description").value = transaction.description;
-    document.getElementById("transaction-amount").value = transaction.amount;
-    document.getElementById("transaction-cleared").checked = transaction.cleared;
+    const dateInput = document.getElementById("transaction-date");
+    if (dateInput) dateInput.value = transaction.date;
+
+    const accountSelect = document.getElementById("transaction-account");
+    if (accountSelect) accountSelect.value = transaction.account_id || '';
+
+    const categorySelect = document.getElementById("transaction-category");
+    if (categorySelect) categorySelect.value = transaction.category;
+
+    const descriptionInput = document.getElementById("transaction-description");
+    if (descriptionInput) descriptionInput.value = transaction.description;
+
+    const amountInput = document.getElementById("transaction-amount");
+    if (amountInput) amountInput.value = transaction.amount;
+
+    const clearedCheckbox = document.getElementById("transaction-cleared");
+    if (clearedCheckbox) clearedCheckbox.checked = transaction.cleared;
 
     // Handle debt account selection
-    if (transaction.category === "Debt" && transaction.debt_account_id) {
-        document.getElementById("debt-account-group").style.display = "block";
+    const debtGroup = document.getElementById("debt-account-group");
+    if (debtGroup) {
+        if (transaction.category === "Debt" && transaction.debt_account_id) {
+            debtGroup.style.display = "block";
 
-        // Find the debt account name for the dropdown
-        const debtAccount = appState.appData.debtAccounts.find(d => d.id === transaction.debt_account_id);
-        if (debtAccount) {
-            document.getElementById("debt-account-select").value = debtAccount.name;
+            // Find the debt account name for the dropdown
+            const debtAccount = appState.appData.debtAccounts.find(d => d.id === transaction.debt_account_id);
+            const debtSelect = document.getElementById("debt-account-select");
+            if (debtSelect && debtAccount) {
+                debtSelect.value = debtAccount.name;
+            }
+        } else {
+            debtGroup.style.display = "none";
         }
-    } else {
-        document.getElementById("debt-account-group").style.display = "none";
     }
 
     // Scroll to form
-    document.getElementById("transaction-form").scrollIntoView({ behavior: 'smooth' });
+    const form = document.getElementById("transaction-form");
+    if (form) {
+        form.scrollIntoView({ behavior: 'smooth' });
+    }
 
     announceToScreenReader("Transaction loaded for editing");
 }
@@ -106,9 +127,18 @@ function cancelEdit() {
     hideCancelButton();
 
     // Reset form
-    document.getElementById("transaction-form").reset();
-    document.getElementById("transaction-date").value = new Date().toISOString().split("T")[0];
-    document.getElementById("debt-account-group").style.display = "none";
+    const form = document.getElementById("transaction-form");
+    if (form) {
+        form.reset();
+    }
+    const dateInput = document.getElementById("transaction-date");
+    if (dateInput) {
+        dateInput.value = new Date().toISOString().split("T")[0];
+    }
+    const debtGroup = document.getElementById("debt-account-group");
+    if (debtGroup) {
+        debtGroup.style.display = "none";
+    }
 
     announceToScreenReader("Edit cancelled");
 }
@@ -118,16 +148,14 @@ function showCancelButton() {
     if (!cancelBtn) {
         // Create cancel button if it doesn't exist
         const submitBtn = document.querySelector('#transaction-form button[type="submit"]');
+        if (!submitBtn || !submitBtn.parentNode) return;
         cancelBtn = document.createElement('button');
         cancelBtn.type = 'button';
         cancelBtn.id = 'cancel-edit-btn';
         cancelBtn.className = 'btn btn--secondary';
         cancelBtn.textContent = 'Cancel Edit';
         cancelBtn.style.marginLeft = '10px';
-
-        if (submitBtn && submitBtn.parentNode) {
-            submitBtn.parentNode.insertBefore(cancelBtn, submitBtn.nextSibling);
-        }
+        submitBtn.parentNode.insertBefore(cancelBtn, submitBtn.nextSibling);
     }
     cancelBtn.style.display = 'inline-block';
 }
@@ -144,12 +172,12 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
 
     try {
         const transactionData = {
-            date: document.getElementById("transaction-date").value,
-            account_id: parseInt(document.getElementById("transaction-account").value) || null,
-            category: document.getElementById("transaction-category").value,
-            description: document.getElementById("transaction-description").value,
-            amount: safeParseFloat(document.getElementById("transaction-amount").value),
-            cleared: document.getElementById("transaction-cleared").checked,
+            date: document.getElementById("transaction-date")?.value,
+            account_id: parseInt(document.getElementById("transaction-account")?.value) || null,
+            category: document.getElementById("transaction-category")?.value,
+            description: document.getElementById("transaction-description")?.value,
+            amount: safeParseFloat(document.getElementById("transaction-amount")?.value),
+            cleared: document.getElementById("transaction-cleared")?.checked,
             debt_account_id: null
         };
 
@@ -160,13 +188,13 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
         }
 
         if (isNaN(transactionData.amount) || transactionData.amount === 0) {
-            showError("Please enter a valid amount.");
+            showError("Please enter a valid non-zero amount.");
             return;
         }
 
-        // Handle debt category
+        // Handle debt category with sign guidance
         if (transactionData.category === "Debt") {
-            const debtAccountName = document.getElementById("debt-account-select").value;
+            const debtAccountName = document.getElementById("debt-account-select")?.value;
             if (!debtAccountName) {
                 showError("Please select a debt account for this payment.");
                 return;
@@ -175,6 +203,13 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
             const debtAccount = appState.appData.debtAccounts.find(d => d.name === debtAccountName);
             if (debtAccount) {
                 transactionData.debt_account_id = debtAccount.id;
+            }
+
+            // Enforce sign consistency for debt: positive = charge (increase debt), negative = payment (decrease debt)
+            if (transactionData.amount > 0 && !confirm("Positive amount for Debt will increase the debt balance (e.g., a charge). Proceed?")) {
+                return;
+            } else if (transactionData.amount < 0 && !confirm("Negative amount for Debt will decrease the debt balance (e.g., a payment). Proceed?")) {
+                return;
             }
         } else {
             // Non-debt transactions need an account
@@ -217,9 +252,12 @@ async function addNewTransaction(transactionData, appState, onUpdate) {
     }
 
     // Reset form
-    document.getElementById("transaction-form").reset();
-    document.getElementById("transaction-date").value = new Date().toISOString().split("T")[0];
-    document.getElementById("debt-account-group").style.display = "none";
+    const form = document.getElementById("transaction-form");
+    if (form) form.reset();
+    const dateInput = document.getElementById("transaction-date");
+    if (dateInput) dateInput.value = new Date().toISOString().split("T")[0];
+    const debtGroup = document.getElementById("debt-account-group");
+    if (debtGroup) debtGroup.style.display = "none";
 
     onUpdate();
     announceToScreenReader("Transaction added successfully");
@@ -262,16 +300,28 @@ async function reverseTransactionEffects(transaction, appState) {
         updateCashAccountBalance(transaction.account_id, -transaction.amount, appState);
     }
 
-    // Reverse debt account balance changes
+    // Reverse debt account balance changes (note: sign is reversed correctly as -amount undoes the original effect)
     if (transaction.debt_account_id) {
         await updateDebtAccountBalance(transaction.debt_account_id, -transaction.amount, appState);
     }
 
     // Handle legacy debt transactions
-    if (transaction.category === 'Debt' && transaction.debt_account && !transaction.debt_account_id) {
-        const debtAccount = appState.appData.debtAccounts.find(d => d.name === transaction.debt_account);
+    if (transaction.category === 'Debt') {
+        let debtAccount;
+        if (transaction.debt_account_id) {
+            debtAccount = appState.appData.debtAccounts.find(d => d.id === transaction.debt_account_id);
+        } else if (transaction.debt_account) {
+            debtAccount = appState.appData.debtAccounts.find(d => d.name === transaction.debt_account);
+            if (!debtAccount) {
+                showError("Could not reverse debt payment: Account not found.");
+                return;
+            }
+        }
+
         if (debtAccount) {
-            await updateDebtAccountBalance(debtAccount.id, -transaction.amount, appState);
+            const newBalance = debtAccount.balance - transaction.amount;
+            await db.updateDebtBalance(debtAccount.id, newBalance);
+            debtAccount.balance = newBalance;
         }
     }
 }
@@ -313,10 +363,9 @@ async function updateDebtAccountBalance(debtAccountId, amount, appState) {
 export function renderTransactions(appState, categoryFilter = currentCategoryFilter) {
     const { appData } = appState;
     const tbody = document.getElementById("transactions-table-body");
-    const filterSelect = document.getElementById("filter-category");
-
     if (!tbody) return;
 
+    const filterSelect = document.getElementById("filter-category");
     if (filterSelect && categoryFilter) {
         filterSelect.value = categoryFilter;
     }
@@ -390,7 +439,7 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
         return `
         <tr ${rowClass}>
             <td>${formatDate(t.date)}</td>
-            <td>${accountName}</td>
+            <td>${escapeHtml(accountName)}</td>
             <td>${escapeHtml(t.category)}</td>
             <td>${description}</td>
             <td class="${amountClass}">${displayAmount}</td>
@@ -420,27 +469,6 @@ async function deleteTransaction(id, appState, onUpdate) {
                 updateCashAccountBalance(transactionToDelete.account_id, -transactionToDelete.amount, appState);
             } else if (transactionToDelete.debt_account_id) {
                 await updateDebtAccountBalance(transactionToDelete.debt_account_id, -transactionToDelete.amount, appState);
-            }
-
-            // Handle legacy debt transactions
-            if (transactionToDelete.category === 'Debt') {
-                let debtAccount;
-                if (transactionToDelete.debt_account_id) {
-                    debtAccount = appState.appData.debtAccounts.find(d => d.id === transactionToDelete.debt_account_id);
-                } else if (transactionToDelete.debt_account) {
-                    debtAccount = appState.appData.debtAccounts.find(d => d.name === transactionToDelete.debt_account);
-                    if (!debtAccount) {
-                        console.error(`Debt account "${transactionToDelete.debt_account}" not found for reversal.`);
-                        showError("Could not reverse debt payment: Account not found.");
-                        return;
-                    }
-                }
-
-                if (debtAccount) {
-                    const newBalance = debtAccount.balance - transactionToDelete.amount;
-                    await db.updateDebtBalance(debtAccount.id, newBalance);
-                    debtAccount.balance = newBalance;
-                }
             }
 
             // Check if this was a recurring bill payment and revert the due date
@@ -497,8 +525,6 @@ async function handleRecurringBillReversion(deletedTransaction, appState) {
             account_id: recurringBill.account_id,
             debt_account_id: recurringBill.debtAccountId || recurringBill.debt_account_id
         });
-
-        console.log(`Reverted ${billName} due date from ${currentDueDate} to ${previousDueDate}`);
     } catch (error) {
         console.error('Error reverting recurring bill due date:', error);
     }
@@ -508,23 +534,23 @@ function calculatePreviousDueDate(currentDateStr, frequency) {
     if (!currentDateStr || !frequency) return currentDateStr;
 
     const currentDate = new Date(currentDateStr);
-    const date = new Date(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate());
+    const date = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate()));
 
     switch (frequency) {
         case 'weekly':
-            date.setDate(date.getDate() - 7);
+            date.setUTCDate(date.getUTCDate() - 7);
             break;
         case 'monthly':
-            date.setMonth(date.getMonth() - 1);
+            date.setUTCMonth(date.getUTCMonth() - 1);
             break;
         case 'quarterly':
-            date.setMonth(date.getMonth() - 3);
+            date.setUTCMonth(date.getUTCMonth() - 3);
             break;
         case 'semi-annually':
-            date.setMonth(date.getMonth() - 6);
+            date.setUTCMonth(date.getUTCMonth() - 6);
             break;
         case 'annually':
-            date.setFullYear(date.getFullYear() - 1);
+            date.setUTCFullYear(date.getUTCFullYear() - 1);
             break;
         default:
             return currentDateStr;
