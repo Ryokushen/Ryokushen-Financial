@@ -1,4 +1,5 @@
 // js/modules/kpis.js
+import { transactionMemoizer, memoCache } from './memoization.js';
 
 /**
  * Groups transactions by month for the last N months.
@@ -32,49 +33,55 @@ function groupTransactionsByMonth(transactions, numberOfMonths = 6) {
  * @param {Array} transactions - The array of all transactions.
  * @returns {number} The average monthly income.
  */
-function calculateAverageMonthlyIncome(transactions) {
-    const monthlyGroups = groupTransactionsByMonth(transactions);
-    let totalIncome = 0;
-    let monthsWithIncome = 0;
+const calculateAverageMonthlyIncome = memoCache.memoize(
+    function(transactions) {
+        const monthlyGroups = transactionMemoizer.groupTransactionsByMonth(transactions);
+        let totalIncome = 0;
+        let monthsWithIncome = 0;
 
-    monthlyGroups.forEach(monthTransactions => {
-        const monthlyIncome = monthTransactions
-            .filter(t => t.category === 'Income') //
-            .reduce((sum, t) => sum + t.amount, 0);
+        monthlyGroups.forEach(monthTransactions => {
+            const monthlyIncome = monthTransactions
+                .filter(t => t.category === 'Income') //
+                .reduce((sum, t) => sum + t.amount, 0);
 
-        if (monthlyIncome > 0) {
-            totalIncome += monthlyIncome;
-            monthsWithIncome++;
-        }
-    });
+            if (monthlyIncome > 0) {
+                totalIncome += monthlyIncome;
+                monthsWithIncome++;
+            }
+        });
 
-    return monthsWithIncome > 0 ? totalIncome / monthsWithIncome : 0;
-}
+        return monthsWithIncome > 0 ? totalIncome / monthsWithIncome : 0;
+    },
+    { name: 'calculateAverageMonthlyIncome', ttl: 60000 } // Cache for 1 minute
+);
 
 /**
  * Calculates average monthly expenses based on transactions.
  * @param {Array} transactions - The array of all transactions.
  * @returns {number} The average monthly expenses (as a positive number).
  */
-function calculateAverageMonthlyExpenses(transactions) {
-    const monthlyGroups = groupTransactionsByMonth(transactions);
-    let totalExpenses = 0;
-    let monthsWithExpenses = 0;
+const calculateAverageMonthlyExpenses = memoCache.memoize(
+    function(transactions) {
+        const monthlyGroups = transactionMemoizer.groupTransactionsByMonth(transactions);
+        let totalExpenses = 0;
+        let monthsWithExpenses = 0;
 
-    monthlyGroups.forEach(monthTransactions => {
-        const monthlyExpense = monthTransactions
-            .filter(t => (t.amount < 0 && t.category !== 'Transfer' && t.category !== 'Debt') || (t.amount > 0 && t.debt_account_id)) //
-            .reduce((sum, t) => sum + (t.amount < 0 ? t.amount : -t.amount), 0);
+        monthlyGroups.forEach(monthTransactions => {
+            const monthlyExpense = monthTransactions
+                .filter(t => (t.amount < 0 && t.category !== 'Transfer' && t.category !== 'Debt') || (t.amount > 0 && t.debt_account_id)) //
+                .reduce((sum, t) => sum + (t.amount < 0 ? t.amount : -t.amount), 0);
 
-        if (monthlyExpense < 0) {
-            totalExpenses += monthlyExpense;
-            monthsWithExpenses++;
-        }
-    });
+            if (monthlyExpense < 0) {
+                totalExpenses += monthlyExpense;
+                monthsWithExpenses++;
+            }
+        });
 
-    const average = monthsWithExpenses > 0 ? totalExpenses / monthsWithExpenses : 0;
-    return Math.abs(average); // Return as a positive value
-}
+        const average = monthsWithExpenses > 0 ? totalExpenses / monthsWithExpenses : 0;
+        return Math.abs(average); // Return as a positive value
+    },
+    { name: 'calculateAverageMonthlyExpenses', ttl: 60000 } // Cache for 1 minute
+);
 
 
 // --- EXPORTED KPI FUNCTIONS ---
@@ -157,4 +164,13 @@ export function calculateOverallHealthScore(kpiResults) {
     if (averageScore >= 1.5) return { score: "C", status: "Fair" };
 
     return { score: "D", status: "Needs Improvement" };
+}
+
+/**
+ * Clear all KPI caches - should be called when transactions are updated
+ */
+export function clearKPICache() {
+    memoCache.clearFunction('calculateAverageMonthlyIncome');
+    memoCache.clearFunction('calculateAverageMonthlyExpenses');
+    transactionMemoizer.clearCache();
 }

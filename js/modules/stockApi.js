@@ -288,9 +288,10 @@ export class HoldingsUpdater {
                     holding.currentPrice = stockData.price;
                     holding.value = holding.shares * stockData.price;
 
-                    // Queue the database update
+                    // Queue the database update using batch operations
+                    const { batchUpdateHolding } = await import('./batchOperations.js');
                     holdingUpdatePromises.push(
-                        db.updateHolding(holding.id, {
+                        batchUpdateHolding(holding.id, {
                             current_price: holding.currentPrice,
                             value: holding.value
                         }).then(() => {
@@ -310,6 +311,10 @@ export class HoldingsUpdater {
 
             // Wait for all holding updates to complete before updating account balance
             await Promise.all(holdingUpdatePromises);
+            
+            // Flush any remaining batch operations
+            const { flushBatch } = await import('./batchOperations.js');
+            await flushBatch();
 
             // Update account balance if any holdings changed
             if (accountBalanceChanged) {

@@ -61,6 +61,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function initializeApp() {
+    // Setup modal manager
+    const { setupCommonModals } = await import('./modules/modalManager.js');
+    setupCommonModals();
+    
     await loadAllData();
 
     calculateAccountBalances();
@@ -184,7 +188,11 @@ function updateAccountBalance(accountId, amountChange) {
 }
 
 function setupEventListeners() {
-    const onUpdate = () => updateAllDisplays(appState);
+    const onUpdate = () => {
+        // Clear KPI cache when data is updated
+        import('./modules/kpis.js').then(kpis => kpis.clearKPICache());
+        updateAllDisplays(appState);
+    };
 
     document.querySelectorAll(".tab-btn").forEach(button => {
         button.addEventListener("click", function () { switchTab(this.getAttribute("data-tab"), appState); });

@@ -9,6 +9,7 @@ import * as Savings from './savings.js';
 // We need these two to properly render the dashboard tab specifically
 import { createCharts } from './charts.js';
 import { updateDashboard } from './dashboard.js'; // Import from dashboard module
+import { modalManager } from './modalManager.js';
 
 export function showLoading(elementId) {
     const element = document.getElementById(elementId);
@@ -97,18 +98,30 @@ export function switchTab(tabName, appState) {
     }
 }
 
-// Generic Modal Controls
-export function openModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.add('active');
+// Generic Modal Controls using centralized modal manager
+export function openModal(modalId, data) {
+    // First try the new modal manager
+    if (modalManager.modalConfig.has(modalId)) {
+        modalManager.open(modalId, data);
+    } else {
+        // Fallback to old behavior for unregistered modals
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('active');
+        }
     }
 }
 
 export function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.remove('active');
+    // First try the new modal manager
+    if (modalManager.modalConfig.has(modalId)) {
+        modalManager.close(modalId);
+    } else {
+        // Fallback to old behavior for unregistered modals
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('active');
+        }
     }
 }
 

@@ -4,6 +4,8 @@ import { safeParseFloat, escapeHtml, formatCurrency } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
 import { stockApiService, HoldingsUpdater, formatLastUpdateTime } from './stockApi.js';
 import { loadingState, showButtonSuccess, showButtonError } from './loadingState.js';
+import { domCache, cacheFormElements } from './domCache.js';
+import { batchUpdateSavingsGoal, flushBatch } from './batchOperations.js';
 
 // Initialize holdings updater (will be set with appState later)
 let holdingsUpdater = null;
@@ -35,25 +37,35 @@ function mapHolding(holding) {
 }
 
 function openInvestmentAccountModal(appData, accountId = null) {
-    const form = document.getElementById("investment-account-form");
-    const title = document.getElementById("investment-account-modal-title");
-    form.reset();
-    document.getElementById("investment-account-id").value = "";
+    // Cache form elements
+    const elements = domCache.cacheElements({
+        form: 'investment-account-form',
+        title: 'investment-account-modal-title',
+        accountId: 'investment-account-id',
+        name: 'investment-account-name',
+        institution: 'investment-account-institution',
+        type: 'investment-account-type',
+        balance: 'investment-account-balance',
+        dayChange: 'investment-account-day-change'
+    });
+    
+    elements.form.reset();
+    elements.accountId.value = "";
 
     if (accountId) {
         const account = appData.investmentAccounts.find(a => a.id === accountId);
         if (account) {
-            title.textContent = "Edit Investment Account";
-            document.getElementById("investment-account-id").value = account.id;
-            document.getElementById("investment-account-name").value = account.name;
-            document.getElementById("investment-account-institution").value = account.institution;
-            document.getElementById("investment-account-type").value = account.accountType;
-            document.getElementById("investment-account-balance").value = account.balance;
-            document.getElementById("investment-account-day-change").value = account.dayChange;
+            elements.title.textContent = "Edit Investment Account";
+            elements.accountId.value = account.id;
+            elements.name.value = account.name;
+            elements.institution.value = account.institution;
+            elements.type.value = account.accountType;
+            elements.balance.value = account.balance;
+            elements.dayChange.value = account.dayChange;
         }
     } else {
-        title.textContent = "Add New Investment Account";
-        document.getElementById("investment-account-day-change").value = "0";
+        elements.title.textContent = "Add New Investment Account";
+        elements.dayChange.value = "0";
     }
     openModal('investment-account-modal');
 }
@@ -61,13 +73,23 @@ function openInvestmentAccountModal(appData, accountId = null) {
 async function handleInvestmentAccountSubmit(event, appState, onUpdate) {
     event.preventDefault();
     try {
-        const accountId = document.getElementById("investment-account-id").value;
+        // Use cached elements
+        const elements = domCache.cacheElements({
+            accountId: 'investment-account-id',
+            name: 'investment-account-name',
+            institution: 'investment-account-institution',
+            type: 'investment-account-type',
+            balance: 'investment-account-balance',
+            dayChange: 'investment-account-day-change'
+        });
+        
+        const accountId = elements.accountId.value;
         const accountData = {
-            name: document.getElementById("investment-account-name").value,
-            institution: document.getElementById("investment-account-institution").value,
-            accountType: document.getElementById("investment-account-type").value,
-            balance: safeParseFloat(document.getElementById("investment-account-balance").value),
-            dayChange: safeParseFloat(document.getElementById("investment-account-day-change").value)
+            name: elements.name.value,
+            institution: elements.institution.value,
+            accountType: elements.type.value,
+            balance: safeParseFloat(elements.balance.value),
+            dayChange: safeParseFloat(elements.dayChange.value)
         };
 
         if (accountId) {
@@ -95,16 +117,21 @@ async function deleteInvestmentAccount(id, appState, onUpdate) {
         try {
             const linkedGoals = appState.appData.savingsGoals.filter(goal => goal.linkedAccountId === id);
 
-            for (const goal of linkedGoals) {
-                try {
-                    await db.updateSavingsGoal(goal.id, { linked_account_id: null });
-                    goal.linkedAccountId = null;
-                    goal.accountDeleted = true;
-                } catch (goalError) {
-                    console.error(`Failed to update savings goal ${goal.id}:`, goalError);
-                    showError(`Warning: Failed to unlink savings goal "${goal.name}". You may need to update it manually.`);
-                }
-            }
+            // Batch update all linked savings goals
+            const updatePromises = linkedGoals.map(goal => 
+                batchUpdateSavingsGoal(goal.id, { linked_account_id: null })
+                    .then(() => { 
+                        goal.linkedAccountId = null;
+                        goal.accountDeleted = true;
+                    })
+                    .catch(goalError => {
+                        console.error(`Failed to update savings goal ${goal.id}:`, goalError);
+                        showError(`Warning: Failed to unlink savings goal "${goal.name}". You may need to update it manually.`);
+                    })
+            );
+            
+            await Promise.all(updatePromises);
+            await flushBatch();
 
             await db.deleteInvestmentAccount(id);
             appState.appData.investmentAccounts = appState.appData.investmentAccounts.filter(a => a.id !== id);
