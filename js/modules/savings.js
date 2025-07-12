@@ -41,13 +41,16 @@ function openGoalModal(appData, goalId = null) {
     populateGoalAccountDropdown(appData);
     const form = document.getElementById("goal-form");
     const title = document.getElementById("goal-modal-title");
+    
+    // Always reset form first
     form.reset();
     document.getElementById("goal-id").value = "";
-
+    
     if (goalId) {
         const goal = appData.savingsGoals.find(g => g.id === goalId);
         if (goal) {
             title.textContent = "Edit Savings Goal";
+            // Populate form fields
             document.getElementById("goal-id").value = goal.id;
             document.getElementById("goal-name").value = goal.name;
             document.getElementById("goal-target").value = goal.targetAmount;
@@ -55,11 +58,13 @@ function openGoalModal(appData, goalId = null) {
             document.getElementById("goal-current").value = goal.currentAmount;
             document.getElementById("goal-target-date").value = goal.targetDate || "";
             document.getElementById("goal-description").value = goal.description || "";
+            
+            openModal('goal-modal', { goalId, isEdit: true });
         }
     } else {
         title.textContent = "Add New Savings Goal";
+        openModal('goal-modal', { isEdit: false });
     }
-    openModal('goal-modal');
 }
 
 async function handleGoalSubmit(event, appState, onUpdate) {

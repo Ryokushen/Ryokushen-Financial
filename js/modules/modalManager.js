@@ -269,10 +269,11 @@ export function setupCommonModals() {
     // Savings Goal Modal
     modalManager.register('goal-modal', {
         formId: 'goal-form',
+        resetFormOnOpen: false, // Don't auto-reset, let the openGoalModal function handle it
         onOpen: (modal, data) => {
             const title = modal.querySelector('.modal__title, #goal-modal-title');
             if (title) {
-                title.textContent = data.goalId ? 'Edit Savings Goal' : 'Add New Savings Goal';
+                title.textContent = data && data.isEdit ? 'Edit Savings Goal' : 'Add New Savings Goal';
             }
         }
     });
