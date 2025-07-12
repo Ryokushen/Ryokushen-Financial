@@ -8,7 +8,7 @@ import * as Recurring from './recurring.js';
 import * as Savings from './savings.js';
 // We need these two to properly render the dashboard tab specifically
 import { createCharts } from './charts.js';
-import { updateDashboard } from '../app.js'; // It's okay to import the specific dashboard renderer from app.js
+import { updateDashboard } from './dashboard.js'; // Import from dashboard module
 
 export function showLoading(elementId) {
     const element = document.getElementById(elementId);

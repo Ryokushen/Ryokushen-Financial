@@ -3,6 +3,7 @@ import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatCurrency } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
 import { stockApiService, HoldingsUpdater, formatLastUpdateTime } from './stockApi.js';
+import { loadingState, showButtonSuccess, showButtonError } from './loadingState.js';
 
 // Initialize holdings updater (will be set with appState later)
 let holdingsUpdater = null;
@@ -235,43 +236,39 @@ async function updateAllStockPrices(appState, onUpdate) {
         return;
     }
 
-    try {
-        // Show loading state
-        const updateBtn = document.getElementById('update-all-prices-btn');
-        if (updateBtn) {
-            updateBtn.disabled = true;
-            updateBtn.textContent = 'Updating...';
-        }
-
+    const operation = async () => {
         announceToScreenReader("Updating stock prices...");
-
         const results = await holdingsUpdater.updateAllHoldings();
         lastUpdateTime = Date.now();
-
         await onUpdate();
-
+        
         const message = `Updated ${results.updated} holdings, ${results.skipped} skipped, ${results.failed} failed`;
         announceToScreenReader(message);
-
-        // Show success message briefly
-        if (updateBtn) {
-            updateBtn.textContent = '✓ Updated';
-            setTimeout(() => {
-                updateBtn.textContent = 'Update Prices';
-                updateBtn.disabled = false;
-            }, 2000);
+        
+        if (results.failed === 0) {
+            showButtonSuccess('update-all-prices-btn', '✓ Updated');
+        } else {
+            showButtonError('update-all-prices-btn', `⚠ ${results.failed} Failed`);
         }
+        
+        return results;
+    };
 
+    try {
+        await loadingState.executeWithLoading(
+            'updateAllStockPrices',
+            operation,
+            {
+                buttonId: 'update-all-prices-btn',
+                loadingText: 'Updating...',
+                lockScreen: true,
+                lockMessage: 'Updating stock prices...'
+            }
+        );
     } catch (error) {
         console.error("Error updating stock prices:", error);
         showError("Failed to update stock prices. Please check your internet connection and API key.");
-
-        // Reset button
-        const updateBtn = document.getElementById('update-all-prices-btn');
-        if (updateBtn) {
-            updateBtn.textContent = 'Update Prices';
-            updateBtn.disabled = false;
-        }
+        showButtonError('update-all-prices-btn');
     }
 }
 

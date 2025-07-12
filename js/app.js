@@ -1,7 +1,7 @@
 // js/app.js - Main Application Orchestrator
 import db from './database.js';
-import { CHART_COLORS, formatCurrency, formatDate, escapeHtml, convertToMonthly } from './modules/utils.js';
-import { showError, switchTab } from './modules/ui.js';
+import { CHART_COLORS } from './modules/utils.js';
+import { showError, switchTab, announceToScreenReader } from './modules/ui.js';
 import { createCharts } from './modules/charts.js';
 import * as Accounts from './modules/accounts.js';
 import * as Transactions from './modules/transactions.js';
@@ -11,6 +11,7 @@ import * as Recurring from './modules/recurring.js';
 import * as Savings from './modules/savings.js';
 import * as KPIs from './modules/kpis.js';
 import { renderBillsTimeline } from './modules/timeline.js';
+import { updateDashboard } from './modules/dashboard.js';
 
 const appState = {
     appData: {
@@ -24,6 +25,30 @@ const appState = {
     CHART_COLORS: CHART_COLORS,
     balanceCache: new Map()
 };
+
+// Global error handlers
+window.addEventListener('unhandledrejection', event => {
+    console.error('Unhandled promise rejection:', event.reason);
+    showError('An unexpected error occurred. Please refresh the page if issues persist.');
+    event.preventDefault();
+});
+
+window.addEventListener('error', event => {
+    console.error('Global error:', event.error);
+    showError('An unexpected error occurred. Please refresh the page if issues persist.');
+    event.preventDefault();
+});
+
+// Network status handlers
+window.addEventListener('online', () => {
+    const banner = document.getElementById('offline-banner');
+    if (banner) banner.style.display = 'none';
+    announceToScreenReader('Connection restored');
+});
+
+window.addEventListener('offline', () => {
+    showError('No internet connection. Some features may not work.');
+});
 
 document.addEventListener("DOMContentLoaded", async () => {
     try {
@@ -49,7 +74,8 @@ async function initializeApp() {
 
 async function loadAllData() {
     try {
-        const [transactions, investmentAccounts, cashAccounts, debtAccounts, recurringBills, savingsGoals] = await Promise.all([
+        const dataTypes = ['transactions', 'investmentAccounts', 'cashAccounts', 'debtAccounts', 'recurringBills', 'savingsGoals'];
+        const results = await Promise.allSettled([
             db.getTransactions(),
             db.getInvestmentAccounts(),
             db.getCashAccounts(),
@@ -57,6 +83,25 @@ async function loadAllData() {
             db.getRecurringBills(),
             db.getSavingsGoals()
         ]);
+        
+        // Process results and handle partial failures
+        const [transactionsResult, investmentAccountsResult, cashAccountsResult, debtAccountsResult, recurringBillsResult, savingsGoalsResult] = results;
+        
+        // Set default empty arrays for failed loads
+        const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
+        const investmentAccounts = investmentAccountsResult.status === 'fulfilled' ? investmentAccountsResult.value : [];
+        const cashAccounts = cashAccountsResult.status === 'fulfilled' ? cashAccountsResult.value : [];
+        const debtAccounts = debtAccountsResult.status === 'fulfilled' ? debtAccountsResult.value : [];
+        const recurringBills = recurringBillsResult.status === 'fulfilled' ? recurringBillsResult.value : [];
+        const savingsGoals = savingsGoalsResult.status === 'fulfilled' ? savingsGoalsResult.value : [];
+        
+        // Log any failures
+        results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+                console.error(`Failed to load ${dataTypes[index]}:`, result.reason);
+                showError(`Warning: Failed to load ${dataTypes[index]}. Some features may be limited.`);
+            }
+        });
 
         appState.appData.transactions = transactions.map(t => ({ ...t, amount: parseFloat(t.amount) }));
         appState.appData.cashAccounts = cashAccounts.map(c => ({ ...c, isActive: c.is_active }));
@@ -187,94 +232,7 @@ async function updateAllDisplays(state) {
     Debt.populateDebtAccountDropdown(state.appData);
 }
 
-function renderFinancialHealth(kpiResults) {
-    const container = document.querySelector('.health-score-container');
-    if (!container) return;
-
-    const { emergencyRatio, dti, savingsRate, healthScore } = kpiResults;
-
-    const healthScoreHTML = `
-        <div class="health-indicator-enhanced">
-            <div class="health-score-value ${healthScore.status.toLowerCase()}">${escapeHtml(healthScore.score)}</div>
-            <div class="health-score-label">Overall Score</div>
-            <div class="health-score-status status-${healthScore.status.toLowerCase()}">${escapeHtml(healthScore.status)}</div>
-        </div>
-        <div class="kpi-details-grid">
-            <div class="kpi-metric-card">
-                <div class="kpi-label">Savings Rate</div>
-                <div class="kpi-value">${savingsRate.toFixed(1)}%</div>
-            </div>
-            <div class="kpi-metric-card">
-                <div class="kpi-label">Emergency Fund</div>
-                <div class="kpi-value">${isFinite(emergencyRatio) ? emergencyRatio.toFixed(1) : 'N/A'} mos</div>
-            </div>
-            <div class="kpi-metric-card">
-                <div class="kpi-label">Debt-to-Income</div>
-                <div class="kpi-value">${isFinite(dti) ? dti.toFixed(1) : '0'}%</div>
-            </div>
-        </div>
-    `;
-    container.innerHTML = healthScoreHTML;
-}
-
-export function updateDashboard({ appData }) {
-    const totalCash = appData.cashAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
-    const totalInvestments = appData.investmentAccounts.reduce((sum, acc) => sum + acc.balance, 0);
-    const totalDebt = appData.debtAccounts.reduce((sum, acc) => sum + acc.balance, 0);
-    const monthlyRecurring = appData.recurringBills.filter(b => b.active !== false).reduce((sum, b) => sum + convertToMonthly(b.amount, b.frequency), 0);
-    const netWorth = totalCash + totalInvestments - totalDebt;
-
-    const emergencyRatio = KPIs.calculateEmergencyFundRatio(appData);
-    const dti = KPIs.calculateDebtToIncomeRatio(appData);
-    const savingsRate = KPIs.calculateSavingsRate(appData);
-    const healthScore = KPIs.calculateOverallHealthScore({ emergencyRatio, dti, savingsRate });
-
-    renderFinancialHealth({ emergencyRatio, dti, savingsRate, healthScore });
-    renderBillsTimeline({ appData });
-
-    const totalCashEl = document.getElementById("total-cash");
-    if (totalCashEl) totalCashEl.textContent = formatCurrency(totalCash);
-
-    const totalInvestmentsEl = document.getElementById("total-investments");
-    if (totalInvestmentsEl) totalInvestmentsEl.textContent = formatCurrency(totalInvestments);
-
-    const totalDebtEl = document.getElementById("total-debt");
-    if (totalDebtEl) totalDebtEl.textContent = formatCurrency(totalDebt);
-
-    const monthlyRecurringEl = document.getElementById("monthly-recurring");
-    if (monthlyRecurringEl) monthlyRecurringEl.textContent = formatCurrency(monthlyRecurring);
-
-    const netWorthEl = document.getElementById("net-worth");
-    if (netWorthEl) netWorthEl.textContent = formatCurrency(netWorth);
-
-    renderRecentTransactions(appData);
-}
-
-function renderRecentTransactions(appData) {
-    const list = document.getElementById("recent-transactions-list");
-    if (!list) return;
-
-    const recent = [...appData.transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
-    if (recent.length === 0) {
-        list.innerHTML = `<div class="empty-state">No recent transactions.</div>`;
-        return;
-    }
-    list.innerHTML = recent.map(t => {
-        const account = appData.cashAccounts.find(a => a.id === t.account_id);
-        const accountName = account ? escapeHtml(account.name) : "Unknown";
-        const isPositive = t.amount >= 0;
-        return `
-            <div class="transaction-item">
-                <div class="transaction-info">
-                    <div class="transaction-description">${escapeHtml(t.description)}</div>
-                    <div class="transaction-details">${formatDate(t.date)} - ${escapeHtml(accountName)}</div>
-                </div>
-                <div class="transaction-amount ${isPositive ? 'positive' : 'negative'}">
-                    ${isPositive ? '+' : ''}${formatCurrency(t.amount)}
-                </div>
-            </div>`;
-    }).join('');
-}
+// Dashboard functionality moved to dashboard.js module
 
 async function migrateDebtTransactions(transactions, debtAccounts) {
     // Make migration idempotent: only migrate if debt_account exists and debt_account_id is null

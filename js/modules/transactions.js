@@ -2,6 +2,7 @@
 import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatDate, formatCurrency, getNextDueDate } from './utils.js';
 import { showError, announceToScreenReader } from './ui.js';
+import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, ValidationRules } from './validation.js';
 
 let currentCategoryFilter = "";
 let editingTransactionId = null;
@@ -169,6 +170,9 @@ function hideCancelButton() {
 
 async function handleTransactionSubmit(event, appState, onUpdate) {
     event.preventDefault();
+    
+    // Clear previous errors
+    clearFormErrors('transaction-form');
 
     try {
         const transactionData = {
@@ -181,14 +185,15 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
             debt_account_id: null
         };
 
-        // Validation
-        if (!transactionData.date || !transactionData.description) {
-            showError("Please fill in all required fields.");
-            return;
-        }
-
-        if (isNaN(transactionData.amount) || transactionData.amount === 0) {
-            showError("Please enter a valid non-zero amount.");
+        // Validate using validation schema
+        const { errors, hasErrors } = validateForm(transactionData, ValidationSchemas.transaction);
+        
+        if (hasErrors) {
+            // Show field-level errors
+            Object.entries(errors).forEach(([field, error]) => {
+                showFieldError(`transaction-${field}`, error);
+            });
+            showError("Please correct the errors in the form.");
             return;
         }
 
