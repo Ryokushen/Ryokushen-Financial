@@ -107,7 +107,8 @@ async function handleGoalSubmit(event, appState, onUpdate) {
         onUpdate();
         announceToScreenReader("Savings goal saved successfully.");
     } catch (error) {
-        showError("Failed to save savings goal.");
+        console.error("Error saving savings goal:", error);
+        showError("Failed to save savings goal. Check console for details.");
     }
 }
 
