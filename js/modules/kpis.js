@@ -63,8 +63,8 @@ function calculateAverageMonthlyExpenses(transactions) {
 
     monthlyGroups.forEach(monthTransactions => {
         const monthlyExpense = monthTransactions
-            .filter(t => t.amount < 0 && t.category !== 'Transfer' && t.category !== 'Debt') //
-            .reduce((sum, t) => sum + t.amount, 0);
+            .filter(t => (t.amount < 0 && t.category !== 'Transfer' && t.category !== 'Debt') || (t.amount > 0 && t.debt_account_id)) //
+            .reduce((sum, t) => sum + (t.amount < 0 ? t.amount : -t.amount), 0);
 
         if (monthlyExpense < 0) {
             totalExpenses += monthlyExpense;
@@ -148,13 +148,13 @@ export function calculateOverallHealthScore(kpiResults) {
     else points += 1;
 
     const averageScore = points / 3;
-    
+
     if (averageScore >= 3.8) return { score: "A+", status: "Excellent" };
     if (averageScore >= 3.5) return { score: "A", status: "Excellent" };
     if (averageScore >= 3.0) return { score: "B+", status: "Good" };
     if (averageScore >= 2.5) return { score: "B", status: "Good" };
     if (averageScore >= 2.0) return { score: "C+", status: "Fair" };
     if (averageScore >= 1.5) return { score: "C", status: "Fair" };
-    
+
     return { score: "D", status: "Needs Improvement" };
 }

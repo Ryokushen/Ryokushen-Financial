@@ -113,11 +113,11 @@ export function createCharts(appState) {
 function createNetWorthChart({ appData, CHART_COLORS }) {
     const ctx = document.getElementById("netWorthChart").getContext("2d");
     if (!ctx) return;
-    
+
     // Calculate total investments and debt first (your addition—good!)
     const totalInvestments = appData.investmentAccounts.reduce((sum, account) => sum + account.balance, 0);
     const totalDebt = appData.debtAccounts.reduce((sum, account) => sum + account.balance, 0);
-    
+
     const cashAccountIds = appData.cashAccounts.map(account => account.id);
     const months = [];
     const netWorthData = [];
@@ -161,12 +161,12 @@ function createNetWorthChart({ appData, CHART_COLORS }) {
 function createExpenseCategoryChart({ appData, CHART_COLORS }) {
     const ctx = document.getElementById("expenseCategoryChart").getContext("2d");
     if (!ctx) return;
-    
+
     const expenseData = {};
 
     appData.transactions
         // CORRECTED: The '&& t.category !== 'Debt'' part was removed
-        .filter(t => t.amount < 0 && t.category !== 'Transfer')
+        .filter(t => (t.amount < 0 && t.category !== 'Transfer') || (t.amount > 0 && t.debt_account_id))
         .forEach(t => {
             if (!expenseData[t.category]) {
                 expenseData[t.category] = 0;
@@ -195,7 +195,7 @@ function createExpenseCategoryChart({ appData, CHART_COLORS }) {
 function createCashFlowChart({ appData, CHART_COLORS }) {
     const ctx = document.getElementById("cashFlowChart").getContext("2d");
     if (!ctx) return;
-    
+
     const cashAccountIds = appData.cashAccounts.map(account => account.id);
     const months = [];
     const incomeData = [];
@@ -214,7 +214,7 @@ function createCashFlowChart({ appData, CHART_COLORS }) {
         });
 
         incomeData.push(monthTransactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0));
-        expenseData.push(Math.abs(monthTransactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0)));
+        expenseData.push(Math.abs(monthTransactions.filter(t => t.amount < 0 || (t.amount > 0 && t.debt_account_id)).reduce((sum, t) => sum + (t.amount < 0 ? t.amount : -t.amount), 0)));
     }
 
     chartInstances.cashFlowChart = new Chart(ctx, {
@@ -242,7 +242,7 @@ function createCashFlowChart({ appData, CHART_COLORS }) {
 function createAssetsDebtChart({ appData, CHART_COLORS }) {
     const ctx = document.getElementById("assetsDebtChart").getContext("2d");
     if (!ctx) return;
-    
+
     const totalCash = appData.cashAccounts.reduce((sum, account) => sum + (account.balance || 0), 0);
     const totalInvestments = appData.investmentAccounts.reduce((sum, account) => sum + account.balance, 0);
     const totalDebt = appData.debtAccounts.reduce((sum, account) => sum + account.balance, 0);
