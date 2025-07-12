@@ -1,5 +1,6 @@
 // js/modules/transactionManager.js
 import { showError } from './ui.js';
+import { debug } from './debug.js';
 
 /**
  * Transaction Manager for handling multi-step operations with rollback capability
@@ -34,7 +35,7 @@ export class TransactionManager {
                 const { operation, rollback, description } = this.operations[i];
                 
                 try {
-                    console.log(`Executing: ${description}`);
+                    debug.log(`Executing: ${description}`);
                     const result = await operation();
                     results.push(result);
                     this.completed.push({ operation, rollback, result, description });
@@ -46,7 +47,7 @@ export class TransactionManager {
                 }
             }
             
-            console.log('Transaction completed successfully');
+            debug.log('Transaction completed successfully');
             return results;
             
         } catch (error) {
@@ -59,7 +60,7 @@ export class TransactionManager {
      * Rollback all completed operations
      */
     async rollback() {
-        console.log('Starting rollback...');
+        debug.log('Starting rollback...');
         
         // Rollback in reverse order
         for (let i = this.completed.length - 1; i >= 0; i--) {
@@ -67,7 +68,7 @@ export class TransactionManager {
             
             if (rollback) {
                 try {
-                    console.log(`Rolling back: ${description}`);
+                    debug.log(`Rolling back: ${description}`);
                     await rollback(result);
                 } catch (error) {
                     console.error(`Rollback failed for: ${description}`, error);
@@ -76,7 +77,7 @@ export class TransactionManager {
             }
         }
         
-        console.log('Rollback completed');
+        debug.log('Rollback completed');
     }
     
     /**
@@ -214,7 +215,7 @@ export async function retryOperation(operation, maxRetries = 3, backoffMs = 1000
                 throw error;
             }
             
-            console.log(`Attempt ${attempt} failed, retrying in ${backoffMs}ms...`);
+            debug.log(`Attempt ${attempt} failed, retrying in ${backoffMs}ms...`);
             await new Promise(resolve => setTimeout(resolve, backoffMs * attempt));
         }
     }

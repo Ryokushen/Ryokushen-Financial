@@ -11,6 +11,11 @@ class ModalManager {
         this.activeModals = new Set();
         this.modalConfig = new Map();
         this.initialized = false;
+        this.eventListeners = new Map();
+        this.boundHandlers = {
+            keydown: null,
+            click: null
+        };
     }
     
     /**
@@ -19,24 +24,36 @@ class ModalManager {
     init() {
         if (this.initialized) return;
         
-        // Setup global event listeners
-        document.addEventListener('keydown', (e) => {
+        // Create bound event handlers that can be removed later
+        this.boundHandlers.keydown = (e) => {
             if (e.key === 'Escape' && this.activeModals.size > 0) {
-                // Close the most recently opened modal
-                const lastModal = Array.from(this.activeModals).pop();
-                this.close(lastModal);
+                // Get the most recently opened modal
+                const modalsArray = Array.from(this.activeModals);
+                if (modalsArray.length > 0) {
+                    const lastModal = modalsArray[modalsArray.length - 1];
+                    const config = this.modalConfig.get(lastModal);
+                    if (config && config.closeOnEscape !== false) {
+                        this.close(lastModal);
+                    }
+                }
             }
-        });
+        };
         
-        // Click outside to close
-        document.addEventListener('click', (e) => {
+        this.boundHandlers.click = (e) => {
             if (e.target.classList.contains('modal') && this.activeModals.size > 0) {
                 const modalId = e.target.id;
                 if (this.activeModals.has(modalId)) {
-                    this.close(modalId);
+                    const config = this.modalConfig.get(modalId);
+                    if (config && config.closeOnClickOutside !== false) {
+                        this.close(modalId);
+                    }
                 }
             }
-        });
+        };
+        
+        // Setup global event listeners with bound handlers
+        document.addEventListener('keydown', this.boundHandlers.keydown);
+        document.addEventListener('click', this.boundHandlers.click);
         
         this.initialized = true;
     }
@@ -71,25 +88,52 @@ class ModalManager {
         const modal = domCache.getElementById(modalId);
         if (!modal) return;
         
+        // Clean up existing listeners for this modal
+        this.cleanupModalListeners(modalId);
+        
+        // Store listeners for this modal
+        const modalListeners = [];
+        
         // Find and setup close buttons
         const closeButtons = modal.querySelectorAll('[data-modal-close], .modal__close, .btn--cancel');
         closeButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            const closeHandler = (e) => {
                 e.preventDefault();
                 this.close(modalId);
-            });
+            };
+            btn.addEventListener('click', closeHandler);
+            modalListeners.push({ element: btn, event: 'click', handler: closeHandler });
         });
         
         // Setup form submission if configured
         if (config.formId) {
             const form = domCache.getElementById(config.formId);
             if (form && config.onSubmit) {
-                form.addEventListener('submit', async (e) => {
+                const submitHandler = async (e) => {
                     e.preventDefault();
                     await config.onSubmit(e);
-                });
+                };
+                form.addEventListener('submit', submitHandler);
+                modalListeners.push({ element: form, event: 'submit', handler: submitHandler });
             }
         }
+        
+        // Store all listeners for cleanup later
+        this.eventListeners.set(modalId, modalListeners);
+    }
+    
+    /**
+     * Clean up event listeners for a specific modal
+     */
+    cleanupModalListeners(modalId) {
+        const listeners = this.eventListeners.get(modalId);
+        if (!listeners) return;
+        
+        listeners.forEach(({ element, event, handler }) => {
+            element.removeEventListener(event, handler);
+        });
+        
+        this.eventListeners.delete(modalId);
     }
     
     /**
@@ -206,6 +250,31 @@ class ModalManager {
         announcement.textContent = message;
         document.body.appendChild(announcement);
         setTimeout(() => announcement.remove(), 1000);
+    }
+    
+    /**
+     * Destroy the modal manager and clean up all event listeners
+     */
+    destroy() {
+        // Remove global event listeners
+        if (this.boundHandlers.keydown) {
+            document.removeEventListener('keydown', this.boundHandlers.keydown);
+        }
+        if (this.boundHandlers.click) {
+            document.removeEventListener('click', this.boundHandlers.click);
+        }
+        
+        // Clean up all modal-specific event listeners
+        this.eventListeners.forEach((listeners, modalId) => {
+            this.cleanupModalListeners(modalId);
+        });
+        
+        // Clear all data
+        this.activeModals.clear();
+        this.modalConfig.clear();
+        this.eventListeners.clear();
+        this.boundHandlers = { keydown: null, click: null };
+        this.initialized = false;
     }
     
     /**

@@ -1,5 +1,7 @@
 // js/modules/utils.js
 
+import { convertToMonthlyPrecise, roundMoney } from './financialMath.js';
+
 export const DEFAULT_CASH_ACCOUNTS = ["Cash Account", "Debit Checking", "Savings High-Yield"];
 export const CHART_COLORS = ["#1FB8CD", "#FFC185", "#B4413C", "#ECEBD5", "#5D878F", "#DB4545", "#D2BA4C", "#964325", "#944454", "#13343B"];
 
@@ -21,10 +23,18 @@ export function escapeHtml(text) {
 }
 
 export function formatCurrency(amount) {
+    // Handle null/undefined/NaN values
+    if (amount == null || isNaN(amount)) {
+        amount = 0;
+    }
+    
+    // Round to 2 decimal places before formatting to avoid floating point display issues
+    const rounded = roundMoney(amount);
+    
     return new Intl.NumberFormat(navigator.language, {
         style: "currency",
         currency: "USD"  // Change to dynamic if needed, e.g., localStorage.get('currency') || 'USD'
-    }).format(amount);
+    }).format(rounded);
 }
 
 export function formatDate(dateString) {
@@ -76,15 +86,9 @@ export function getDaysUntilText(days) {
 
 export function convertToMonthly(amount, frequency) {
     if (!amount || !frequency) return 0;
-
-    const conversions = {
-        weekly: amount * 4.33,
-        monthly: amount,
-        quarterly: amount / 3,
-        'semi-annually': amount / 6,
-        annually: amount / 12
-    };
-    return conversions[frequency] || 0;
+    
+    // Use precise financial math for accurate calculations
+    return convertToMonthlyPrecise(amount, frequency);
 }
 
 export function getNextDueDate(currentDateStr, frequency) {

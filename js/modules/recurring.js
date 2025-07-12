@@ -2,6 +2,7 @@
 import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatDate, formatCurrency, getDueDateClass, getDueDateText, convertToMonthly, getNextDueDate } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
+import { debug } from './debug.js';
 
 export function setupEventListeners(appState, onUpdate) {
     document.getElementById("add-recurring-btn")?.addEventListener("click", () => openRecurringModal(appState.appData));
@@ -191,7 +192,7 @@ async function handleRecurringSubmit(event, appState, onUpdate) {
             return;
         }
 
-        console.log("Submitting bill data:", billData);
+        debug.log("Submitting bill data:", billData);
 
         let savedBill;
         if (billId) {

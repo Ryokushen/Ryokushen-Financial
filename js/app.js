@@ -107,32 +107,43 @@ async function loadAllData() {
             }
         });
 
-        appState.appData.transactions = transactions.map(t => ({ ...t, amount: parseFloat(t.amount) }));
-        appState.appData.cashAccounts = cashAccounts.map(c => ({ ...c, isActive: c.is_active }));
+        // Map data with proper null checks and safe parsing
+        appState.appData.transactions = transactions.map(t => ({ 
+            ...t, 
+            amount: t.amount != null ? parseFloat(t.amount) : 0 
+        }));
+        
+        appState.appData.cashAccounts = cashAccounts.map(c => ({ 
+            ...c, 
+            isActive: c.is_active,
+            balance: c.balance != null ? parseFloat(c.balance) : 0
+        }));
+        
         appState.appData.investmentAccounts = investmentAccounts.map(Investments.mapInvestmentAccount);
+        
         appState.appData.debtAccounts = debtAccounts.map(d => ({
             ...d,
-            balance: parseFloat(d.balance),
-            interestRate: parseFloat(d.interest_rate),
-            minimumPayment: parseFloat(d.minimum_payment),
-            creditLimit: d.credit_limit ? parseFloat(d.credit_limit) : null,
+            balance: d.balance != null ? parseFloat(d.balance) : 0,
+            interestRate: d.interest_rate != null ? parseFloat(d.interest_rate) : 0,
+            minimumPayment: d.minimum_payment != null ? parseFloat(d.minimum_payment) : 0,
+            creditLimit: d.credit_limit != null ? parseFloat(d.credit_limit) : null,
             dueDate: d.due_date
         }));
 
         // UPDATED: Handle new payment method fields for recurring bills
         appState.appData.recurringBills = recurringBills.map(b => ({
             ...b,
-            amount: parseFloat(b.amount),
+            amount: b.amount != null ? parseFloat(b.amount) : 0,
             nextDue: b.next_due,
-            active: b.active,
+            active: b.active !== undefined ? b.active : true,
             paymentMethod: b.payment_method || 'cash', // Default to cash for backward compatibility
             debtAccountId: b.debt_account_id // Add debt account ID field
         }));
 
         appState.appData.savingsGoals = savingsGoals.map(g => ({
             ...g,
-            targetAmount: parseFloat(g.target_amount),
-            currentAmount: parseFloat(g.current_amount),
+            targetAmount: g.target_amount != null ? parseFloat(g.target_amount) : 0,
+            currentAmount: g.current_amount != null ? parseFloat(g.current_amount) : 0,
             linkedAccountId: g.linked_account_id,
             targetDate: g.target_date,
             createdDate: g.created_date,
@@ -190,7 +201,9 @@ function updateAccountBalance(accountId, amountChange) {
 function setupEventListeners() {
     const onUpdate = () => {
         // Clear KPI cache when data is updated
-        import('./modules/kpis.js').then(kpis => kpis.clearKPICache());
+        import('./modules/kpis.js')
+            .then(kpis => kpis.clearKPICache())
+            .catch(error => console.error('Failed to clear KPI cache:', error));
         updateAllDisplays(appState);
     };
 

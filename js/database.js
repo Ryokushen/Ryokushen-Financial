@@ -1,6 +1,9 @@
 // js/database.js
 class FinancialDatabase {
     constructor() {
+        if (!window.supabaseClient) {
+            throw new Error('Supabase client not initialized. Please check your configuration.');
+        }
         this.supabase = window.supabaseClient;
     }
 

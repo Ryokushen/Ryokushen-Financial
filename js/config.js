@@ -34,7 +34,9 @@ window.setFinnhubApiKey = function(apiKey) {
         window.stockApiService.apiKey = apiKey.trim();
     }
     
-    console.log('Finnhub API key updated successfully');
+    if (window.DEBUG || localStorage.getItem('debug') === 'true') {
+        console.log('Finnhub API key updated successfully');
+    }
     return true;
 };
 
@@ -45,7 +47,9 @@ window.getFinnhubApiKey = function() {
 window.clearFinnhubApiKey = function() {
     localStorage.removeItem('finnhub_api_key');
     FINNHUB_CONFIG.apiKey = '';
-    console.log('Finnhub API key cleared');
+    if (window.DEBUG || localStorage.getItem('debug') === 'true') {
+        console.log('Finnhub API key cleared');
+    }
 };
 
 // Check if API key is configured

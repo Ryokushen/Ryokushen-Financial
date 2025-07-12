@@ -1,5 +1,9 @@
 // js/modules/stockApi.js - Finnhub Stock API Integration
 
+import { debug } from './debug.js';
+import { withTimeout, retryOperation } from './errorHandler.js';
+import { AsyncLock } from './asyncLock.js';
+
 /**
  * Stock API service for fetching real-time stock prices from Finnhub
  */
@@ -18,7 +22,7 @@ export class StockApiService {
 
     validateApiKey() {
         if (!this.apiKey || this.apiKey === 'YOUR_API_KEY_HERE' || this.apiKey.trim() === '') {
-            console.warn('Finnhub API key not configured. Stock price updates will be disabled.');
+            debug.warn('Finnhub API key not configured. Stock price updates will be disabled.');
             return false;
         }
         return true;
@@ -39,18 +43,27 @@ export class StockApiService {
             // Check cache first
             const cached = this.getCachedPrice(symbol);
             if (cached) {
-                console.log(`Using cached price for ${symbol}`);
+                debug.log(`Using cached price for ${symbol}`);
                 return cached;
             }
 
             const url = `${this.baseUrl}/quote?symbol=${encodeURIComponent(symbol)}&token=${this.apiKey}`;
 
-            console.log(`Fetching price for ${symbol}...`);
-            const response = await fetch(url);
+            debug.log(`Fetching price for ${symbol}...`);
+            
+            // Fetch with timeout and retry logic
+            const response = await withTimeout(
+                retryOperation(
+                    () => fetch(url),
+                    2, // max 2 retries for API calls
+                    500 // 500ms base delay
+                ),
+                10000 // 10 second timeout
+            );
 
             if (!response.ok) {
                 if (response.status === 429) {
-                    console.warn(`Rate limit hit for ${symbol}, retrying...`);
+                    debug.warn(`Rate limit hit for ${symbol}, retrying...`);
                     await this.delay(1000);
                     return this.fetchStockPrice(symbol);
                 }
@@ -61,7 +74,7 @@ export class StockApiService {
 
             // Finnhub returns { c: currentPrice, d: change, dp: changePercent, h: high, l: low, o: open, pc: previousClose }
             if (!data.c || data.c === 0) {
-                console.warn(`No valid price data for symbol: ${symbol}`);
+                debug.warn(`No valid price data for symbol: ${symbol}`);
                 return null;
             }
 
@@ -80,7 +93,7 @@ export class StockApiService {
             return result;
 
         } catch (error) {
-            console.error(`Error fetching price for ${symbol}:`, error);
+            debug.error(`Error fetching price for ${symbol}:`, error);
             return null;
         }
     }
@@ -94,7 +107,7 @@ export class StockApiService {
         const results = new Map();
         const uniqueSymbols = [...new Set(symbols.map(s => s.toUpperCase()))];
 
-        console.log(`Fetching prices for ${uniqueSymbols.length} symbols...`);
+        debug.log(`Fetching prices for ${uniqueSymbols.length} symbols...`);
 
         for (let i = 0; i < uniqueSymbols.length; i++) {
             const symbol = uniqueSymbols[i];
@@ -103,9 +116,9 @@ export class StockApiService {
                 const priceData = await this.fetchStockPrice(symbol);
                 if (priceData) {
                     results.set(symbol, priceData);
-                    console.log(`✓ ${symbol}: $${priceData.price}`);
+                    debug.log(`✓ ${symbol}: $${priceData.price}`);
                 } else {
-                    console.log(`✗ ${symbol}: No data available`);
+                    debug.log(`✗ ${symbol}: No data available`);
                 }
 
                 // Rate limiting: wait between requests (except for last one)
@@ -114,7 +127,7 @@ export class StockApiService {
                 }
 
             } catch (error) {
-                console.error(`Failed to fetch ${symbol}:`, error);
+                debug.error(`Failed to fetch ${symbol}:`, error);
             }
         }
 
@@ -180,7 +193,7 @@ export class HoldingsUpdater {
     constructor(appState, stockApiService) {
         this.appState = appState;
         this.stockApi = stockApiService;
-        this.isUpdating = false;
+        this.updateLock = new AsyncLock();
     }
 
     /**
@@ -188,21 +201,17 @@ export class HoldingsUpdater {
      * @returns {Promise<{updated: number, failed: number, skipped: number}>}
      */
     async updateAllHoldings() {
-        if (this.isUpdating) {
-            console.log('Update already in progress...');
-            return { updated: 0, failed: 0, skipped: 0 };
-        }
-
-        this.isUpdating = true;
-
-        try {
-            console.log('Starting holdings update...');
+        // Use async lock to prevent race conditions
+        return this.updateLock.withLock(async () => {
+            debug.log('Acquired update lock, starting holdings update...');
+            
+            try {
 
             // Collect all unique stock symbols from all holdings
             const allSymbols = this.collectStockSymbols();
 
             if (allSymbols.length === 0) {
-                console.log('No stock symbols found to update');
+                debug.log('No stock symbols found to update');
                 return { updated: 0, failed: 0, skipped: 0 };
             }
 
@@ -212,15 +221,14 @@ export class HoldingsUpdater {
             // Update holdings with new prices
             const updateResults = await this.updateHoldingsWithPrices(priceData);
 
-            console.log('Holdings update completed:', updateResults);
+            debug.log('Holdings update completed:', updateResults);
             return updateResults;
 
-        } catch (error) {
-            console.error('Error updating holdings:', error);
-            throw error;
-        } finally {
-            this.isUpdating = false;
-        }
+            } catch (error) {
+                debug.error('Error updating holdings:', error);
+                throw error;
+            }
+        });
     }
 
     /**
@@ -276,7 +284,7 @@ export class HoldingsUpdater {
                     const stockData = priceData.get(symbol);
 
                     if (!stockData) {
-                        console.log(`No price data available for ${symbol}`);
+                        debug.log(`No price data available for ${symbol}`);
                         skipped++;
                         continue;
                     }
@@ -295,16 +303,16 @@ export class HoldingsUpdater {
                             current_price: holding.currentPrice,
                             value: holding.value
                         }).then(() => {
-                            console.log(`Updated ${symbol}: $${oldPrice} → $${holding.currentPrice}`);
+                            debug.log(`Updated ${symbol}: $${oldPrice} → $${holding.currentPrice}`);
                             updated++;
                             accountBalanceChanged = true;
                         }).catch(error => {
-                            console.error(`Failed to update holding ${holding.symbol}:`, error);
+                            debug.error(`Failed to update holding ${holding.symbol}:`, error);
                             failed++;
                         })
                     );
                 } catch (error) {
-                    console.error(`Failed to update holding ${holding.symbol}:`, error);
+                    debug.error(`Failed to update holding ${holding.symbol}:`, error);
                     failed++;
                 }
             }
@@ -330,13 +338,13 @@ export class HoldingsUpdater {
                             balance: account.balance,
                             day_change: account.dayChange
                         }).then(() => {
-                            console.log(`Updated account ${account.name} balance: $${oldBalance} → $${newBalance}`);
+                            debug.log(`Updated account ${account.name} balance: $${oldBalance} → $${newBalance}`);
                         }).catch(error => {
-                            console.error(`Failed to update account balance for ${account.name}:`, error);
+                            debug.error(`Failed to update account balance for ${account.name}:`, error);
                         })
                     );
                 } catch (error) {
-                    console.error(`Failed to update account balance for ${account.name}:`, error);
+                    debug.error(`Failed to update account balance for ${account.name}:`, error);
                 }
             }
         }
@@ -354,7 +362,7 @@ export class HoldingsUpdater {
      */
     async updateHoldingBySymbol(symbol) {
         if (!this.stockApi.isValidSymbol(symbol)) {
-            console.log(`Invalid symbol: ${symbol}`);
+            debug.log(`Invalid symbol: ${symbol}`);
             return false;
         }
 
@@ -369,7 +377,7 @@ export class HoldingsUpdater {
             return results.updated > 0;
 
         } catch (error) {
-            console.error(`Error updating ${symbol}:`, error);
+            debug.error(`Error updating ${symbol}:`, error);
             return false;
         }
     }

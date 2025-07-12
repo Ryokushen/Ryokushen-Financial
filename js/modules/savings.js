@@ -2,6 +2,7 @@
 import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatDate, formatCurrency } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
+import { debug } from './debug.js';
 
 function mapSavingsGoal(goal) {
     return {
@@ -171,7 +172,7 @@ export async function handleSavingsGoalTransactionDeletion(transaction, appState
             completed_date: goal.completedDate
         });
 
-        console.log(`Reverted savings goal contribution: ${goal.name}, new amount: ${goal.currentAmount}`);
+        debug.log(`Reverted savings goal contribution: ${goal.name}, new amount: ${goal.currentAmount}`);
     } catch (error) {
         console.error('Error reverting savings goal contribution:', error);
     }
