@@ -47,6 +47,26 @@ export function showError(message) {
 }
 
 export function switchTab(tabName, appState) {
+    // Clean up event listeners from all modules before switching tabs
+    if (typeof Accounts.cleanupEventListeners === 'function') {
+        Accounts.cleanupEventListeners();
+    }
+    if (typeof Transactions.cleanupEventListeners === 'function') {
+        Transactions.cleanupEventListeners();
+    }
+    if (typeof Investments.cleanupEventListeners === 'function') {
+        Investments.cleanupEventListeners();
+    }
+    if (typeof Debt.cleanupEventListeners === 'function') {
+        Debt.cleanupEventListeners();
+    }
+    if (typeof Recurring.cleanupEventListeners === 'function') {
+        Recurring.cleanupEventListeners();
+    }
+    if (typeof Savings.cleanupEventListeners === 'function') {
+        Savings.cleanupEventListeners();
+    }
+
     const tabContents = document.querySelectorAll(".tab-content");
     tabContents.forEach(content => {
         content.classList.remove("active");

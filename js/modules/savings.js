@@ -15,26 +15,88 @@ function mapSavingsGoal(goal) {
     };
 }
 
+let eventListeners = [];
+
 export function setupEventListeners(appState, onUpdate) {
-    document.getElementById("add-goal-btn")?.addEventListener("click", () => openGoalModal(appState.appData));
-    document.getElementById("close-goal-modal")?.addEventListener("click", () => closeModal('goal-modal'));
-    document.getElementById("cancel-goal-btn")?.addEventListener("click", () => closeModal('goal-modal'));
-    document.getElementById("goal-form")?.addEventListener("submit", (e) => handleGoalSubmit(e, appState, onUpdate));
+    // Clean up any existing listeners first
+    cleanupEventListeners();
+    
+    // Store references to event handlers
+    const handlers = {
+        openGoalModal: () => openGoalModal(appState.appData),
+        closeGoalModal: () => closeModal('goal-modal'),
+        cancelGoalModal: () => closeModal('goal-modal'),
+        submitGoalForm: (e) => handleGoalSubmit(e, appState, onUpdate),
+        closeContributionModal: () => closeModal('contribution-modal'),
+        cancelContributionModal: () => closeModal('contribution-modal'),
+        submitContributionForm: (e) => handleContributionSubmit(e, appState, onUpdate),
+        listClick: event => {
+            const target = event.target;
+            const card = target.closest('.savings-goal-card');
+            if (!card) return;
 
-    document.getElementById("close-contribution-modal")?.addEventListener("click", () => closeModal('contribution-modal'));
-    document.getElementById("cancel-contribution-btn")?.addEventListener("click", () => closeModal('contribution-modal'));
-    document.getElementById("contribution-form")?.addEventListener("submit", (e) => handleContributionSubmit(e, appState, onUpdate));
+            const goalId = parseInt(card.getAttribute('data-id'));
+            if (target.classList.contains('btn-edit-goal')) openGoalModal(appState.appData, goalId);
+            if (target.classList.contains('btn-delete-goal')) deleteSavingsGoal(goalId, appState, onUpdate);
+            if (target.classList.contains('btn-contribute')) openContributionModal(appState.appData, goalId);
+        }
+    };
+    
+    // Add event listeners and store references
+    const addGoalBtn = document.getElementById("add-goal-btn");
+    if (addGoalBtn) {
+        addGoalBtn.addEventListener("click", handlers.openGoalModal);
+        eventListeners.push({ element: addGoalBtn, type: "click", handler: handlers.openGoalModal });
+    }
+    
+    const closeGoalModal = document.getElementById("close-goal-modal");
+    if (closeGoalModal) {
+        closeGoalModal.addEventListener("click", handlers.closeGoalModal);
+        eventListeners.push({ element: closeGoalModal, type: "click", handler: handlers.closeGoalModal });
+    }
+    
+    const cancelGoalBtn = document.getElementById("cancel-goal-btn");
+    if (cancelGoalBtn) {
+        cancelGoalBtn.addEventListener("click", handlers.cancelGoalModal);
+        eventListeners.push({ element: cancelGoalBtn, type: "click", handler: handlers.cancelGoalModal });
+    }
+    
+    const goalForm = document.getElementById("goal-form");
+    if (goalForm) {
+        goalForm.addEventListener("submit", handlers.submitGoalForm);
+        eventListeners.push({ element: goalForm, type: "submit", handler: handlers.submitGoalForm });
+    }
 
-    document.getElementById("savings-goals-list")?.addEventListener('click', event => {
-        const target = event.target;
-        const card = target.closest('.savings-goal-card');
-        if (!card) return;
+    const closeContributionModal = document.getElementById("close-contribution-modal");
+    if (closeContributionModal) {
+        closeContributionModal.addEventListener("click", handlers.closeContributionModal);
+        eventListeners.push({ element: closeContributionModal, type: "click", handler: handlers.closeContributionModal });
+    }
+    
+    const cancelContributionBtn = document.getElementById("cancel-contribution-btn");
+    if (cancelContributionBtn) {
+        cancelContributionBtn.addEventListener("click", handlers.cancelContributionModal);
+        eventListeners.push({ element: cancelContributionBtn, type: "click", handler: handlers.cancelContributionModal });
+    }
+    
+    const contributionForm = document.getElementById("contribution-form");
+    if (contributionForm) {
+        contributionForm.addEventListener("submit", handlers.submitContributionForm);
+        eventListeners.push({ element: contributionForm, type: "submit", handler: handlers.submitContributionForm });
+    }
 
-        const goalId = parseInt(card.getAttribute('data-id'));
-        if (target.classList.contains('btn-edit-goal')) openGoalModal(appState.appData, goalId);
-        if (target.classList.contains('btn-delete-goal')) deleteSavingsGoal(goalId, appState, onUpdate);
-        if (target.classList.contains('btn-contribute')) openContributionModal(appState.appData, goalId);
+    const savingsList = document.getElementById("savings-goals-list");
+    if (savingsList) {
+        savingsList.addEventListener('click', handlers.listClick);
+        eventListeners.push({ element: savingsList, type: 'click', handler: handlers.listClick });
+    }
+}
+
+export function cleanupEventListeners() {
+    eventListeners.forEach(({ element, type, handler }) => {
+        element.removeEventListener(type, handler);
     });
+    eventListeners = [];
 }
 
 function openGoalModal(appData, goalId = null) {

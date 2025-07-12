@@ -3,19 +3,64 @@ import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatDate, formatCurrency, getDueDateClass, getDueDateText, convertToMonthly, getNextDueDate } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
 
-export function setupEventListeners(appState, onUpdate) {
-    document.getElementById("add-recurring-btn")?.addEventListener("click", () => openRecurringModal(appState.appData));
-    document.getElementById("close-recurring-modal")?.addEventListener("click", () => closeModal('recurring-modal'));
-    document.getElementById("cancel-recurring-btn")?.addEventListener("click", () => closeModal('recurring-modal'));
-    document.getElementById("recurring-form")?.addEventListener("submit", (e) => handleRecurringSubmit(e, appState, onUpdate));
+let eventListeners = [];
 
-    document.getElementById("all-recurring-bills-list")?.addEventListener('click', (event) => {
-        const id = parseInt(event.target.getAttribute('data-id'));
-        if (!id) return;
-        if (event.target.classList.contains('btn-pay-bill')) payRecurringBill(id, appState, onUpdate);
-        if (event.target.classList.contains('btn-edit-bill')) openRecurringModal(appState.appData, id);
-        if (event.target.classList.contains('btn-delete-bill')) deleteRecurringBill(id, appState, onUpdate);
+export function setupEventListeners(appState, onUpdate) {
+    // Clean up any existing listeners first
+    cleanupEventListeners();
+    
+    // Store references to event handlers
+    const handlers = {
+        openModal: () => openRecurringModal(appState.appData),
+        closeModal: () => closeModal('recurring-modal'),
+        cancelModal: () => closeModal('recurring-modal'),
+        submitForm: (e) => handleRecurringSubmit(e, appState, onUpdate),
+        listClick: (event) => {
+            const id = parseInt(event.target.getAttribute('data-id'));
+            if (!id) return;
+            if (event.target.classList.contains('btn-pay-bill')) payRecurringBill(id, appState, onUpdate);
+            if (event.target.classList.contains('btn-edit-bill')) openRecurringModal(appState.appData, id);
+            if (event.target.classList.contains('btn-delete-bill')) deleteRecurringBill(id, appState, onUpdate);
+        }
+    };
+    
+    // Add event listeners and store references
+    const addRecurringBtn = document.getElementById("add-recurring-btn");
+    if (addRecurringBtn) {
+        addRecurringBtn.addEventListener("click", handlers.openModal);
+        eventListeners.push({ element: addRecurringBtn, type: "click", handler: handlers.openModal });
+    }
+    
+    const closeRecurringModal = document.getElementById("close-recurring-modal");
+    if (closeRecurringModal) {
+        closeRecurringModal.addEventListener("click", handlers.closeModal);
+        eventListeners.push({ element: closeRecurringModal, type: "click", handler: handlers.closeModal });
+    }
+    
+    const cancelRecurringBtn = document.getElementById("cancel-recurring-btn");
+    if (cancelRecurringBtn) {
+        cancelRecurringBtn.addEventListener("click", handlers.cancelModal);
+        eventListeners.push({ element: cancelRecurringBtn, type: "click", handler: handlers.cancelModal });
+    }
+    
+    const recurringForm = document.getElementById("recurring-form");
+    if (recurringForm) {
+        recurringForm.addEventListener("submit", handlers.submitForm);
+        eventListeners.push({ element: recurringForm, type: "submit", handler: handlers.submitForm });
+    }
+
+    const recurringList = document.getElementById("all-recurring-bills-list");
+    if (recurringList) {
+        recurringList.addEventListener('click', handlers.listClick);
+        eventListeners.push({ element: recurringList, type: 'click', handler: handlers.listClick });
+    }
+}
+
+export function cleanupEventListeners() {
+    eventListeners.forEach(({ element, type, handler }) => {
+        element.removeEventListener(type, handler);
     });
+    eventListeners = [];
 }
 
 function openRecurringModal(appData, billId = null) {

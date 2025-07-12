@@ -122,18 +122,63 @@ export function populateDebtAccountDropdown(appData) {
     });
 }
 
-export function setupEventListeners(appState, onUpdate) {
-    document.getElementById("add-debt-btn")?.addEventListener("click", () => openDebtModal(appState.appData));
-    document.getElementById("close-debt-modal")?.addEventListener("click", () => closeModal('debt-modal'));
-    document.getElementById("cancel-debt-btn")?.addEventListener("click", () => closeModal('debt-modal'));
-    document.getElementById("debt-form")?.addEventListener("submit", (e) => handleDebtSubmit(e, appState, onUpdate));
+let eventListeners = [];
 
-    document.getElementById("debt-accounts-list")?.addEventListener('click', (event) => {
-        const target = event.target;
-        const id = parseInt(target.getAttribute('data-id'));
-        if (!id) return;
-        
-        if (target.classList.contains('btn-edit')) openDebtModal(appState.appData, id);
-        if (target.classList.contains('btn-delete')) deleteDebtAccount(id, appState, onUpdate);
+export function setupEventListeners(appState, onUpdate) {
+    // Clean up any existing listeners first
+    cleanupEventListeners();
+    
+    // Store references to event handlers
+    const handlers = {
+        openModal: () => openDebtModal(appState.appData),
+        closeModal: () => closeModal('debt-modal'),
+        cancelModal: () => closeModal('debt-modal'),
+        submitForm: (e) => handleDebtSubmit(e, appState, onUpdate),
+        listClick: (event) => {
+            const target = event.target;
+            const id = parseInt(target.getAttribute('data-id'));
+            if (!id) return;
+            
+            if (target.classList.contains('btn-edit')) openDebtModal(appState.appData, id);
+            if (target.classList.contains('btn-delete')) deleteDebtAccount(id, appState, onUpdate);
+        }
+    };
+    
+    // Add event listeners and store references
+    const addDebtBtn = document.getElementById("add-debt-btn");
+    if (addDebtBtn) {
+        addDebtBtn.addEventListener("click", handlers.openModal);
+        eventListeners.push({ element: addDebtBtn, type: "click", handler: handlers.openModal });
+    }
+    
+    const closeDebtModal = document.getElementById("close-debt-modal");
+    if (closeDebtModal) {
+        closeDebtModal.addEventListener("click", handlers.closeModal);
+        eventListeners.push({ element: closeDebtModal, type: "click", handler: handlers.closeModal });
+    }
+    
+    const cancelDebtBtn = document.getElementById("cancel-debt-btn");
+    if (cancelDebtBtn) {
+        cancelDebtBtn.addEventListener("click", handlers.cancelModal);
+        eventListeners.push({ element: cancelDebtBtn, type: "click", handler: handlers.cancelModal });
+    }
+    
+    const debtForm = document.getElementById("debt-form");
+    if (debtForm) {
+        debtForm.addEventListener("submit", handlers.submitForm);
+        eventListeners.push({ element: debtForm, type: "submit", handler: handlers.submitForm });
+    }
+
+    const debtList = document.getElementById("debt-accounts-list");
+    if (debtList) {
+        debtList.addEventListener('click', handlers.listClick);
+        eventListeners.push({ element: debtList, type: 'click', handler: handlers.listClick });
+    }
+}
+
+export function cleanupEventListeners() {
+    eventListeners.forEach(({ element, type, handler }) => {
+        element.removeEventListener(type, handler);
     });
+    eventListeners = [];
 }

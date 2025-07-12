@@ -3,23 +3,69 @@ import db from '../database.js';
 import { formatCurrency, escapeHtml, safeParseFloat } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
 
-export function setupEventListeners(appState, onUpdate) {
-    document.getElementById("add-cash-account-btn")?.addEventListener("click", () => openCashAccountModal(appState.appData));
-    document.getElementById("close-cash-account-modal")?.addEventListener("click", () => closeModal('cash-account-modal'));
-    document.getElementById("cancel-cash-account-btn")?.addEventListener("click", () => closeModal('cash-account-modal'));
-    document.getElementById("cash-account-form")?.addEventListener("submit", (e) => handleCashAccountSubmit(e, appState, onUpdate));
-    document.getElementById("cash-accounts-list")?.addEventListener('click', (event) => {
-        const target = event.target;
-        const id = parseInt(target.getAttribute('data-id'));
-        if (!id) return;
+let eventListeners = [];
 
-        if (target.classList.contains('btn-edit-account')) {
-            openCashAccountModal(appState.appData, id);
+export function setupEventListeners(appState, onUpdate) {
+    // Clean up any existing listeners first
+    cleanupEventListeners();
+    
+    // Store references to event handlers
+    const handlers = {
+        openModal: () => openCashAccountModal(appState.appData),
+        closeModal: () => closeModal('cash-account-modal'),
+        cancelModal: () => closeModal('cash-account-modal'),
+        submitForm: (e) => handleCashAccountSubmit(e, appState, onUpdate),
+        listClick: (event) => {
+            const target = event.target;
+            const id = parseInt(target.getAttribute('data-id'));
+            if (!id) return;
+
+            if (target.classList.contains('btn-edit-account')) {
+                openCashAccountModal(appState.appData, id);
+            }
+            if (target.classList.contains('btn-delete-account')) {
+                deleteCashAccount(id, appState, onUpdate);
+            }
         }
-        if (target.classList.contains('btn-delete-account')) {
-            deleteCashAccount(id, appState, onUpdate);
-        }
+    };
+    
+    // Add event listeners and store references
+    const addCashAccountBtn = document.getElementById("add-cash-account-btn");
+    if (addCashAccountBtn) {
+        addCashAccountBtn.addEventListener("click", handlers.openModal);
+        eventListeners.push({ element: addCashAccountBtn, type: "click", handler: handlers.openModal });
+    }
+    
+    const closeCashAccountModal = document.getElementById("close-cash-account-modal");
+    if (closeCashAccountModal) {
+        closeCashAccountModal.addEventListener("click", handlers.closeModal);
+        eventListeners.push({ element: closeCashAccountModal, type: "click", handler: handlers.closeModal });
+    }
+    
+    const cancelCashAccountBtn = document.getElementById("cancel-cash-account-btn");
+    if (cancelCashAccountBtn) {
+        cancelCashAccountBtn.addEventListener("click", handlers.cancelModal);
+        eventListeners.push({ element: cancelCashAccountBtn, type: "click", handler: handlers.cancelModal });
+    }
+    
+    const cashAccountForm = document.getElementById("cash-account-form");
+    if (cashAccountForm) {
+        cashAccountForm.addEventListener("submit", handlers.submitForm);
+        eventListeners.push({ element: cashAccountForm, type: "submit", handler: handlers.submitForm });
+    }
+    
+    const cashAccountsList = document.getElementById("cash-accounts-list");
+    if (cashAccountsList) {
+        cashAccountsList.addEventListener('click', handlers.listClick);
+        eventListeners.push({ element: cashAccountsList, type: 'click', handler: handlers.listClick });
+    }
+}
+
+export function cleanupEventListeners() {
+    eventListeners.forEach(({ element, type, handler }) => {
+        element.removeEventListener(type, handler);
     });
+    eventListeners = [];
 }
 
 function openCashAccountModal(appData, accountId = null) {

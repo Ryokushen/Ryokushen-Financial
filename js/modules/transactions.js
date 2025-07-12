@@ -4,25 +4,61 @@ import { safeParseFloat, escapeHtml, formatDate, formatCurrency } from './utils.
 import { showError, announceToScreenReader } from './ui.js';
 
 let currentCategoryFilter = "";
+let eventListeners = [];
 
 export function setupEventListeners(appState, onUpdate) {
-    document.getElementById("transaction-form")?.addEventListener("submit", (e) => handleTransactionSubmit(e, appState, onUpdate));
-
-    document.getElementById("transaction-category")?.addEventListener("change", function () {
-        document.getElementById("debt-account-group").style.display = this.value === "Debt" ? "block" : "none";
-    });
-
-    document.getElementById("filter-category")?.addEventListener("change", (e) => {
-        currentCategoryFilter = e.target.value;
-        renderTransactions(appState, currentCategoryFilter);
-    });
-
-    document.getElementById("transactions-table-body")?.addEventListener('click', (event) => {
-        if (event.target.classList.contains('btn-delete')) {
-            const transactionId = parseInt(event.target.getAttribute('data-id'));
-            deleteTransaction(transactionId, appState, onUpdate);
+    // Clean up any existing listeners first
+    cleanupEventListeners();
+    
+    // Store references to event handlers
+    const handlers = {
+        submitForm: (e) => handleTransactionSubmit(e, appState, onUpdate),
+        categoryChange: function () {
+            document.getElementById("debt-account-group").style.display = this.value === "Debt" ? "block" : "none";
+        },
+        filterChange: (e) => {
+            currentCategoryFilter = e.target.value;
+            renderTransactions(appState, currentCategoryFilter);
+        },
+        tableClick: (event) => {
+            if (event.target.classList.contains('btn-delete')) {
+                const transactionId = parseInt(event.target.getAttribute('data-id'));
+                deleteTransaction(transactionId, appState, onUpdate);
+            }
         }
+    };
+    
+    // Add event listeners and store references
+    const transactionForm = document.getElementById("transaction-form");
+    if (transactionForm) {
+        transactionForm.addEventListener("submit", handlers.submitForm);
+        eventListeners.push({ element: transactionForm, type: "submit", handler: handlers.submitForm });
+    }
+
+    const transactionCategory = document.getElementById("transaction-category");
+    if (transactionCategory) {
+        transactionCategory.addEventListener("change", handlers.categoryChange);
+        eventListeners.push({ element: transactionCategory, type: "change", handler: handlers.categoryChange });
+    }
+
+    const filterCategory = document.getElementById("filter-category");
+    if (filterCategory) {
+        filterCategory.addEventListener("change", handlers.filterChange);
+        eventListeners.push({ element: filterCategory, type: "change", handler: handlers.filterChange });
+    }
+
+    const transactionsTableBody = document.getElementById("transactions-table-body");
+    if (transactionsTableBody) {
+        transactionsTableBody.addEventListener('click', handlers.tableClick);
+        eventListeners.push({ element: transactionsTableBody, type: 'click', handler: handlers.tableClick });
+    }
+}
+
+export function cleanupEventListeners() {
+    eventListeners.forEach(({ element, type, handler }) => {
+        element.removeEventListener(type, handler);
     });
+    eventListeners = [];
 }
 
 async function handleTransactionSubmit(event, appState, onUpdate) {

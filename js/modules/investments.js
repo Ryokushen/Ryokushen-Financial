@@ -287,40 +287,112 @@ export function renderInvestmentAccountsEnhanced(appState) {
     `).join('');
 }
 
+let eventListeners = [];
+
 export function setupEventListeners(appState, onUpdate) {
-    document.getElementById("add-investment-account-btn")?.addEventListener("click", () => openInvestmentAccountModal(appState.appData));
-    document.getElementById("close-investment-account-modal")?.addEventListener("click", () => closeModal('investment-account-modal'));
-    document.getElementById("cancel-investment-account-btn")?.addEventListener("click", () => closeModal('investment-account-modal'));
-    document.getElementById("investment-account-form")?.addEventListener("submit", (e) => handleInvestmentAccountSubmit(e, appState, onUpdate));
+    // Clean up any existing listeners first
+    cleanupEventListeners();
+    
+    // Store references to event handlers
+    const handlers = {
+        openAccountModal: () => openInvestmentAccountModal(appState.appData),
+        closeAccountModal: () => closeModal('investment-account-modal'),
+        cancelAccountModal: () => closeModal('investment-account-modal'),
+        submitAccountForm: (e) => handleInvestmentAccountSubmit(e, appState, onUpdate),
+        listClick: event => {
+            const target = event.target;
+            const accountEl = target.closest('.investment-account');
+            if (!accountEl) return;
+            const accountId = parseInt(accountEl.getAttribute('data-id'));
 
-    document.getElementById("investment-accounts-list")?.addEventListener('click', event => {
-        const target = event.target;
-        const accountEl = target.closest('.investment-account');
-        if (!accountEl) return;
-        const accountId = parseInt(accountEl.getAttribute('data-id'));
+            if (target.classList.contains('btn-edit-account')) {
+                openInvestmentAccountModal(appState.appData, accountId);
+            } else if (target.classList.contains('btn-delete-account')) {
+                deleteInvestmentAccount(accountId, appState, onUpdate);
+            } else if (target.classList.contains('btn-add-holding')) {
+                openHoldingModal(appState.appData, accountId);
+            } else if (target.classList.contains('btn-edit-holding')) {
+                const holdingId = parseInt(target.closest('tr').getAttribute('data-holding-id'));
+                openHoldingModal(appState.appData, accountId, holdingId);
+            } else if (target.classList.contains('btn-delete-holding')) {
+                const holdingId = parseInt(target.closest('tr').getAttribute('data-holding-id'));
+                deleteHolding(accountId, holdingId, appState, onUpdate);
+            }
+        },
+        closeHoldingModal: () => closeModal('holding-modal'),
+        cancelHoldingModal: () => closeModal('holding-modal'),
+        submitHoldingForm: (e) => handleHoldingSubmit(e, appState, onUpdate),
+        updateValue: updateHoldingValue
+    };
+    
+    // Add event listeners and store references
+    const addInvestmentBtn = document.getElementById("add-investment-account-btn");
+    if (addInvestmentBtn) {
+        addInvestmentBtn.addEventListener("click", handlers.openAccountModal);
+        eventListeners.push({ element: addInvestmentBtn, type: "click", handler: handlers.openAccountModal });
+    }
+    
+    const closeInvestmentModal = document.getElementById("close-investment-account-modal");
+    if (closeInvestmentModal) {
+        closeInvestmentModal.addEventListener("click", handlers.closeAccountModal);
+        eventListeners.push({ element: closeInvestmentModal, type: "click", handler: handlers.closeAccountModal });
+    }
+    
+    const cancelInvestmentBtn = document.getElementById("cancel-investment-account-btn");
+    if (cancelInvestmentBtn) {
+        cancelInvestmentBtn.addEventListener("click", handlers.cancelAccountModal);
+        eventListeners.push({ element: cancelInvestmentBtn, type: "click", handler: handlers.cancelAccountModal });
+    }
+    
+    const investmentForm = document.getElementById("investment-account-form");
+    if (investmentForm) {
+        investmentForm.addEventListener("submit", handlers.submitAccountForm);
+        eventListeners.push({ element: investmentForm, type: "submit", handler: handlers.submitAccountForm });
+    }
 
-        if (target.classList.contains('btn-edit-account')) {
-            openInvestmentAccountModal(appState.appData, accountId);
-        } else if (target.classList.contains('btn-delete-account')) {
-            deleteInvestmentAccount(accountId, appState, onUpdate);
-        } else if (target.classList.contains('btn-add-holding')) {
-            openHoldingModal(appState.appData, accountId);
-        } else if (target.classList.contains('btn-edit-holding')) {
-            const holdingId = parseInt(target.closest('tr').getAttribute('data-holding-id'));
-            openHoldingModal(appState.appData, accountId, holdingId);
-        } else if (target.classList.contains('btn-delete-holding')) {
-            const holdingId = parseInt(target.closest('tr').getAttribute('data-holding-id'));
-            deleteHolding(accountId, holdingId, appState, onUpdate);
-        }
-    });
+    const investmentList = document.getElementById("investment-accounts-list");
+    if (investmentList) {
+        investmentList.addEventListener('click', handlers.listClick);
+        eventListeners.push({ element: investmentList, type: 'click', handler: handlers.listClick });
+    }
 
-    document.getElementById("close-holding-modal")?.addEventListener("click", () => closeModal('holding-modal'));
-    document.getElementById("cancel-holding-btn")?.addEventListener("click", () => closeModal('holding-modal'));
-    document.getElementById("holding-form")?.addEventListener("submit", (e) => handleHoldingSubmit(e, appState, onUpdate));
+    const closeHoldingBtn = document.getElementById("close-holding-modal");
+    if (closeHoldingBtn) {
+        closeHoldingBtn.addEventListener("click", handlers.closeHoldingModal);
+        eventListeners.push({ element: closeHoldingBtn, type: "click", handler: handlers.closeHoldingModal });
+    }
+    
+    const cancelHoldingBtn = document.getElementById("cancel-holding-btn");
+    if (cancelHoldingBtn) {
+        cancelHoldingBtn.addEventListener("click", handlers.cancelHoldingModal);
+        eventListeners.push({ element: cancelHoldingBtn, type: "click", handler: handlers.cancelHoldingModal });
+    }
+    
+    const holdingForm = document.getElementById("holding-form");
+    if (holdingForm) {
+        holdingForm.addEventListener("submit", handlers.submitHoldingForm);
+        eventListeners.push({ element: holdingForm, type: "submit", handler: handlers.submitHoldingForm });
+    }
 
     // Auto-calculate holding value
-    document.getElementById('holding-shares')?.addEventListener('input', updateHoldingValue);
-    document.getElementById('holding-price')?.addEventListener('input', updateHoldingValue);
+    const holdingShares = document.getElementById('holding-shares');
+    if (holdingShares) {
+        holdingShares.addEventListener('input', handlers.updateValue);
+        eventListeners.push({ element: holdingShares, type: 'input', handler: handlers.updateValue });
+    }
+    
+    const holdingPrice = document.getElementById('holding-price');
+    if (holdingPrice) {
+        holdingPrice.addEventListener('input', handlers.updateValue);
+        eventListeners.push({ element: holdingPrice, type: 'input', handler: handlers.updateValue });
+    }
+}
+
+export function cleanupEventListeners() {
+    eventListeners.forEach(({ element, type, handler }) => {
+        element.removeEventListener(type, handler);
+    });
+    eventListeners = [];
 }
 
 function updateHoldingValue() {
