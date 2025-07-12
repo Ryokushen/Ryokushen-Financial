@@ -137,7 +137,14 @@ async function handleContributionSubmit(event, appState, onUpdate) {
         if (sourceAccount) sourceAccount.balance -= amount;
 
         savingsAccount.balance += amount;
-        await db.updateInvestmentAccount(savingsAccount.id, { balance: savingsAccount.balance });
+        // Ensure all required fields are sent when updating the account
+        await db.updateInvestmentAccount(savingsAccount.id, {
+            name: savingsAccount.name,
+            institution: savingsAccount.institution,
+            accountType: savingsAccount.accountType,
+            balance: savingsAccount.balance,
+            dayChange: savingsAccount.dayChange
+        });
 
         goal.currentAmount += amount;
         if (goal.currentAmount >= goal.targetAmount && !goal.completedDate) {
