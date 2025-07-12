@@ -125,6 +125,53 @@ function openContributionModal(appData, goalId) {
     openModal('contribution-modal');
 }
 
+// Function to handle transaction deletion and revert savings goal contributions
+export async function handleSavingsGoalTransactionDeletion(transaction, appState) {
+    // Check if this transaction is a savings goal contribution
+    if (!transaction.description || !transaction.description.includes('[Savings Goal')) {
+        return;
+    }
+
+    // Extract goal name from transaction description
+    const goalNameMatch = transaction.description.match(/\[Savings Goal(?:: ([^\]]+))?\]/);
+    if (!goalNameMatch) {
+        return;
+    }
+
+    // Find the savings goal by matching the linked account
+    const goal = appState.appData.savingsGoals.find(g => g.linkedAccountId === transaction.account_id);
+    
+    if (!goal) {
+        console.warn('Could not find savings goal for transaction:', transaction.description);
+        return;
+    }
+
+    try {
+        // Revert the contribution amount from the goal
+        goal.currentAmount -= Math.abs(transaction.amount);
+        
+        // Ensure currentAmount doesn't go negative
+        if (goal.currentAmount < 0) {
+            goal.currentAmount = 0;
+        }
+
+        // Update completed status if needed
+        if (goal.completedDate && goal.currentAmount < goal.targetAmount) {
+            goal.completedDate = null;
+        }
+
+        // Update the goal in the database
+        await db.updateSavingsGoal(goal.id, {
+            current_amount: goal.currentAmount,
+            completed_date: goal.completedDate
+        });
+
+        console.log(`Reverted savings goal contribution: ${goal.name}, new amount: ${goal.currentAmount}`);
+    } catch (error) {
+        console.error('Error reverting savings goal contribution:', error);
+    }
+}
+
 // UPDATED: New function to populate contribution source dropdown
 function populateContributionSourceDropdown(appData) {
     const select = document.getElementById("contribution-source");
@@ -214,7 +261,7 @@ async function handleContributionSubmit(event, appState, onUpdate) {
                 date: new Date().toISOString().split('T')[0],
                 account_id: sourceAccountId,
                 category: "Transfer",
-                description: `Transfer to ${targetAccount.name}`,
+                description: `Transfer to ${targetAccount.name} [Savings Goal: ${goal.name}]`,
                 amount: -amount,
                 cleared: true
             };
@@ -236,7 +283,7 @@ async function handleContributionSubmit(event, appState, onUpdate) {
                 date: new Date().toISOString().split('T')[0],
                 account_id: goal.linkedAccountId,
                 category: "Transfer",
-                description: `Contribution to ${goal.name}`,
+                description: `Contribution to ${goal.name} [Savings Goal]`,
                 amount: amount,
                 cleared: true
             };
@@ -338,7 +385,7 @@ function populateGoalAccountDropdown(appData) {
 
     select.innerHTML = "<option value=\"\" disabled selected>Select Savings Account</option>";
 
-    // Add cash accounts with type "Savings Account"
+    // Add cash accounts with type "Savings"
     appData.cashAccounts
         .filter(acc => acc.type === "Savings" && acc.isActive)
         .forEach(acc => {

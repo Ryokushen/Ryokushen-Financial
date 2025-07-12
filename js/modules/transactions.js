@@ -3,6 +3,7 @@ import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatDate, formatCurrency, getNextDueDate } from './utils.js';
 import { showError, announceToScreenReader } from './ui.js';
 import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, ValidationRules } from './validation.js';
+import { handleSavingsGoalTransactionDeletion } from './savings.js';
 
 let currentCategoryFilter = "";
 let editingTransactionId = null;
@@ -478,6 +479,9 @@ async function deleteTransaction(id, appState, onUpdate) {
 
             // Check if this was a recurring bill payment and revert the due date
             await handleRecurringBillReversion(transactionToDelete, appState);
+
+            // Check if this was a savings goal contribution and revert the goal amount
+            await handleSavingsGoalTransactionDeletion(transactionToDelete, appState);
 
             appState.appData.transactions = appState.appData.transactions.filter(t => t.id !== id);
 
