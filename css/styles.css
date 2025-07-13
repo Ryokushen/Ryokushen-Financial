@@ -1968,6 +1968,229 @@ select.form-control {
   gap: var(--space-24);
 }
 
+/* Enhanced Dashboard Layout Options */
+.dashboard-layout-flex {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+.hero-chart-section {
+  width: 100%;
+  background: var(--color-surface);
+  border-radius: var(--radius-12);
+  padding: var(--space-24);
+  box-shadow: var(--shadow-card);
+  margin-bottom: var(--space-24);
+}
+
+.hero-chart-section h3 {
+  margin-bottom: var(--space-16);
+  font-size: var(--font-size-xl);
+  color: var(--color-text);
+}
+
+.hero-chart-section .chart-container {
+  height: 400px;
+}
+
+.priority-charts-grid {
+  display: grid;
+  gap: var(--space-24);
+  grid-template-areas:
+    "main main side"
+    "bottom1 bottom2 side";
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 300px 300px;
+}
+
+.priority-charts-grid .chart-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-12);
+  padding: var(--space-24);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+}
+
+.priority-charts-grid .chart-card h3 {
+  margin-bottom: var(--space-16);
+  font-size: var(--font-size-lg);
+  color: var(--color-text);
+}
+
+.priority-charts-grid .chart-card .chart-container {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+}
+
+.priority-charts-grid .chart-main {
+  grid-area: main;
+}
+
+.priority-charts-grid .chart-side {
+  grid-area: side;
+}
+
+.priority-charts-grid .chart-bottom1 {
+  grid-area: bottom1;
+}
+
+.priority-charts-grid .chart-bottom2 {
+  grid-area: bottom2;
+}
+
+/* Collapsible Chart Sections */
+.chart-section.collapsible {
+  margin-bottom: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-8);
+  overflow: hidden;
+}
+
+.chart-section .section-header {
+  padding: var(--space-16);
+  background: var(--color-secondary);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+
+.chart-section .section-header:hover {
+  background: var(--color-secondary-hover);
+}
+
+.chart-section .section-content {
+  padding: var(--space-16);
+  transition: max-height 0.3s ease;
+  overflow: hidden;
+}
+
+.chart-section.collapsed .section-content {
+  max-height: 0;
+  padding: 0;
+}
+
+.chart-section .toggle-icon {
+  transition: transform 0.3s ease;
+}
+
+.chart-section.collapsed .toggle-icon {
+  transform: rotate(-90deg);
+}
+
+/* Masonry Layout Option */
+.masonry-grid {
+  column-count: 3;
+  column-gap: var(--space-24);
+}
+
+.masonry-grid .chart-card {
+  break-inside: avoid;
+  margin-bottom: var(--space-24);
+  background: var(--color-surface);
+  border-radius: var(--radius-8);
+  padding: var(--space-16);
+  box-shadow: var(--shadow-card);
+}
+
+/* Chart Size Variants */
+.chart-container.chart-small {
+  height: 200px;
+}
+
+.chart-container.chart-medium {
+  height: 300px;
+}
+
+.chart-container.chart-large {
+  height: 400px;
+}
+
+.chart-container.chart-xlarge {
+  height: 500px;
+}
+
+/* Enhanced layout for single chart in grid */
+.enhanced-charts-grid {
+  display: flex;
+  justify-content: center;
+}
+
+.enhanced-charts-grid .chart-card-enhanced {
+  max-width: 500px;
+  width: 100%;
+}
+
+/* Chart Tab Navigation */
+.chart-tabs {
+  background: var(--color-surface);
+  border-radius: var(--radius-12);
+  padding: var(--space-16);
+}
+
+.chart-tabs .tab-nav {
+  display: flex;
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-8);
+}
+
+.chart-tabs .tab-nav button {
+  padding: var(--space-8) var(--space-16);
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.chart-tabs .tab-nav button:hover {
+  color: var(--color-text);
+}
+
+.chart-tabs .tab-nav button.active {
+  color: var(--color-primary);
+}
+
+.chart-tabs .tab-nav button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -9px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-primary);
+}
+
+.chart-tabs .tab-content > div {
+  display: none;
+}
+
+.chart-tabs .tab-content > div.active {
+  display: block;
+}
+
+@media (max-width: 1024px) {
+  .priority-charts-grid {
+    grid-template-areas:
+      "main main"
+      "side side"
+      "bottom1 bottom2";
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 300px 250px 250px;
+  }
+  
+  .masonry-grid {
+    column-count: 2;
+  }
+}
+
 @media (max-width: 768px) {
   .payoff-calculator {
     flex-direction: column;
@@ -1979,6 +2202,24 @@ select.form-control {
   
   .debt-charts .charts-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .priority-charts-grid {
+    grid-template-areas:
+      "main"
+      "side"
+      "bottom1"
+      "bottom2";
+    grid-template-columns: 1fr;
+    grid-template-rows: 300px 250px 250px 250px;
+  }
+  
+  .masonry-grid {
+    column-count: 1;
+  }
+  
+  .hero-chart-section {
+    height: 300px;
   }
 }
 
