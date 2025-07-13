@@ -220,6 +220,12 @@ function calculateAndDisplayPayoff(appState) {
     }
     
     // Display extra payment allocation recommendation
+    // First, remove any existing allocation recommendations
+    const existingAllocation = document.querySelector('.extra-payment-allocation');
+    if (existingAllocation) {
+        existingAllocation.remove();
+    }
+    
     if (extraPayment > 0) {
         const allocation = DebtStrategy.allocateExtraPayment(debts, strategy, extraPayment);
         if (allocation.length > 0) {
