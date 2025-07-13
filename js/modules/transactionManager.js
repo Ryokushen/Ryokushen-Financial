@@ -40,7 +40,7 @@ export class TransactionManager {
                     results.push(result);
                     this.completed.push({ operation, rollback, result, description });
                 } catch (error) {
-                    console.error(`Failed: ${description}`, error);
+                    debug.error(`Failed: ${description}`, error);
                     // Operation failed, rollback all completed operations
                     await this.rollback();
                     throw new Error(`Transaction failed at step: ${description}. ${error.message}`);
@@ -71,7 +71,7 @@ export class TransactionManager {
                     debug.log(`Rolling back: ${description}`);
                     await rollback(result);
                 } catch (error) {
-                    console.error(`Rollback failed for: ${description}`, error);
+                    debug.error(`Rollback failed for: ${description}`, error);
                     // Continue with other rollbacks even if one fails
                 }
             }

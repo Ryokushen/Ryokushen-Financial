@@ -3,6 +3,8 @@ import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatDate, formatCurrency, getDueDateClass, getDueDateText, convertToMonthly, getNextDueDate } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
 import { debug } from './debug.js';
+import { subtractMoney, addMoney } from './financialMath.js';
+import { validateForm, ValidationSchemas, showFieldError, clearFormErrors } from './validation.js';
 
 export function setupEventListeners(appState, onUpdate) {
     document.getElementById("add-recurring-btn")?.addEventListener("click", () => openRecurringModal(appState.appData));
@@ -123,21 +125,32 @@ function populateRecurringAccountDropdowns(appData) {
 
 async function handleRecurringSubmit(event, appState, onUpdate) {
     event.preventDefault();
+    
+    // Clear previous errors
+    clearFormErrors('recurring-form');
 
     try {
         const billId = document.getElementById("recurring-id").value;
         const paymentMethod = document.getElementById("recurring-payment-method").value;
-        const amount = safeParseFloat(document.getElementById("recurring-amount").value);
-        const nextDue = document.getElementById("recurring-next-due").value;
-
-        // Validation
-        if (amount <= 0) {
-            showError("Amount must be greater than zero.");
-            return;
-        }
-
-        if (!nextDue) {
-            showError("Please select a next due date.");
+        
+        const formData = {
+            name: document.getElementById("recurring-name").value.trim(),
+            category: document.getElementById("recurring-category").value,
+            amount: safeParseFloat(document.getElementById("recurring-amount").value),
+            frequency: document.getElementById("recurring-frequency").value,
+            nextDue: document.getElementById("recurring-next-due").value
+        };
+        
+        // Validate form data
+        const { errors, hasErrors } = validateForm(formData, ValidationSchemas.recurringBill);
+        
+        if (hasErrors) {
+            // Show field-level errors
+            Object.entries(errors).forEach(([field, error]) => {
+                const fieldId = field === 'nextDue' ? 'recurring-next-due' : `recurring-${field}`;
+                showFieldError(fieldId, error);
+            });
+            showError("Please correct the errors in the form.");
             return;
         }
 
@@ -276,7 +289,7 @@ async function payRecurringBill(id, appState, onUpdate) {
                 } else {
                     const paymentAccount = appState.appData.cashAccounts.find(a => a.id === bill.account_id);
                     if (paymentAccount) {
-                        paymentAccount.balance -= bill.amount;
+                        paymentAccount.balance = subtractMoney(paymentAccount.balance, bill.amount);
                     }
                 }
             } else if (paymentMethod === 'credit') {

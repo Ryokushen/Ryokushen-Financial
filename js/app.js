@@ -12,6 +12,8 @@ import * as Savings from './modules/savings.js';
 import * as KPIs from './modules/kpis.js';
 import { renderBillsTimeline } from './modules/timeline.js';
 import { updateDashboard } from './modules/dashboard.js';
+import { debug } from './modules/debug.js';
+import { addMoney } from './modules/financialMath.js';
 
 const appState = {
     appData: {
@@ -28,13 +30,13 @@ const appState = {
 
 // Global error handlers
 window.addEventListener('unhandledrejection', event => {
-    console.error('Unhandled promise rejection:', event.reason);
+    debug.error('Unhandled promise rejection:', event.reason);
     showError('An unexpected error occurred. Please refresh the page if issues persist.');
     event.preventDefault();
 });
 
 window.addEventListener('error', event => {
-    console.error('Global error:', event.error);
+    debug.error('Global error:', event.error);
     showError('An unexpected error occurred. Please refresh the page if issues persist.');
     event.preventDefault();
 });
@@ -56,7 +58,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         setupEventListeners();
     } catch (error) {
         showError("Fatal: Could not initialize the application. " + error.message);
-        console.error("Initialization Error:", error);
+        debug.error("Initialization Error:", error);
     }
 });
 
@@ -102,7 +104,7 @@ async function loadAllData() {
         // Log any failures
         results.forEach((result, index) => {
             if (result.status === 'rejected') {
-                console.error(`Failed to load ${dataTypes[index]}:`, result.reason);
+                debug.error(`Failed to load ${dataTypes[index]}:`, result.reason);
                 showError(`Warning: Failed to load ${dataTypes[index]}. Some features may be limited.`);
             }
         });
@@ -152,7 +154,7 @@ async function loadAllData() {
 
         await migrateDebtTransactions(appState.appData.transactions, appState.appData.debtAccounts);
     } catch (error) {
-        console.error("Data Loading Error:", error);
+        debug.error("Data Loading Error:", error);
         showError("Could not load financial data from the database. Please refresh the page.");
         // Prevent app from proceeding with empty state
         appState.appData = {
@@ -193,7 +195,7 @@ function calculateAccountBalances() {
 function updateAccountBalance(accountId, amountChange) {
     const account = appState.appData.cashAccounts.find(a => a.id === accountId);
     if (account) {
-        account.balance = (account.balance || 0) + amountChange;
+        account.balance = addMoney(account.balance || 0, amountChange);
         appState.balanceCache.set(accountId, account.balance);
     }
 }
@@ -203,7 +205,7 @@ function setupEventListeners() {
         // Clear KPI cache when data is updated
         import('./modules/kpis.js')
             .then(kpis => kpis.clearKPICache())
-            .catch(error => console.error('Failed to clear KPI cache:', error));
+            .catch(error => debug.error('Failed to clear KPI cache:', error));
         updateAllDisplays(appState);
     };
 
@@ -265,7 +267,7 @@ async function migrateDebtTransactions(transactions, debtAccounts) {
             await db.updateTransaction(t.id, { debt_account_id: t.debt_account_id });
             delete t.debt_account;  // Clean up old field
         } else {
-            console.warn(`Migration: No matching debt account for transaction ${t.id}`);
+            debug.warn(`Migration: No matching debt account for transaction ${t.id}`);
         }
     }
 }

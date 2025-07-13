@@ -4,6 +4,8 @@ import { safeParseFloat, escapeHtml, formatDate, formatCurrency, getNextDueDate 
 import { showError, announceToScreenReader } from './ui.js';
 import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, ValidationRules } from './validation.js';
 import { handleSavingsGoalTransactionDeletion } from './savings.js';
+import { debug } from './debug.js';
+import { addMoney, subtractMoney } from './financialMath.js';
 
 let currentCategoryFilter = "";
 let editingTransactionId = null;
@@ -234,7 +236,7 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
         }
 
     } catch (error) {
-        console.error("Error handling transaction:", error);
+        debug.error("Error handling transaction:", error);
         showError("Failed to save transaction. " + error.message);
     }
 }
@@ -325,7 +327,7 @@ async function reverseTransactionEffects(transaction, appState) {
         }
 
         if (debtAccount) {
-            const newBalance = debtAccount.balance - transaction.amount;
+            const newBalance = subtractMoney(debtAccount.balance, transaction.amount);
             await db.updateDebtBalance(debtAccount.id, newBalance);
             debtAccount.balance = newBalance;
         }
@@ -352,7 +354,7 @@ function updateCashAccountBalance(accountId, amount, appState) {
     } else {
         const account = appState.appData.cashAccounts.find(a => a.id === accountId);
         if (account) {
-            account.balance = (account.balance || 0) + amount;
+            account.balance = addMoney(account.balance || 0, amount);
         }
     }
 }
@@ -360,7 +362,7 @@ function updateCashAccountBalance(accountId, amount, appState) {
 async function updateDebtAccountBalance(debtAccountId, amount, appState) {
     const debtAccount = appState.appData.debtAccounts.find(d => d.id === debtAccountId);
     if (debtAccount) {
-        const newBalance = debtAccount.balance + amount;
+        const newBalance = addMoney(debtAccount.balance, amount);
         await db.updateDebtBalance(debtAccount.id, newBalance);
         debtAccount.balance = newBalance;
     }
@@ -493,7 +495,7 @@ async function deleteTransaction(id, appState, onUpdate) {
             onUpdate();
             announceToScreenReader("Transaction deleted");
         } catch (error) {
-            console.error("Error deleting transaction:", error);
+            debug.error("Error deleting transaction:", error);
             showError("Failed to delete transaction.");
         }
     }
@@ -516,7 +518,7 @@ async function handleRecurringBillReversion(deletedTransaction, appState) {
     );
 
     if (!recurringBill) {
-        console.warn('Could not find matching recurring bill for transaction:', deletedTransaction.description);
+        debug.warn('Could not find matching recurring bill for transaction:', deletedTransaction.description);
         return;
     }
 
@@ -535,7 +537,7 @@ async function handleRecurringBillReversion(deletedTransaction, appState) {
             debt_account_id: recurringBill.debtAccountId || recurringBill.debt_account_id
         });
     } catch (error) {
-        console.error('Error reverting recurring bill due date:', error);
+        debug.error('Error reverting recurring bill due date:', error);
     }
 }
 

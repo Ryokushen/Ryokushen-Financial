@@ -4,6 +4,7 @@ import * as KPIs from './kpis.js';
 import { renderBillsTimeline } from './timeline.js';
 import * as Accounts from './accounts.js';
 import * as Debt from './debt.js';
+import { addMoney, subtractMoney, sumMoney, convertToMonthlyPrecise } from './financialMath.js';
 
 function renderFinancialHealth(kpiResults) {
     const container = document.querySelector('.health-score-container');
@@ -63,11 +64,11 @@ function renderRecentTransactions(appData) {
 
 
 export function updateDashboard({ appData }) {
-    const totalCash = appData.cashAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
-    const totalInvestments = appData.investmentAccounts.reduce((sum, acc) => sum + acc.balance, 0);
-    const totalDebt = appData.debtAccounts.reduce((sum, acc) => sum + acc.balance, 0);
-    const monthlyRecurring = appData.recurringBills.filter(b => b.active !== false).reduce((sum, b) => sum + convertToMonthly(b.amount, b.frequency), 0);
-    const netWorth = totalCash + totalInvestments - totalDebt;
+    const totalCash = sumMoney(appData.cashAccounts.map(acc => acc.balance || 0));
+    const totalInvestments = sumMoney(appData.investmentAccounts.map(acc => acc.balance));
+    const totalDebt = sumMoney(appData.debtAccounts.map(acc => acc.balance));
+    const monthlyRecurring = sumMoney(appData.recurringBills.filter(b => b.active !== false).map(b => convertToMonthlyPrecise(b.amount, b.frequency)));
+    const netWorth = subtractMoney(addMoney(totalCash, totalInvestments), totalDebt);
 
     const emergencyRatio = KPIs.calculateEmergencyFundRatio(appData);
     const dti = KPIs.calculateDebtToIncomeRatio(appData);

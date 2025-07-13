@@ -1,6 +1,7 @@
 // js/modules/charts.js
 import { formatCurrency } from './utils.js';
 import { calculateDebtToIncomeRatio } from './kpis.js';
+import { debug } from './debug.js';
 
 let chartInstances = {};
 
@@ -106,7 +107,7 @@ export function createCharts(appState) {
         if (document.getElementById("assetsDebtChart")) createAssetsDebtChart(appState);
 
     } catch (error) {
-        console.error("Error creating charts:", error);
+        debug.error("Error creating charts:", error);
     }
 }
 

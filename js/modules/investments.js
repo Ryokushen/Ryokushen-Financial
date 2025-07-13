@@ -6,6 +6,9 @@ import { stockApiService, HoldingsUpdater, formatLastUpdateTime } from './stockA
 import { loadingState, showButtonSuccess, showButtonError } from './loadingState.js';
 import { domCache, cacheFormElements } from './domCache.js';
 import { batchUpdateSavingsGoal, flushBatch } from './batchOperations.js';
+import { debug } from './debug.js';
+import { sumMoney, multiplyMoney } from './financialMath.js';
+import { validateForm, ValidationSchemas, showFieldError, clearFormErrors } from './validation.js';
 
 // Initialize holdings updater (will be set with appState later)
 let holdingsUpdater = null;
@@ -72,6 +75,10 @@ function openInvestmentAccountModal(appData, accountId = null) {
 
 async function handleInvestmentAccountSubmit(event, appState, onUpdate) {
     event.preventDefault();
+    
+    // Clear previous errors
+    clearFormErrors('investment-account-form');
+    
     try {
         // Use cached elements
         const elements = domCache.cacheElements({
@@ -91,6 +98,21 @@ async function handleInvestmentAccountSubmit(event, appState, onUpdate) {
             balance: safeParseFloat(elements.balance.value),
             dayChange: safeParseFloat(elements.dayChange.value)
         };
+        
+        // Validate form data
+        const { errors, hasErrors } = validateForm(accountData, ValidationSchemas.investmentAccount);
+        
+        if (hasErrors) {
+            // Show field-level errors
+            Object.entries(errors).forEach(([field, error]) => {
+                const fieldId = field === 'accountType' ? 'investment-account-type' : 
+                               field === 'dayChange' ? 'investment-account-day-change' :
+                               `investment-account-${field}`;
+                showFieldError(fieldId, error);
+            });
+            showError("Please correct the errors in the form.");
+            return;
+        }
 
         if (accountId) {
             const savedAccount = await db.updateInvestmentAccount(parseInt(accountId), accountData);
@@ -125,7 +147,7 @@ async function deleteInvestmentAccount(id, appState, onUpdate) {
                         goal.accountDeleted = true;
                     })
                     .catch(goalError => {
-                        console.error(`Failed to update savings goal ${goal.id}:`, goalError);
+                        debug.error(`Failed to update savings goal ${goal.id}:`, goalError);
                         showError(`Warning: Failed to unlink savings goal "${goal.name}". You may need to update it manually.`);
                     })
             );
@@ -139,7 +161,7 @@ async function deleteInvestmentAccount(id, appState, onUpdate) {
             await onUpdate();
             announceToScreenReader("Investment account deleted");
         } catch (error) {
-            console.error("Error deleting investment account:", error);
+            debug.error("Error deleting investment account:", error);
             showError("Failed to delete investment account. Please try again.");
         }
     }
@@ -178,26 +200,39 @@ function openHoldingModal(appData, accountId, holdingId = null) {
 
 async function handleHoldingSubmit(event, appState, onUpdate) {
     event.preventDefault();
+    
+    // Clear previous errors
+    clearFormErrors('holding-form');
+    
     try {
         const accountId = parseInt(document.getElementById("holding-account-id").value);
         const holdingIndex = document.getElementById("holding-index").value;
 
-        const holdingData = {
+        const formData = {
             symbol: document.getElementById("holding-symbol").value.toUpperCase().trim(),
-            company: document.getElementById("holding-company").value.trim(),
             shares: safeParseFloat(document.getElementById("holding-shares").value),
-            current_price: safeParseFloat(document.getElementById("holding-price").value),
-            value: safeParseFloat(document.getElementById("holding-shares").value) * safeParseFloat(document.getElementById("holding-price").value)
+            price: safeParseFloat(document.getElementById("holding-price").value)
         };
-
-        if (!holdingData.symbol) {
-            showError("Holding symbol is required.");
+        
+        // Validate form data
+        const { errors, hasErrors } = validateForm(formData, ValidationSchemas.holding);
+        
+        if (hasErrors) {
+            // Show field-level errors
+            Object.entries(errors).forEach(([field, error]) => {
+                showFieldError(`holding-${field}`, error);
+            });
+            showError("Please correct the errors in the form.");
             return;
         }
-        if (holdingData.shares <= 0 || holdingData.current_price <= 0) {
-            showError("Shares and Price must be positive numbers.");
-            return;
-        }
+        
+        // Add computed fields after validation
+        const holdingData = {
+            ...formData,
+            company: document.getElementById("holding-company").value.trim(),
+            current_price: formData.price,
+            value: multiplyMoney(formData.shares, formData.price)
+        };
 
         const account = appState.appData.investmentAccounts.find(a => a.id === accountId);
         if (account) {
@@ -213,7 +248,7 @@ async function handleHoldingSubmit(event, appState, onUpdate) {
             // FIXED: Only recalculate balance from holdings if this account has holdings
             // For savings accounts and other accounts without holdings, preserve the manually set balance
             if (account.holdings && account.holdings.length > 0) {
-                account.balance = account.holdings.reduce((sum, h) => sum + h.value, 0);
+                account.balance = sumMoney(account.holdings.map(h => h.value));
                 await db.updateInvestmentAccount(accountId, account);
             }
         }
@@ -222,7 +257,7 @@ async function handleHoldingSubmit(event, appState, onUpdate) {
         await onUpdate();
         announceToScreenReader("Holding saved successfully");
     } catch (error) {
-        console.error("Error saving holding:", error);
+        debug.error("Error saving holding:", error);
         showError("Failed to save holding. Please check your inputs and try again.");
     }
 }
@@ -243,14 +278,14 @@ async function deleteHolding(accountId, holdingId, appState, onUpdate) {
             // FIXED: Only recalculate balance from holdings if this account still has holdings
             // If no holdings remain, preserve the account's balance (don't set to 0)
             if (account.holdings && account.holdings.length > 0) {
-                account.balance = account.holdings.reduce((sum, h) => sum + h.value, 0);
+                account.balance = sumMoney(account.holdings.map(h => h.value));
                 await db.updateInvestmentAccount(accountId, account);
             }
 
             await onUpdate();
             announceToScreenReader("Holding deleted");
         } catch (error) {
-            console.error("Error deleting holding:", error);
+            debug.error("Error deleting holding:", error);
             showError("Failed to delete holding. Please try again.");
         }
     }
@@ -293,7 +328,7 @@ async function updateAllStockPrices(appState, onUpdate) {
             }
         );
     } catch (error) {
-        console.error("Error updating stock prices:", error);
+        debug.error("Error updating stock prices:", error);
         showError("Failed to update stock prices. Please check your internet connection and API key.");
         showButtonError('update-all-prices-btn');
     }
@@ -314,7 +349,7 @@ async function updateSingleHolding(symbol, appState, onUpdate) {
             showError(`Failed to update ${symbol}. Symbol may not be found.`);
         }
     } catch (error) {
-        console.error(`Error updating ${symbol}:`, error);
+        debug.error(`Error updating ${symbol}:`, error);
         showError(`Failed to update ${symbol}.`);
     }
 }
@@ -327,8 +362,8 @@ export function renderInvestmentAccountsEnhanced(appState) {
 
     if (!list || !totalValueEl || !dayChangeEl) return;
 
-    const totalValue = investmentAccounts.reduce((sum, acc) => sum + acc.balance, 0);
-    const totalDayChange = investmentAccounts.reduce((sum, acc) => sum + acc.dayChange, 0);
+    const totalValue = sumMoney(investmentAccounts.map(acc => acc.balance));
+    const totalDayChange = sumMoney(investmentAccounts.map(acc => acc.dayChange));
 
     totalValueEl.textContent = formatCurrency(totalValue);
     dayChangeEl.textContent = formatCurrency(totalDayChange);
@@ -456,5 +491,5 @@ export function setupEventListeners(appState, onUpdate) {
 function updateHoldingValue() {
     const shares = safeParseFloat(document.getElementById('holding-shares').value);
     const price = safeParseFloat(document.getElementById('holding-price').value);
-    document.getElementById('holding-value').value = (shares * price).toFixed(2);
+    document.getElementById('holding-value').value = multiplyMoney(shares, price).toFixed(2);
 }

@@ -1,5 +1,6 @@
 // js/modules/validation.js
 import { showError } from './ui.js';
+import { debug } from './debug.js';
 
 // Validation rules
 export const ValidationRules = {
@@ -252,6 +253,14 @@ export const ValidationSchemas = {
         symbol: [ValidationRules.required, ValidationRules.validStockSymbol],
         shares: [ValidationRules.required, ValidationRules.positiveNumber],
         price: [ValidationRules.required, ValidationRules.positiveNumber]
+    },
+    
+    investmentAccount: {
+        name: [ValidationRules.required, ValidationRules.minLength(2), ValidationRules.maxLength(50)],
+        institution: [ValidationRules.required, ValidationRules.maxLength(100)],
+        accountType: ValidationRules.required,
+        balance: ValidationRules.nonNegativeNumber,
+        dayChange: ValidationRules.required
     }
 };
 
@@ -269,7 +278,7 @@ export async function validateWithAsyncRules(formData, validationSchema, asyncVa
                 hasErrors = true;
             }
         } catch (e) {
-            console.error(`Async validation error for field ${field}:`, e);
+            debug.error(`Async validation error for field ${field}:`, e);
         }
     }
     

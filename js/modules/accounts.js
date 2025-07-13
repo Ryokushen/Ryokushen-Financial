@@ -2,6 +2,7 @@
 import db from '../database.js';
 import { formatCurrency, escapeHtml, safeParseFloat } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
+import { validateForm, ValidationSchemas, showFieldError, clearFormErrors } from './validation.js';
 
 export function setupEventListeners(appState, onUpdate) {
     document.getElementById("add-cash-account-btn")?.addEventListener("click", () => openCashAccountModal(appState.appData));
@@ -50,6 +51,10 @@ function openCashAccountModal(appData, accountId = null) {
 
 async function handleCashAccountSubmit(event, appState, onUpdate) {
     event.preventDefault();
+    
+    // Clear previous errors
+    clearFormErrors('cash-account-form');
+    
     try {
         const accountId = document.getElementById("cash-account-id").value;
         const accountData = {
@@ -59,6 +64,18 @@ async function handleCashAccountSubmit(event, appState, onUpdate) {
             notes: document.getElementById("cash-account-notes").value,
             isActive: true
         };
+        
+        // Validate form data
+        const { errors, hasErrors } = validateForm(accountData, ValidationSchemas.cashAccount);
+        
+        if (hasErrors) {
+            // Show field-level errors
+            Object.entries(errors).forEach(([field, error]) => {
+                showFieldError(`cash-account-${field}`, error);
+            });
+            showError("Please correct the errors in the form.");
+            return;
+        }
 
         if (accountId) {
             await db.updateCashAccount(parseInt(accountId), accountData);
@@ -69,6 +86,13 @@ async function handleCashAccountSubmit(event, appState, onUpdate) {
             }
         } else {
             const initialBalance = safeParseFloat(document.getElementById("cash-account-initial-balance").value);
+            
+            // Validate initial balance if provided
+            if (document.getElementById("cash-account-initial-balance").value && isNaN(initialBalance)) {
+                showFieldError("cash-account-initial-balance", "Initial balance must be a valid number");
+                showError("Please correct the errors in the form.");
+                return;
+            }
             const savedAccount = await db.addCashAccount(accountData);
             const newAccount = { ...savedAccount, isActive: savedAccount.is_active, balance: 0 };
             

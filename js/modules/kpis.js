@@ -1,5 +1,6 @@
 // js/modules/kpis.js
 import { transactionMemoizer, memoCache } from './memoization.js';
+import { addMoney, subtractMoney, sumMoney, divideMoney, multiplyMoney } from './financialMath.js';
 
 /**
  * Groups transactions by month for the last N months.
@@ -40,17 +41,19 @@ const calculateAverageMonthlyIncome = memoCache.memoize(
         let monthsWithIncome = 0;
 
         monthlyGroups.forEach(monthTransactions => {
-            const monthlyIncome = monthTransactions
-                .filter(t => t.category === 'Income') //
-                .reduce((sum, t) => sum + t.amount, 0);
+            const monthlyIncome = sumMoney(
+                monthTransactions
+                    .filter(t => t.category === 'Income')
+                    .map(t => t.amount)
+            );
 
             if (monthlyIncome > 0) {
-                totalIncome += monthlyIncome;
+                totalIncome = addMoney(totalIncome, monthlyIncome);
                 monthsWithIncome++;
             }
         });
 
-        return monthsWithIncome > 0 ? totalIncome / monthsWithIncome : 0;
+        return monthsWithIncome > 0 ? divideMoney(totalIncome, monthsWithIncome) : 0;
     },
     { name: 'calculateAverageMonthlyIncome', ttl: 60000 } // Cache for 1 minute
 );
@@ -67,17 +70,19 @@ const calculateAverageMonthlyExpenses = memoCache.memoize(
         let monthsWithExpenses = 0;
 
         monthlyGroups.forEach(monthTransactions => {
-            const monthlyExpense = monthTransactions
-                .filter(t => (t.amount < 0 && t.category !== 'Transfer' && t.category !== 'Debt') || (t.amount > 0 && t.debt_account_id)) //
-                .reduce((sum, t) => sum + (t.amount < 0 ? t.amount : -t.amount), 0);
+            const monthlyExpense = sumMoney(
+                monthTransactions
+                    .filter(t => (t.amount < 0 && t.category !== 'Transfer' && t.category !== 'Debt') || (t.amount > 0 && t.debt_account_id))
+                    .map(t => t.amount < 0 ? t.amount : -t.amount)
+            );
 
             if (monthlyExpense < 0) {
-                totalExpenses += monthlyExpense;
+                totalExpenses = addMoney(totalExpenses, monthlyExpense);
                 monthsWithExpenses++;
             }
         });
 
-        const average = monthsWithExpenses > 0 ? totalExpenses / monthsWithExpenses : 0;
+        const average = monthsWithExpenses > 0 ? divideMoney(totalExpenses, monthsWithExpenses) : 0;
         return Math.abs(average); // Return as a positive value
     },
     { name: 'calculateAverageMonthlyExpenses', ttl: 60000 } // Cache for 1 minute
@@ -92,11 +97,11 @@ const calculateAverageMonthlyExpenses = memoCache.memoize(
  * @returns {number} The number of months of expenses covered by cash accounts.
  */
 export function calculateEmergencyFundRatio(appData) {
-    const totalCash = appData.cashAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0); //
+    const totalCash = sumMoney(appData.cashAccounts.map(acc => acc.balance || 0));
     const averageMonthlyExpenses = calculateAverageMonthlyExpenses(appData.transactions);
 
     if (averageMonthlyExpenses === 0) return Infinity; // Avoid division by zero
-    return totalCash / averageMonthlyExpenses;
+    return divideMoney(totalCash, averageMonthlyExpenses);
 }
 
 /**
@@ -105,11 +110,11 @@ export function calculateEmergencyFundRatio(appData) {
  * @returns {number} The DTI ratio as a percentage.
  */
 export function calculateDebtToIncomeRatio(appData) {
-    const totalMonthlyDebtPayments = appData.debtAccounts.reduce((sum, acc) => sum + acc.minimumPayment, 0); //
+    const totalMonthlyDebtPayments = sumMoney(appData.debtAccounts.map(acc => acc.minimumPayment));
     const averageMonthlyIncome = calculateAverageMonthlyIncome(appData.transactions);
 
     if (averageMonthlyIncome === 0) return Infinity; // Avoid division by zero
-    return (totalMonthlyDebtPayments / averageMonthlyIncome) * 100;
+    return multiplyMoney(divideMoney(totalMonthlyDebtPayments, averageMonthlyIncome), 100);
 }
 
 /**
@@ -123,8 +128,8 @@ export function calculateSavingsRate(appData) {
 
     if (averageMonthlyIncome === 0) return 0;
 
-    const netSavings = averageMonthlyIncome - averageMonthlyExpenses;
-    return (netSavings / averageMonthlyIncome) * 100;
+    const netSavings = subtractMoney(averageMonthlyIncome, averageMonthlyExpenses);
+    return multiplyMoney(divideMoney(netSavings, averageMonthlyIncome), 100);
 }
 
 /**

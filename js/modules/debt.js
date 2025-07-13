@@ -2,6 +2,7 @@
 import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatCurrency, formatDate, getDueDateClass, getDueDateText } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
+import { validateForm, ValidationSchemas, showFieldError, clearFormErrors } from './validation.js';
 
 function openDebtModal(appData, debtId = null) {
     const form = document.getElementById("debt-form");
@@ -32,6 +33,10 @@ function openDebtModal(appData, debtId = null) {
 
 async function handleDebtSubmit(event, appState, onUpdate) {
     event.preventDefault();
+    
+    // Clear previous errors
+    clearFormErrors('debt-form');
+    
     try {
         const debtId = document.getElementById("debt-id").value;
         const debtData = {
@@ -45,6 +50,18 @@ async function handleDebtSubmit(event, appState, onUpdate) {
             creditLimit: safeParseFloat(document.getElementById("debt-credit-limit").value) || null,
             notes: document.getElementById("debt-notes").value
         };
+        
+        // Validate form data
+        const { errors, hasErrors } = validateForm(debtData, ValidationSchemas.debtAccount);
+        
+        if (hasErrors) {
+            // Show field-level errors
+            Object.entries(errors).forEach(([field, error]) => {
+                showFieldError(`debt-${field}`, error);
+            });
+            showError("Please correct the errors in the form.");
+            return;
+        }
 
         if (debtId) {
             const savedDebt = await db.updateDebtAccount(parseInt(debtId), debtData);

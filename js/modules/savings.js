@@ -3,6 +3,8 @@ import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatDate, formatCurrency } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
 import { debug } from './debug.js';
+import { subtractMoney, addMoney, moneyGreaterThan, moneyLessThan, moneyEquals } from './financialMath.js';
+import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, ValidationRules } from './validation.js';
 
 function mapSavingsGoal(goal) {
     return {
@@ -70,23 +72,48 @@ function openGoalModal(appData, goalId = null) {
 
 async function handleGoalSubmit(event, appState, onUpdate) {
     event.preventDefault();
+    
+    // Clear previous errors
+    clearFormErrors('goal-form');
+    
     try {
         const goalId = document.getElementById("goal-id").value;
         const linkedAccountId = parseInt(document.getElementById("goal-account").value);
 
         const goalData = {
             name: document.getElementById("goal-name").value,
-            target_amount: safeParseFloat(document.getElementById("goal-target").value),
-            linked_account_id: linkedAccountId,
-            current_amount: safeParseFloat(document.getElementById("goal-current").value),
+            targetAmount: safeParseFloat(document.getElementById("goal-target").value),
+            linkedAccountId: linkedAccountId,
+            currentAmount: safeParseFloat(document.getElementById("goal-current").value),
             target_date: document.getElementById("goal-target-date").value || null,
             description: document.getElementById("goal-description").value,
         };
-
-        if (!linkedAccountId) {
-            showError("Please select a linked savings account.");
+        
+        // Validate form data
+        const { errors, hasErrors } = validateForm(goalData, ValidationSchemas.savingsGoal);
+        
+        if (hasErrors) {
+            // Show field-level errors
+            Object.entries(errors).forEach(([field, error]) => {
+                const fieldId = field === 'targetAmount' ? 'goal-target' : 
+                               field === 'linkedAccountId' ? 'goal-account' :
+                               field === 'currentAmount' ? 'goal-current' : 
+                               `goal-${field}`;
+                showFieldError(fieldId, error);
+            });
+            showError("Please correct the errors in the form.");
             return;
         }
+        
+        // Convert back to snake_case for database
+        const dbGoalData = {
+            name: goalData.name,
+            target_amount: goalData.targetAmount,
+            linked_account_id: goalData.linkedAccountId,
+            current_amount: goalData.currentAmount,
+            target_date: goalData.target_date,
+            description: goalData.description
+        };
 
         // UPDATED: Check if the linked account exists in either cash accounts or investment accounts
         const cashAccount = appState.appData.cashAccounts.find(acc => acc.id === linkedAccountId);
@@ -98,14 +125,14 @@ async function handleGoalSubmit(event, appState, onUpdate) {
         }
 
         if (goalId) {
-            const savedGoal = await db.updateSavingsGoal(parseInt(goalId), goalData);
+            const savedGoal = await db.updateSavingsGoal(parseInt(goalId), dbGoalData);
             const index = appState.appData.savingsGoals.findIndex(g => g.id === parseInt(goalId));
             if (index > -1) {
                 appState.appData.savingsGoals[index] = mapSavingsGoal(savedGoal);
             }
         } else {
-            goalData.created_date = new Date().toISOString().split('T')[0];
-            const savedGoal = await db.addSavingsGoal(goalData);
+            dbGoalData.created_date = new Date().toISOString().split('T')[0];
+            const savedGoal = await db.addSavingsGoal(dbGoalData);
             appState.appData.savingsGoals.push(mapSavingsGoal(savedGoal));
         }
 
@@ -113,8 +140,8 @@ async function handleGoalSubmit(event, appState, onUpdate) {
         onUpdate();
         announceToScreenReader("Savings goal saved successfully.");
     } catch (error) {
-        console.error("Error saving savings goal:", error);
-        showError("Failed to save savings goal. Check console for details.");
+        debug.error("Error saving savings goal:", error);
+        showError("Failed to save savings goal.");
     }
 }
 
@@ -154,15 +181,15 @@ export async function handleSavingsGoalTransactionDeletion(transaction, appState
 
     try {
         // Revert the contribution amount from the goal
-        goal.currentAmount -= Math.abs(transaction.amount);
+        goal.currentAmount = subtractMoney(goal.currentAmount, Math.abs(transaction.amount));
         
         // Ensure currentAmount doesn't go negative
-        if (goal.currentAmount < 0) {
+        if (moneyLessThan(goal.currentAmount, 0)) {
             goal.currentAmount = 0;
         }
 
         // Update completed status if needed
-        if (goal.completedDate && goal.currentAmount < goal.targetAmount) {
+        if (goal.completedDate && moneyLessThan(goal.currentAmount, goal.targetAmount)) {
             goal.completedDate = null;
         }
 
@@ -174,7 +201,7 @@ export async function handleSavingsGoalTransactionDeletion(transaction, appState
 
         debug.log(`Reverted savings goal contribution: ${goal.name}, new amount: ${goal.currentAmount}`);
     } catch (error) {
-        console.error('Error reverting savings goal contribution:', error);
+        debug.error('Error reverting savings goal contribution:', error);
     }
 }
 
@@ -202,18 +229,26 @@ function populateContributionSourceDropdown(appData) {
 
 async function handleContributionSubmit(event, appState, onUpdate) {
     event.preventDefault();
+    
+    // Clear previous errors
+    clearFormErrors('contribution-form');
+    
     try {
         const goalId = parseInt(document.getElementById("contribution-goal-id").value);
         const amount = safeParseFloat(document.getElementById("contribution-amount").value);
         const sourceValue = document.getElementById("contribution-source").value;
-
-        if (amount <= 0) {
-            showError("Contribution must be positive.");
+        
+        // Validate contribution amount
+        const amountError = ValidationRules.positiveNumber(amount);
+        if (amountError) {
+            showFieldError("contribution-amount", amountError);
+            showError("Please correct the errors in the form.");
             return;
         }
 
         if (!sourceValue) {
-            showError("Please select a source account.");
+            showFieldError("contribution-source", "Please select a source account");
+            showError("Please correct the errors in the form.");
             return;
         }
 
@@ -275,10 +310,10 @@ async function handleContributionSubmit(event, appState, onUpdate) {
             appState.appData.transactions.unshift({ ...savedWithdrawal, amount: parseFloat(savedWithdrawal.amount) });
 
             // Update source account balance
-            sourceAccount.balance -= amount;
+            sourceAccount.balance = subtractMoney(sourceAccount.balance, amount);
         } else {
             // For investment accounts, just reduce the balance
-            sourceAccount.balance -= amount;
+            sourceAccount.balance = subtractMoney(sourceAccount.balance, amount);
             await db.updateInvestmentAccount(sourceAccount.id, { balance: sourceAccount.balance });
         }
 
@@ -296,16 +331,16 @@ async function handleContributionSubmit(event, appState, onUpdate) {
             const savedDeposit = await db.addTransaction(deposit);
             appState.appData.transactions.unshift({ ...savedDeposit, amount: parseFloat(savedDeposit.amount) });
 
-            targetAccount.balance += amount;
+            targetAccount.balance = addMoney(targetAccount.balance, amount);
         } else {
             // For investment savings accounts, just update the balance
-            targetAccount.balance += amount;
+            targetAccount.balance = addMoney(targetAccount.balance, amount);
             await db.updateInvestmentAccount(targetAccount.id, { balance: targetAccount.balance });
         }
 
         // Update savings goal progress
-        goal.currentAmount += amount;
-        if (goal.currentAmount >= goal.targetAmount && !goal.completedDate) {
+        goal.currentAmount = addMoney(goal.currentAmount, amount);
+        if (!moneyLessThan(goal.currentAmount, goal.targetAmount) && !goal.completedDate) {
             goal.completedDate = new Date().toISOString().split('T')[0];
         }
         await db.updateSavingsGoal(goal.id, {

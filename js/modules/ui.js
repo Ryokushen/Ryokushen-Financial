@@ -10,6 +10,7 @@ import * as Savings from './savings.js';
 import { createCharts } from './charts.js';
 import { updateDashboard } from './dashboard.js'; // Import from dashboard module
 import { modalManager } from './modalManager.js';
+import { debug } from './debug.js';
 
 export function showLoading(elementId) {
     const element = document.getElementById(elementId);
@@ -29,7 +30,7 @@ export function announceToScreenReader(message) {
 }
 
 export function showError(message) {
-    console.error(message);
+    debug.error(message);
     announceToScreenReader("Error: " + message);
 
     const errorBanner = document.getElementById("error-banner");
