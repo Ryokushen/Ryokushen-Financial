@@ -14,7 +14,7 @@ import { renderBillsTimeline } from './modules/timeline.js';
 import { updateDashboard } from './modules/dashboard.js';
 import { debug } from './modules/debug.js';
 import { addMoney } from './modules/financialMath.js';
-import { privacyManager, togglePrivacyMode, enablePanicMode, reapplyPrivacy } from './modules/privacy.js';
+import { privacyManager, togglePrivacyMode, enablePanicMode, reapplyPrivacy, isPrivacyMode } from './modules/privacy.js';
 
 // Configure Chart.js global defaults for better mobile responsiveness
 if (typeof Chart !== 'undefined') {
@@ -261,35 +261,30 @@ function setupEventListeners() {
     // Add privacy listener to reapply on data updates
     privacyManager.addListener(() => {
         console.log('[App] Privacy mode changed, refreshing UI');
-        // Reapply privacy after a brief delay to ensure DOM updates
+        // First, reapply privacy mode to blur/unblur elements
+        reapplyPrivacy();
+        
+        // Then refresh charts with a single delay to ensure privacy state is propagated
         setTimeout(() => {
-            reapplyPrivacy();
+            const currentPrivacyMode = isPrivacyMode();
+            console.log('[App] Refreshing charts with privacy mode:', currentPrivacyMode);
             
-            // Double delay to ensure privacy state is fully updated
-            setTimeout(() => {
-                // Refresh charts to update tooltips with privacy mode state
-                if (document.getElementById("netWorthChart")) {
-                    console.log('[App] Refreshing dashboard charts');
-                    createCharts(appState);
-                }
-            }, 50);
+            // Get the current active tab
+            const activeTab = document.querySelector('.tab-content.active');
+            const activeTabId = activeTab ? activeTab.id : 'dashboard';
             
-            // Refresh debt charts if on debt tab
-            setTimeout(() => {
-                if (document.getElementById("debt-breakdown-chart") && window.updateDebtCharts) {
-                    console.log('[App] Refreshing debt charts');
-                    window.updateDebtCharts(appState);
-                }
-            }, 50);
-            
-            // Refresh investment charts if they exist
-            setTimeout(() => {
-                if (document.getElementById("investment-growth-chart") && window.lastInvestmentData && window.lastInvestmentChartType) {
-                    console.log('[App] Refreshing investment charts');
-                    window.updateInvestmentCharts(window.lastInvestmentData, window.lastInvestmentChartType);
-                }
-            }, 50);
-        }, 100);
+            // Refresh charts based on active tab
+            if (activeTabId === 'dashboard') {
+                console.log('[App] Refreshing dashboard charts');
+                createCharts(appState);
+            } else if (activeTabId === 'debt' && window.updateDebtCharts) {
+                console.log('[App] Refreshing debt charts');
+                window.updateDebtCharts(appState);
+            } else if (activeTabId === 'investments' && window.lastInvestmentData && window.lastInvestmentChartType) {
+                console.log('[App] Refreshing investment charts');
+                window.updateInvestmentCharts(window.lastInvestmentData, window.lastInvestmentChartType);
+            }
+        }, 250); // Increased delay to ensure privacy state propagation
     });
 }
 

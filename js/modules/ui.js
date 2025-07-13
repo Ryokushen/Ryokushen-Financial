@@ -95,6 +95,10 @@ export function switchTab(tabName, appState) {
         Savings.renderSavingsGoals(appState);
     } else if (tabName === "debt") {
         Debt.renderDebtAccounts(appState);
+        // Create debt-specific charts when switching to debt tab
+        if (window.updateDebtCharts) {
+            window.updateDebtCharts(appState);
+        }
     } else if (tabName === "recurring") {
         Recurring.renderRecurringBills(appState);
     }

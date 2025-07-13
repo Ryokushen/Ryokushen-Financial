@@ -94,7 +94,13 @@ export function createCharts(appState) {
     try {
         const currentPrivacyMode = isPrivacyMode();
         console.log('[Charts] Creating charts, privacy mode is:', currentPrivacyMode);
-        console.log('[Charts] isPrivacyMode function:', isPrivacyMode);
+        console.log('[Charts] Privacy manager state directly:', window.privacyManager?.isPrivate);
+        console.log('[Charts] LocalStorage privacy state:', localStorage.getItem('privacyMode'));
+        
+        // Get the current active tab
+        const activeTab = document.querySelector('.tab-content.active');
+        const activeTabId = activeTab ? activeTab.id : 'dashboard';
+        console.log('[Charts] Active tab:', activeTabId);
         
         Object.keys(chartInstances).forEach(key => {
             if (chartInstances[key]) {
@@ -102,21 +108,23 @@ export function createCharts(appState) {
             }
         });
 
-        // Add call to the new charts
-        if (document.getElementById("debtHealthGauge")) createDebtHealthGauge({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
-        if (document.getElementById("investmentAllocation")) createInvestmentAllocationChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
-
-        // Existing chart calls
-        if (document.getElementById("netWorthChart")) createNetWorthChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
-        if (document.getElementById("expenseCategoryChart")) createExpenseCategoryChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
-        if (document.getElementById("cashFlowChart")) createCashFlowChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
-        if (document.getElementById("assetsDebtChart")) createAssetsDebtChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
-        
-        // Debt-specific charts
-        if (document.getElementById("debt-breakdown-chart")) createDebtBreakdownChart({ appData: appState.appData, CHART_COLORS });
-        if (document.getElementById("payoff-timeline-chart")) createPayoffTimelineChart({ appData: appState.appData, CHART_COLORS });
-        if (document.getElementById("interest-analysis-chart")) createInterestAnalysisChart({ appData: appState.appData, CHART_COLORS });
-        if (document.getElementById("credit-utilization-chart")) createCreditUtilizationChart({ appData: appState.appData, CHART_COLORS });
+        // Only create charts that exist on the current tab
+        if (activeTabId === 'dashboard') {
+            // Dashboard charts only
+            if (document.getElementById("debtHealthGauge")) createDebtHealthGauge({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+            if (document.getElementById("investmentAllocation")) createInvestmentAllocationChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+            if (document.getElementById("netWorthChart")) createNetWorthChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+            if (document.getElementById("expenseCategoryChart")) createExpenseCategoryChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+            if (document.getElementById("cashFlowChart")) createCashFlowChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+            if (document.getElementById("assetsDebtChart")) createAssetsDebtChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+        } else if (activeTabId === 'debt') {
+            // Debt-specific charts only
+            if (document.getElementById("debt-breakdown-chart")) createDebtBreakdownChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+            if (document.getElementById("payoff-timeline-chart")) createPayoffTimelineChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+            if (document.getElementById("interest-analysis-chart")) createInterestAnalysisChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+            if (document.getElementById("credit-utilization-chart")) createCreditUtilizationChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+        }
+        // Other tabs don't have charts managed by createCharts()
 
     } catch (error) {
         debug.error("Error creating charts:", error);
@@ -176,6 +184,7 @@ function createNetWorthChart({ appData, CHART_COLORS }) {
                         label: function(context) {
                             const privacyEnabled = isPrivacyMode();
                             console.log('[Chart Tooltip] Net Worth - Privacy mode:', privacyEnabled);
+                            console.log('[Chart Tooltip] Privacy manager state:', window.privacyManager?.isPrivate);
                             if (privacyEnabled) {
                                 return 'Net Worth: $***';
                             }
@@ -916,6 +925,17 @@ function createContributionComparisonChart(data, chartType) {
 
 // Export function to update debt charts
 window.updateDebtCharts = function(appState) {
+    console.log('[Charts] Updating debt charts, privacy mode:', isPrivacyMode());
+    
+    // Only update debt charts if we're on the debt tab
+    const activeTab = document.querySelector('.tab-content.active');
+    const activeTabId = activeTab ? activeTab.id : '';
+    
+    if (activeTabId !== 'debt') {
+        console.log('[Charts] Not on debt tab, skipping debt chart update');
+        return;
+    }
+    
     const chartFunctions = [
         createDebtBreakdownChart,
         createPayoffTimelineChart,
@@ -925,7 +945,7 @@ window.updateDebtCharts = function(appState) {
     
     chartFunctions.forEach(fn => {
         try {
-            fn({ appData: appState.appData, CHART_COLORS });
+            fn({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS || CHART_COLORS });
         } catch (error) {
             debug.error(`Error creating debt chart:`, error);
         }
@@ -934,6 +954,17 @@ window.updateDebtCharts = function(appState) {
 
 // Export function to update investment charts
 window.updateInvestmentCharts = function(data, chartType) {
+    console.log('[Charts] Updating investment charts, privacy mode:', isPrivacyMode());
+    
+    // Only update investment charts if we're on the investments tab
+    const activeTab = document.querySelector('.tab-content.active');
+    const activeTabId = activeTab ? activeTab.id : '';
+    
+    if (activeTabId !== 'investments') {
+        console.log('[Charts] Not on investments tab, skipping investment chart update');
+        return;
+    }
+    
     try {
         // Store the last data and type for privacy mode refresh
         window.lastInvestmentData = data;
