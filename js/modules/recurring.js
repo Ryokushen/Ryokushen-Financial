@@ -406,7 +406,7 @@ function renderUpcomingBills(appData) {
                     <div class="transaction-description">${escapeHtml(bill.name)}</div>
                     <div class="transaction-details">${formatDate(dueDate)} - ${accountName}</div>
                 </div>
-                <div class="transaction-amount negative">${formatCurrency(-bill.amount)}</div>
+                <div class="transaction-amount negative" data-sensitive="true">${formatCurrency(-bill.amount)}</div>
             </div>
         `;
     }).join('');
@@ -441,7 +441,7 @@ function renderAllRecurringBills(appData) {
         <div class="recurring-bill-card ${isActive ? '' : 'inactive'}" data-id="${bill.id}">
             <div class="recurring-bill-header">
                 <h5>${escapeHtml(bill.name)}</h5>
-                <div class="recurring-bill-amount">${formatCurrency(bill.amount)}</div>
+                <div class="recurring-bill-amount" data-sensitive="true">${formatCurrency(bill.amount)}</div>
             </div>
             <div class="recurring-bill-info">
                 <div class="recurring-bill-detail">

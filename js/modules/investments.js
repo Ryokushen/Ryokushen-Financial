@@ -406,8 +406,8 @@ export function renderInvestmentAccountsEnhanced(appState) {
             </div>
             <div class="account-info">
                 <div class="account-info-item"><span class="account-info-label">Institution</span><span class="account-info-value">${escapeHtml(account.institution)}</span></div>
-                <div class="account-info-item"><span class="account-info-label">Balance</span><span class="account-info-value">${formatCurrency(account.balance)}</span></div>
-                <div class="account-info-item"><span class="account-info-label">Day Change</span><span class="account-info-value ${account.dayChange >= 0 ? 'text-success' : 'text-error'}">${formatCurrency(account.dayChange)}</span></div>
+                <div class="account-info-item"><span class="account-info-label">Balance</span><span class="account-info-value" data-sensitive="true">${formatCurrency(account.balance)}</span></div>
+                <div class="account-info-item"><span class="account-info-label">Day Change</span><span class="account-info-value ${account.dayChange >= 0 ? 'text-success' : 'text-error'}" data-sensitive="true">${formatCurrency(account.dayChange)}</span></div>
             </div>
             <div class="holdings">
                 <div class="holdings-header">
@@ -427,8 +427,8 @@ export function renderInvestmentAccountsEnhanced(appState) {
                                     ${isValidSymbol ? '<span style="color: var(--color-success); font-size: 0.8em;">📈</span>' : '<span style="color: var(--color-text-secondary); font-size: 0.8em;">—</span>'}
                                 </td>
                                 <td>${h.shares.toFixed(3)}</td>
-                                <td>${formatCurrency(h.currentPrice)}</td>
-                                <td>${formatCurrency(h.value)}</td>
+                                <td data-sensitive="true">${formatCurrency(h.currentPrice)}</td>
+                                <td data-sensitive="true">${formatCurrency(h.value)}</td>
                                 <td>
                                     <div class="holding-actions">
                                         ${isValidSymbol ? `<button class="btn btn-small btn--secondary btn-update-holding" data-symbol="${h.symbol}" title="Update ${h.symbol} price">📊</button>` : ''}

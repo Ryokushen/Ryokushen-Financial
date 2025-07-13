@@ -184,7 +184,7 @@ export function renderCashAccounts(appState) {
              <div class="account-info">
                  <div class="account-info-item">
                      <span class="account-info-label">Balance</span>
-                     <span class="account-info-value ${balance >= 0 ? '' : 'text-error'}">${formatCurrency(balance)}</span>
+                     <span class="account-info-value ${balance >= 0 ? '' : 'text-error'}" data-sensitive="true">${formatCurrency(balance)}</span>
                  </div>
              </div>
         </div>`;

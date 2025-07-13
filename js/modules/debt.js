@@ -133,9 +133,9 @@ export function renderDebtAccounts(appState) {
             <div class="account-info">
                 <div class="account-info-item"><span class="account-info-label">Type</span><span class="account-info-value">${escapeHtml(account.type)}</span></div>
                 <div class="account-info-item"><span class="account-info-label">Institution</span><span class="account-info-value">${escapeHtml(account.institution)}</span></div>
-                <div class="account-info-item"><span class="account-info-label">Balance</span><span class="account-info-value balance">${formatCurrency(account.balance)}</span></div>
-                <div class="account-info-item"><span class="account-info-label">Rate</span><span class="account-info-value rate">${account.interestRate}%</span></div>
-                <div class="account-info-item"><span class="account-info-label">Min. Payment</span><span class="account-info-value payment">${formatCurrency(account.minimumPayment)}</span></div>
+                <div class="account-info-item"><span class="account-info-label">Balance</span><span class="account-info-value balance" data-sensitive="true">${formatCurrency(account.balance)}</span></div>
+                <div class="account-info-item"><span class="account-info-label">Rate</span><span class="account-info-value rate" data-sensitive="true">${account.interestRate}%</span></div>
+                <div class="account-info-item"><span class="account-info-label">Min. Payment</span><span class="account-info-value payment" data-sensitive="true">${formatCurrency(account.minimumPayment)}</span></div>
                 <div class="account-info-item"><span class="account-info-label">Due Date</span><span class="account-info-value">${formatDate(account.dueDate)}</span></div>
             </div>
             <div class="due-date ${getDueDateClass(account.dueDate)}">${getDueDateText(account.dueDate)}</div>

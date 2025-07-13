@@ -450,7 +450,7 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
             <td>${escapeHtml(accountName)}</td>
             <td>${escapeHtml(t.category)}</td>
             <td>${description}</td>
-            <td class="${amountClass}">${displayAmount}</td>
+            <td class="${amountClass}" data-sensitive="true">${displayAmount}</td>
             <td class="${t.cleared ? 'status-cleared' : 'status-pending'}">${t.cleared ? "Cleared" : "Pending"}</td>
             <td>
                 <div class="transaction-actions">

@@ -3,6 +3,7 @@ import { formatCurrency, CHART_COLORS } from './utils.js';
 import { calculateDebtToIncomeRatio } from './kpis.js';
 import { debug } from './debug.js';
 import { DebtStrategy } from './debtStrategy.js';
+import { isPrivacyMode } from './privacy.js';
 
 let chartInstances = {};
 
@@ -315,6 +316,9 @@ function createDebtBreakdownChart({ appData, CHART_COLORS }) {
                     callbacks: {
                         label: function(context) {
                             const label = context.label || '';
+                            if (isPrivacyMode()) {
+                                return `${label}: $*** (**%)`;
+                            }
                             const value = formatCurrency(context.parsed);
                             const percentage = ((context.parsed / context.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1);
                             return `${label}: ${value} (${percentage}%)`;
@@ -382,6 +386,9 @@ function createPayoffTimelineChart({ appData, CHART_COLORS }) {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
+                            if (isPrivacyMode()) {
+                                return 'Balance: $***';
+                            }
                             return 'Balance: ' + formatCurrency(context.parsed.y);
                         }
                     }
@@ -392,6 +399,9 @@ function createPayoffTimelineChart({ appData, CHART_COLORS }) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
+                            if (isPrivacyMode()) {
+                                return '$***';
+                            }
                             return formatCurrency(value);
                         }
                     }
@@ -441,6 +451,9 @@ function createInterestAnalysisChart({ appData, CHART_COLORS }) {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
+                            if (isPrivacyMode()) {
+                                return '$***';
+                            }
                             return formatCurrency(value);
                         }
                     }
@@ -451,6 +464,9 @@ function createInterestAnalysisChart({ appData, CHART_COLORS }) {
                     callbacks: {
                         label: function(context) {
                             const label = context.dataset.label;
+                            if (isPrivacyMode()) {
+                                return `${label}: $***`;
+                            }
                             const value = formatCurrency(context.parsed.y);
                             return `${label}: ${value}`;
                         }
@@ -517,6 +533,13 @@ function createCreditUtilizationChart({ appData, CHART_COLORS }) {
                     callbacks: {
                         label: function(context) {
                             const card = utilization.cards[context.dataIndex];
+                            if (isPrivacyMode()) {
+                                return [
+                                    `Utilization: **%`,
+                                    `Balance: $***`,
+                                    `Limit: $***`
+                                ];
+                            }
                             return [
                                 `Utilization: ${context.parsed.y.toFixed(1)}%`,
                                 `Balance: ${formatCurrency(card.balance)}`,
@@ -546,6 +569,9 @@ function createInvestmentGrowthChart(data, chartType) {
             tooltip: {
                 callbacks: {
                     label: function(context) {
+                        if (isPrivacyMode()) {
+                            return context.dataset.label + ': $***';
+                        }
                         return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
                     }
                 }
@@ -707,6 +733,9 @@ function createContributionComparisonChart(data, chartType) {
                         callbacks: {
                             label: function(context) {
                                 const label = context.label || '';
+                                if (isPrivacyMode()) {
+                                    return `${label}: $*** (**%)`;
+                                }
                                 const originalValue = context.dataIndex === 0 ? middleScenario.totalContributions : middleScenario.projectedEarnings;
                                 
                                 if (originalValue === 0) {
@@ -747,6 +776,9 @@ function createContributionComparisonChart(data, chartType) {
                     tooltip: {
                         callbacks: {
                             label: function(context) {
+                                if (isPrivacyMode()) {
+                                    return 'Final Value: $***';
+                                }
                                 return 'Final Value: ' + formatCurrency(context.parsed.y);
                             }
                         }

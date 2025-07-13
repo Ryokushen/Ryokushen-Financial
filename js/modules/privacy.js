@@ -87,12 +87,18 @@ class PrivacyManager {
             '.amount',
             '.transaction-amount',
             '.account-balance',
+            '.account-info-value',
             '.holding-value',
             '.goal-amount',
             '.debt-balance',
+            '.debt-value',
             '.bill-amount',
             '.total-value',
             '.net-worth',
+            '.recurring-bill-amount',
+            '.value',
+            '.payment',
+            '.rate',
             '[data-sensitive="true"]'
         ];
         
@@ -111,6 +117,29 @@ class PrivacyManager {
                 el.addEventListener('click', this.handleRevealClick.bind(this));
                 el.style.cursor = 'pointer';
                 el.setAttribute('title', 'Click to reveal temporarily');
+            }
+        });
+        
+        // Also blur table cells containing currency values
+        const tableCells = document.querySelectorAll('td');
+        tableCells.forEach(td => {
+            // Check if cell contains currency (starts with $ or -$)
+            const text = td.textContent.trim();
+            if (text.match(/^-?\$[\d,]+\.?\d*/)) {
+                if (!td.classList.contains('privacy-blur')) {
+                    td.classList.add('privacy-blur');
+                    
+                    // Store original content for click-to-reveal
+                    this.blurredElements.set(td, {
+                        originalContent: td.textContent,
+                        isRevealed: false
+                    });
+                    
+                    // Add click handler for temporary reveal
+                    td.addEventListener('click', this.handleRevealClick.bind(this));
+                    td.style.cursor = 'pointer';
+                    td.setAttribute('title', 'Click to reveal temporarily');
+                }
             }
         });
     }
