@@ -667,6 +667,7 @@ function calculateRetirementGoal(appState) {
             return;
         }
         
+        
     
         // Check if target is already achievable
         const futureValueWithoutContributions = currentPortfolioValue * Math.pow(1 + (0.10 / 12), results.scenarios[0].yearsToRetirement * 12);
@@ -695,13 +696,14 @@ function calculateRetirementGoal(appState) {
                         <div class="result-metric">
                             <span class="result-metric-label">Required Monthly:</span>
                             <span class="result-metric-value result-highlight">
-                                ${formatCurrency(scenario.requiredMonthlyContribution)}
-                                ${isMinimal && scenario.requiredMonthlyContribution > 0 ? '<br><small style="color: var(--color-text-secondary); font-weight: normal;">Low due to portfolio growth</small>' : ''}
+                                ${scenario.requiredMonthlyContribution === 0 ? '$0.00' : formatCurrency(scenario.requiredMonthlyContribution)}
+                                ${scenario.requiredMonthlyContribution === 0 ? '<br><small style="color: var(--color-success); font-weight: normal;">✅ No additional contributions needed!</small>' : 
+                                  (isMinimal && scenario.requiredMonthlyContribution > 0 ? '<br><small style="color: var(--color-text-secondary); font-weight: normal;">Low due to portfolio growth</small>' : '')}
                             </span>
                         </div>
                         <div class="result-metric">
                             <span class="result-metric-label">Total Contributions:</span>
-                            <span class="result-metric-value">${formatCurrency(scenario.totalContributions)}</span>
+                            <span class="result-metric-value">${scenario.totalContributions === 0 ? '$0.00' : formatCurrency(scenario.totalContributions)}</span>
                         </div>
                         <div class="result-metric">
                             <span class="result-metric-label">Projected Earnings:</span>

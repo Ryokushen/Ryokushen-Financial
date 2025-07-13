@@ -672,9 +672,17 @@ function createContributionComparisonChart(data, chartType) {
         let contributionsValue = Math.max(0, middleScenario.totalContributions || 0);
         let earningsValue = Math.max(0, middleScenario.projectedEarnings || 0);
         
-        // If no earnings, show only contributions
-        if (earningsValue === 0) {
-            earningsValue = 0.01; // Small value to prevent full circle
+        // Special handling for cases where no contributions are needed
+        if (contributionsValue === 0 && earningsValue > 0) {
+            // All growth comes from existing portfolio
+            contributionsValue = 0.01; // Small slice to show in legend
+        } else if (earningsValue === 0 && contributionsValue > 0) {
+            // No earnings (shouldn't happen but just in case)
+            earningsValue = 0.01;
+        } else if (contributionsValue === 0 && earningsValue === 0) {
+            // Edge case - show 50/50 placeholder
+            contributionsValue = 1;
+            earningsValue = 1;
         }
         
         chartInstances.contributionComparisonChart = new Chart(ctx, {
@@ -699,8 +707,14 @@ function createContributionComparisonChart(data, chartType) {
                         callbacks: {
                             label: function(context) {
                                 const label = context.label || '';
-                                const value = formatCurrency(context.parsed);
-                                const percentage = ((context.parsed / context.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1);
+                                const originalValue = context.dataIndex === 0 ? middleScenario.totalContributions : middleScenario.projectedEarnings;
+                                
+                                if (originalValue === 0) {
+                                    return `${label}: $0.00 (None needed!)`;
+                                }
+                                
+                                const value = formatCurrency(originalValue);
+                                const percentage = ((originalValue / (middleScenario.totalContributions + middleScenario.projectedEarnings)) * 100).toFixed(1);
                                 return `${label}: ${value} (${percentage}%)`;
                             }
                         }
