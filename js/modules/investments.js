@@ -9,6 +9,7 @@ import { batchUpdateSavingsGoal, flushBatch } from './batchOperations.js';
 import { debug } from './debug.js';
 import { sumMoney, multiplyMoney } from './financialMath.js';
 import { validateForm, ValidationSchemas, showFieldError, clearFormErrors } from './validation.js';
+import { InvestmentCalculators } from './investmentCalculators.js';
 
 // Initialize holdings updater (will be set with appState later)
 let holdingsUpdater = null;
@@ -438,6 +439,9 @@ export function renderInvestmentAccountsEnhanced(appState) {
             </div>
         </div>
     `).join('');
+    
+    // Update account dropdown for calculators
+    populateAccountDropdown(appState.appData);
 }
 
 export function setupEventListeners(appState, onUpdate) {
@@ -487,6 +491,12 @@ export function setupEventListeners(appState, onUpdate) {
     // Auto-calculate holding value
     document.getElementById('holding-shares')?.addEventListener('input', updateHoldingValue);
     document.getElementById('holding-price')?.addEventListener('input', updateHoldingValue);
+    
+    // Investment calculator event listeners
+    document.getElementById('calculator-type')?.addEventListener('change', handleCalculatorTypeChange);
+    document.getElementById('calculate-contribution-btn')?.addEventListener('click', () => calculateExtraContribution(appState));
+    document.getElementById('calculate-retirement-btn')?.addEventListener('click', () => calculateRetirementGoal(appState));
+    document.getElementById('calculate-growth-btn')?.addEventListener('click', () => calculatePortfolioGrowth(appState));
 }
 
 const updateHoldingValue = debounce(function() {
@@ -494,3 +504,272 @@ const updateHoldingValue = debounce(function() {
     const price = safeParseFloat(document.getElementById('holding-price').value);
     document.getElementById('holding-value').value = multiplyMoney(shares, price).toFixed(2);
 }, 300);
+
+// Investment Calculator Functions
+function handleCalculatorTypeChange() {
+    const calculatorType = document.getElementById('calculator-type').value;
+    
+    // Hide all calculator sections
+    const calculatorSections = ['contribution-calculator', 'retirement-calculator', 'growth-calculator'];
+    calculatorSections.forEach(sectionId => {
+        const section = document.getElementById(sectionId);
+        if (section) section.style.display = 'none';
+    });
+    
+    // Show selected calculator
+    const selectedSection = document.getElementById(`${calculatorType}-calculator`);
+    if (selectedSection) selectedSection.style.display = 'block';
+    
+    // Hide results and charts
+    const resultSections = ['contribution-results', 'retirement-results', 'growth-results'];
+    resultSections.forEach(sectionId => {
+        const section = document.getElementById(sectionId);
+        if (section) section.style.display = 'none';
+    });
+    
+    const chartsSection = document.querySelector('.investment-charts');
+    if (chartsSection) chartsSection.style.display = 'none';
+}
+
+function calculateExtraContribution(appState) {
+    try {
+        const accountSelect = document.getElementById('contrib-account-select');
+        const extraAmount = safeParseFloat(document.getElementById('contrib-extra-amount').value);
+        const years = parseInt(document.getElementById('contrib-years').value);
+        
+        // Validate inputs
+        const validation = InvestmentCalculators.validateInputs({
+            monthlyContribution: extraAmount,
+            years: years
+        });
+        
+        if (!validation.isValid) {
+            showError(validation.errors.join(', '));
+            return;
+        }
+        
+        if (extraAmount <= 0 || years <= 0) {
+            showError('Please enter valid amounts for extra contribution and years.');
+            return;
+        }
+        
+        // Get current portfolio value (or specific account if selected)
+        let currentValue = 0;
+        if (!accountSelect || accountSelect.value === '' || accountSelect.value === 'all') {
+            // Calculate total portfolio value
+            currentValue = appState.appData.investmentAccounts.reduce((sum, account) => sum + account.balance, 0);
+        } else {
+            // Find specific account
+            const account = appState.appData.investmentAccounts.find(acc => acc.name === accountSelect.value);
+            currentValue = account ? account.balance : 0;
+        }
+        
+        if (currentValue < 0) {
+            showError('Invalid account balance detected.');
+            return;
+        }
+        
+        const returnRates = [9, 12, 15];
+        const scenarios = InvestmentCalculators.calculateMultipleScenarios(currentValue, extraAmount, returnRates, years);
+    
+    // Display results
+    const resultsDiv = document.getElementById('contribution-results');
+    resultsDiv.innerHTML = `
+        <h5>Extra Contribution Results</h5>
+        <p>Starting Value: ${formatCurrency(currentValue)}</p>
+        <p>Extra Monthly Contribution: ${formatCurrency(extraAmount)}</p>
+        <p>Time Period: ${years} years</p>
+        
+        <div class="results-grid">
+            ${scenarios.map(scenario => `
+                <div class="results-card">
+                    <h5>${scenario.rate}% Annual Return</h5>
+                    <div class="result-metric">
+                        <span class="result-metric-label">Future Value:</span>
+                        <span class="result-metric-value result-highlight">${formatCurrency(scenario.futureValue)}</span>
+                    </div>
+                    <div class="result-metric">
+                        <span class="result-metric-label">Total Contributed:</span>
+                        <span class="result-metric-value">${formatCurrency(scenario.totalContributed)}</span>
+                    </div>
+                    <div class="result-metric">
+                        <span class="result-metric-label">Total Earnings:</span>
+                        <span class="result-metric-value">${formatCurrency(scenario.totalEarnings)}</span>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    resultsDiv.style.display = 'block';
+    
+    // Show charts
+    document.querySelector('.investment-charts').style.display = 'block';
+    
+        // Update charts if function exists
+        if (window.updateInvestmentCharts) {
+            window.updateInvestmentCharts(scenarios, 'contribution');
+        }
+    } catch (error) {
+        debug.error('Error in calculateExtraContribution:', error);
+        showError('Failed to calculate extra contribution. Please check your inputs and try again.');
+    }
+}
+
+function calculateRetirementGoal(appState) {
+    const currentAge = parseInt(document.getElementById('retire-current-age').value);
+    const retirementAge = parseInt(document.getElementById('retire-target-age').value);
+    const targetAmount = safeParseFloat(document.getElementById('retire-target-amount').value);
+    
+    const validation = InvestmentCalculators.validateInputs({
+        currentAge,
+        retirementAge,
+        targetAmount,
+        years: retirementAge - currentAge
+    });
+    
+    if (!validation.isValid) {
+        showError(validation.errors.join(', '));
+        return;
+    }
+    
+    if (retirementAge <= currentAge) {
+        showError('Retirement age must be greater than current age.');
+        return;
+    }
+    
+    // Get total portfolio value
+    const currentPortfolioValue = appState.appData.investmentAccounts.reduce((sum, account) => sum + account.balance, 0);
+    
+    const returnRates = [9, 12, 15];
+    const results = InvestmentCalculators.calculateRetirementScenarios(
+        currentAge, 
+        retirementAge, 
+        targetAmount, 
+        currentPortfolioValue, 
+        returnRates
+    );
+    
+    // Display results
+    const resultsDiv = document.getElementById('retirement-results');
+    resultsDiv.innerHTML = `
+        <h5>Retirement Planning Results</h5>
+        <p>Current Age: ${currentAge}, Retirement Age: ${retirementAge} (${results.scenarios[0].yearsToRetirement} years)</p>
+        <p>Current Portfolio Value: ${formatCurrency(currentPortfolioValue)}</p>
+        <p>Target Retirement Amount: ${formatCurrency(targetAmount)}</p>
+        
+        <div class="results-grid">
+            ${results.scenarios.map(scenario => `
+                <div class="results-card">
+                    <h5>${scenario.rate}% Annual Return</h5>
+                    <div class="result-metric">
+                        <span class="result-metric-label">Required Monthly:</span>
+                        <span class="result-metric-value result-highlight">${formatCurrency(scenario.requiredMonthlyContribution)}</span>
+                    </div>
+                    <div class="result-metric">
+                        <span class="result-metric-label">Total Contributions:</span>
+                        <span class="result-metric-value">${formatCurrency(scenario.totalContributions)}</span>
+                    </div>
+                    <div class="result-metric">
+                        <span class="result-metric-label">Projected Earnings:</span>
+                        <span class="result-metric-value">${formatCurrency(scenario.projectedEarnings)}</span>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    resultsDiv.style.display = 'block';
+    
+    // Show charts
+    document.querySelector('.investment-charts').style.display = 'block';
+    
+    // Update charts if function exists
+    if (window.updateInvestmentCharts) {
+        window.updateInvestmentCharts(results.scenarios, 'retirement');
+    }
+}
+
+function calculatePortfolioGrowth(appState) {
+    const monthlyContrib = safeParseFloat(document.getElementById('growth-monthly-contrib').value);
+    const years = parseInt(document.getElementById('growth-years').value);
+    
+    const validation = InvestmentCalculators.validateInputs({
+        monthlyContribution: monthlyContrib,
+        years
+    });
+    
+    if (!validation.isValid) {
+        showError(validation.errors.join(', '));
+        return;
+    }
+    
+    // Get total portfolio value
+    const currentPortfolioValue = appState.appData.investmentAccounts.reduce((sum, account) => sum + account.balance, 0);
+    
+    const returnRates = [9, 12, 15];
+    const timeline = InvestmentCalculators.calculatePortfolioGrowthTimeline(
+        currentPortfolioValue, 
+        monthlyContrib, 
+        returnRates, 
+        years
+    );
+    
+    // Calculate final values for each rate
+    const finalValues = returnRates.map(rate => {
+        const result = InvestmentCalculators.calculateFutureValue(currentPortfolioValue, monthlyContrib, rate, years);
+        return { rate, ...result };
+    });
+    
+    // Display results
+    const resultsDiv = document.getElementById('growth-results');
+    resultsDiv.innerHTML = `
+        <h5>Portfolio Growth Projection</h5>
+        <p>Current Portfolio Value: ${formatCurrency(currentPortfolioValue)}</p>
+        <p>Monthly Contribution: ${formatCurrency(monthlyContrib)}</p>
+        <p>Projection Period: ${years} years</p>
+        
+        <div class="results-grid">
+            ${finalValues.map(scenario => `
+                <div class="results-card">
+                    <h5>${scenario.rate}% Annual Return</h5>
+                    <div class="result-metric">
+                        <span class="result-metric-label">Final Portfolio Value:</span>
+                        <span class="result-metric-value result-highlight">${formatCurrency(scenario.futureValue)}</span>
+                    </div>
+                    <div class="result-metric">
+                        <span class="result-metric-label">Total Contributed:</span>
+                        <span class="result-metric-value">${formatCurrency(scenario.totalContributed)}</span>
+                    </div>
+                    <div class="result-metric">
+                        <span class="result-metric-label">Investment Growth:</span>
+                        <span class="result-metric-value">${formatCurrency(scenario.totalEarnings)}</span>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    resultsDiv.style.display = 'block';
+    
+    // Show charts
+    document.querySelector('.investment-charts').style.display = 'block';
+    
+    // Update charts if function exists
+    if (window.updateInvestmentCharts) {
+        window.updateInvestmentCharts(timeline, 'growth');
+    }
+}
+
+function populateAccountDropdown(appData) {
+    const accountSelect = document.getElementById('contrib-account-select');
+    if (!accountSelect) return;
+    
+    // Clear existing options except "All Accounts"
+    accountSelect.innerHTML = '<option value="">All Accounts</option>';
+    
+    // Add investment accounts
+    appData.investmentAccounts.forEach(account => {
+        accountSelect.innerHTML += `<option value="${escapeHtml(account.name)}">${escapeHtml(account.name)} (${formatCurrency(account.balance)})</option>`;
+    });
+}

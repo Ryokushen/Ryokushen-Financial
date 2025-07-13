@@ -356,6 +356,118 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Investment Planning Section -->
+                <div class="investment-planning mt-16">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Investment Planning</h3>
+                        </div>
+                        <div class="card__body">
+                            <!-- Calculator Type Selector -->
+                            <div class="calculator-selector">
+                                <label for="calculator-type">Select Calculator:</label>
+                                <select id="calculator-type" class="form-select">
+                                    <option value="contribution">Extra Contribution Calculator</option>
+                                    <option value="retirement">Retirement Goal Calculator</option>
+                                    <option value="growth">Portfolio Growth Projection</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Extra Contribution Calculator -->
+                            <div id="contribution-calculator" class="calculator-section mt-16">
+                                <h4>Extra Monthly Contribution Calculator</h4>
+                                <div class="calculator-form">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="contrib-account-select">Account (optional):</label>
+                                            <select id="contrib-account-select" class="form-select">
+                                                <option value="">All Accounts</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="contrib-extra-amount">Extra Monthly Amount:</label>
+                                            <input type="number" id="contrib-extra-amount" class="form-input" placeholder="0" min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="contrib-years">Years:</label>
+                                            <input type="number" id="contrib-years" class="form-input" value="10" min="1" max="50">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn--secondary" id="calculate-contribution-btn">Calculate Growth</button>
+                                </div>
+                                <div id="contribution-results" class="calculator-results mt-16" style="display: none;">
+                                    <!-- Results will be inserted here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Retirement Goal Calculator -->
+                            <div id="retirement-calculator" class="calculator-section mt-16" style="display: none;">
+                                <h4>Retirement Goal Calculator</h4>
+                                <div class="calculator-form">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="retire-current-age">Current Age:</label>
+                                            <input type="number" id="retire-current-age" class="form-input" placeholder="30" min="18" max="100">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="retire-target-age">Retirement Age:</label>
+                                            <input type="number" id="retire-target-age" class="form-input" placeholder="65" min="50" max="100">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="retire-target-amount">Target Amount:</label>
+                                            <input type="number" id="retire-target-amount" class="form-input" placeholder="1000000" min="0" step="1000">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn--secondary" id="calculate-retirement-btn">Calculate Required Savings</button>
+                                </div>
+                                <div id="retirement-results" class="calculator-results mt-16" style="display: none;">
+                                    <!-- Results will be inserted here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Portfolio Growth Projection -->
+                            <div id="growth-calculator" class="calculator-section mt-16" style="display: none;">
+                                <h4>Portfolio Growth Projection</h4>
+                                <div class="calculator-form">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="growth-monthly-contrib">Monthly Contribution:</label>
+                                            <input type="number" id="growth-monthly-contrib" class="form-input" placeholder="500" min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="growth-years">Years to Project:</label>
+                                            <input type="number" id="growth-years" class="form-input" value="20" min="1" max="50">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn--secondary" id="calculate-growth-btn">Project Growth</button>
+                                </div>
+                                <div id="growth-results" class="calculator-results mt-16" style="display: none;">
+                                    <!-- Results will be inserted here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Investment Planning Charts -->
+                <div class="investment-charts mt-16" style="display: none;">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Investment Projections</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="charts-grid">
+                                <div class="chart-container">
+                                    <canvas id="investment-growth-chart"></canvas>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="contribution-comparison-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div id="debt" class="tab-content" role="region" aria-labelledby="debt-tab-btn">

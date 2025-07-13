@@ -530,6 +530,215 @@ function createCreditUtilizationChart({ appData, CHART_COLORS }) {
     });
 }
 
+// Investment Planning Chart Functions
+function createInvestmentGrowthChart(data, chartType) {
+    const ctx = document.getElementById("investment-growth-chart")?.getContext("2d");
+    if (!ctx) return;
+
+    let chartData = {};
+    let options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return formatCurrency(value);
+                    }
+                }
+            }
+        }
+    };
+
+    if (chartType === 'contribution' || chartType === 'retirement') {
+        // Bar chart for scenarios comparison
+        const scenarios = data;
+        chartData = {
+            labels: scenarios.map(s => `${s.rate}% Return`),
+            datasets: [{
+                label: chartType === 'contribution' ? 'Future Value' : 'Required Monthly',
+                data: scenarios.map(s => chartType === 'contribution' ? s.futureValue : s.requiredMonthlyContribution),
+                backgroundColor: CHART_COLORS[0],
+                borderColor: CHART_COLORS[0],
+                borderWidth: 1
+            }]
+        };
+        
+        chartInstances.investmentGrowthChart = new Chart(ctx, {
+            type: 'bar',
+            data: chartData,
+            options: options
+        });
+    } else if (chartType === 'growth') {
+        // Line chart for portfolio growth over time
+        const timeline = data.timeline.slice(0, Math.min(data.timeline.length, 21)); // Show max 20 years
+        
+        const datasets = data.returnRates.map((rate, index) => ({
+            label: `${rate}% Annual Return`,
+            data: timeline.map(point => point.values[`rate_${rate}`]),
+            borderColor: CHART_COLORS[index],
+            backgroundColor: `${CHART_COLORS[index]}20`,
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1
+        }));
+
+        chartData = {
+            labels: timeline.map(point => `Year ${point.year}`),
+            datasets: datasets
+        };
+        
+        chartInstances.investmentGrowthChart = new Chart(ctx, {
+            type: 'line',
+            data: chartData,
+            options: options
+        });
+    }
+}
+
+function createContributionComparisonChart(data, chartType) {
+    const ctx = document.getElementById("contribution-comparison-chart")?.getContext("2d");
+    if (!ctx) return;
+
+    if (chartType === 'contribution') {
+        // Stacked bar showing contributions vs growth
+        const scenarios = data;
+        
+        chartInstances.contributionComparisonChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: scenarios.map(s => `${s.rate}%`),
+                datasets: [{
+                    label: 'Contributions',
+                    data: scenarios.map(s => s.totalContributed),
+                    backgroundColor: CHART_COLORS[1],
+                }, {
+                    label: 'Investment Growth',
+                    data: scenarios.map(s => s.totalEarnings),
+                    backgroundColor: CHART_COLORS[0],
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return formatCurrency(value);
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } else if (chartType === 'retirement') {
+        // Pie chart showing contribution vs earnings split for middle scenario
+        const middleScenario = data[Math.floor(data.length / 2)];
+        
+        chartInstances.contributionComparisonChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Total Contributions', 'Investment Earnings'],
+                datasets: [{
+                    data: [middleScenario.totalContributions, middleScenario.projectedEarnings],
+                    backgroundColor: [CHART_COLORS[1], CHART_COLORS[0]],
+                    borderColor: 'var(--color-surface-translucent)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = formatCurrency(context.parsed);
+                                const percentage = ((context.parsed / context.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } else if (chartType === 'growth') {
+        // Bar chart comparing final values at different return rates
+        const finalYear = data.timeline[data.timeline.length - 1];
+        
+        chartInstances.contributionComparisonChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.returnRates.map(rate => `${rate}% Return`),
+                datasets: [{
+                    label: 'Final Portfolio Value',
+                    data: data.returnRates.map(rate => finalYear.values[`rate_${rate}`]),
+                    backgroundColor: data.returnRates.map((_, index) => CHART_COLORS[index]),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false,
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Final Value: ' + formatCurrency(context.parsed.y);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return formatCurrency(value);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
 // Export function to update debt charts
 window.updateDebtCharts = function(appState) {
     const chartFunctions = [
@@ -546,4 +755,22 @@ window.updateDebtCharts = function(appState) {
             debug.error(`Error creating debt chart:`, error);
         }
     });
+};
+
+// Export function to update investment charts
+window.updateInvestmentCharts = function(data, chartType) {
+    try {
+        // Destroy existing charts first
+        if (chartInstances.investmentGrowthChart) {
+            chartInstances.investmentGrowthChart.destroy();
+        }
+        if (chartInstances.contributionComparisonChart) {
+            chartInstances.contributionComparisonChart.destroy();
+        }
+        
+        createInvestmentGrowthChart(data, chartType);
+        createContributionComparisonChart(data, chartType);
+    } catch (error) {
+        debug.error('Error creating investment charts:', error);
+    }
 };
