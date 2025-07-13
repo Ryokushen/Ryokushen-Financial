@@ -8,13 +8,28 @@ class PrivacyManager {
         this.listeners = new Set();
         this.blurredElements = new WeakMap();
         this.temporarilyRevealed = new WeakSet();
+        this.isInitialized = false;
+    }
+    
+    // Initialize privacy manager after DOM is ready
+    init() {
+        if (this.isInitialized) {
+            console.log('[Privacy] Already initialized');
+            return;
+        }
         
-        // Keyboard shortcut for panic mode
+        console.log('[Privacy] Initializing privacy manager');
+        this.isInitialized = true;
+        
+        // Setup keyboard shortcuts
         this.setupKeyboardShortcuts();
         
-        // Initialize privacy state on load
+        // Apply privacy state if it was previously enabled
         if (this.isPrivate) {
+            console.log('[Privacy] Privacy was previously enabled, applying now');
             this.enablePrivacyMode();
+        } else {
+            console.log('[Privacy] Privacy mode is off');
         }
     }
     
@@ -50,6 +65,7 @@ class PrivacyManager {
     
     // Toggle privacy mode
     togglePrivacy() {
+        console.log('[Privacy] Toggling privacy mode from', this.isPrivate, 'to', !this.isPrivate);
         this.isPrivate = !this.isPrivate;
         this.savePrivacyState();
         
@@ -67,6 +83,7 @@ class PrivacyManager {
     
     // Enable privacy mode
     enablePrivacyMode() {
+        console.log('[Privacy] Enabling privacy mode');
         document.body.classList.add('privacy-mode');
         this.blurSensitiveData();
         this.updatePrivacyIndicators();
@@ -102,7 +119,11 @@ class PrivacyManager {
             '[data-sensitive="true"]'
         ];
         
-        const elements = document.querySelectorAll(sensitiveSelectors.join(', '));
+        const selector = sensitiveSelectors.join(', ');
+        console.log('[Privacy] Looking for elements with selector:', selector);
+        const elements = document.querySelectorAll(selector);
+        console.log('[Privacy] Found', elements.length, 'sensitive elements to blur');
+        
         elements.forEach(el => {
             if (!el.classList.contains('privacy-blur')) {
                 el.classList.add('privacy-blur');
@@ -122,6 +143,9 @@ class PrivacyManager {
         
         // Also blur table cells containing currency values
         const tableCells = document.querySelectorAll('td');
+        console.log('[Privacy] Checking', tableCells.length, 'table cells for currency values');
+        let blurredCells = 0;
+        
         tableCells.forEach(td => {
             // Check if cell contains currency (starts with $ or -$)
             const text = td.textContent.trim();
@@ -139,9 +163,12 @@ class PrivacyManager {
                     td.addEventListener('click', this.handleRevealClick.bind(this));
                     td.style.cursor = 'pointer';
                     td.setAttribute('title', 'Click to reveal temporarily');
+                    blurredCells++;
                 }
             }
         });
+        
+        console.log('[Privacy] Blurred', blurredCells, 'table cells with currency values');
     }
     
     // Unblur all sensitive data
@@ -244,6 +271,22 @@ class PrivacyManager {
     isPrivacyEnabled() {
         return this.isPrivate;
     }
+    
+    // Force refresh privacy mode (for debugging)
+    forceRefresh() {
+        console.log('[Privacy] Force refreshing privacy mode');
+        if (this.isPrivate) {
+            // First unblur everything
+            this.unblurSensitiveData();
+            // Then reapply blur
+            setTimeout(() => {
+                this.blurSensitiveData();
+                console.log('[Privacy] Force refresh complete');
+            }, 100);
+        } else {
+            console.log('[Privacy] Privacy mode is off, nothing to refresh');
+        }
+    }
 }
 
 // Create singleton instance
@@ -272,4 +315,13 @@ export function removePrivacyListener(callback) {
 
 export function enablePanicMode() {
     privacyManager.enablePanicMode();
+}
+
+export function forceRefreshPrivacy() {
+    privacyManager.forceRefresh();
+}
+
+// Make privacyManager available globally for debugging
+if (typeof window !== 'undefined') {
+    window.privacyManager = privacyManager;
 }

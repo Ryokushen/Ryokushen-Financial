@@ -81,6 +81,9 @@ async function initializeApp() {
     const { setupCommonModals } = await import('./modules/modalManager.js');
     setupCommonModals();
     
+    // Initialize privacy manager now that DOM is ready
+    privacyManager.init();
+    
     await loadAllData();
 
     calculateAccountBalances();
