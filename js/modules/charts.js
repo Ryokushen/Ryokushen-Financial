@@ -7,6 +7,51 @@ import { isPrivacyMode } from './privacy.js';
 
 let chartInstances = {};
 
+// Privacy-aware formatter functions to reduce code duplication
+const privacyFormatters = {
+    // Standard currency formatter for tooltips
+    currencyTooltip: (label, value, showPercentage = false, total = null) => {
+        if (isPrivacyMode()) {
+            return showPercentage ? `${label}: $*** (**%)` : `${label}: $***`;
+        }
+        const formattedValue = formatCurrency(value);
+        if (showPercentage && total !== null) {
+            const percentage = ((value / total) * 100).toFixed(1);
+            return `${label}: ${formattedValue} (${percentage}%)`;
+        }
+        return `${label}: ${formattedValue}`;
+    },
+    
+    // Axis tick formatter
+    axisTick: (value) => {
+        return isPrivacyMode() ? '$***' : formatCurrency(value);
+    },
+    
+    // Percentage formatter
+    percentage: (label, value) => {
+        if (isPrivacyMode()) {
+            return `${label}: **%`;
+        }
+        return `${label}: ${value.toFixed(1)}%`;
+    },
+    
+    // Multi-line tooltip formatter for complex tooltips
+    multiLineTooltip: (lines) => {
+        if (isPrivacyMode()) {
+            return lines.map(line => {
+                if (line.includes('$') || line.includes('Value') || line.includes('Balance') || line.includes('Limit')) {
+                    return line.replace(/\$[\d,]+\.?\d*/g, '$***');
+                }
+                if (line.includes('%') || line.includes('Utilization')) {
+                    return line.replace(/\d+\.?\d*%/g, '**%');
+                }
+                return line;
+            });
+        }
+        return lines;
+    }
+};
+
 function createDebtHealthGauge({ appData, CHART_COLORS }) {
     const ctx = document.getElementById("debtHealthGauge").getContext("2d");
     if (!ctx) return;
@@ -23,7 +68,7 @@ function createDebtHealthGauge({ appData, CHART_COLORS }) {
     const gaugeMax = 60;
     const value = Math.min(dti, gaugeMax);
 
-    chartInstances.debtHealthGauge = new Chart(ctx, {
+    const chart = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: ['DTI', 'Remaining'],
@@ -42,10 +87,40 @@ function createDebtHealthGauge({ appData, CHART_COLORS }) {
             cutout: '70%',      // Adjusts the thickness of the gauge
             plugins: {
                 legend: { display: false },
-                tooltip: { enabled: false }
+                tooltip: { 
+                    enabled: true,
+                    callbacks: {
+                        label: function(context) {
+                            const dti = calculateDebtToIncomeRatio(appData);
+                            return privacyFormatters.percentage('DTI', dti);
+                        }
+                    }
+                }
             }
-        }
+        },
+        plugins: [{
+            beforeDraw: function(chart) {
+                const width = chart.width;
+                const height = chart.height;
+                const ctx = chart.ctx;
+                
+                ctx.restore();
+                const fontSize = (height / 114).toFixed(2);
+                ctx.font = fontSize + "em sans-serif";
+                ctx.textBaseline = "middle";
+                ctx.textAlign = "center";
+                
+                const text = isPrivacyMode() ? "**%" : dti.toFixed(1) + "%";
+                const textX = Math.round(width / 2);
+                const textY = height - 20;
+                
+                ctx.fillText(text, textX, textY);
+                ctx.save();
+            }
+        }]
     });
+    
+    chartInstances.debtHealthGauge = chart;
 }
 
 function createInvestmentAllocationChart({ appData, CHART_COLORS }) {
@@ -88,12 +163,8 @@ function createInvestmentAllocationChart({ appData, CHART_COLORS }) {
                     callbacks: {
                         label: function(context) {
                             const label = context.label || '';
-                            if (isPrivacyMode()) {
-                                return `${label}: $*** (**%)`;
-                            }
-                            const value = formatCurrency(context.parsed);
-                            const percentage = ((context.parsed / context.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1);
-                            return `${label}: ${value} (${percentage}%)`;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            return privacyFormatters.currencyTooltip(label, context.parsed, true, total);
                         }
                     }
                 }
@@ -199,10 +270,7 @@ function createNetWorthChart({ appData, CHART_COLORS }) {
                             const privacyEnabled = isPrivacyMode();
                             console.log('[Chart Tooltip] Net Worth - Privacy mode:', privacyEnabled);
                             console.log('[Chart Tooltip] Privacy manager state:', window.privacyManager?.isPrivate);
-                            if (privacyEnabled) {
-                                return 'Net Worth: $***';
-                            }
-                            return 'Net Worth: ' + formatCurrency(context.parsed.y);
+                            return privacyFormatters.currencyTooltip('Net Worth', context.parsed.y);
                         }
                     }
                 }
@@ -210,12 +278,7 @@ function createNetWorthChart({ appData, CHART_COLORS }) {
             scales: {
                 y: {
                     ticks: {
-                        callback: function(value) {
-                            if (isPrivacyMode()) {
-                                return '$***';
-                            }
-                            return formatCurrency(value);
-                        }
+                        callback: privacyFormatters.axisTick
                     }
                 }
             }
@@ -261,12 +324,8 @@ function createExpenseCategoryChart({ appData, CHART_COLORS }) {
                     callbacks: {
                         label: function(context) {
                             const label = context.label || '';
-                            if (isPrivacyMode()) {
-                                return `${label}: $*** (**%)`;
-                            }
-                            const value = formatCurrency(context.parsed);
-                            const percentage = ((context.parsed / context.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1);
-                            return `${label}: ${value} (${percentage}%)`;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            return privacyFormatters.currencyTooltip(label, context.parsed, true, total);
                         }
                     }
                 }
@@ -322,10 +381,7 @@ function createCashFlowChart({ appData, CHART_COLORS }) {
                     callbacks: {
                         label: function(context) {
                             const label = context.dataset.label;
-                            if (isPrivacyMode()) {
-                                return `${label}: $***`;
-                            }
-                            return `${label}: ${formatCurrency(context.parsed.y)}`;
+                            return privacyFormatters.currencyTooltip(label, context.parsed.y);
                         }
                     }
                 }
@@ -336,12 +392,7 @@ function createCashFlowChart({ appData, CHART_COLORS }) {
                     stacked: true,
                     beginAtZero: true,
                     ticks: {
-                        callback: function(value) {
-                            if (isPrivacyMode()) {
-                                return '$***';
-                            }
-                            return formatCurrency(value);
-                        }
+                        callback: privacyFormatters.axisTick
                     }
                 }
             }
@@ -376,10 +427,7 @@ function createAssetsDebtChart({ appData, CHART_COLORS }) {
                     callbacks: {
                         label: function(context) {
                             const label = context.label;
-                            if (isPrivacyMode()) {
-                                return `${label}: $***`;
-                            }
-                            return `${label}: ${formatCurrency(context.parsed.x)}`;
+                            return privacyFormatters.currencyTooltip(label, context.parsed.x);
                         }
                     }
                 }
@@ -388,12 +436,7 @@ function createAssetsDebtChart({ appData, CHART_COLORS }) {
                 x: {
                     beginAtZero: true,
                     ticks: {
-                        callback: function(value) {
-                            if (isPrivacyMode()) {
-                                return '$***';
-                            }
-                            return formatCurrency(value);
-                        }
+                        callback: privacyFormatters.axisTick
                     }
                 }
             }
@@ -442,12 +485,8 @@ function createDebtBreakdownChart({ appData, CHART_COLORS }) {
                     callbacks: {
                         label: function(context) {
                             const label = context.label || '';
-                            if (isPrivacyMode()) {
-                                return `${label}: $*** (**%)`;
-                            }
-                            const value = formatCurrency(context.parsed);
-                            const percentage = ((context.parsed / context.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1);
-                            return `${label}: ${value} (${percentage}%)`;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            return privacyFormatters.currencyTooltip(label, context.parsed, true, total);
                         }
                     }
                 }
@@ -512,10 +551,7 @@ function createPayoffTimelineChart({ appData, CHART_COLORS }) {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            if (isPrivacyMode()) {
-                                return 'Balance: $***';
-                            }
-                            return 'Balance: ' + formatCurrency(context.parsed.y);
+                            return privacyFormatters.currencyTooltip('Balance', context.parsed.y);
                         }
                     }
                 }
@@ -524,12 +560,7 @@ function createPayoffTimelineChart({ appData, CHART_COLORS }) {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        callback: function(value) {
-                            if (isPrivacyMode()) {
-                                return '$***';
-                            }
-                            return formatCurrency(value);
-                        }
+                        callback: privacyFormatters.axisTick
                     }
                 }
             }
@@ -576,12 +607,7 @@ function createInterestAnalysisChart({ appData, CHART_COLORS }) {
                     stacked: true,
                     beginAtZero: true,
                     ticks: {
-                        callback: function(value) {
-                            if (isPrivacyMode()) {
-                                return '$***';
-                            }
-                            return formatCurrency(value);
-                        }
+                        callback: privacyFormatters.axisTick
                     }
                 }
             },
@@ -590,11 +616,7 @@ function createInterestAnalysisChart({ appData, CHART_COLORS }) {
                     callbacks: {
                         label: function(context) {
                             const label = context.dataset.label;
-                            if (isPrivacyMode()) {
-                                return `${label}: $***`;
-                            }
-                            const value = formatCurrency(context.parsed.y);
-                            return `${label}: ${value}`;
+                            return privacyFormatters.currencyTooltip(label, context.parsed.y);
                         }
                     }
                 }
@@ -649,7 +671,7 @@ function createCreditUtilizationChart({ appData, CHART_COLORS }) {
                     max: 100,
                     ticks: {
                         callback: function(value) {
-                            return value + '%';
+                            return isPrivacyMode() ? '**%' : value + '%';
                         }
                     }
                 }
@@ -659,18 +681,12 @@ function createCreditUtilizationChart({ appData, CHART_COLORS }) {
                     callbacks: {
                         label: function(context) {
                             const card = utilization.cards[context.dataIndex];
-                            if (isPrivacyMode()) {
-                                return [
-                                    `Utilization: **%`,
-                                    `Balance: $***`,
-                                    `Limit: $***`
-                                ];
-                            }
-                            return [
+                            const lines = [
                                 `Utilization: ${context.parsed.y.toFixed(1)}%`,
                                 `Balance: ${formatCurrency(card.balance)}`,
                                 `Limit: ${formatCurrency(card.limit)}`
                             ];
+                            return privacyFormatters.multiLineTooltip(lines);
                         }
                     }
                 }
@@ -695,10 +711,7 @@ function createInvestmentGrowthChart(data, chartType) {
             tooltip: {
                 callbacks: {
                     label: function(context) {
-                        if (isPrivacyMode()) {
-                            return context.dataset.label + ': $***';
-                        }
-                        return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                        return privacyFormatters.currencyTooltip(context.dataset.label, context.parsed.y);
                     }
                 }
             }
@@ -707,12 +720,7 @@ function createInvestmentGrowthChart(data, chartType) {
             y: {
                 beginAtZero: true,
                 ticks: {
-                    callback: function(value) {
-                        if (isPrivacyMode()) {
-                            return '$***';
-                        }
-                        return formatCurrency(value);
-                    }
+                    callback: privacyFormatters.axisTick
                 }
             }
         }
@@ -797,12 +805,7 @@ function createContributionComparisonChart(data, chartType) {
                         stacked: true,
                         beginAtZero: true,
                         ticks: {
-                            callback: function(value) {
-                                if (isPrivacyMode()) {
-                                    return '$***';
-                                }
-                                return formatCurrency(value);
-                            }
+                            callback: privacyFormatters.axisTick
                         }
                     }
                 },
@@ -810,10 +813,7 @@ function createContributionComparisonChart(data, chartType) {
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                if (isPrivacyMode()) {
-                                    return context.dataset.label + ': $***';
-                                }
-                                return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                                return privacyFormatters.currencyTooltip(context.dataset.label, context.parsed.y);
                             }
                         }
                     }
@@ -868,18 +868,14 @@ function createContributionComparisonChart(data, chartType) {
                         callbacks: {
                             label: function(context) {
                                 const label = context.label || '';
-                                if (isPrivacyMode()) {
-                                    return `${label}: $*** (**%)`;
-                                }
                                 const originalValue = context.dataIndex === 0 ? middleScenario.totalContributions : middleScenario.projectedEarnings;
                                 
                                 if (originalValue === 0) {
-                                    return `${label}: $0.00 (None needed!)`;
+                                    return isPrivacyMode() ? `${label}: $*** (None needed!)` : `${label}: $0.00 (None needed!)`;
                                 }
                                 
-                                const value = formatCurrency(originalValue);
-                                const percentage = ((originalValue / (middleScenario.totalContributions + middleScenario.projectedEarnings)) * 100).toFixed(1);
-                                return `${label}: ${value} (${percentage}%)`;
+                                const total = middleScenario.totalContributions + middleScenario.projectedEarnings;
+                                return privacyFormatters.currencyTooltip(label, originalValue, true, total);
                             }
                         }
                     }
@@ -911,10 +907,7 @@ function createContributionComparisonChart(data, chartType) {
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                if (isPrivacyMode()) {
-                                    return 'Final Value: $***';
-                                }
-                                return 'Final Value: ' + formatCurrency(context.parsed.y);
+                                return privacyFormatters.currencyTooltip('Final Value', context.parsed.y);
                             }
                         }
                     }
@@ -923,12 +916,7 @@ function createContributionComparisonChart(data, chartType) {
                     y: {
                         beginAtZero: true,
                         ticks: {
-                            callback: function(value) {
-                                if (isPrivacyMode()) {
-                                    return '$***';
-                                }
-                                return formatCurrency(value);
-                            }
+                            callback: privacyFormatters.axisTick
                         }
                     }
                 }

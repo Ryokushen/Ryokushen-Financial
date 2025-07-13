@@ -2,6 +2,14 @@
 import { debug } from './debug.js';
 import { announceToScreenReader } from './ui.js';
 
+// Centralized timing configuration for privacy operations
+const PRIVACY_TIMING = {
+    DOM_UPDATE_DELAY: 100,        // Delay for DOM updates to complete
+    CHART_REFRESH_DELAY: 250,     // Delay for chart refreshes (kept higher for stability)
+    REVEAL_DURATION: 3000,        // How long temporary reveals last
+    MODAL_POPULATE_DELAY: 0       // Delay for modal population
+};
+
 class PrivacyManager {
     constructor() {
         this.isPrivate = this.loadPrivacyState();
@@ -98,29 +106,33 @@ class PrivacyManager {
     
     // Blur all sensitive data
     blurSensitiveData() {
+        // Optimized selectors - grouped by specificity and avoiding redundancy
         const sensitiveSelectors = [
+            // Primary value selectors
             '.metric-value',
-            '.balance',
-            '.amount',
-            '.transaction-amount',
-            '.account-balance',
             '.account-info-value',
             '.holding-value',
+            '.net-worth',
+            
+            // Amount-related selectors (consolidated)
+            '.transaction-amount',
+            '.bill-amount',
+            '.recurring-bill-amount',
             '.goal-amount',
+            '.total-value',
+            
+            // Balance selectors (consolidated)
+            '.balance:not(.account-balance):not(.debt-balance)',
+            '.account-balance',
             '.debt-balance',
             '.debt-value',
-            '.bill-amount',
-            '.total-value',
-            '.net-worth',
-            '.recurring-bill-amount',
-            '.value',
+            
+            // Other financial values
             '.payment',
             '.rate',
-            '[data-sensitive="true"]',
-            // More specific selectors for problem areas
-            '.investment-account .account-info-value',
-            '.investment-account-header + .account-info .account-info-value',
-            'div.account-info span.account-info-value'
+            
+            // Data attribute selector
+            '[data-sensitive="true"]'
         ];
         
         const selector = sensitiveSelectors.join(', ');
@@ -135,22 +147,27 @@ class PrivacyManager {
             console.log(`[Privacy] Account value ${index}:`, el.textContent, 'Classes:', el.className, 'Parent:', el.parentElement.className);
         });
         
-        elements.forEach(el => {
-            if (!el.classList.contains('privacy-blur')) {
+        // Process elements in a single pass
+        const processElement = (el) => {
+            if (!el.classList.contains('privacy-blur') && !this.blurredElements.has(el)) {
                 el.classList.add('privacy-blur');
                 
-                // Store original content for click-to-reveal
+                // Store original content and bind handler only once
                 this.blurredElements.set(el, {
                     originalContent: el.textContent,
-                    isRevealed: false
+                    isRevealed: false,
+                    handler: this.handleRevealClick.bind(this)
                 });
                 
                 // Add click handler for temporary reveal
-                el.addEventListener('click', this.handleRevealClick.bind(this));
+                el.addEventListener('click', this.blurredElements.get(el).handler);
                 el.style.cursor = 'pointer';
                 el.setAttribute('title', 'Click to reveal temporarily');
             }
-        });
+        };
+        
+        // Process selected elements
+        elements.forEach(processElement);
         
         // Also blur table cells containing currency values
         const tableCells = document.querySelectorAll('td');
@@ -160,22 +177,9 @@ class PrivacyManager {
         tableCells.forEach(td => {
             // Check if cell contains currency (starts with $ or -$)
             const text = td.textContent.trim();
-            if (text.match(/^-?\$[\d,]+\.?\d*/)) {
-                if (!td.classList.contains('privacy-blur')) {
-                    td.classList.add('privacy-blur');
-                    
-                    // Store original content for click-to-reveal
-                    this.blurredElements.set(td, {
-                        originalContent: td.textContent,
-                        isRevealed: false
-                    });
-                    
-                    // Add click handler for temporary reveal
-                    td.addEventListener('click', this.handleRevealClick.bind(this));
-                    td.style.cursor = 'pointer';
-                    td.setAttribute('title', 'Click to reveal temporarily');
-                    blurredCells++;
-                }
+            if (text.match(/^-?\$[\d,]+\.?\d*/) && !td.classList.contains('privacy-blur')) {
+                processElement(td);
+                blurredCells++;
             }
         });
         
@@ -190,8 +194,12 @@ class PrivacyManager {
             el.style.cursor = '';
             el.removeAttribute('title');
             
-            // Remove click handler
-            el.removeEventListener('click', this.handleRevealClick.bind(this));
+            // Remove click handler using stored reference
+            const elementData = this.blurredElements.get(el);
+            if (elementData && elementData.handler) {
+                el.removeEventListener('click', elementData.handler);
+                this.blurredElements.delete(el);
+            }
         });
         
         // Clear temporary reveals
@@ -211,13 +219,13 @@ class PrivacyManager {
             element.classList.remove('privacy-blur');
             this.temporarilyRevealed.add(element);
             
-            // Re-blur after 3 seconds
+            // Re-blur after configured duration
             setTimeout(() => {
                 if (this.isPrivate && this.temporarilyRevealed.has(element)) {
                     element.classList.add('privacy-blur');
                     this.temporarilyRevealed.delete(element);
                 }
-            }, 3000);
+            }, PRIVACY_TIMING.REVEAL_DURATION);
         }
     }
     
@@ -278,7 +286,7 @@ class PrivacyManager {
                 setTimeout(() => {
                     this.blurSensitiveData();
                     console.log('[Privacy] Reapply complete');
-                }, 50); // Small delay to ensure dynamic content is rendered
+                }, PRIVACY_TIMING.DOM_UPDATE_DELAY);
             });
         }
     }
@@ -298,7 +306,7 @@ class PrivacyManager {
             setTimeout(() => {
                 this.blurSensitiveData();
                 console.log('[Privacy] Force refresh complete');
-            }, 100);
+            }, PRIVACY_TIMING.DOM_UPDATE_DELAY);
         } else {
             console.log('[Privacy] Privacy mode is off, nothing to refresh');
         }
@@ -356,3 +364,6 @@ export function forceRefreshPrivacy() {
 if (typeof window !== 'undefined') {
     window.privacyManager = privacyManager;
 }
+
+// Export timing configuration for use in other modules
+export { PRIVACY_TIMING };

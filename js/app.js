@@ -284,7 +284,7 @@ function setupEventListeners() {
                 console.log('[App] Refreshing investment charts');
                 window.updateInvestmentCharts(window.lastInvestmentData, window.lastInvestmentChartType);
             }
-        }, 250); // Increased delay to ensure privacy state propagation
+        }, 250); // Chart refresh delay - kept at 250ms for stability
     });
 }
 
