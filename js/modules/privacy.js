@@ -116,13 +116,24 @@ class PrivacyManager {
             '.value',
             '.payment',
             '.rate',
-            '[data-sensitive="true"]'
+            '[data-sensitive="true"]',
+            // More specific selectors for problem areas
+            '.investment-account .account-info-value',
+            '.investment-account-header + .account-info .account-info-value',
+            'div.account-info span.account-info-value'
         ];
         
         const selector = sensitiveSelectors.join(', ');
         console.log('[Privacy] Looking for elements with selector:', selector);
         const elements = document.querySelectorAll(selector);
         console.log('[Privacy] Found', elements.length, 'sensitive elements to blur');
+        
+        // Debug: Check specific account info values
+        const accountInfoValues = document.querySelectorAll('.account-info-value');
+        console.log('[Privacy] Found', accountInfoValues.length, 'account-info-value elements');
+        accountInfoValues.forEach((el, index) => {
+            console.log(`[Privacy] Account value ${index}:`, el.textContent, 'Classes:', el.className, 'Parent:', el.parentElement.className);
+        });
         
         elements.forEach(el => {
             if (!el.classList.contains('privacy-blur')) {
@@ -260,9 +271,13 @@ class PrivacyManager {
     // Re-apply privacy mode after dynamic content update
     reapplyPrivacyMode() {
         if (this.isPrivate) {
-            // Use requestAnimationFrame to ensure DOM is updated
+            console.log('[Privacy] Reapplying privacy mode');
+            // Use multiple techniques to ensure DOM is fully updated
             requestAnimationFrame(() => {
-                this.blurSensitiveData();
+                setTimeout(() => {
+                    this.blurSensitiveData();
+                    console.log('[Privacy] Reapply complete');
+                }, 50); // Small delay to ensure dynamic content is rendered
             });
         }
     }
@@ -286,6 +301,21 @@ class PrivacyManager {
         } else {
             console.log('[Privacy] Privacy mode is off, nothing to refresh');
         }
+    }
+    
+    // Debug method to check why specific elements aren't blurred
+    debugElement(selector) {
+        const elements = document.querySelectorAll(selector);
+        console.log(`[Privacy Debug] Found ${elements.length} elements matching "${selector}"`);
+        elements.forEach((el, index) => {
+            console.log(`[Privacy Debug] Element ${index}:`);
+            console.log('  Text:', el.textContent);
+            console.log('  Classes:', el.className);
+            console.log('  Has privacy-blur:', el.classList.contains('privacy-blur'));
+            console.log('  Computed display:', window.getComputedStyle(el).display);
+            console.log('  Computed visibility:', window.getComputedStyle(el).visibility);
+            console.log('  Parent element:', el.parentElement.tagName, el.parentElement.className);
+        });
     }
 }
 

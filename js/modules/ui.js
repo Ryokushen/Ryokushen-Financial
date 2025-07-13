@@ -11,6 +11,7 @@ import { createCharts } from './charts.js';
 import { updateDashboard } from './dashboard.js'; // Import from dashboard module
 import { modalManager } from './modalManager.js';
 import { debug } from './debug.js';
+import { reapplyPrivacy } from './privacy.js';
 
 export function showLoading(elementId) {
     const element = document.getElementById(elementId);
@@ -97,6 +98,11 @@ export function switchTab(tabName, appState) {
     } else if (tabName === "recurring") {
         Recurring.renderRecurringBills(appState);
     }
+    
+    // Reapply privacy mode after rendering new content
+    setTimeout(() => {
+        reapplyPrivacy();
+    }, 100);
 }
 
 // Generic Modal Controls using centralized modal manager
