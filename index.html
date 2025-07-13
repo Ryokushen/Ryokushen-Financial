@@ -380,6 +380,72 @@
                     </div>
                 </div>
 
+                <div class="debt-strategy mt-16">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Payoff Strategy</h3>
+                            <div class="strategy-selector">
+                                <label for="debt-strategy-select">Strategy:</label>
+                                <select id="debt-strategy-select" class="form-select">
+                                    <option value="avalanche">Avalanche (Highest Interest Rate First)</option>
+                                    <option value="snowball">Snowball (Lowest Balance First)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="card__body">
+                            <div class="payoff-calculator">
+                                <div class="form-group">
+                                    <label for="extra-payment-amount">Extra Monthly Payment:</label>
+                                    <input type="number" id="extra-payment-amount" class="form-input" placeholder="0" min="0" step="0.01">
+                                </div>
+                                <button class="btn btn--secondary" id="calculate-payoff-btn">Calculate Payoff</button>
+                            </div>
+                            <div id="payoff-results" class="payoff-results mt-16" style="display: none;">
+                                <div class="payoff-summary">
+                                    <div class="metric-item">
+                                        <span class="metric-label">Debt Free Date:</span>
+                                        <span class="metric-value" id="debt-free-date">-</span>
+                                    </div>
+                                    <div class="metric-item">
+                                        <span class="metric-label">Total Interest:</span>
+                                        <span class="metric-value" id="total-interest">$0.00</span>
+                                    </div>
+                                    <div class="metric-item">
+                                        <span class="metric-label">Months to Payoff:</span>
+                                        <span class="metric-value" id="months-to-payoff">0</span>
+                                    </div>
+                                </div>
+                                <div id="strategy-comparison" class="strategy-comparison mt-16" style="display: none;">
+                                    <h4>Strategy Comparison</h4>
+                                    <div class="comparison-results"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="debt-charts mt-16">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Debt Analysis</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="charts-grid">
+                                <div class="chart-container">
+                                    <canvas id="debt-breakdown-chart"></canvas>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="payoff-timeline-chart"></canvas>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="interest-analysis-chart"></canvas>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="credit-utilization-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div class="debt-accounts mt-16">
                     <div class="card">
                         <div class="card__header">

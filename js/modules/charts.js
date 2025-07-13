@@ -1,7 +1,8 @@
 // js/modules/charts.js
-import { formatCurrency } from './utils.js';
+import { formatCurrency, CHART_COLORS } from './utils.js';
 import { calculateDebtToIncomeRatio } from './kpis.js';
 import { debug } from './debug.js';
+import { DebtStrategy } from './debtStrategy.js';
 
 let chartInstances = {};
 
@@ -105,6 +106,12 @@ export function createCharts(appState) {
         if (document.getElementById("expenseCategoryChart")) createExpenseCategoryChart(appState);
         if (document.getElementById("cashFlowChart")) createCashFlowChart(appState);
         if (document.getElementById("assetsDebtChart")) createAssetsDebtChart(appState);
+        
+        // Debt-specific charts
+        if (document.getElementById("debt-breakdown-chart")) createDebtBreakdownChart({ appData: appState.appData, CHART_COLORS });
+        if (document.getElementById("payoff-timeline-chart")) createPayoffTimelineChart({ appData: appState.appData, CHART_COLORS });
+        if (document.getElementById("interest-analysis-chart")) createInterestAnalysisChart({ appData: appState.appData, CHART_COLORS });
+        if (document.getElementById("credit-utilization-chart")) createCreditUtilizationChart({ appData: appState.appData, CHART_COLORS });
 
     } catch (error) {
         debug.error("Error creating charts:", error);
@@ -266,3 +273,277 @@ function createAssetsDebtChart({ appData, CHART_COLORS }) {
         }
     });
 }
+
+function createDebtBreakdownChart({ appData, CHART_COLORS }) {
+    const ctx = document.getElementById("debt-breakdown-chart")?.getContext("2d");
+    if (!ctx) return;
+
+    // Group debts by type
+    const debtByType = appData.debtAccounts.reduce((acc, debt) => {
+        const type = debt.type || 'Other';
+        if (!acc[type]) {
+            acc[type] = 0;
+        }
+        acc[type] += debt.balance;
+        return acc;
+    }, {});
+
+    const labels = Object.keys(debtByType);
+    const data = Object.values(debtByType);
+
+    chartInstances.debtBreakdownChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Debt by Type',
+                data: data,
+                backgroundColor: CHART_COLORS,
+                borderColor: 'var(--color-surface-translucent)',
+                borderWidth: 2,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = formatCurrency(context.parsed);
+                            const percentage = ((context.parsed / context.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1);
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createPayoffTimelineChart({ appData, CHART_COLORS }) {
+    const ctx = document.getElementById("payoff-timeline-chart")?.getContext("2d");
+    if (!ctx) return;
+
+    // Get current strategy and extra payment from UI if available
+    const strategy = document.getElementById('debt-strategy-select')?.value || 'avalanche';
+    const extraPayment = parseFloat(document.getElementById('extra-payment-amount')?.value) || 0;
+
+    // Calculate payoff timeline
+    const timeline = DebtStrategy.calculatePayoffTimeline(appData.debtAccounts, strategy, extraPayment);
+    
+    if (timeline.monthlySchedule.length === 0) {
+        return;
+    }
+
+    // Prepare data for chart (show first 24 months or all if less)
+    const monthsToShow = Math.min(timeline.monthlySchedule.length, 24);
+    const labels = Array.from({length: monthsToShow}, (_, i) => `Month ${i + 1}`);
+    
+    // Calculate remaining balances for each month
+    const totalBalanceData = [];
+    let currentTotalBalance = appData.debtAccounts.reduce((sum, debt) => sum + debt.balance, 0);
+    
+    totalBalanceData.push(currentTotalBalance); // Starting balance
+    
+    for (let i = 0; i < monthsToShow; i++) {
+        const monthData = timeline.monthlySchedule[i];
+        currentTotalBalance -= monthData.totalPrincipal;
+        totalBalanceData.push(Math.max(0, currentTotalBalance));
+    }
+
+    chartInstances.payoffTimelineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Start', ...labels],
+            datasets: [{
+                label: 'Total Debt Balance',
+                data: totalBalanceData,
+                borderColor: CHART_COLORS[5],
+                backgroundColor: 'rgba(219, 69, 69, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Balance: ' + formatCurrency(context.parsed.y);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatCurrency(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createInterestAnalysisChart({ appData, CHART_COLORS }) {
+    const ctx = document.getElementById("interest-analysis-chart")?.getContext("2d");
+    if (!ctx) return;
+
+    // Calculate monthly interest for each debt
+    const debtLabels = appData.debtAccounts.map(debt => debt.name);
+    const monthlyInterestData = appData.debtAccounts.map(debt => {
+        return (debt.balance * (debt.interestRate / 100)) / 12;
+    });
+    const minimumPaymentData = appData.debtAccounts.map(debt => debt.minimumPayment || 0);
+    const principalData = appData.debtAccounts.map((debt, index) => {
+        return Math.max(0, minimumPaymentData[index] - monthlyInterestData[index]);
+    });
+
+    chartInstances.interestAnalysisChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: debtLabels,
+            datasets: [{
+                label: 'Principal',
+                data: principalData,
+                backgroundColor: CHART_COLORS[0],
+            }, {
+                label: 'Interest',
+                data: monthlyInterestData,
+                backgroundColor: CHART_COLORS[5],
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    stacked: true,
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatCurrency(value);
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.dataset.label;
+                            const value = formatCurrency(context.parsed.y);
+                            return `${label}: ${value}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createCreditUtilizationChart({ appData, CHART_COLORS }) {
+    const ctx = document.getElementById("credit-utilization-chart")?.getContext("2d");
+    if (!ctx) return;
+
+    const utilization = DebtStrategy.calculateCreditUtilization(appData.debtAccounts);
+    
+    if (utilization.cards.length === 0) {
+        // No credit cards with limits, show empty state
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'var(--color-text-secondary)';
+        ctx.fillText('No credit cards with limits found', ctx.canvas.width / 2, ctx.canvas.height / 2);
+        return;
+    }
+
+    const labels = utilization.cards.map(card => card.name);
+    const utilizationData = utilization.cards.map(card => card.utilization);
+    
+    // Color code based on utilization percentage
+    const backgroundColors = utilizationData.map(util => {
+        if (util <= 30) return CHART_COLORS[0]; // Good (green/teal)
+        if (util <= 50) return CHART_COLORS[6]; // Fair (yellow)
+        return CHART_COLORS[5]; // Poor (red)
+    });
+
+    chartInstances.creditUtilizationChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Credit Utilization %',
+                data: utilizationData,
+                backgroundColor: backgroundColors,
+                borderColor: backgroundColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const card = utilization.cards[context.dataIndex];
+                            return [
+                                `Utilization: ${context.parsed.y.toFixed(1)}%`,
+                                `Balance: ${formatCurrency(card.balance)}`,
+                                `Limit: ${formatCurrency(card.limit)}`
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Export function to update debt charts
+window.updateDebtCharts = function(appState) {
+    const chartFunctions = [
+        createDebtBreakdownChart,
+        createPayoffTimelineChart,
+        createInterestAnalysisChart,
+        createCreditUtilizationChart
+    ];
+    
+    chartFunctions.forEach(fn => {
+        try {
+            fn({ appData: appState.appData, CHART_COLORS });
+        } catch (error) {
+            debug.error(`Error creating debt chart:`, error);
+        }
+    });
+};

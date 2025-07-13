@@ -1879,3 +1879,137 @@ select.form-control {
   background-color: var(--color-error) \!important;
   color: white \!important;
 }
+
+/* Debt Strategy Styles */
+.strategy-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.strategy-selector label {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.payoff-calculator {
+  display: flex;
+  gap: var(--space-16);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.payoff-calculator .form-group {
+  flex: 1;
+  min-width: 200px;
+}
+
+.payoff-results {
+  background-color: var(--color-secondary);
+  padding: var(--space-16);
+  border-radius: var(--radius-8);
+  margin-top: var(--space-16);
+}
+
+.payoff-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-16);
+}
+
+.strategy-comparison {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-16);
+}
+
+.comparison-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-16);
+  margin-top: var(--space-12);
+}
+
+.comparison-card {
+  background-color: var(--color-surface);
+  padding: var(--space-16);
+  border-radius: var(--radius-8);
+  border: 1px solid var(--color-card-border);
+}
+
+.comparison-card h5 {
+  margin-bottom: var(--space-8);
+  color: var(--color-primary);
+}
+
+.comparison-metric {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.comparison-metric-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.comparison-metric-value {
+  font-weight: 500;
+}
+
+.savings-highlight {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+/* Debt Charts Grid */
+.debt-charts .charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-24);
+}
+
+@media (max-width: 768px) {
+  .payoff-calculator {
+    flex-direction: column;
+  }
+  
+  .payoff-calculator .form-group {
+    width: 100%;
+  }
+  
+  .debt-charts .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Extra Payment Allocation */
+.extra-payment-allocation {
+  background-color: var(--color-secondary);
+  padding: var(--space-16);
+  border-radius: var(--radius-8);
+  border-left: 4px solid var(--color-primary);
+}
+
+.extra-payment-allocation h4 {
+  margin-bottom: var(--space-8);
+  color: var(--color-primary);
+}
+
+.allocation-recommendation {
+  margin-top: var(--space-8);
+  padding: var(--space-12);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-6);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.allocation-recommendation strong {
+  color: var(--color-text);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
