@@ -98,14 +98,14 @@ export function createCharts(appState) {
         });
 
         // Add call to the new charts
-        if (document.getElementById("debtHealthGauge")) createDebtHealthGauge(appState);
-        if (document.getElementById("investmentAllocation")) createInvestmentAllocationChart(appState);
+        if (document.getElementById("debtHealthGauge")) createDebtHealthGauge({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+        if (document.getElementById("investmentAllocation")) createInvestmentAllocationChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
 
         // Existing chart calls
-        if (document.getElementById("netWorthChart")) createNetWorthChart(appState);
-        if (document.getElementById("expenseCategoryChart")) createExpenseCategoryChart(appState);
-        if (document.getElementById("cashFlowChart")) createCashFlowChart(appState);
-        if (document.getElementById("assetsDebtChart")) createAssetsDebtChart(appState);
+        if (document.getElementById("netWorthChart")) createNetWorthChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+        if (document.getElementById("expenseCategoryChart")) createExpenseCategoryChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+        if (document.getElementById("cashFlowChart")) createCashFlowChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+        if (document.getElementById("assetsDebtChart")) createAssetsDebtChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
         
         // Debt-specific charts
         if (document.getElementById("debt-breakdown-chart")) createDebtBreakdownChart({ appData: appState.appData, CHART_COLORS });

@@ -2588,14 +2588,14 @@ select.form-control {
   }
   
   /* Ensure chart canvas respects container */
-  .chart-container {
+  .hero-chart-section .chart-container {
     position: relative;
     width: 100%;
     height: 250px;
     overflow: hidden;
   }
   
-  .chart-container canvas {
+  .hero-chart-section .chart-container canvas {
     position: absolute !important;
     top: 0;
     left: 0;
@@ -2636,9 +2636,12 @@ select.form-control {
   
   .priority-charts-grid .chart-card {
     padding: var(--space-16);
+    display: block; /* Override flex display on mobile */
   }
   
   .priority-charts-grid .chart-container {
     height: 200px;
+    min-height: 200px; /* Ensure minimum height */
+    flex: unset; /* Remove flex property */
   }
 }
