@@ -252,6 +252,7 @@ class PrivacyManager {
     
     // Notify all listeners of state change
     notifyListeners() {
+        console.log('[Privacy] Notifying', this.listeners.size, 'listeners of privacy state change');
         this.listeners.forEach(callback => {
             try {
                 callback(this.isPrivate);

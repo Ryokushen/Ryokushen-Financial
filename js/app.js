@@ -260,8 +260,36 @@ function setupEventListeners() {
     
     // Add privacy listener to reapply on data updates
     privacyManager.addListener(() => {
+        console.log('[App] Privacy mode changed, refreshing UI');
         // Reapply privacy after a brief delay to ensure DOM updates
-        setTimeout(() => reapplyPrivacy(), 100);
+        setTimeout(() => {
+            reapplyPrivacy();
+            
+            // Double delay to ensure privacy state is fully updated
+            setTimeout(() => {
+                // Refresh charts to update tooltips with privacy mode state
+                if (document.getElementById("netWorthChart")) {
+                    console.log('[App] Refreshing dashboard charts');
+                    createCharts(appState);
+                }
+            }, 50);
+            
+            // Refresh debt charts if on debt tab
+            setTimeout(() => {
+                if (document.getElementById("debt-breakdown-chart") && window.updateDebtCharts) {
+                    console.log('[App] Refreshing debt charts');
+                    window.updateDebtCharts(appState);
+                }
+            }, 50);
+            
+            // Refresh investment charts if they exist
+            setTimeout(() => {
+                if (document.getElementById("investment-growth-chart") && window.lastInvestmentData && window.lastInvestmentChartType) {
+                    console.log('[App] Refreshing investment charts');
+                    window.updateInvestmentCharts(window.lastInvestmentData, window.lastInvestmentChartType);
+                }
+            }, 50);
+        }, 100);
     });
 }
 

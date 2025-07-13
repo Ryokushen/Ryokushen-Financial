@@ -92,6 +92,10 @@ function createInvestmentAllocationChart({ appData, CHART_COLORS }) {
 
 export function createCharts(appState) {
     try {
+        const currentPrivacyMode = isPrivacyMode();
+        console.log('[Charts] Creating charts, privacy mode is:', currentPrivacyMode);
+        console.log('[Charts] isPrivacyMode function:', isPrivacyMode);
+        
         Object.keys(chartInstances).forEach(key => {
             if (chartInstances[key]) {
                 chartInstances[key].destroy();
@@ -170,7 +174,9 @@ function createNetWorthChart({ appData, CHART_COLORS }) {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            if (isPrivacyMode()) {
+                            const privacyEnabled = isPrivacyMode();
+                            console.log('[Chart Tooltip] Net Worth - Privacy mode:', privacyEnabled);
+                            if (privacyEnabled) {
                                 return 'Net Worth: $***';
                             }
                             return 'Net Worth: ' + formatCurrency(context.parsed.y);
@@ -679,6 +685,9 @@ function createInvestmentGrowthChart(data, chartType) {
                 beginAtZero: true,
                 ticks: {
                     callback: function(value) {
+                        if (isPrivacyMode()) {
+                            return '$***';
+                        }
                         return formatCurrency(value);
                     }
                 }
@@ -766,6 +775,9 @@ function createContributionComparisonChart(data, chartType) {
                         beginAtZero: true,
                         ticks: {
                             callback: function(value) {
+                                if (isPrivacyMode()) {
+                                    return '$***';
+                                }
                                 return formatCurrency(value);
                             }
                         }
@@ -775,6 +787,9 @@ function createContributionComparisonChart(data, chartType) {
                     tooltip: {
                         callbacks: {
                             label: function(context) {
+                                if (isPrivacyMode()) {
+                                    return context.dataset.label + ': $***';
+                                }
                                 return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
                             }
                         }
@@ -886,6 +901,9 @@ function createContributionComparisonChart(data, chartType) {
                         beginAtZero: true,
                         ticks: {
                             callback: function(value) {
+                                if (isPrivacyMode()) {
+                                    return '$***';
+                                }
                                 return formatCurrency(value);
                             }
                         }
@@ -917,6 +935,10 @@ window.updateDebtCharts = function(appState) {
 // Export function to update investment charts
 window.updateInvestmentCharts = function(data, chartType) {
     try {
+        // Store the last data and type for privacy mode refresh
+        window.lastInvestmentData = data;
+        window.lastInvestmentChartType = chartType;
+        
         // Destroy existing charts first
         if (chartInstances.investmentGrowthChart) {
             chartInstances.investmentGrowthChart.destroy();
