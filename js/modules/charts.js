@@ -118,6 +118,7 @@ export function createCharts(appState) {
         Object.keys(chartInstances).forEach(key => {
             if (chartInstances[key]) {
                 chartInstances[key].destroy();
+                delete chartInstances[key];
             }
         });
 
@@ -949,6 +950,16 @@ window.updateDebtCharts = function(appState) {
         return;
     }
     
+    // Destroy existing debt chart instances before creating new ones
+    const debtChartKeys = ['debtBreakdownChart', 'payoffTimelineChart', 'interestAnalysisChart', 'creditUtilizationChart'];
+    debtChartKeys.forEach(key => {
+        if (chartInstances[key]) {
+            console.log(`[Charts] Destroying existing ${key}`);
+            chartInstances[key].destroy();
+            delete chartInstances[key];
+        }
+    });
+    
     const chartFunctions = [
         createDebtBreakdownChart,
         createPayoffTimelineChart,
@@ -986,9 +997,11 @@ window.updateInvestmentCharts = function(data, chartType) {
         // Destroy existing charts first
         if (chartInstances.investmentGrowthChart) {
             chartInstances.investmentGrowthChart.destroy();
+            delete chartInstances.investmentGrowthChart;
         }
         if (chartInstances.contributionComparisonChart) {
             chartInstances.contributionComparisonChart.destroy();
+            delete chartInstances.contributionComparisonChart;
         }
         
         createInvestmentGrowthChart(data, chartType);
