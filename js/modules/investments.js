@@ -228,7 +228,8 @@ async function handleHoldingSubmit(event, appState, onUpdate) {
         
         // Add computed fields after validation
         const holdingData = {
-            ...formData,
+            symbol: formData.symbol,
+            shares: formData.shares,
             company: document.getElementById("holding-company").value.trim(),
             current_price: formData.price,
             value: multiplyMoney(formData.shares, formData.price)
