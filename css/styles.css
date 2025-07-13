@@ -2540,4 +2540,105 @@ select.form-control {
     white-space: nowrap;
     flex-shrink: 0;
   }
+  
+  /* Dashboard specific fixes */
+  .dashboard-metrics {
+    grid-template-columns: 1fr;
+    gap: var(--space-12);
+  }
+  
+  /* Financial Health Section Mobile Fixes */
+  .health-score-container {
+    grid-template-columns: 1fr;
+    gap: var(--space-16);
+    padding: var(--space-16);
+  }
+  
+  .kpi-details-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-12);
+    width: 100%;
+  }
+  
+  .kpi-metric-card {
+    padding: var(--space-12);
+    min-width: 0;
+    width: 100%;
+  }
+  
+  .health-score-value {
+    font-size: 36px;
+  }
+  
+  /* Hero Chart Mobile Fixes */
+  .hero-chart-section {
+    padding: var(--space-16);
+    margin-bottom: var(--space-16);
+  }
+  
+  .hero-chart-section .chart-container {
+    height: 250px;
+    position: relative;
+    width: 100%;
+  }
+  
+  .hero-chart-section h3 {
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--space-12);
+  }
+  
+  /* Ensure chart canvas respects container */
+  .chart-container {
+    position: relative;
+    width: 100%;
+    height: 250px;
+    overflow: hidden;
+  }
+  
+  .chart-container canvas {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100%;
+    display: block;
+  }
+  
+  /* Specific fix for Net Worth chart */
+  #netWorthChart {
+    max-height: 100%;
+    object-fit: contain;
+  }
+  
+  /* Fix for Debt Health Gauge */
+  #debtHealthGauge {
+    max-height: 100%;
+    object-fit: contain;
+  }
+  
+  /* Enhanced charts grid on mobile */
+  .enhanced-charts-grid .chart-container {
+    height: 200px;
+  }
+  
+  /* Priority charts on mobile */
+  .priority-charts-grid {
+    grid-template-areas:
+      "main"
+      "side"
+      "bottom1"
+      "bottom2";
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: var(--space-16);
+  }
+  
+  .priority-charts-grid .chart-card {
+    padding: var(--space-16);
+  }
+  
+  .priority-charts-grid .chart-container {
+    height: 200px;
+  }
 }

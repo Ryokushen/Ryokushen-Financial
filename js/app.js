@@ -15,6 +15,19 @@ import { updateDashboard } from './modules/dashboard.js';
 import { debug } from './modules/debug.js';
 import { addMoney } from './modules/financialMath.js';
 
+// Configure Chart.js global defaults for better mobile responsiveness
+if (typeof Chart !== 'undefined') {
+    Chart.defaults.responsive = true;
+    Chart.defaults.maintainAspectRatio = false;
+    Chart.defaults.plugins.legend.display = true;
+    Chart.defaults.plugins.legend.position = 'bottom';
+    Chart.defaults.plugins.legend.labels.boxWidth = 12;
+    Chart.defaults.plugins.legend.labels.padding = 10;
+    Chart.defaults.plugins.legend.labels.font = {
+        size: 11
+    };
+}
+
 const appState = {
     appData: {
         transactions: [],
