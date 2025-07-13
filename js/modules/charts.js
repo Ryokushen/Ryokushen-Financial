@@ -163,7 +163,34 @@ function createNetWorthChart({ appData, CHART_COLORS }) {
                 fill: true,
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            if (isPrivacyMode()) {
+                                return 'Net Worth: $***';
+                            }
+                            return 'Net Worth: ' + formatCurrency(context.parsed.y);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: function(value) {
+                            if (isPrivacyMode()) {
+                                return '$***';
+                            }
+                            return formatCurrency(value);
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 
@@ -197,7 +224,25 @@ function createExpenseCategoryChart({ appData, CHART_COLORS }) {
                 hoverOffset: 4
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            if (isPrivacyMode()) {
+                                return `${label}: $*** (**%)`;
+                            }
+                            const value = formatCurrency(context.parsed);
+                            const percentage = ((context.parsed / context.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1);
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 
@@ -243,7 +288,34 @@ function createCashFlowChart({ appData, CHART_COLORS }) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.dataset.label;
+                            if (isPrivacyMode()) {
+                                return `${label}: $***`;
+                            }
+                            return `${label}: ${formatCurrency(context.parsed.y)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { stacked: true },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            if (isPrivacyMode()) {
+                                return '$***';
+                            }
+                            return formatCurrency(value);
+                        }
+                    }
+                }
+            }
         }
     });
 }
@@ -270,7 +342,32 @@ function createAssetsDebtChart({ appData, CHART_COLORS }) {
             responsive: true,
             maintainAspectRatio: false,
             indexAxis: 'y',
-            scales: { x: { beginAtZero: true } }
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label;
+                            if (isPrivacyMode()) {
+                                return `${label}: $***`;
+                            }
+                            return `${label}: ${formatCurrency(context.parsed.x)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            if (isPrivacyMode()) {
+                                return '$***';
+                            }
+                            return formatCurrency(value);
+                        }
+                    }
+                }
+            }
         }
     });
 }
