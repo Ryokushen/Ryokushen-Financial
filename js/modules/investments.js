@@ -1,6 +1,6 @@
 // js/modules/investments.js - Updated with Stock API Integration
 import db from '../database.js';
-import { safeParseFloat, escapeHtml, formatCurrency } from './utils.js';
+import { safeParseFloat, escapeHtml, formatCurrency, debounce } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
 import { stockApiService, HoldingsUpdater, formatLastUpdateTime } from './stockApi.js';
 import { loadingState, showButtonSuccess, showButtonError } from './loadingState.js';
@@ -168,34 +168,34 @@ async function deleteInvestmentAccount(id, appState, onUpdate) {
 }
 
 function openHoldingModal(appData, accountId, holdingId = null) {
-    const form = document.getElementById("holding-form");
-    const title = document.getElementById("holding-modal-title");
-    form.reset();
-    document.getElementById("holding-account-id").value = accountId;
-    document.getElementById("holding-index").value = "";
-
     const account = appData.investmentAccounts.find(a => a.id === accountId);
     if (!account) {
         showError("Parent account not found for holding.");
         return;
     }
-
-    if (holdingId) {
-        const holdingIndex = account.holdings.findIndex(h => h.id === holdingId);
-        if (holdingIndex > -1) {
-            const holding = account.holdings[holdingIndex];
-            title.textContent = "Edit Holding";
-            document.getElementById("holding-index").value = holdingIndex;
-            document.getElementById("holding-symbol").value = holding.symbol;
-            document.getElementById("holding-company").value = holding.company;
-            document.getElementById("holding-shares").value = holding.shares;
-            document.getElementById("holding-price").value = holding.currentPrice;
-            document.getElementById("holding-value").value = holding.value;
+    
+    const modalData = { accountId, holdingId };
+    
+    // Populate after modal opens and form is reset
+    setTimeout(() => {
+        document.getElementById("holding-account-id").value = accountId;
+        document.getElementById("holding-index").value = "";
+        
+        if (holdingId) {
+            const holdingIndex = account.holdings.findIndex(h => h.id === holdingId);
+            if (holdingIndex > -1) {
+                const holding = account.holdings[holdingIndex];
+                document.getElementById("holding-index").value = holdingIndex;
+                document.getElementById("holding-symbol").value = holding.symbol;
+                document.getElementById("holding-company").value = holding.company;
+                document.getElementById("holding-shares").value = holding.shares;
+                document.getElementById("holding-price").value = holding.currentPrice;
+                document.getElementById("holding-value").value = holding.value;
+            }
         }
-    } else {
-        title.textContent = "Add New Holding";
-    }
-    openModal('holding-modal');
+    }, 0);
+    
+    openModal('holding-modal', modalData);
 }
 
 async function handleHoldingSubmit(event, appState, onUpdate) {
@@ -489,8 +489,8 @@ export function setupEventListeners(appState, onUpdate) {
     document.getElementById('holding-price')?.addEventListener('input', updateHoldingValue);
 }
 
-function updateHoldingValue() {
+const updateHoldingValue = debounce(function() {
     const shares = safeParseFloat(document.getElementById('holding-shares').value);
     const price = safeParseFloat(document.getElementById('holding-price').value);
     document.getElementById('holding-value').value = multiplyMoney(shares, price).toFixed(2);
-}
+}, 300);

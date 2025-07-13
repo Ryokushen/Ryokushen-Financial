@@ -24,29 +24,45 @@ export function setupEventListeners(appState, onUpdate) {
 }
 
 function openCashAccountModal(appData, accountId = null) {
+    const modalData = { accountId };
+    
+    // Pre-configure form fields before modal opens
     const form = document.getElementById("cash-account-form");
-    const title = document.getElementById("cash-account-modal-title");
-    form.reset();
-    document.getElementById("cash-account-id").value = "";
-    document.getElementById("cash-account-initial-balance").disabled = false;
-    document.getElementById("cash-account-initial-balance").parentElement.style.display = 'block';
-
+    const initialBalanceField = document.getElementById("cash-account-initial-balance");
+    const initialBalanceParent = initialBalanceField?.parentElement;
+    
     if (accountId) {
         const account = appData.cashAccounts.find(a => a.id === accountId);
         if (account) {
-            title.textContent = "Edit Account";
-            document.getElementById("cash-account-id").value = account.id;
-            document.getElementById("cash-account-name").value = account.name;
-            document.getElementById("cash-account-type").value = account.type;
-            document.getElementById("cash-account-institution").value = account.institution || "";
-            document.getElementById("cash-account-notes").value = account.notes || "";
-            document.getElementById("cash-account-initial-balance").disabled = true; // Can't change balance here
-            document.getElementById("cash-account-initial-balance").parentElement.style.display = 'none';
+            // Modal will be reset by modalManager, so we need to populate after open
+            setTimeout(() => {
+                document.getElementById("cash-account-id").value = account.id;
+                document.getElementById("cash-account-name").value = account.name;
+                document.getElementById("cash-account-type").value = account.type;
+                document.getElementById("cash-account-institution").value = account.institution || "";
+                document.getElementById("cash-account-notes").value = account.notes || "";
+                if (initialBalanceField) {
+                    initialBalanceField.disabled = true;
+                }
+                if (initialBalanceParent) {
+                    initialBalanceParent.style.display = 'none';
+                }
+            }, 0);
         }
     } else {
-        title.textContent = "Add New Account";
+        // For new accounts, ensure initial balance field is visible
+        setTimeout(() => {
+            document.getElementById("cash-account-id").value = "";
+            if (initialBalanceField) {
+                initialBalanceField.disabled = false;
+            }
+            if (initialBalanceParent) {
+                initialBalanceParent.style.display = 'block';
+            }
+        }, 0);
     }
-    openModal('cash-account-modal');
+    
+    openModal('cash-account-modal', modalData);
 }
 
 async function handleCashAccountSubmit(event, appState, onUpdate) {

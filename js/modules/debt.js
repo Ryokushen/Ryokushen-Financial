@@ -2,33 +2,36 @@
 import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatCurrency, formatDate, getDueDateClass, getDueDateText } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
-import { validateForm, ValidationSchemas, showFieldError, clearFormErrors } from './validation.js';
+import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, CrossFieldValidators, validateFormWithCrossFields } from './validation.js';
 
 function openDebtModal(appData, debtId = null) {
-    const form = document.getElementById("debt-form");
-    const title = document.getElementById("debt-modal-title");
-
+    const modalData = { debtId };
+    
     if (debtId) {
         const debt = appData.debtAccounts.find(d => d.id === debtId);
         if (debt) {
-            title.textContent = "Edit Debt Account";
-            document.getElementById("debt-id").value = debt.id;
-            document.getElementById("debt-name").value = debt.name;
-            document.getElementById("debt-type").value = debt.type;
-            document.getElementById("debt-institution").value = debt.institution;
-            document.getElementById("debt-balance").value = debt.balance;
-            document.getElementById("debt-interest-rate").value = debt.interestRate;
-            document.getElementById("debt-minimum-payment").value = debt.minimumPayment;
-            document.getElementById("debt-due-date").value = debt.dueDate;
-            document.getElementById("debt-credit-limit").value = debt.creditLimit || "";
-            document.getElementById("debt-notes").value = debt.notes || "";
+            // Modal will be reset by modalManager, so populate after open
+            setTimeout(() => {
+                document.getElementById("debt-id").value = debt.id;
+                document.getElementById("debt-name").value = debt.name;
+                document.getElementById("debt-type").value = debt.type;
+                document.getElementById("debt-institution").value = debt.institution;
+                document.getElementById("debt-balance").value = debt.balance;
+                document.getElementById("debt-interest-rate").value = debt.interestRate;
+                document.getElementById("debt-minimum-payment").value = debt.minimumPayment;
+                document.getElementById("debt-due-date").value = debt.dueDate;
+                document.getElementById("debt-credit-limit").value = debt.creditLimit || "";
+                document.getElementById("debt-notes").value = debt.notes || "";
+            }, 0);
         }
     } else {
-        title.textContent = "Add New Debt Account";
-        form.reset();
-        document.getElementById("debt-id").value = "";
+        // For new debt accounts, just ensure ID is empty after reset
+        setTimeout(() => {
+            document.getElementById("debt-id").value = "";
+        }, 0);
     }
-    openModal('debt-modal');
+    
+    openModal('debt-modal', modalData);
 }
 
 async function handleDebtSubmit(event, appState, onUpdate) {
@@ -51,8 +54,12 @@ async function handleDebtSubmit(event, appState, onUpdate) {
             notes: document.getElementById("debt-notes").value
         };
         
-        // Validate form data
-        const { errors, hasErrors } = validateForm(debtData, ValidationSchemas.debtAccount);
+        // Validate form data with cross-field validation
+        const { errors, hasErrors } = validateFormWithCrossFields(
+            debtData,
+            ValidationSchemas.debtAccount,
+            CrossFieldValidators.debtAccount
+        );
         
         if (hasErrors) {
             // Show field-level errors

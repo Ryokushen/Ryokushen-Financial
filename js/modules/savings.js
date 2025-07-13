@@ -4,7 +4,7 @@ import { safeParseFloat, escapeHtml, formatDate, formatCurrency } from './utils.
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
 import { debug } from './debug.js';
 import { subtractMoney, addMoney, moneyGreaterThan, moneyLessThan, moneyEquals } from './financialMath.js';
-import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, ValidationRules } from './validation.js';
+import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, ValidationRules, CrossFieldValidators, validateFormWithCrossFields } from './validation.js';
 
 function mapSavingsGoal(goal) {
     return {
@@ -89,8 +89,12 @@ async function handleGoalSubmit(event, appState, onUpdate) {
             description: document.getElementById("goal-description").value,
         };
         
-        // Validate form data
-        const { errors, hasErrors } = validateForm(goalData, ValidationSchemas.savingsGoal);
+        // Validate form data with cross-field validation
+        const { errors, hasErrors } = validateFormWithCrossFields(
+            goalData, 
+            ValidationSchemas.savingsGoal,
+            CrossFieldValidators.savingsGoal
+        );
         
         if (hasErrors) {
             // Show field-level errors
@@ -98,6 +102,7 @@ async function handleGoalSubmit(event, appState, onUpdate) {
                 const fieldId = field === 'targetAmount' ? 'goal-target' : 
                                field === 'linkedAccountId' ? 'goal-account' :
                                field === 'currentAmount' ? 'goal-current' : 
+                               field === 'target_date' ? 'goal-target-date' :
                                `goal-${field}`;
                 showFieldError(fieldId, error);
             });
@@ -149,13 +154,17 @@ function openContributionModal(appData, goalId) {
     const goal = appData.savingsGoals.find(g => g.id === goalId);
     if (!goal) return;
 
-    // UPDATED: Populate contribution source dropdown to include cash accounts
+    // Populate contribution source dropdown to include cash accounts
     populateContributionSourceDropdown(appData);
-
-    document.getElementById("contribution-modal-title").textContent = `Contribute to: ${escapeHtml(goal.name)}`;
-    document.getElementById("contribution-goal-id").value = goalId;
-    document.getElementById("contribution-form").reset();
-    openModal('contribution-modal');
+    
+    const modalData = { goalId, goalName: escapeHtml(goal.name) };
+    
+    // Set goal ID after modal opens
+    setTimeout(() => {
+        document.getElementById("contribution-goal-id").value = goalId;
+    }, 0);
+    
+    openModal('contribution-modal', modalData);
 }
 
 // Function to handle transaction deletion and revert savings goal contributions

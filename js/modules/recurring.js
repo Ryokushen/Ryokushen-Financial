@@ -4,7 +4,7 @@ import { safeParseFloat, escapeHtml, formatDate, formatCurrency, getDueDateClass
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
 import { debug } from './debug.js';
 import { subtractMoney, addMoney } from './financialMath.js';
-import { validateForm, ValidationSchemas, showFieldError, clearFormErrors } from './validation.js';
+import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, CrossFieldValidators, validateFormWithCrossFields } from './validation.js';
 
 export function setupEventListeners(appState, onUpdate) {
     document.getElementById("add-recurring-btn")?.addEventListener("click", () => openRecurringModal(appState.appData));
@@ -48,45 +48,45 @@ function togglePaymentMethodFields() {
 function openRecurringModal(appData, billId = null) {
     // First populate the account dropdowns
     populateRecurringAccountDropdowns(appData);
+    
+    const modalData = { billId };
+    
+    // Populate after modal opens and form is reset
+    setTimeout(() => {
+        if (billId) {
+            const bill = appData.recurringBills.find(b => b.id === billId);
+            if (bill) {
+                document.getElementById("recurring-id").value = bill.id;
+                document.getElementById("recurring-name").value = bill.name;
+                document.getElementById("recurring-category").value = bill.category;
+                document.getElementById("recurring-amount").value = bill.amount;
+                document.getElementById("recurring-frequency").value = bill.frequency;
+                document.getElementById("recurring-next-due").value = bill.nextDue || bill.next_due;
+                document.getElementById("recurring-notes").value = bill.notes || "";
+                document.getElementById("recurring-active").checked = bill.active !== false;
 
-    const form = document.getElementById("recurring-form");
-    const title = document.getElementById("recurring-modal-title");
-    form.reset();
-    document.getElementById("recurring-id").value = "";
+                // Set payment method and accounts
+                const paymentMethod = bill.payment_method || 'cash';
+                document.getElementById("recurring-payment-method").value = paymentMethod;
 
-    if (billId) {
-        const bill = appData.recurringBills.find(b => b.id === billId);
-        if (bill) {
-            title.textContent = "Edit Recurring Bill";
-            document.getElementById("recurring-id").value = bill.id;
-            document.getElementById("recurring-name").value = bill.name;
-            document.getElementById("recurring-category").value = bill.category;
-            document.getElementById("recurring-amount").value = bill.amount;
-            document.getElementById("recurring-frequency").value = bill.frequency;
-            document.getElementById("recurring-next-due").value = bill.nextDue || bill.next_due;
-            document.getElementById("recurring-notes").value = bill.notes || "";
-            document.getElementById("recurring-active").checked = bill.active !== false;
+                if (paymentMethod === 'cash') {
+                    document.getElementById("recurring-account").value = bill.account_id;
+                } else {
+                    document.getElementById("recurring-debt-account").value = bill.debt_account_id;
+                }
 
-            // NEW: Set payment method and accounts
-            const paymentMethod = bill.payment_method || 'cash';
-            document.getElementById("recurring-payment-method").value = paymentMethod;
-
-            if (paymentMethod === 'cash') {
-                document.getElementById("recurring-account").value = bill.account_id;
-            } else {
-                document.getElementById("recurring-debt-account").value = bill.debt_account_id;
+                togglePaymentMethodFields();
             }
-
+        } else {
+            document.getElementById("recurring-id").value = "";
+            document.getElementById("recurring-active").checked = true;
+            document.getElementById("recurring-payment-method").value = 'cash';
+            document.getElementById("recurring-next-due").value = new Date().toISOString().split('T')[0];
             togglePaymentMethodFields();
         }
-    } else {
-        title.textContent = "Add New Recurring Bill";
-        document.getElementById("recurring-active").checked = true;
-        document.getElementById("recurring-payment-method").value = 'cash';
-        document.getElementById("recurring-next-due").value = new Date().toISOString().split('T')[0];
-        togglePaymentMethodFields();
-    }
-    openModal('recurring-modal');
+    }, 0);
+    
+    openModal('recurring-modal', modalData);
 }
 
 // UPDATED: Populate both cash and debt account dropdowns
@@ -141,8 +141,12 @@ async function handleRecurringSubmit(event, appState, onUpdate) {
             nextDue: document.getElementById("recurring-next-due").value
         };
         
-        // Validate form data
-        const { errors, hasErrors } = validateForm(formData, ValidationSchemas.recurringBill);
+        // Validate form data with cross-field validation
+        const { errors, hasErrors } = validateFormWithCrossFields(
+            formData,
+            ValidationSchemas.recurringBill,
+            CrossFieldValidators.recurringBill
+        );
         
         if (hasErrors) {
             // Show field-level errors

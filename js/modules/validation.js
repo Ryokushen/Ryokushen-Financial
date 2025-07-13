@@ -329,6 +329,79 @@ export const AsyncValidators = {
     }
 };
 
+// Cross-field validators
+export const CrossFieldValidators = {
+    savingsGoal: (formData) => {
+        const errors = {};
+        
+        // Check if current amount exceeds target amount
+        if (formData.currentAmount > formData.targetAmount) {
+            errors.currentAmount = 'Current amount cannot exceed target amount';
+        }
+        
+        // Check if target date is in the past
+        if (formData.target_date) {
+            const targetDate = new Date(formData.target_date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (targetDate < today) {
+                errors.target_date = 'Target date must be in the future';
+            }
+        }
+        
+        return errors;
+    },
+    
+    debtAccount: (formData) => {
+        const errors = {};
+        
+        // Check if minimum payment exceeds balance
+        if (formData.minimumPayment > formData.balance) {
+            errors.minimumPayment = 'Minimum payment cannot exceed current balance';
+        }
+        
+        // Check if balance exceeds credit limit (for credit cards)
+        if (formData.type === 'Credit Card' && formData.creditLimit && formData.balance > formData.creditLimit) {
+            errors.balance = 'Balance cannot exceed credit limit';
+        }
+        
+        return errors;
+    },
+    
+    recurringBill: (formData) => {
+        const errors = {};
+        
+        // Check if next due date is valid
+        if (formData.nextDue) {
+            const nextDue = new Date(formData.nextDue);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Allow today but not past dates
+            if (nextDue < today) {
+                errors.nextDue = 'Next due date cannot be in the past';
+            }
+        }
+        
+        return errors;
+    }
+};
+
+// Enhanced validation function with cross-field support
+export function validateFormWithCrossFields(formData, validationSchema, crossFieldValidator) {
+    // First do field-level validation
+    const { errors: fieldErrors, hasErrors: hasFieldErrors } = validateForm(formData, validationSchema);
+    
+    // Then do cross-field validation
+    const crossFieldErrors = crossFieldValidator ? crossFieldValidator(formData) : {};
+    
+    // Merge errors
+    const allErrors = { ...fieldErrors, ...crossFieldErrors };
+    const hasErrors = hasFieldErrors || Object.keys(crossFieldErrors).length > 0;
+    
+    return { errors: allErrors, hasErrors };
+}
+
 // Real-time validation setup
 export function setupRealtimeValidation(formId, validationSchema) {
     const form = document.getElementById(formId);

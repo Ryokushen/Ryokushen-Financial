@@ -338,12 +338,9 @@ export function setupCommonModals() {
     // Savings Goal Modal
     modalManager.register('goal-modal', {
         formId: 'goal-form',
-        resetFormOnOpen: false, // Don't auto-reset, let the openGoalModal function handle it
+        resetFormOnOpen: false, // The openGoalModal function handles form reset and population
         onOpen: (modal, data) => {
-            const title = modal.querySelector('.modal__title, #goal-modal-title');
-            if (title) {
-                title.textContent = data && data.isEdit ? 'Edit Savings Goal' : 'Add New Savings Goal';
-            }
+            // Title is already set by openGoalModal, no need to duplicate
         }
     });
     
@@ -353,12 +350,66 @@ export function setupCommonModals() {
         onOpen: (modal, data) => {
             const title = modal.querySelector('.modal__title, #debt-modal-title');
             if (title) {
-                title.textContent = data.debtId ? 'Edit Debt Account' : 'Add New Debt Account';
+                title.textContent = data && data.debtId ? 'Edit Debt Account' : 'Add New Debt Account';
             }
         }
     });
     
-    // Add more modal configurations as needed
+    // Cash Account Modal
+    modalManager.register('cash-account-modal', {
+        formId: 'cash-account-form',
+        onOpen: (modal, data) => {
+            const title = modal.querySelector('.modal__title, #cash-account-modal-title');
+            if (title) {
+                title.textContent = data && data.accountId ? 'Edit Account' : 'Add New Account';
+            }
+        }
+    });
+    
+    // Holding Modal
+    modalManager.register('holding-modal', {
+        formId: 'holding-form',
+        onOpen: (modal, data) => {
+            const title = modal.querySelector('.modal__title, #holding-modal-title');
+            if (title) {
+                title.textContent = data && data.holdingId ? 'Edit Holding' : 'Add New Holding';
+            }
+        }
+    });
+    
+    // Recurring Bill Modal
+    modalManager.register('recurring-modal', {
+        formId: 'recurring-form',
+        onOpen: (modal, data) => {
+            const title = modal.querySelector('.modal__title, #recurring-modal-title');
+            if (title) {
+                title.textContent = data && data.billId ? 'Edit Recurring Bill' : 'Add New Recurring Bill';
+            }
+        }
+    });
+    
+    // Contribution Modal
+    modalManager.register('contribution-modal', {
+        formId: 'contribution-form',
+        onOpen: (modal, data) => {
+            const title = modal.querySelector('.modal__title, #contribution-modal-title');
+            if (title && data && data.goalName) {
+                title.textContent = `Contribute to: ${data.goalName}`;
+            }
+        }
+    });
+    
+    // API Key Modal
+    modalManager.register('api-key-modal', {
+        formId: 'api-key-form',
+        resetFormOnOpen: true, // Always reset to prevent sensitive data retention
+        onOpen: (modal, data) => {
+            const title = modal.querySelector('.modal__title');
+            if (title) {
+                title.textContent = 'Configure Alpha Vantage API Key';
+            }
+        }
+    })
 }
 
 /**

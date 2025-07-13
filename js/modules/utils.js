@@ -125,3 +125,24 @@ export function getNextDueDate(currentDateStr, frequency) {
     // Return the new date formatted as YYYY-MM-DD
     return date.toISOString().split('T')[0];
 }
+
+/**
+ * Debounce function to limit rapid function calls
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Milliseconds to wait
+ * @param {boolean} immediate - Execute on leading edge instead of trailing
+ * @returns {Function} Debounced function
+ */
+export function debounce(func, wait, immediate = false) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            timeout = null;
+            if (!immediate) func.apply(this, args);
+        };
+        const callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) func.apply(this, args);
+    };
+}
