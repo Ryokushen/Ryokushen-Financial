@@ -2,7 +2,7 @@
 import db from '../database.js';
 import { formatCurrency, escapeHtml, safeParseFloat } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
-import { validateForm, ValidationSchemas, showFieldError, clearFormErrors } from './validation.js';
+import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, validateWithAsyncRules, AsyncValidators } from './validation.js';
 
 export function setupEventListeners(appState, onUpdate) {
     document.getElementById("add-cash-account-btn")?.addEventListener("click", () => openCashAccountModal(appState.appData));
@@ -82,7 +82,11 @@ async function handleCashAccountSubmit(event, appState, onUpdate) {
         };
         
         // Validate form data
-        const { errors, hasErrors } = validateForm(accountData, ValidationSchemas.cashAccount);
+        const asyncValidators = {
+            name: AsyncValidators.uniqueAccountName(appState.appData.cashAccounts, accountId ? parseInt(accountId) : null)
+        };
+        
+        const { errors, hasErrors } = await validateWithAsyncRules(accountData, ValidationSchemas.cashAccount, asyncValidators);
         
         if (hasErrors) {
             // Show field-level errors

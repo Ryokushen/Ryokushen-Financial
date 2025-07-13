@@ -1,0 +1,230 @@
+/* Privacy Mode Styles */
+
+/* Privacy blur effect */
+.privacy-blur {
+    filter: blur(8px);
+    -webkit-filter: blur(8px);
+    transition: filter 0.3s ease;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Hover state for blurred elements */
+.privacy-blur:hover {
+    filter: blur(6px);
+    -webkit-filter: blur(6px);
+    position: relative;
+}
+
+/* Privacy mode indicator */
+body.privacy-mode::before {
+    content: "🔒 Privacy Mode";
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+/* Privacy toggle button */
+#privacy-toggle-btn {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 25px;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    z-index: 999;
+    box-shadow: var(--shadow-sm);
+}
+
+#privacy-toggle-btn:hover {
+    background: var(--color-secondary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+#privacy-toggle-btn.active {
+    background: var(--color-primary);
+    color: var(--color-btn-primary-text);
+    border-color: var(--color-primary);
+}
+
+.privacy-icon {
+    font-style: normal;
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+#privacy-toggle-btn:hover .privacy-icon {
+    transform: scale(1.2);
+}
+
+/* Panic button */
+#panic-button {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    background: var(--color-error);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    z-index: 998;
+}
+
+#panic-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+#panic-button:active {
+    transform: scale(0.95);
+}
+
+/* Pulse animation for panic button */
+@keyframes panic-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(192, 21, 47, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 20px rgba(192, 21, 47, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(192, 21, 47, 0);
+    }
+}
+
+#panic-button {
+    animation: panic-pulse 2s infinite;
+}
+
+/* Privacy notice banner */
+.privacy-notice {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--color-info);
+    color: white;
+    padding: 10px;
+    text-align: center;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    z-index: 997;
+}
+
+.privacy-notice.show {
+    transform: translateY(0);
+}
+
+/* Sensitive data indicators */
+[data-sensitive="true"] {
+    position: relative;
+}
+
+/* Privacy tooltip */
+.privacy-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.privacy-blur:hover .privacy-tooltip {
+    opacity: 1;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    body.privacy-mode::before {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+    
+    #privacy-toggle-btn {
+        top: auto;
+        bottom: 100px;
+        right: 20px;
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    #panic-button {
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    body.privacy-mode::before {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .privacy-tooltip {
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--color-text);
+    }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+    .privacy-blur,
+    #privacy-toggle-btn,
+    #panic-button,
+    .privacy-icon {
+        transition: none;
+    }
+    
+    #panic-button {
+        animation: none;
+    }
+}
+
+/* Print styles - always show data when printing */
+@media print {
+    .privacy-blur {
+        filter: none !important;
+        -webkit-filter: none !important;
+    }
+    
+    body.privacy-mode::before,
+    #privacy-toggle-btn,
+    #panic-button,
+    .privacy-notice {
+        display: none !important;
+    }
+}

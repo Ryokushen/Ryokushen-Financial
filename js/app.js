@@ -14,6 +14,7 @@ import { renderBillsTimeline } from './modules/timeline.js';
 import { updateDashboard } from './modules/dashboard.js';
 import { debug } from './modules/debug.js';
 import { addMoney } from './modules/financialMath.js';
+import { privacyManager, togglePrivacyMode, enablePanicMode, reapplyPrivacy } from './modules/privacy.js';
 
 // Configure Chart.js global defaults for better mobile responsiveness
 if (typeof Chart !== 'undefined') {
@@ -238,6 +239,27 @@ function setupEventListeners() {
     Debt.setupEventListeners(enhancedAppState, onUpdate);
     Recurring.setupEventListeners(enhancedAppState, onUpdate);
     Savings.setupEventListeners(enhancedAppState, onUpdate);
+    
+    // Setup privacy mode event listeners
+    const privacyToggleBtn = document.getElementById('privacy-toggle-btn');
+    if (privacyToggleBtn) {
+        privacyToggleBtn.addEventListener('click', () => {
+            togglePrivacyMode();
+        });
+    }
+    
+    const panicButton = document.getElementById('panic-button');
+    if (panicButton) {
+        panicButton.addEventListener('click', () => {
+            enablePanicMode();
+        });
+    }
+    
+    // Add privacy listener to reapply on data updates
+    privacyManager.addListener(() => {
+        // Reapply privacy after a brief delay to ensure DOM updates
+        setTimeout(() => reapplyPrivacy(), 100);
+    });
 }
 
 // This function just re-renders the components with the current state.
@@ -266,6 +288,9 @@ async function updateAllDisplays(state) {
 
     Accounts.populateAccountDropdowns(state.appData);
     Debt.populateDebtAccountDropdown(state.appData);
+    
+    // Reapply privacy mode after all updates
+    reapplyPrivacy();
 }
 
 // Dashboard functionality moved to dashboard.js module

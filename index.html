@@ -10,9 +10,19 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
 
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/privacy.css">
 </head>
 
 <body>
+    <!-- Privacy Mode UI Components -->
+    <button id="privacy-toggle-btn" aria-label="Toggle privacy mode">
+        <i class="privacy-icon">🔓</i> Privacy Off
+    </button>
+    
+    <button id="panic-button" aria-label="Enable privacy mode immediately" title="Panic Button - Hide all sensitive data">
+        🚨
+    </button>
+    
     <div class="container">
         <header class="header">
             <h1>Ryokushen Financial Tracker</h1>

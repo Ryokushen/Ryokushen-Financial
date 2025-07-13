@@ -2,7 +2,7 @@
 import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatCurrency, formatDate, getDueDateClass, getDueDateText } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
-import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, CrossFieldValidators, validateFormWithCrossFields } from './validation.js';
+import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, CrossFieldValidators, validateFormWithCrossFields, validateWithAsyncRules, AsyncValidators } from './validation.js';
 import { DebtStrategy } from './debtStrategy.js';
 
 function openDebtModal(appData, debtId = null) {
@@ -55,14 +55,23 @@ async function handleDebtSubmit(event, appState, onUpdate) {
             notes: document.getElementById("debt-notes").value
         };
         
-        // Validate form data with cross-field validation
-        const { errors, hasErrors } = validateFormWithCrossFields(
+        // Validate form data with cross-field validation and async validation
+        const asyncValidators = {
+            name: AsyncValidators.uniqueDebtAccountName(appState.appData.debtAccounts, debtId ? parseInt(debtId) : null)
+        };
+        
+        const { errors, hasErrors } = await validateWithAsyncRules(
             debtData,
             ValidationSchemas.debtAccount,
-            CrossFieldValidators.debtAccount
+            asyncValidators
         );
         
-        if (hasErrors) {
+        // Also check cross-field validation
+        const crossFieldErrors = CrossFieldValidators.debtAccount ? CrossFieldValidators.debtAccount(debtData) : {};
+        Object.assign(errors, crossFieldErrors);
+        const hasCrossFieldErrors = Object.keys(crossFieldErrors).length > 0;
+        
+        if (hasErrors || hasCrossFieldErrors) {
             // Show field-level errors
             Object.entries(errors).forEach(([field, error]) => {
                 showFieldError(`debt-${field}`, error);

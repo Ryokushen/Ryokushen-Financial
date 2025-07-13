@@ -98,6 +98,26 @@ export const ValidationRules = {
         return null;
     },
     
+    reasonableDateRange: (value) => {
+        const dateError = ValidationRules.validDate(value);
+        if (dateError) return dateError;
+        
+        const date = new Date(value);
+        const today = new Date();
+        const fiveYearsFromNow = new Date();
+        fiveYearsFromNow.setFullYear(today.getFullYear() + 5);
+        const fiveYearsAgo = new Date();
+        fiveYearsAgo.setFullYear(today.getFullYear() - 5);
+        
+        if (date > fiveYearsFromNow) {
+            return 'Date cannot be more than 5 years in the future';
+        }
+        if (date < fiveYearsAgo) {
+            return 'Date cannot be more than 5 years in the past';
+        }
+        return null;
+    },
+    
     percentage: (value) => {
         const num = parseFloat(value);
         if (isNaN(num)) {
@@ -150,6 +170,24 @@ export const ValidationRules = {
         const num = parseFloat(value);
         if (!isNaN(num) && num > MAX_SHARES) {
             return `Too many shares (max: ${MAX_SHARES.toLocaleString()})`;
+        }
+        return null;
+    },
+    
+    dueDateDay: (value) => {
+        const day = parseInt(value);
+        if (isNaN(day) || day < 1 || day > 31) {
+            return 'Due date must be between 1 and 31';
+        }
+        // Warn about dates that don't exist in all months
+        if (day === 31) {
+            return 'Day 31 doesn\'t exist in all months. Consider using 28 or "last day of month"';
+        }
+        if (day === 30) {
+            return 'Day 30 doesn\'t exist in February. Consider using 28 or earlier';
+        }
+        if (day === 29) {
+            return 'Day 29 only exists in leap years. Consider using 28 or earlier';
         }
         return null;
     }
@@ -240,7 +278,7 @@ export function clearFormErrors(formId) {
 // Common validation schemas
 export const ValidationSchemas = {
     transaction: {
-        date: [ValidationRules.required, ValidationRules.notFutureDate],
+        date: [ValidationRules.required, ValidationRules.reasonableDateRange],
         description: [ValidationRules.required, ValidationRules.minLength(3)],
         amount: [ValidationRules.required, ValidationRules.nonZeroNumber],
         category: ValidationRules.required
@@ -259,7 +297,7 @@ export const ValidationSchemas = {
         balance: [ValidationRules.required, ValidationRules.nonNegativeNumber],
         interestRate: [ValidationRules.required, ValidationRules.percentage],
         minimumPayment: [ValidationRules.required, ValidationRules.positiveNumber],
-        dueDate: [ValidationRules.required, ValidationRules.validDate]
+        dueDate: [ValidationRules.required, ValidationRules.dueDateDay]
     },
     
     recurringBill: {
@@ -315,16 +353,58 @@ export async function validateWithAsyncRules(formData, validationSchema, asyncVa
 
 // Common async validators
 export const AsyncValidators = {
-    uniqueAccountName: (accountType) => async (name, formData) => {
-        // This would check against existing accounts
-        // For now, we'll return null (no error)
-        // In a real implementation, you'd check the appState or database
+    uniqueAccountName: (existingAccounts, currentId = null) => async (name, formData) => {
+        // Check if name already exists in accounts (case-insensitive)
+        const nameLower = name.toLowerCase().trim();
+        const duplicate = existingAccounts.find(account => 
+            account.name.toLowerCase().trim() === nameLower && 
+            account.id !== currentId
+        );
+        
+        if (duplicate) {
+            return `An account with the name "${name}" already exists`;
+        }
         return null;
     },
     
-    sufficientBalance: (accountId) => async (amount, formData) => {
-        // This would check if the account has sufficient balance
-        // For now, we'll return null (no error)
+    uniqueDebtAccountName: (existingDebtAccounts, currentId = null) => async (name, formData) => {
+        // Check if name already exists in debt accounts (case-insensitive)
+        const nameLower = name.toLowerCase().trim();
+        const duplicate = existingDebtAccounts.find(account => 
+            account.name.toLowerCase().trim() === nameLower && 
+            account.id !== currentId
+        );
+        
+        if (duplicate) {
+            return `A debt account with the name "${name}" already exists`;
+        }
+        return null;
+    },
+    
+    uniqueInvestmentAccountName: (existingInvestmentAccounts, currentId = null) => async (name, formData) => {
+        // Check if name already exists in investment accounts (case-insensitive)
+        const nameLower = name.toLowerCase().trim();
+        const duplicate = existingInvestmentAccounts.find(account => 
+            account.name.toLowerCase().trim() === nameLower && 
+            account.id !== currentId
+        );
+        
+        if (duplicate) {
+            return `An investment account with the name "${name}" already exists`;
+        }
+        return null;
+    },
+    
+    sufficientBalance: (getAccountBalance) => async (amount, formData) => {
+        // Check if the account has sufficient balance
+        if (!formData.accountId || !getAccountBalance) {
+            return null; // Skip validation if no account selected
+        }
+        
+        const balance = await getAccountBalance(formData.accountId);
+        if (balance < amount) {
+            return `Insufficient balance. Available: ${balance.toFixed(2)}`;
+        }
         return null;
     }
 };

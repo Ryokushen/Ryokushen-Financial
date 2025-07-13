@@ -8,7 +8,7 @@ import { domCache, cacheFormElements } from './domCache.js';
 import { batchUpdateSavingsGoal, flushBatch } from './batchOperations.js';
 import { debug } from './debug.js';
 import { sumMoney, multiplyMoney } from './financialMath.js';
-import { validateForm, ValidationSchemas, showFieldError, clearFormErrors } from './validation.js';
+import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, validateWithAsyncRules, AsyncValidators } from './validation.js';
 import { InvestmentCalculators } from './investmentCalculators.js';
 
 // Initialize holdings updater (will be set with appState later)
@@ -100,8 +100,12 @@ async function handleInvestmentAccountSubmit(event, appState, onUpdate) {
             dayChange: safeParseFloat(elements.dayChange.value)
         };
         
-        // Validate form data
-        const { errors, hasErrors } = validateForm(accountData, ValidationSchemas.investmentAccount);
+        // Validate form data with async validation
+        const asyncValidators = {
+            name: AsyncValidators.uniqueInvestmentAccountName(appState.appData.investmentAccounts, accountId ? parseInt(accountId) : null)
+        };
+        
+        const { errors, hasErrors } = await validateWithAsyncRules(accountData, ValidationSchemas.investmentAccount, asyncValidators);
         
         if (hasErrors) {
             // Show field-level errors
@@ -295,8 +299,8 @@ async function deleteHolding(accountId, holdingId, appState, onUpdate) {
 
 // NEW: Stock price update functions
 async function updateAllStockPrices(appState, onUpdate) {
-    if (!holdingsUpdater) {
-        showError("Stock API service not initialized. Please check your API configuration.");
+    if (!holdingsUpdater || !holdingsUpdater.stockApiService.isConfigured) {
+        showError("Stock price updates require a Finnhub API key. Get a free key at finnhub.io and add it to js/config.js");
         return;
     }
 
@@ -337,8 +341,8 @@ async function updateAllStockPrices(appState, onUpdate) {
 }
 
 async function updateSingleHolding(symbol, appState, onUpdate) {
-    if (!holdingsUpdater) {
-        showError("Stock API service not initialized.");
+    if (!holdingsUpdater || !holdingsUpdater.stockApiService.isConfigured) {
+        showError("Stock price updates require a Finnhub API key. Get a free key at finnhub.io and add it to js/config.js");
         return;
     }
 
