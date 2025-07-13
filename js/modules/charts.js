@@ -84,6 +84,19 @@ function createInvestmentAllocationChart({ appData, CHART_COLORS }) {
                 legend: {
                     position: 'top',
                 },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            if (isPrivacyMode()) {
+                                return `${label}: $*** (**%)`;
+                            }
+                            const value = formatCurrency(context.parsed);
+                            const percentage = ((context.parsed / context.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1);
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
             }
         }
     });
