@@ -2,6 +2,13 @@
 import { showError } from './ui.js';
 import { debug } from './debug.js';
 
+// Constants for validation limits
+const MAX_MONEY_AMOUNT = 999999999999.99; // ~1 trillion
+const MAX_PERCENTAGE = 9999.99;
+const MAX_SHARES = 999999999;
+const MIN_YEAR = 1900;
+const MAX_YEAR = 2100;
+
 // Validation rules
 export const ValidationRules = {
     required: (value) => {
@@ -19,6 +26,9 @@ export const ValidationRules = {
         if (num <= 0) {
             return 'Must be greater than zero';
         }
+        if (num > MAX_MONEY_AMOUNT) {
+            return `Amount too large (max: ${MAX_MONEY_AMOUNT.toLocaleString()})`;
+        }
         return null;
     },
     
@@ -29,6 +39,9 @@ export const ValidationRules = {
         }
         if (num < 0) {
             return 'Cannot be negative';
+        }
+        if (num > MAX_MONEY_AMOUNT) {
+            return `Amount too large (max: ${MAX_MONEY_AMOUNT.toLocaleString()})`;
         }
         return null;
     },
@@ -49,6 +62,10 @@ export const ValidationRules = {
         const date = new Date(value);
         if (isNaN(date.getTime())) {
             return 'Invalid date';
+        }
+        const year = date.getFullYear();
+        if (year < MIN_YEAR || year > MAX_YEAR) {
+            return `Year must be between ${MIN_YEAR} and ${MAX_YEAR}`;
         }
         return null;
     },
@@ -86,8 +103,11 @@ export const ValidationRules = {
         if (isNaN(num)) {
             return 'Must be a valid number';
         }
-        if (num < 0 || num > 100) {
-            return 'Must be between 0 and 100';
+        if (num < 0) {
+            return 'Cannot be negative';
+        }
+        if (num > MAX_PERCENTAGE) {
+            return `Percentage too large (max: ${MAX_PERCENTAGE}%)`;
         }
         return null;
     },
@@ -122,6 +142,14 @@ export const ValidationRules = {
     maxLength: (max) => (value) => {
         if (value && value.length > max) {
             return `Cannot exceed ${max} characters`;
+        }
+        return null;
+    },
+    
+    maxShares: (value) => {
+        const num = parseFloat(value);
+        if (!isNaN(num) && num > MAX_SHARES) {
+            return `Too many shares (max: ${MAX_SHARES.toLocaleString()})`;
         }
         return null;
     }
@@ -251,7 +279,7 @@ export const ValidationSchemas = {
     
     holding: {
         symbol: [ValidationRules.required, ValidationRules.validStockSymbol],
-        shares: [ValidationRules.required, ValidationRules.positiveNumber],
+        shares: [ValidationRules.required, ValidationRules.positiveNumber, ValidationRules.maxShares],
         price: [ValidationRules.required, ValidationRules.positiveNumber]
     },
     

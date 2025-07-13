@@ -1,4 +1,5 @@
 // js/modules/batchOperations.js
+import { debug } from './debug.js';
 
 /**
  * Batch Operations Utility
@@ -50,7 +51,7 @@ class BatchOperationManager {
             try {
                 await this.executeBatchByType(type, ops);
             } catch (error) {
-                console.error(`Batch operation failed for type ${type}:`, error);
+                debug.error(`Batch operation failed for type ${type}:`, error);
                 // Reject all operations in this batch
                 ops.forEach(op => op.reject(error));
             }
