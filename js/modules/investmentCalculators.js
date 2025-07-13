@@ -70,6 +70,11 @@ export const InvestmentCalculators = (() => {
      * @returns {number} Required monthly contribution
      */
     const calculateRequiredMonthlyContribution = (targetAmount, presentValue, annualRate, years) => {
+        // Input validation
+        if (targetAmount <= 0 || years <= 0) {
+            return 0;
+        }
+        
         const monthlyRate = (annualRate / 100) / 12;
         const months = years * 12;
         
@@ -85,7 +90,11 @@ export const InvestmentCalculators = (() => {
         
         // Calculate required monthly contribution
         if (monthlyRate > 0) {
-            return neededFromContributions / ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
+            const denominatorValue = (Math.pow(1 + monthlyRate, months) - 1) / monthlyRate;
+            if (denominatorValue <= 0) {
+                return neededFromContributions / months; // Fallback to simple calculation
+            }
+            return neededFromContributions / denominatorValue;
         } else {
             // Handle 0% interest rate
             return neededFromContributions / months;
@@ -126,13 +135,17 @@ export const InvestmentCalculators = (() => {
                 yearsToRetirement
             );
             
+            // Ensure values are finite and non-negative
+            const cleanRequiredMonthly = isFinite(requiredMonthly) ? Math.max(0, requiredMonthly) : 0;
+            const totalContributions = cleanRequiredMonthly * yearsToRetirement * 12;
+            
             return {
                 rate: rate,
-                requiredMonthlyContribution: requiredMonthly,
+                requiredMonthlyContribution: cleanRequiredMonthly,
                 yearsToRetirement: yearsToRetirement,
-                totalContributions: requiredMonthly * yearsToRetirement * 12,
-                projectedValue: projectedValue.futureValue,
-                projectedEarnings: projectedValue.totalEarnings
+                totalContributions: totalContributions,
+                projectedValue: isFinite(projectedValue.futureValue) ? projectedValue.futureValue : targetAmount,
+                projectedEarnings: isFinite(projectedValue.totalEarnings) ? Math.max(0, projectedValue.totalEarnings) : 0
             };
         });
         

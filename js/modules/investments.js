@@ -617,76 +617,113 @@ function calculateExtraContribution(appState) {
 }
 
 function calculateRetirementGoal(appState) {
-    const currentAge = parseInt(document.getElementById('retire-current-age').value);
-    const retirementAge = parseInt(document.getElementById('retire-target-age').value);
-    const targetAmount = safeParseFloat(document.getElementById('retire-target-amount').value);
-    
-    const validation = InvestmentCalculators.validateInputs({
-        currentAge,
-        retirementAge,
-        targetAmount,
-        years: retirementAge - currentAge
-    });
-    
-    if (!validation.isValid) {
-        showError(validation.errors.join(', '));
-        return;
-    }
-    
-    if (retirementAge <= currentAge) {
-        showError('Retirement age must be greater than current age.');
-        return;
-    }
-    
-    // Get total portfolio value
-    const currentPortfolioValue = appState.appData.investmentAccounts.reduce((sum, account) => sum + account.balance, 0);
-    
-    const returnRates = [9, 12, 15];
-    const results = InvestmentCalculators.calculateRetirementScenarios(
-        currentAge, 
-        retirementAge, 
-        targetAmount, 
-        currentPortfolioValue, 
-        returnRates
-    );
-    
-    // Display results
-    const resultsDiv = document.getElementById('retirement-results');
-    resultsDiv.innerHTML = `
-        <h5>Retirement Planning Results</h5>
-        <p>Current Age: ${currentAge}, Retirement Age: ${retirementAge} (${results.scenarios[0].yearsToRetirement} years)</p>
-        <p>Current Portfolio Value: ${formatCurrency(currentPortfolioValue)}</p>
-        <p>Target Retirement Amount: ${formatCurrency(targetAmount)}</p>
+    try {
+        const currentAge = parseInt(document.getElementById('retire-current-age').value);
+        const retirementAge = parseInt(document.getElementById('retire-target-age').value);
+        const targetAmount = safeParseFloat(document.getElementById('retire-target-amount').value);
         
-        <div class="results-grid">
-            ${results.scenarios.map(scenario => `
-                <div class="results-card">
-                    <h5>${scenario.rate}% Annual Return</h5>
-                    <div class="result-metric">
-                        <span class="result-metric-label">Required Monthly:</span>
-                        <span class="result-metric-value result-highlight">${formatCurrency(scenario.requiredMonthlyContribution)}</span>
-                    </div>
-                    <div class="result-metric">
-                        <span class="result-metric-label">Total Contributions:</span>
-                        <span class="result-metric-value">${formatCurrency(scenario.totalContributions)}</span>
-                    </div>
-                    <div class="result-metric">
-                        <span class="result-metric-label">Projected Earnings:</span>
-                        <span class="result-metric-value">${formatCurrency(scenario.projectedEarnings)}</span>
-                    </div>
+        // Check for NaN values
+        if (isNaN(currentAge) || isNaN(retirementAge) || isNaN(targetAmount)) {
+            showError('Please enter valid numbers for all fields.');
+            return;
+        }
+        
+        const validation = InvestmentCalculators.validateInputs({
+            currentAge,
+            retirementAge,
+            targetAmount,
+            years: retirementAge - currentAge
+        });
+        
+        if (!validation.isValid) {
+            showError(validation.errors.join(', '));
+            return;
+        }
+        
+        if (retirementAge <= currentAge) {
+            showError('Retirement age must be greater than current age.');
+            return;
+        }
+        
+        if (targetAmount <= 0) {
+            showError('Target amount must be greater than zero.');
+            return;
+        }
+        
+        // Get total portfolio value
+        const currentPortfolioValue = appState.appData.investmentAccounts.reduce((sum, account) => sum + account.balance, 0);
+        
+        const returnRates = [9, 12, 15];
+        const results = InvestmentCalculators.calculateRetirementScenarios(
+            currentAge, 
+            retirementAge, 
+            targetAmount, 
+            currentPortfolioValue, 
+            returnRates
+        );
+        
+        if (results.error) {
+            showError(results.error);
+            return;
+        }
+        
+    
+        // Check if target is already achievable
+        const futureValueWithoutContributions = currentPortfolioValue * Math.pow(1 + (0.10 / 12), results.scenarios[0].yearsToRetirement * 12);
+        const targetAlreadyAchievable = futureValueWithoutContributions >= targetAmount;
+        
+        // Display results
+        const resultsDiv = document.getElementById('retirement-results');
+        resultsDiv.innerHTML = `
+            <h5>Retirement Planning Results</h5>
+            <p>Current Age: ${currentAge}, Retirement Age: ${retirementAge} (${results.scenarios[0].yearsToRetirement} years)</p>
+            <p>Current Portfolio Value: ${formatCurrency(currentPortfolioValue)}</p>
+            <p>Target Retirement Amount: ${formatCurrency(targetAmount)}</p>
+            
+            ${targetAlreadyAchievable ? `
+                <div style="background-color: rgba(33, 128, 141, 0.1); color: var(--color-primary); padding: var(--space-12); border-radius: var(--radius-6); margin: var(--space-16) 0; border-left: 4px solid var(--color-primary);">
+                    🎉 Great news! Your current portfolio may reach your target without additional contributions at reasonable return rates.
                 </div>
-            `).join('')}
-        </div>
-    `;
+            ` : ''}
+            
+            <div class="results-grid">
+                ${results.scenarios.map(scenario => {
+                    const isMinimal = scenario.requiredMonthlyContribution < 50;
+                    return `
+                    <div class="results-card">
+                        <h5>${scenario.rate}% Annual Return</h5>
+                        <div class="result-metric">
+                            <span class="result-metric-label">Required Monthly:</span>
+                            <span class="result-metric-value result-highlight">
+                                ${formatCurrency(scenario.requiredMonthlyContribution)}
+                                ${isMinimal && scenario.requiredMonthlyContribution > 0 ? '<br><small style="color: var(--color-text-secondary); font-weight: normal;">Low due to portfolio growth</small>' : ''}
+                            </span>
+                        </div>
+                        <div class="result-metric">
+                            <span class="result-metric-label">Total Contributions:</span>
+                            <span class="result-metric-value">${formatCurrency(scenario.totalContributions)}</span>
+                        </div>
+                        <div class="result-metric">
+                            <span class="result-metric-label">Projected Earnings:</span>
+                            <span class="result-metric-value">${formatCurrency(scenario.projectedEarnings)}</span>
+                        </div>
+                    </div>
+                `}).join('')}
+            </div>
+        `;
     
-    resultsDiv.style.display = 'block';
-    
-    // Show charts
-    document.querySelector('.investment-charts').style.display = 'block';
-    
-    // Update charts if function exists
-    if (window.updateInvestmentCharts) {
-        window.updateInvestmentCharts(results.scenarios, 'retirement');
+        resultsDiv.style.display = 'block';
+        
+        // Show charts
+        document.querySelector('.investment-charts').style.display = 'block';
+        
+        // Update charts if function exists
+        if (window.updateInvestmentCharts) {
+            window.updateInvestmentCharts(results.scenarios, 'retirement');
+        }
+    } catch (error) {
+        debug.error('Error in calculateRetirementGoal:', error);
+        showError('Failed to calculate retirement goal. Please check your inputs and try again.');
     }
 }
 

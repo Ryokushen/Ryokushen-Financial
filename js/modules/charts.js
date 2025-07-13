@@ -661,14 +661,28 @@ function createContributionComparisonChart(data, chartType) {
         });
     } else if (chartType === 'retirement') {
         // Pie chart showing contribution vs earnings split for middle scenario
+        if (!data || data.length === 0) {
+            console.warn('No data provided for retirement chart');
+            return;
+        }
+        
         const middleScenario = data[Math.floor(data.length / 2)];
+        
+        // Handle case where earnings might be negative or zero
+        let contributionsValue = Math.max(0, middleScenario.totalContributions || 0);
+        let earningsValue = Math.max(0, middleScenario.projectedEarnings || 0);
+        
+        // If no earnings, show only contributions
+        if (earningsValue === 0) {
+            earningsValue = 0.01; // Small value to prevent full circle
+        }
         
         chartInstances.contributionComparisonChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: ['Total Contributions', 'Investment Earnings'],
                 datasets: [{
-                    data: [middleScenario.totalContributions, middleScenario.projectedEarnings],
+                    data: [contributionsValue, earningsValue],
                     backgroundColor: [CHART_COLORS[1], CHART_COLORS[0]],
                     borderColor: 'var(--color-surface-translucent)',
                     borderWidth: 2
