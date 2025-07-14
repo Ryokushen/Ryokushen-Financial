@@ -22,11 +22,9 @@ class PrivacyManager {
     // Initialize privacy manager after DOM is ready
     init() {
         if (this.isInitialized) {
-            console.log('[Privacy] Already initialized');
             return;
         }
         
-        console.log('[Privacy] Initializing privacy manager');
         this.isInitialized = true;
         
         // Setup keyboard shortcuts
@@ -34,10 +32,7 @@ class PrivacyManager {
         
         // Apply privacy state if it was previously enabled
         if (this.isPrivate) {
-            console.log('[Privacy] Privacy was previously enabled, applying now');
             this.enablePrivacyMode();
-        } else {
-            console.log('[Privacy] Privacy mode is off');
         }
     }
     
@@ -73,7 +68,6 @@ class PrivacyManager {
     
     // Toggle privacy mode
     togglePrivacy() {
-        console.log('[Privacy] Toggling privacy mode from', this.isPrivate, 'to', !this.isPrivate);
         this.isPrivate = !this.isPrivate;
         this.savePrivacyState();
         
@@ -91,7 +85,6 @@ class PrivacyManager {
     
     // Enable privacy mode
     enablePrivacyMode() {
-        console.log('[Privacy] Enabling privacy mode');
         document.body.classList.add('privacy-mode');
         this.blurSensitiveData();
         this.updatePrivacyIndicators();
@@ -136,16 +129,7 @@ class PrivacyManager {
         ];
         
         const selector = sensitiveSelectors.join(', ');
-        console.log('[Privacy] Looking for elements with selector:', selector);
         const elements = document.querySelectorAll(selector);
-        console.log('[Privacy] Found', elements.length, 'sensitive elements to blur');
-        
-        // Debug: Check specific account info values
-        const accountInfoValues = document.querySelectorAll('.account-info-value');
-        console.log('[Privacy] Found', accountInfoValues.length, 'account-info-value elements');
-        accountInfoValues.forEach((el, index) => {
-            console.log(`[Privacy] Account value ${index}:`, el.textContent, 'Classes:', el.className, 'Parent:', el.parentElement.className);
-        });
         
         // Process elements in a single pass
         const processElement = (el) => {
@@ -171,19 +155,14 @@ class PrivacyManager {
         
         // Also blur table cells containing currency values
         const tableCells = document.querySelectorAll('td');
-        console.log('[Privacy] Checking', tableCells.length, 'table cells for currency values');
-        let blurredCells = 0;
         
         tableCells.forEach(td => {
             // Check if cell contains currency (starts with $ or -$)
             const text = td.textContent.trim();
             if (text.match(/^-?\$[\d,]+\.?\d*/) && !td.classList.contains('privacy-blur')) {
                 processElement(td);
-                blurredCells++;
             }
         });
-        
-        console.log('[Privacy] Blurred', blurredCells, 'table cells with currency values');
     }
     
     // Unblur all sensitive data
@@ -260,7 +239,6 @@ class PrivacyManager {
     
     // Notify all listeners of state change
     notifyListeners() {
-        console.log('[Privacy] Notifying', this.listeners.size, 'listeners of privacy state change');
         this.listeners.forEach(callback => {
             try {
                 callback(this.isPrivate);
@@ -280,12 +258,10 @@ class PrivacyManager {
     // Re-apply privacy mode after dynamic content update
     reapplyPrivacyMode() {
         if (this.isPrivate) {
-            console.log('[Privacy] Reapplying privacy mode');
             // Use multiple techniques to ensure DOM is fully updated
             requestAnimationFrame(() => {
                 setTimeout(() => {
                     this.blurSensitiveData();
-                    console.log('[Privacy] Reapply complete');
                 }, PRIVACY_TIMING.DOM_UPDATE_DELAY);
             });
         }
@@ -298,34 +274,16 @@ class PrivacyManager {
     
     // Force refresh privacy mode (for debugging)
     forceRefresh() {
-        console.log('[Privacy] Force refreshing privacy mode');
         if (this.isPrivate) {
             // First unblur everything
             this.unblurSensitiveData();
             // Then reapply blur
             setTimeout(() => {
                 this.blurSensitiveData();
-                console.log('[Privacy] Force refresh complete');
             }, PRIVACY_TIMING.DOM_UPDATE_DELAY);
-        } else {
-            console.log('[Privacy] Privacy mode is off, nothing to refresh');
         }
     }
     
-    // Debug method to check why specific elements aren't blurred
-    debugElement(selector) {
-        const elements = document.querySelectorAll(selector);
-        console.log(`[Privacy Debug] Found ${elements.length} elements matching "${selector}"`);
-        elements.forEach((el, index) => {
-            console.log(`[Privacy Debug] Element ${index}:`);
-            console.log('  Text:', el.textContent);
-            console.log('  Classes:', el.className);
-            console.log('  Has privacy-blur:', el.classList.contains('privacy-blur'));
-            console.log('  Computed display:', window.getComputedStyle(el).display);
-            console.log('  Computed visibility:', window.getComputedStyle(el).visibility);
-            console.log('  Parent element:', el.parentElement.tagName, el.parentElement.className);
-        });
-    }
 }
 
 // Create singleton instance

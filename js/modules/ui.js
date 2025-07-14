@@ -13,12 +13,6 @@ import { modalManager } from './modalManager.js';
 import { debug } from './debug.js';
 import { reapplyPrivacy } from './privacy.js';
 
-export function showLoading(elementId) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.innerHTML = '<div class="loading-state">Loading...</div>';
-    }
-}
 
 export function announceToScreenReader(message) {
     const announcer = document.getElementById("screen-reader-announcer");
@@ -109,36 +103,8 @@ export function switchTab(tabName, appState) {
     }, 100);
 }
 
-// Generic Modal Controls using centralized modal manager
-export function openModal(modalId, data) {
-    // First try the new modal manager
-    if (modalManager.modalConfig.has(modalId)) {
-        modalManager.open(modalId, data);
-    } else {
-        // Fallback to old behavior for unregistered modals
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.add('active');
-        }
-    }
-}
+// Use modalManager for all modal operations
+export const openModal = modalManager.open.bind(modalManager);
+export const closeModal = modalManager.close.bind(modalManager);
 
-export function closeModal(modalId) {
-    // First try the new modal manager
-    if (modalManager.modalConfig.has(modalId)) {
-        modalManager.close(modalId);
-    } else {
-        // Fallback to old behavior for unregistered modals
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.remove('active');
-        }
-    }
-}
-
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-        const activeModal = document.querySelector('.modal.active');
-        if (activeModal) closeModal(activeModal.id);
-    }
-});
+// Escape key handler is already managed by modalManager

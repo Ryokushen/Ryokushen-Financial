@@ -260,14 +260,12 @@ function setupEventListeners() {
     
     // Add privacy listener to reapply on data updates
     privacyManager.addListener(() => {
-        console.log('[App] Privacy mode changed, refreshing UI');
         // First, reapply privacy mode to blur/unblur elements
         reapplyPrivacy();
         
         // Then refresh charts with a single delay to ensure privacy state is propagated
         setTimeout(() => {
             const currentPrivacyMode = isPrivacyMode();
-            console.log('[App] Refreshing charts with privacy mode:', currentPrivacyMode);
             
             // Get the current active tab
             const activeTab = document.querySelector('.tab-content.active');
@@ -275,13 +273,10 @@ function setupEventListeners() {
             
             // Refresh charts based on active tab
             if (activeTabId === 'dashboard') {
-                console.log('[App] Refreshing dashboard charts');
                 createCharts(appState);
             } else if (activeTabId === 'debt' && window.updateDebtCharts) {
-                console.log('[App] Refreshing debt charts');
                 window.updateDebtCharts(appState);
             } else if (activeTabId === 'investments' && window.lastInvestmentData && window.lastInvestmentChartType) {
-                console.log('[App] Refreshing investment charts');
                 window.updateInvestmentCharts(window.lastInvestmentData, window.lastInvestmentChartType);
             }
         }, 250); // Chart refresh delay - kept at 250ms for stability

@@ -2,7 +2,6 @@
 
 import { convertToMonthlyPrecise, roundMoney } from './financialMath.js';
 
-export const DEFAULT_CASH_ACCOUNTS = ["Cash Account", "Debit Checking", "Savings High-Yield"];
 export const CHART_COLORS = ["#1FB8CD", "#FFC185", "#B4413C", "#ECEBD5", "#5D878F", "#DB4545", "#D2BA4C", "#964325", "#944454", "#13343B"];
 
 export function safeParseFloat(value, defaultValue = 0) {
@@ -10,10 +9,6 @@ export function safeParseFloat(value, defaultValue = 0) {
     return isNaN(parsed) ? defaultValue : parsed;
 }
 
-export function safeParseInt(value, defaultValue = 0) {
-    const parsed = parseInt(value, 10);
-    return isNaN(parsed) ? defaultValue : parsed;
-}
 
 export function escapeHtml(text) {
     if (typeof text !== 'string') return '';
@@ -82,12 +77,6 @@ export function getDueDateText(dueDate) {
     return `Due ${formatDate(dueDate)}`;
 }
 
-export function getDaysUntilText(days) {
-    if (days === 0) return "today";
-    if (days === 1) return "tomorrow";
-    if (days < 0) return `${Math.abs(days)} days overdue`;
-    return `in ${days} days`;
-}
 
 export function convertToMonthly(amount, frequency) {
     if (!amount || !frequency) return 0;

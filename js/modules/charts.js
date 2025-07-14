@@ -177,14 +177,10 @@ function createInvestmentAllocationChart({ appData, CHART_COLORS }) {
 export function createCharts(appState) {
     try {
         const currentPrivacyMode = isPrivacyMode();
-        console.log('[Charts] Creating charts, privacy mode is:', currentPrivacyMode);
-        console.log('[Charts] Privacy manager state directly:', window.privacyManager?.isPrivate);
-        console.log('[Charts] LocalStorage privacy state:', localStorage.getItem('privacyMode'));
         
         // Get the current active tab
         const activeTab = document.querySelector('.tab-content.active');
         const activeTabId = activeTab ? activeTab.id : 'dashboard';
-        console.log('[Charts] Active tab:', activeTabId);
         
         Object.keys(chartInstances).forEach(key => {
             if (chartInstances[key]) {
@@ -268,8 +264,6 @@ function createNetWorthChart({ appData, CHART_COLORS }) {
                     callbacks: {
                         label: function(context) {
                             const privacyEnabled = isPrivacyMode();
-                            console.log('[Chart Tooltip] Net Worth - Privacy mode:', privacyEnabled);
-                            console.log('[Chart Tooltip] Privacy manager state:', window.privacyManager?.isPrivate);
                             return privacyFormatters.currencyTooltip('Net Worth', context.parsed.y);
                         }
                     }
@@ -823,7 +817,7 @@ function createContributionComparisonChart(data, chartType) {
     } else if (chartType === 'retirement') {
         // Pie chart showing contribution vs earnings split for middle scenario
         if (!data || data.length === 0) {
-            console.warn('No data provided for retirement chart');
+            debug.warn('No data provided for retirement chart');
             return;
         }
         
@@ -927,14 +921,11 @@ function createContributionComparisonChart(data, chartType) {
 
 // Export function to update debt charts
 window.updateDebtCharts = function(appState) {
-    console.log('[Charts] Updating debt charts, privacy mode:', isPrivacyMode());
-    
     // Only update debt charts if we're on the debt tab
     const activeTab = document.querySelector('.tab-content.active');
     const activeTabId = activeTab ? activeTab.id : '';
     
     if (activeTabId !== 'debt') {
-        console.log('[Charts] Not on debt tab, skipping debt chart update');
         return;
     }
     
@@ -942,7 +933,6 @@ window.updateDebtCharts = function(appState) {
     const debtChartKeys = ['debtBreakdownChart', 'payoffTimelineChart', 'interestAnalysisChart', 'creditUtilizationChart'];
     debtChartKeys.forEach(key => {
         if (chartInstances[key]) {
-            console.log(`[Charts] Destroying existing ${key}`);
             chartInstances[key].destroy();
             delete chartInstances[key];
         }
@@ -966,14 +956,11 @@ window.updateDebtCharts = function(appState) {
 
 // Export function to update investment charts
 window.updateInvestmentCharts = function(data, chartType) {
-    console.log('[Charts] Updating investment charts, privacy mode:', isPrivacyMode());
-    
     // Only update investment charts if we're on the investments tab
     const activeTab = document.querySelector('.tab-content.active');
     const activeTabId = activeTab ? activeTab.id : '';
     
     if (activeTabId !== 'investments') {
-        console.log('[Charts] Not on investments tab, skipping investment chart update');
         return;
     }
     

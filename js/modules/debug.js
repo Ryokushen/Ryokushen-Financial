@@ -88,34 +88,5 @@ export const debug = {
     isEnabled: isDebugMode
 };
 
-// Export a function to replace console.log in existing code
-export function replaceConsoleLog() {
-    // Store original console methods
-    const originalConsole = {
-        log: console.log,
-        info: console.info,
-        warn: console.warn
-    };
-    
-    // Override console methods
-    console.log = debug.log;
-    console.info = debug.info;
-    console.warn = debug.warn;
-    
-    // Return function to restore original console
-    return () => {
-        console.log = originalConsole.log;
-        console.info = originalConsole.info;
-        console.warn = originalConsole.warn;
-    };
-}
 
-// Utility to conditionally execute code in debug mode
-export function debugOnly(callback) {
-    if (isDebugMode()) {
-        callback();
-    }
-}
 
-// Export debug mode check
-export const DEBUG = isDebugMode;
