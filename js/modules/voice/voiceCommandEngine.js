@@ -150,6 +150,242 @@ export class VoiceCommandEngine {
                 ],
                 intent: 'general.help',
                 confidence: 0.7
+            },
+
+            // Trend Analysis Commands
+            SPENDING_TREND_QUERY: {
+                patterns: [
+                    /\bhow'?s?\s+my\s+spending\s+trending/gi,
+                    /\bspending\s+trend(?:s|ing)?/gi,
+                    /\bam\s+i\s+spending\s+more\s+(?:or\s+less)?/gi,
+                    /\bcompare\s+(?:my\s+)?spending\s+(?:this\s+month\s+to\s+last|to\s+last\s+month)/gi,
+                    /\bspending\s+comparison/gi
+                ],
+                intent: 'query.trends',
+                confidence: 0.85
+            },
+
+            EXPENSE_INCREASE_QUERY: {
+                patterns: [
+                    /\bwhat'?s?\s+my\s+biggest\s+expense\s+increase/gi,
+                    /\bwhere\s+am\s+i\s+spending\s+more/gi,
+                    /\bwhat\s+(?:expenses?\s+)?increased/gi,
+                    /\bshow\s+(?:me\s+)?expense\s+increases/gi
+                ],
+                intent: 'query.expense_increase',
+                confidence: 0.85
+            },
+
+            // Time-based Spending Queries
+            TIME_SPENDING_QUERY: {
+                patterns: [
+                    /\b(?:what\s+did\s+i\s+spend|how\s+much\s+(?:did\s+i\s+|have\s+i\s+)?spent?)\s+(?:yesterday|today|this\s+week|last\s+weekend)/gi,
+                    /\b(?:show\s+)?(?:yesterday'?s?|today'?s?|this\s+week'?s?|last\s+weekend'?s?)\s+(?:spending|expenses?)/gi,
+                    /\bhow\s+much\s+have\s+i\s+spent\s+(?:so\s+far\s+)?today/gi,
+                    /\bspending\s+(?:yesterday|today|this\s+week|last\s+weekend)/gi
+                ],
+                intent: 'query.time_spending',
+                confidence: 0.85
+            },
+
+            // Bill Management Queries
+            BILLS_DUE_QUERY: {
+                patterns: [
+                    /\b(?:what|which)\s+bills?\s+(?:are\s+)?due\s+(?:this\s+week|soon|today|tomorrow)/gi,
+                    /\b(?:show\s+)?(?:upcoming|due)\s+bills?/gi,
+                    /\bwhat\s+(?:do\s+i\s+)?(?:need\s+to\s+|have\s+to\s+)?pay\s+(?:this\s+week|soon)/gi,
+                    /\bbills?\s+due\s+(?:this\s+week|soon)/gi
+                ],
+                intent: 'query.bills_due',
+                confidence: 0.9
+            },
+
+            OVERDUE_BILLS_QUERY: {
+                patterns: [
+                    /\b(?:show\s+)?overdue\s+bills?/gi,
+                    /\bwhat\s+bills?\s+(?:are\s+)?(?:overdue|late|past\s+due)/gi,
+                    /\b(?:any\s+)?late\s+bills?/gi,
+                    /\bmissed\s+(?:bill\s+)?payments?/gi
+                ],
+                intent: 'query.overdue_bills',
+                confidence: 0.9
+            },
+
+            CHEAPEST_BILL_QUERY: {
+                patterns: [
+                    /\bwhat'?s?\s+my\s+(?:cheapest|lowest|smallest)\s+(?:recurring\s+)?bill/gi,
+                    /\b(?:show\s+)?cheapest\s+(?:recurring\s+)?bill/gi,
+                    /\bsmallest\s+(?:monthly\s+)?(?:bill|payment|subscription)/gi
+                ],
+                intent: 'query.cheapest_bill',
+                confidence: 0.85
+            },
+
+            // Debt Analysis Queries
+            DEBT_PAYOFF_QUERY: {
+                patterns: [
+                    /\bwhen\s+will\s+i\s+pay\s+off\s+(?:my\s+)?(.+?)(?:\s+debt)?$/gi,
+                    /\bhow\s+long\s+(?:until|to\s+pay\s+off)\s+(?:my\s+)?(.+)/gi,
+                    /\bpay\s*off\s+date\s+(?:for\s+)?(?:my\s+)?(.+)/gi,
+                    /\b(.+)\s+pay\s*off\s+(?:date|timeline)/gi
+                ],
+                intent: 'query.debt_payoff',
+                confidence: 0.85
+            },
+
+            HIGHEST_INTEREST_QUERY: {
+                patterns: [
+                    /\bwhat'?s?\s+my\s+highest\s+interest\s+(?:rate\s+)?(?:debt|loan|credit)/gi,
+                    /\b(?:show\s+)?highest\s+(?:interest|apr)\s+debt/gi,
+                    /\bwhich\s+(?:debt|loan|credit)\s+has\s+(?:the\s+)?highest\s+(?:interest|rate)/gi
+                ],
+                intent: 'query.highest_interest',
+                confidence: 0.9
+            },
+
+            MONTHLY_INTEREST_QUERY: {
+                patterns: [
+                    /\bhow\s+much\s+interest\s+(?:am\s+i\s+paying|do\s+i\s+pay)\s+(?:monthly|per\s+month)/gi,
+                    /\b(?:show\s+)?(?:monthly|total)\s+interest\s+(?:payments?|charges?)/gi,
+                    /\binterest\s+(?:i'?m\s+)?paying\s+(?:monthly|each\s+month)/gi
+                ],
+                intent: 'query.monthly_interest',
+                confidence: 0.9
+            },
+
+            CREDIT_UTILIZATION_QUERY: {
+                patterns: [
+                    /\b(?:show\s+)?(?:my\s+)?credit\s+utilization/gi,
+                    /\bwhat'?s?\s+my\s+credit\s+(?:card\s+)?utilization/gi,
+                    /\bhow\s+much\s+(?:of\s+)?(?:my\s+)?credit\s+(?:am\s+i\s+using|is\s+used)/gi,
+                    /\bcredit\s+usage/gi
+                ],
+                intent: 'query.credit_utilization',
+                confidence: 0.9
+            },
+
+            DEBT_STRATEGY_QUERY: {
+                patterns: [
+                    /\bwhat\s+(?:should\s+i|to)\s+pay\s+off\s+first/gi,
+                    /\b(?:show\s+)?(?:best\s+)?(?:debt\s+)?pay\s*off\s+(?:strategy|order)/gi,
+                    /\bwhich\s+debt\s+(?:should\s+i\s+)?(?:pay|focus\s+on)\s+first/gi,
+                    /\bdebt\s+(?:payment\s+)?priorit(?:y|ies)/gi
+                ],
+                intent: 'query.debt_strategy',
+                confidence: 0.85
+            },
+
+            // Savings Goal Queries
+            GOAL_PROGRESS_QUERY: {
+                patterns: [
+                    /\bam\s+i\s+on\s+track\s+(?:for\s+(?:my\s+)?)?savings\s+goals?/gi,
+                    /\b(?:show\s+)?(?:my\s+)?goals?\s+progress/gi,
+                    /\bhow\s+(?:am\s+i\s+doing|are)\s+(?:my\s+)?(?:savings\s+)?goals?/gi,
+                    /\bsavings\s+goals?\s+(?:status|progress)/gi
+                ],
+                intent: 'query.goal_progress',
+                confidence: 0.85
+            },
+
+            GOAL_REMAINING_QUERY: {
+                patterns: [
+                    /\bhow\s+much\s+(?:more\s+)?(?:do\s+i\s+)?need\s+(?:to\s+save\s+)?for\s+(?:my\s+)?(.+)/gi,
+                    /\b(?:what'?s?\s+)?(?:remaining|left)\s+(?:to\s+save\s+)?for\s+(?:my\s+)?(.+)/gi,
+                    /\b(.+)\s+goal\s+(?:remaining|balance|needed)/gi
+                ],
+                intent: 'query.goal_remaining',
+                confidence: 0.85
+            },
+
+            // Investment Performance Queries
+            PORTFOLIO_RETURN_QUERY: {
+                patterns: [
+                    /\bwhat'?s?\s+my\s+portfolio\s+return\s+(?:this\s+year|ytd)/gi,
+                    /\b(?:show\s+)?(?:my\s+)?(?:investment|portfolio)\s+(?:returns?|performance)\s+(?:this\s+year|ytd)/gi,
+                    /\bhow\s+(?:are\s+)?my\s+investments?\s+(?:doing|performing)\s+this\s+year/gi,
+                    /\byear\s+to\s+date\s+(?:returns?|performance)/gi
+                ],
+                intent: 'query.portfolio_return',
+                confidence: 0.85
+            },
+
+            INVESTMENT_WINNERS_LOSERS_QUERY: {
+                patterns: [
+                    /\b(?:show\s+)?(?:stocks?|investments?)\s+in\s+(?:the\s+)?(?:red|green)/gi,
+                    /\bwhat'?s?\s+my\s+(?:best|worst)\s+performing\s+(?:stock|investment)/gi,
+                    /\b(?:show\s+)?(?:winning|losing|best|worst)\s+(?:stocks?|investments?)/gi,
+                    /\bwhich\s+(?:stocks?|investments?)\s+are\s+(?:up|down)/gi
+                ],
+                intent: 'query.investment_performance',
+                confidence: 0.85
+            },
+
+            // Quick Actions
+            CATEGORIZE_TRANSACTION: {
+                patterns: [
+                    /\bcategorize\s+(?:the\s+)?last\s+transaction\s+as\s+([a-zA-Z\s]+)/gi,
+                    /\b(?:set|change)\s+(?:the\s+)?last\s+transaction\s+(?:category\s+)?to\s+([a-zA-Z\s]+)/gi,
+                    /\bmark\s+(?:the\s+)?last\s+(?:transaction\s+)?as\s+([a-zA-Z\s]+)/gi
+                ],
+                intent: 'action.categorize',
+                confidence: 0.85
+            },
+
+            MARK_BILL_PAID: {
+                patterns: [
+                    /\bmark\s+(.+?)\s+(?:as\s+)?paid/gi,
+                    /\b(.+?)\s+(?:is\s+|has\s+been\s+)?paid/gi,
+                    /\bpaid\s+(.+?)$/gi,
+                    /\brecord\s+payment\s+(?:for\s+)?(.+)/gi
+                ],
+                intent: 'action.mark_paid',
+                confidence: 0.85
+            },
+
+            // View Filters
+            FILTER_TRANSACTIONS: {
+                patterns: [
+                    /\bshow\s+(?:only\s+)?income\s+(?:transactions)?/gi,
+                    /\bshow\s+(?:only\s+)?cash\s+transactions/gi,
+                    /\bhide\s+transfers/gi,
+                    /\bshow\s+(?:only\s+)?this\s+month(?:'s)?\s+(?:transactions)?/gi,
+                    /\bfilter\s+(?:by\s+)?([a-zA-Z\s]+)/gi
+                ],
+                intent: 'action.filter',
+                confidence: 0.8
+            },
+
+            // Search & Discovery
+            FIND_TRANSACTIONS: {
+                patterns: [
+                    /\bfind\s+(?:all\s+)?(.+?)\s+transactions?/gi,
+                    /\b(?:show|search)\s+(?:for\s+)?transactions?\s+(?:from|at)\s+(.+)/gi,
+                    /\b(?:all\s+)?transactions?\s+(?:from|at)\s+(.+)/gi
+                ],
+                intent: 'query.find_transactions',
+                confidence: 0.8
+            },
+
+            RECURRING_CHARGES_QUERY: {
+                patterns: [
+                    /\b(?:find|show)\s+recurring\s+(?:charges?|transactions?)/gi,
+                    /\bwhat\s+subscriptions?\s+do\s+i\s+have/gi,
+                    /\b(?:show\s+)?(?:my\s+)?subscriptions?/gi,
+                    /\brecurring\s+(?:payments?|charges?)/gi
+                ],
+                intent: 'query.recurring_charges',
+                confidence: 0.85
+            },
+
+            TOP_SPENDING_QUERY: {
+                patterns: [
+                    /\bwhat'?s?\s+my\s+(?:most\s+frequent|biggest)\s+(?:transaction|expense)/gi,
+                    /\bwhere\s+do\s+i\s+spend\s+(?:the\s+)?most/gi,
+                    /\b(?:show\s+)?(?:my\s+)?top\s+(?:spending|expenses?|merchants?)/gi,
+                    /\bmost\s+(?:frequent|common)\s+(?:transaction|purchase|merchant)/gi
+                ],
+                intent: 'query.top_spending',
+                confidence: 0.85
             }
         };
 
@@ -162,7 +398,11 @@ export class VoiceCommandEngine {
             'this year': /\bthis\s+year/gi,
             'last year': /\blast\s+year/gi,
             'today': /\btoday/gi,
-            'yesterday': /\byesterday/gi
+            'yesterday': /\byesterday/gi,
+            'last weekend': /\blast\s+weekend/gi,
+            'tomorrow': /\btomorrow/gi,
+            'next week': /\bnext\s+week/gi,
+            'year to date': /\b(?:year\s+to\s+date|ytd)/gi
         };
 
         // Category mappings for spending queries
@@ -256,6 +496,118 @@ export class VoiceCommandEngine {
                     if (/\b(?:disable|turn off|deactivate)\b/gi.test(text)) return 'disable';
                     if (/\btoggle\b/gi.test(text)) return 'toggle';
                     if (/\bpanic\b/gi.test(text)) return 'panic';
+                }
+                return null;
+            },
+
+            // Extract debt name for payoff queries
+            debtName: (text, intent) => {
+                if (intent === 'query.debt_payoff') {
+                    // Extract debt name from patterns like "when will I pay off my credit card"
+                    const patterns = [
+                        /pay\s+off\s+(?:my\s+)?(.+?)(?:\s+debt)?$/i,
+                        /(?:until|to\s+pay\s+off)\s+(?:my\s+)?(.+)$/i,
+                        /date\s+(?:for\s+)?(?:my\s+)?(.+)$/i,
+                        /^(.+?)\s+pay\s*off/i
+                    ];
+                    
+                    for (const pattern of patterns) {
+                        const match = text.match(pattern);
+                        if (match && match[1]) {
+                            return match[1].trim();
+                        }
+                    }
+                }
+                return null;
+            },
+
+            // Extract goal name for goal queries
+            goalName: (text, intent) => {
+                if (intent === 'query.goal_remaining') {
+                    // Extract goal name from patterns
+                    const patterns = [
+                        /need\s+(?:to\s+save\s+)?for\s+(?:my\s+)?(.+)$/i,
+                        /(?:remaining|left)\s+(?:to\s+save\s+)?for\s+(?:my\s+)?(.+)$/i,
+                        /^(.+?)\s+goal\s+(?:remaining|balance|needed)/i
+                    ];
+                    
+                    for (const pattern of patterns) {
+                        const match = text.match(pattern);
+                        if (match && match[1]) {
+                            return match[1].trim();
+                        }
+                    }
+                }
+                return null;
+            },
+
+            // Extract bill name for bill actions
+            billName: (text, intent) => {
+                if (intent === 'action.mark_paid') {
+                    // Extract bill name from patterns
+                    const patterns = [
+                        /mark\s+(.+?)\s+(?:as\s+)?paid/i,
+                        /^(.+?)\s+(?:is\s+|has\s+been\s+)?paid/i,
+                        /^paid\s+(.+?)$/i,
+                        /payment\s+(?:for\s+)?(.+)$/i
+                    ];
+                    
+                    for (const pattern of patterns) {
+                        const match = text.match(pattern);
+                        if (match && match[1]) {
+                            return match[1].trim();
+                        }
+                    }
+                }
+                return null;
+            },
+
+            // Extract filter type
+            filterType: (text, intent) => {
+                if (intent === 'action.filter') {
+                    if (/\bincome\b/i.test(text)) return 'income';
+                    if (/\bcash\b/i.test(text)) return 'cash';
+                    if (/\btransfers?\b/i.test(text)) return 'transfers';
+                    if (/\bthis\s+month\b/i.test(text)) return 'thisMonth';
+                }
+                return null;
+            },
+
+            // Extract search merchant for find transactions
+            searchMerchant: (text, intent) => {
+                if (intent === 'query.find_transactions') {
+                    const patterns = [
+                        /find\s+(?:all\s+)?(.+?)\s+transactions?/i,
+                        /transactions?\s+(?:from|at)\s+(.+)$/i
+                    ];
+                    
+                    for (const pattern of patterns) {
+                        const match = text.match(pattern);
+                        if (match && match[1]) {
+                            return match[1].trim();
+                        }
+                    }
+                }
+                return null;
+            },
+
+            // Extract comparison period for trend queries
+            comparisonPeriod: (text, intent) => {
+                if (intent === 'query.trends' || intent === 'query.expense_increase') {
+                    if (/\blast\s+month\b/i.test(text)) return 'lastMonth';
+                    if (/\blast\s+year\b/i.test(text)) return 'lastYear';
+                    if (/\bthis\s+month\b/i.test(text)) return 'thisMonth';
+                }
+                return 'lastMonth'; // default comparison
+            },
+
+            // Extract extra payment years for debt freedom query
+            debtFreeYears: (text, intent) => {
+                if (intent === 'query.debt_strategy') {
+                    const match = text.match(/debt[- ]free\s+in\s+(\d+)\s+years?/i);
+                    if (match && match[1]) {
+                        return parseInt(match[1]);
+                    }
                 }
                 return null;
             }

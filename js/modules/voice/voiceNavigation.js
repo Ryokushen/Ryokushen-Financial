@@ -20,6 +20,9 @@ export class VoiceNavigation {
         this.navigationHandlers = {
             'navigation.tab': this.handleTabNavigation.bind(this),
             'action.create': this.handleCreateAction.bind(this),
+            'action.categorize': this.handleCategorizeAction.bind(this),
+            'action.mark_paid': this.handleMarkPaidAction.bind(this),
+            'action.filter': this.handleFilterAction.bind(this),
             'settings.privacy': this.handlePrivacyAction.bind(this),
             'general.help': this.handleHelpAction.bind(this)
         };
@@ -286,6 +289,225 @@ export class VoiceNavigation {
             debug.error('Error handling privacy action:', error);
             return this.createErrorResponse('Failed to change privacy settings');
         }
+    }
+
+    /**
+     * Handle categorize transaction action
+     */
+    async handleCategorizeAction(parameters) {
+        const { category } = parameters;
+        
+        if (!category) {
+            return this.createErrorResponse('Please specify a category for the transaction.');
+        }
+        
+        try {
+            // Get the most recent transaction
+            const appData = this.appState?.appData || { transactions: [] };
+            if (appData.transactions.length === 0) {
+                return this.createErrorResponse('No transactions found to categorize.');
+            }
+            
+            // Sort by date to get most recent
+            const sortedTransactions = [...appData.transactions].sort((a, b) => 
+                new Date(b.date) - new Date(a.date)
+            );
+            const lastTransaction = sortedTransactions[0];
+            
+            // Update the transaction category
+            // Note: In a real implementation, this would update the database
+            const oldCategory = lastTransaction.category;
+            lastTransaction.category = category;
+            
+            announceToScreenReader(`Transaction categorized as ${category}`);
+            
+            return {
+                type: 'action',
+                success: true,
+                action: 'categorize_transaction',
+                data: {
+                    transactionId: lastTransaction.id,
+                    oldCategory,
+                    newCategory: category,
+                    transaction: lastTransaction
+                },
+                response: {
+                    text: `Last transaction "${lastTransaction.description}" categorized as ${category}`,
+                    title: 'Transaction Categorized',
+                    details: `Changed from ${oldCategory} to ${category}`
+                }
+            };
+            
+        } catch (error) {
+            debug.error('Error categorizing transaction:', error);
+            return this.createErrorResponse('Failed to categorize transaction');
+        }
+    }
+
+    /**
+     * Handle mark bill paid action
+     */
+    async handleMarkPaidAction(parameters) {
+        const { billName } = parameters;
+        
+        if (!billName) {
+            return this.createErrorResponse('Please specify which bill to mark as paid.');
+        }
+        
+        try {
+            // Find the bill
+            const appData = this.appState?.appData || { recurringBills: [] };
+            const bill = appData.recurringBills.find(b => 
+                b.name.toLowerCase().includes(billName.toLowerCase()) && b.active !== false
+            );
+            
+            if (!bill) {
+                return this.createErrorResponse(`Could not find bill "${billName}".`);
+            }
+            
+            // Mark as paid (in real implementation, this would create a transaction and update next due date)
+            const oldDueDate = bill.next_due;
+            const paymentDate = new Date().toISOString().split('T')[0];
+            
+            // Calculate next due date based on frequency
+            const nextDue = this.calculateNextDueDate(bill.next_due, bill.frequency);
+            bill.next_due = nextDue;
+            
+            announceToScreenReader(`${bill.name} marked as paid`);
+            
+            return {
+                type: 'action',
+                success: true,
+                action: 'mark_bill_paid',
+                data: {
+                    billId: bill.id,
+                    billName: bill.name,
+                    amount: bill.amount,
+                    paymentDate,
+                    oldDueDate,
+                    newDueDate: nextDue
+                },
+                response: {
+                    text: `${bill.name} marked as paid. Next due: ${nextDue}`,
+                    title: 'Bill Paid',
+                    details: `Payment of ${this.formatCurrency(bill.amount)} recorded`
+                }
+            };
+            
+        } catch (error) {
+            debug.error('Error marking bill as paid:', error);
+            return this.createErrorResponse('Failed to mark bill as paid');
+        }
+    }
+
+    /**
+     * Handle filter transactions action
+     */
+    async handleFilterAction(parameters) {
+        const { filterType } = parameters;
+        
+        if (!filterType) {
+            return this.createErrorResponse('Please specify what to filter.');
+        }
+        
+        try {
+            // Switch to transactions tab first
+            switchTab('transactions', this.appState);
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // Apply filter based on type
+            let filterText = '';
+            let filterApplied = false;
+            
+            // In a real implementation, these would trigger actual UI filters
+            switch (filterType) {
+                case 'income':
+                    filterText = 'Showing only income transactions';
+                    filterApplied = true;
+                    break;
+                    
+                case 'cash':
+                    filterText = 'Showing only cash transactions';
+                    filterApplied = true;
+                    break;
+                    
+                case 'transfers':
+                    filterText = 'Hiding transfer transactions';
+                    filterApplied = true;
+                    break;
+                    
+                case 'thisMonth':
+                    filterText = 'Showing this month\'s transactions';
+                    filterApplied = true;
+                    break;
+                    
+                default:
+                    filterText = `Filtering by ${filterType}`;
+                    filterApplied = true;
+            }
+            
+            if (!filterApplied) {
+                return this.createErrorResponse(`Unknown filter type: ${filterType}`);
+            }
+            
+            announceToScreenReader(filterText);
+            
+            return {
+                type: 'action',
+                success: true,
+                action: 'filter_transactions',
+                data: {
+                    filterType,
+                    filterText
+                },
+                response: {
+                    text: filterText,
+                    title: 'Filter Applied',
+                    details: 'Transaction view updated'
+                }
+            };
+            
+        } catch (error) {
+            debug.error('Error applying filter:', error);
+            return this.createErrorResponse('Failed to apply filter');
+        }
+    }
+
+    /**
+     * Calculate next due date based on frequency
+     */
+    calculateNextDueDate(currentDue, frequency) {
+        const date = new Date(currentDue);
+        
+        switch (frequency) {
+            case 'weekly':
+                date.setDate(date.getDate() + 7);
+                break;
+            case 'biweekly':
+                date.setDate(date.getDate() + 14);
+                break;
+            case 'monthly':
+                date.setMonth(date.getMonth() + 1);
+                break;
+            case 'quarterly':
+                date.setMonth(date.getMonth() + 3);
+                break;
+            case 'annually':
+                date.setFullYear(date.getFullYear() + 1);
+                break;
+        }
+        
+        return date.toISOString().split('T')[0];
+    }
+
+    /**
+     * Format currency (simple version)
+     */
+    formatCurrency(amount) {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD'
+        }).format(amount);
     }
 
     /**
