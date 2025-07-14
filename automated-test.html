@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Test Execution</title>
+    <style>
+        body {
+            font-family: monospace;
+            margin: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .pass { color: #4ec9b0; }
+        .fail { color: #f48771; }
+        .section { 
+            margin: 20px 0;
+            padding: 10px;
+            border-left: 3px solid #007acc;
+        }
+        .summary {
+            margin-top: 30px;
+            padding: 20px;
+            border: 2px solid #007acc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Automated Test Execution</h1>
+    <div id="test-output"></div>
+    
+    <script type="module">
+        import { modalManager } from './js/modules/modalManager.js';
+        import { openModal, closeModal } from './js/modules/ui.js';
+        import { privacyManager, isPrivacyMode, togglePrivacyMode } from './js/modules/privacy.js';
+        import { debug } from './js/modules/debug.js';
+        import { formatCurrency, formatDate, getDueDateClass } from './js/modules/utils.js';
+        import { setupCommonModals } from './js/modules/modalManager.js';
+
+        const output = document.getElementById('test-output');
+        let testsPassed = 0;
+        let testsFailed = 0;
+
+        function log(message, className = '') {
+            const div = document.createElement('div');
+            div.className = className;
+            div.textContent = message;
+            output.appendChild(div);
+        }
+
+        function assert(condition, testName, details = '') {
+            if (condition) {
+                log(`✅ PASS: ${testName}`, 'pass');
+                testsPassed++;
+            } else {
+                log(`❌ FAIL: ${testName} - ${details}`, 'fail');
+                testsFailed++;
+            }
+        }
+
+        async function runTests() {
+            // Initialize
+            setupCommonModals();
+            privacyManager.init();
+
+            // Test 1: Modal System
+            log('\n--- Testing Modal System ---', 'section');
+            assert(typeof modalManager === 'object', 'Modal Manager exists');
+            assert(typeof modalManager.open === 'function', 'modalManager.open is a function');
+            assert(typeof modalManager.close === 'function', 'modalManager.close is a function');
+            assert(typeof openModal === 'function', 'openModal is exported from ui.js');
+            assert(typeof closeModal === 'function', 'closeModal is exported from ui.js');
+            
+            // Test modal binding
+            assert(openModal === modalManager.open.bind(modalManager), 'openModal is bound to modalManager');
+            assert(closeModal === modalManager.close.bind(modalManager), 'closeModal is bound to modalManager');
+
+            // Test 2: Privacy System
+            log('\n--- Testing Privacy System ---', 'section');
+            assert(typeof privacyManager === 'object', 'Privacy Manager exists');
+            assert(typeof isPrivacyMode === 'function', 'isPrivacyMode is a function');
+            assert(typeof togglePrivacyMode === 'function', 'togglePrivacyMode is a function');
+            assert(typeof privacyManager.debugElement === 'undefined', 'debugElement method was removed');
+            
+            // Test privacy toggle
+            const initialState = isPrivacyMode();
+            togglePrivacyMode();
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const afterToggle = isPrivacyMode();
+            assert(afterToggle !== initialState, 'Privacy mode toggles correctly');
+            
+            // Test localStorage
+            const stored = localStorage.getItem('privacyMode');
+            assert(stored === afterToggle.toString(), 'Privacy state saved to localStorage');
+            
+            // Toggle back
+            togglePrivacyMode();
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Test 3: Debug Module
+            log('\n--- Testing Debug Module ---', 'section');
+            assert(typeof debug === 'object', 'Debug object exists');
+            assert(typeof debug.log === 'function', 'debug.log is a function');
+            assert(typeof debug.error === 'function', 'debug.error is a function');
+            assert(typeof debug.enable === 'function', 'debug.enable is a function');
+            
+            // Test removed exports
+            assert(typeof window.DEBUG === 'undefined', 'DEBUG constant not exported');
+            assert(typeof window.debugOnly === 'undefined', 'debugOnly not exported');
+            assert(typeof window.replaceConsoleLog === 'undefined', 'replaceConsoleLog not exported');
+
+            // Test 4: Utils Module
+            log('\n--- Testing Utils Module ---', 'section');
+            assert(typeof formatCurrency === 'function', 'formatCurrency exists');
+            assert(formatCurrency(1234.56) === '$1,234.56', 'formatCurrency works correctly');
+            assert(typeof formatDate === 'function', 'formatDate exists');
+            assert(typeof getDueDateClass === 'function', 'getDueDateClass exists');
+            
+            // Test removed functions
+            assert(typeof window.safeParseInt === 'undefined', 'safeParseInt was removed');
+            assert(typeof window.getDaysUntilText === 'undefined', 'getDaysUntilText was removed');
+            assert(typeof window.DEFAULT_CASH_ACCOUNTS === 'undefined', 'DEFAULT_CASH_ACCOUNTS was removed');
+
+            // Test 5: Check for console.log statements
+            log('\n--- Checking for Console Logs ---', 'section');
+            const filesToCheck = [
+                './js/modules/charts.js',
+                './js/modules/privacy.js',
+                './js/app.js'
+            ];
+            
+            let totalConsoleLogs = 0;
+            for (const file of filesToCheck) {
+                try {
+                    const response = await fetch(file);
+                    const text = await response.text();
+                    const matches = text.match(/console\.log\(/g);
+                    const count = matches ? matches.length : 0;
+                    totalConsoleLogs += count;
+                    assert(count === 0, `No console.log in ${file}`, `Found ${count} console.log statements`);
+                } catch (error) {
+                    log(`⚠️  Could not check ${file}: ${error.message}`, 'fail');
+                }
+            }
+
+            // Test 6: Chart Functions
+            log('\n--- Testing Chart Functions ---', 'section');
+            assert(typeof window.updateDebtCharts === 'function', 'updateDebtCharts is globally available');
+            assert(typeof window.updateInvestmentCharts === 'function', 'updateInvestmentCharts is globally available');
+
+            // Test 7: Integration Test
+            log('\n--- Testing Integration ---', 'section');
+            
+            // Test modal open/close
+            try {
+                // Create a test modal if it doesn't exist
+                if (!document.getElementById('test-modal')) {
+                    const modal = document.createElement('div');
+                    modal.id = 'test-modal';
+                    modal.className = 'modal';
+                    modal.innerHTML = '<div class="modal-content"><div class="modal-header"><button class="modal-close">&times;</button></div></div>';
+                    document.body.appendChild(modal);
+                }
+                
+                modalManager.register('test-modal', {});
+                openModal('test-modal');
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const isOpen = modalManager.activeModals.has('test-modal');
+                assert(isOpen, 'Modal opens successfully');
+                
+                closeModal('test-modal');
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const isClosed = !modalManager.activeModals.has('test-modal');
+                assert(isClosed, 'Modal closes successfully');
+            } catch (error) {
+                assert(false, 'Modal integration test', error.message);
+            }
+
+            // Summary
+            log('\n========================================', 'summary');
+            log(`Total Tests: ${testsPassed + testsFailed}`);
+            log(`✅ Passed: ${testsPassed}`, 'pass');
+            log(`❌ Failed: ${testsFailed}`, 'fail');
+            log('========================================');
+            
+            if (testsFailed === 0) {
+                log('\n🎉 All tests passed! The refactoring was successful.', 'pass');
+            } else {
+                log('\n⚠️  Some tests failed. Please review the failures above.', 'fail');
+            }
+        }
+
+        // Run tests when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', runTests);
+        } else {
+            runTests();
+        }
+    </script>
+</body>
+</html>

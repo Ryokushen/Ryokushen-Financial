@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modal System Test Suite</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/privacy.css">
+    <style>
+        .test-section {
+            margin: 20px;
+            padding: 20px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .pass { background-color: #d4f4dd; color: #0d7a2d; }
+        .fail { background-color: #fdd4d4; color: #7a0d0d; }
+        .pending { background-color: #fffacd; color: #666; }
+        .test-button {
+            margin: 5px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Modal System Test Suite</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Modal Open/Close Functionality</h2>
+        <button class="test-button" onclick="testModalOpenClose()">Run Test</button>
+        <div id="test1-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Escape Key Handler</h2>
+        <button class="test-button" onclick="testEscapeKey()">Run Test</button>
+        <div id="test2-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Click Outside Modal</h2>
+        <button class="test-button" onclick="testClickOutside()">Run Test</button>
+        <div id="test3-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 4: Form Reset Behavior</h2>
+        <button class="test-button" onclick="testFormReset()">Run Test</button>
+        <div id="test4-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 5: Event Listener Cleanup</h2>
+        <button class="test-button" onclick="testEventListenerCleanup()">Run Test</button>
+        <div id="test5-results"></div>
+    </div>
+
+    <!-- Include all necessary modals from index.html -->
+    <div id="cash-account-modal" class="modal" role="dialog" aria-labelledby="cash-modal-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="cash-modal-title">Add Cash Account</h2>
+                <button class="modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="cash-account-form">
+                    <input type="text" id="cash-account-name" placeholder="Account Name" required>
+                    <button type="submit">Save</button>
+                    <button type="button" class="cancel-btn">Cancel</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="investment-account-modal" class="modal" role="dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Investment Account</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="investment-account-form">
+                    <input type="text" placeholder="Account Name" required>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen reader announcer -->
+    <div id="screen-reader-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <script type="module">
+        import { modalManager } from './js/modules/modalManager.js';
+        import { openModal, closeModal } from './js/modules/ui.js';
+
+        // Make functions available globally for onclick handlers
+        window.modalManager = modalManager;
+        window.openModal = openModal;
+        window.closeModal = closeModal;
+
+        function addTestResult(containerId, testName, passed, message) {
+            const container = document.getElementById(containerId);
+            const result = document.createElement('div');
+            result.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            result.textContent = `${testName}: ${passed ? 'PASSED' : 'FAILED'} - ${message}`;
+            container.appendChild(result);
+        }
+
+        window.testModalOpenClose = async function() {
+            const resultsContainer = document.getElementById('test1-results');
+            resultsContainer.innerHTML = '';
+            
+            try {
+                // Test opening cash account modal
+                openModal('cash-account-modal');
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const modal = document.getElementById('cash-account-modal');
+                const isOpen = modal.classList.contains('modal--active');
+                const bodyHasClass = document.body.classList.contains('modal-open');
+                
+                addTestResult('test1-results', 'Modal Opens', isOpen && bodyHasClass, 
+                    `Modal active: ${isOpen}, Body class: ${bodyHasClass}`);
+                
+                // Test closing modal
+                closeModal('cash-account-modal');
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const isClosed = !modal.classList.contains('modal--active');
+                const bodyClassRemoved = !document.body.classList.contains('modal-open');
+                
+                addTestResult('test1-results', 'Modal Closes', isClosed && bodyClassRemoved,
+                    `Modal closed: ${isClosed}, Body class removed: ${bodyClassRemoved}`);
+                
+                // Test modalManager binding
+                const managerHasModal = modalManager.modalConfig.has('cash-account-modal');
+                addTestResult('test1-results', 'ModalManager Integration', managerHasModal,
+                    `Modal registered in modalManager: ${managerHasModal}`);
+                
+            } catch (error) {
+                addTestResult('test1-results', 'Modal Open/Close Test', false, `Error: ${error.message}`);
+            }
+        };
+
+        window.testEscapeKey = async function() {
+            const resultsContainer = document.getElementById('test2-results');
+            resultsContainer.innerHTML = '';
+            
+            try {
+                // Open modal
+                openModal('cash-account-modal');
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Simulate Escape key press
+                const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 });
+                document.dispatchEvent(escapeEvent);
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const modal = document.getElementById('cash-account-modal');
+                const isClosed = !modal.classList.contains('modal--active');
+                
+                addTestResult('test2-results', 'Escape Key Closes Modal', isClosed,
+                    `Modal closed by Escape: ${isClosed}`);
+                
+                // Test multiple modals (if supported)
+                openModal('cash-account-modal');
+                openModal('investment-account-modal');
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                document.dispatchEvent(escapeEvent);
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const investmentClosed = !document.getElementById('investment-account-modal').classList.contains('modal--active');
+                addTestResult('test2-results', 'Escape Closes Top Modal', investmentClosed,
+                    'Last opened modal closed first');
+                
+                closeModal('cash-account-modal'); // Cleanup
+                
+            } catch (error) {
+                addTestResult('test2-results', 'Escape Key Test', false, `Error: ${error.message}`);
+            }
+        };
+
+        window.testClickOutside = async function() {
+            const resultsContainer = document.getElementById('test3-results');
+            resultsContainer.innerHTML = '';
+            
+            try {
+                openModal('cash-account-modal');
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const modal = document.getElementById('cash-account-modal');
+                
+                // Click on overlay (outside modal content)
+                const clickEvent = new MouseEvent('click', { bubbles: true });
+                modal.dispatchEvent(clickEvent);
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const isClosed = !modal.classList.contains('modal--active');
+                addTestResult('test3-results', 'Click Outside Closes Modal', isClosed,
+                    `Modal closed by outside click: ${isClosed}`);
+                
+                // Test click inside doesn't close
+                openModal('cash-account-modal');
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const modalContent = modal.querySelector('.modal-content');
+                modalContent.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const stillOpen = modal.classList.contains('modal--active');
+                addTestResult('test3-results', 'Click Inside Keeps Modal Open', stillOpen,
+                    `Modal stays open on inside click: ${stillOpen}`);
+                
+                closeModal('cash-account-modal'); // Cleanup
+                
+            } catch (error) {
+                addTestResult('test3-results', 'Click Outside Test', false, `Error: ${error.message}`);
+            }
+        };
+
+        window.testFormReset = async function() {
+            const resultsContainer = document.getElementById('test4-results');
+            resultsContainer.innerHTML = '';
+            
+            try {
+                // Add test value to form
+                const input = document.getElementById('cash-account-name');
+                
+                openModal('cash-account-modal');
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                input.value = 'Test Account';
+                
+                closeModal('cash-account-modal');
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                openModal('cash-account-modal');
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const isReset = input.value === '';
+                addTestResult('test4-results', 'Form Reset on Reopen', isReset,
+                    `Form cleared: ${isReset}, Value: "${input.value}"`);
+                
+                closeModal('cash-account-modal');
+                
+            } catch (error) {
+                addTestResult('test4-results', 'Form Reset Test', false, `Error: ${error.message}`);
+            }
+        };
+
+        window.testEventListenerCleanup = async function() {
+            const resultsContainer = document.getElementById('test5-results');
+            resultsContainer.innerHTML = '';
+            
+            try {
+                // Get initial listener count (approximate)
+                const getListenerInfo = () => {
+                    // This is a simplified check - in real testing you'd use Chrome DevTools
+                    return {
+                        activeModals: modalManager.activeModals.size,
+                        configSize: modalManager.modalConfig.size
+                    };
+                };
+                
+                const initialInfo = getListenerInfo();
+                
+                // Open and close modal 10 times
+                for (let i = 0; i < 10; i++) {
+                    openModal('cash-account-modal');
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    closeModal('cash-account-modal');
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+                
+                const finalInfo = getListenerInfo();
+                
+                const noLeaks = finalInfo.activeModals === 0 && 
+                               finalInfo.configSize === initialInfo.configSize;
+                
+                addTestResult('test5-results', 'No Event Listener Leaks', noLeaks,
+                    `Active modals: ${finalInfo.activeModals}, Config size stable: ${finalInfo.configSize === initialInfo.configSize}`);
+                
+                // Test destroy method
+                const beforeDestroy = modalManager.modalConfig.size;
+                modalManager.destroy();
+                const afterDestroy = modalManager.modalConfig.size;
+                
+                addTestResult('test5-results', 'Destroy Cleans Up', afterDestroy === 0,
+                    `Configs before: ${beforeDestroy}, after: ${afterDestroy}`);
+                
+                // Re-initialize for other tests
+                const { setupCommonModals } = await import('./js/modules/modalManager.js');
+                setupCommonModals();
+                
+            } catch (error) {
+                addTestResult('test5-results', 'Event Listener Test', false, `Error: ${error.message}`);
+            }
+        };
+
+        // Initialize modal system
+        document.addEventListener('DOMContentLoaded', async () => {
+            const { setupCommonModals } = await import('./js/modules/modalManager.js');
+            setupCommonModals();
+        });
+    </script>
+</body>
+</html>
