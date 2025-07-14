@@ -296,7 +296,7 @@ export const ValidationSchemas = {
         institution: ValidationRules.required,
         balance: [ValidationRules.required, ValidationRules.nonNegativeNumber],
         interestRate: [ValidationRules.required, ValidationRules.percentage],
-        minimumPayment: [ValidationRules.required, ValidationRules.positiveNumber],
+        minimumPayment: [ValidationRules.required, ValidationRules.nonNegativeNumber],
         dueDate: ValidationRules.required
     },
     
@@ -435,9 +435,14 @@ export const CrossFieldValidators = {
     debtAccount: (formData) => {
         const errors = {};
         
-        // Check if minimum payment exceeds balance
+        // Check if minimum payment exceeds balance (allow 0/0 for paid-off accounts)
         if (formData.minimumPayment > formData.balance) {
             errors.minimumPayment = 'Minimum payment cannot exceed current balance';
+        }
+        
+        // Check if minimum payment is 0 but balance is not 0
+        if (formData.minimumPayment === 0 && formData.balance > 0) {
+            errors.minimumPayment = 'Minimum payment cannot be zero when there is an outstanding balance';
         }
         
         // Check if balance exceeds credit limit (for credit cards)
