@@ -7,6 +7,7 @@
   /* Colors */
   --color-background: rgba(252, 252, 249, 1);
   --color-surface: rgba(255, 255, 253, 1);
+  --color-surface-secondary: rgba(240, 240, 237, 1);
   --color-surface-translucent: rgba(255, 255, 253, 0.8);
   --color-text: rgba(19, 52, 59, 1);
   --color-text-secondary: rgba(98, 108, 113, 1);
@@ -112,6 +113,7 @@
   :root {
     --color-background: rgba(31, 33, 33, 1);
     --color-surface: rgba(38, 40, 40, 1);
+    --color-surface-secondary: rgba(48, 50, 50, 1);
     --color-surface-translucent: rgba(38, 40, 40, 0.75);
     --color-text: rgba(245, 245, 245, 1);
     --color-text-secondary: rgba(167, 169, 169, 0.7);

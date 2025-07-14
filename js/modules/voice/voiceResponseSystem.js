@@ -502,7 +502,7 @@ export class VoiceResponseSystem {
             result.data.commands.forEach(command => {
                 const commandItem = document.createElement('div');
                 commandItem.className = 'voice-help-command';
-                commandItem.innerHTML = `<span style="color: inherit;">${escapeHtml(command)}</span>`;
+                commandItem.textContent = command;
                 commandsList.appendChild(commandItem);
             });
 
