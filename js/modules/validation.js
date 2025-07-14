@@ -297,7 +297,7 @@ export const ValidationSchemas = {
         balance: [ValidationRules.required, ValidationRules.nonNegativeNumber],
         interestRate: [ValidationRules.required, ValidationRules.percentage],
         minimumPayment: [ValidationRules.required, ValidationRules.positiveNumber],
-        dueDate: [ValidationRules.required, ValidationRules.dueDateDay]
+        dueDate: ValidationRules.required
     },
     
     recurringBill: {

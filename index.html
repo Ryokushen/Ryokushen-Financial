@@ -239,9 +239,19 @@
                                         <option value="">Select Debt Account</option>
                                     </select>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group voice-enabled">
                                     <label class="form-label" for="transaction-description">Description</label>
-                                    <input type="text" id="transaction-description" class="form-control" required>
+                                    <div class="input-with-voice">
+                                        <input type="text" id="transaction-description" class="form-control" required>
+                                        <button type="button" class="btn-voice" id="voice-input-btn" aria-label="Use voice input" title="Click to use voice input (Chrome/Safari only)">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                                <line x1="12" y1="19" x2="12" y2="23"></line>
+                                                <line x1="8" y1="23" x2="16" y2="23"></line>
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label" for="transaction-amount">Amount</label>

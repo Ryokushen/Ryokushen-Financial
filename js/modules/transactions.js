@@ -40,6 +40,68 @@ export function setupEventListeners(appState, onUpdate) {
     document.getElementById("cancel-edit-btn")?.addEventListener('click', () => {
         cancelEdit();
     });
+
+    // Voice input button
+    setupVoiceInput();
+}
+
+async function setupVoiceInput() {
+    const voiceButton = document.getElementById('voice-input-btn');
+    const descriptionInput = document.getElementById('transaction-description');
+    
+    if (!voiceButton || !descriptionInput) return;
+
+    // Lazy load voice module only when needed
+    let voiceInput = null;
+    
+    voiceButton.addEventListener('click', async () => {
+        try {
+            // Load voice module on first use
+            if (!voiceInput) {
+                const { voiceInput: VoiceInput } = await import('./voice/voiceInput.js');
+                voiceInput = VoiceInput;
+                
+                // Check browser support
+                if (!voiceInput.isSupported) {
+                    document.body.classList.add('no-voice-support');
+                    voiceButton.disabled = true;
+                    showError('Voice input is not supported in your browser. Please use Chrome or Safari.');
+                    return;
+                }
+            }
+
+            // Toggle voice input
+            if (voiceInput.listening) {
+                voiceInput.stopListening();
+                voiceButton.classList.remove('recording');
+            } else {
+                const started = await voiceInput.startListening(descriptionInput, {
+                    onResult: (result) => {
+                        if (result.isFinal) {
+                            voiceButton.classList.remove('recording');
+                            announceToScreenReader('Voice input complete');
+                        }
+                    },
+                    onError: (error) => {
+                        voiceButton.classList.remove('recording');
+                        showError(`Voice input error: ${error}`);
+                    },
+                    onEnd: () => {
+                        voiceButton.classList.remove('recording');
+                    }
+                });
+
+                if (started) {
+                    voiceButton.classList.add('recording');
+                    announceToScreenReader('Voice input started. Speak now.');
+                }
+            }
+        } catch (error) {
+            debug.error('Failed to setup voice input:', error);
+            showError('Voice input is not available.');
+            voiceButton.disabled = true;
+        }
+    });
 }
 
 function editTransaction(id, appState) {
