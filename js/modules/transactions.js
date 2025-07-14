@@ -82,6 +82,18 @@ async function setupVoiceInput() {
                             announceToScreenReader('Voice input complete');
                         }
                     },
+                    onSmartParsed: (smartResult) => {
+                        // Handle smart parsing results
+                        const { extractedData, validation, fillResult } = smartResult;
+                        
+                        if (validation.warnings.length > 0) {
+                            console.warn('Voice parsing warnings:', validation.warnings);
+                        }
+                        
+                        if (fillResult.success) {
+                            announceToScreenReader(`Smart voice input filled ${fillResult.fieldsChanged.length} fields`);
+                        }
+                    },
                     onError: (error) => {
                         voiceButton.classList.remove('recording');
                         showError(`Voice input error: ${error}`);

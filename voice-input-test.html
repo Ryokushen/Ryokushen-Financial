@@ -129,8 +129,15 @@
                 const voiceButton = document.getElementById('test-voice-btn');
                 const input = document.getElementById('test-description');
                 
+                // Check browser support
+                if (!voiceInput.isSupported) {
+                    statusDiv.innerHTML = '<div class="status error">Voice input is not supported in your browser. Please use Chrome or Safari.</div>';
+                    voiceButton.disabled = true;
+                    return;
+                }
+                
                 voiceButton.addEventListener('click', async () => {
-                    if (voiceInput.listening) {
+                    if (voiceInput.isListening) {
                         voiceInput.stopListening();
                         voiceButton.classList.remove('recording');
                         statusDiv.innerHTML = '<div class="status warning">Recording stopped</div>';

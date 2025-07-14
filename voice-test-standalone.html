@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Standalone Voice Input Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .status {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        
+        .input-container {
+            margin: 20px 0;
+        }
+        
+        input[type="text"] {
+            width: 80%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        
+        .mic-button {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 50%;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .mic-button:hover {
+            background: #0056b3;
+        }
+        
+        .mic-button.recording {
+            background: #dc3545;
+            animation: pulse 1s infinite;
+        }
+        
+        .mic-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .browser-info {
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎤 Standalone Voice Test</h1>
+        
+        <div class="browser-info">
+            <strong>Browser:</strong> <span id="browser-name"></span><br>
+            <strong>Speech Recognition:</strong> <span id="speech-support"></span>
+        </div>
+        
+        <div class="input-container">
+            <input type="text" id="voice-input" placeholder="Voice input will appear here...">
+            <button class="mic-button" id="mic-btn" title="Click to start voice input">🎤</button>
+        </div>
+        
+        <div id="status-messages"></div>
+        
+        <div style="margin-top: 30px;">
+            <h3>Instructions:</h3>
+            <ol>
+                <li>Click the microphone button</li>
+                <li>Allow microphone access when prompted</li>
+                <li>Speak clearly: "Hello testing voice input"</li>
+                <li>The text should appear in the input field</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        class StandaloneVoiceTest {
+            constructor() {
+                this.recognition = null;
+                this.isListening = false;
+                this.isSupported = this.checkSupport();
+                
+                this.micButton = document.getElementById('mic-btn');
+                this.input = document.getElementById('voice-input');
+                this.statusContainer = document.getElementById('status-messages');
+                
+                this.init();
+            }
+            
+            checkSupport() {
+                // Detect browser
+                const userAgent = navigator.userAgent;
+                let browser = 'Unknown';
+                
+                if (userAgent.includes('Chrome')) browser = 'Chrome';
+                else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) browser = 'Safari';
+                else if (userAgent.includes('Firefox')) browser = 'Firefox';
+                else if (userAgent.includes('Edge')) browser = 'Edge';
+                
+                document.getElementById('browser-name').textContent = browser;
+                
+                // Check speech recognition support
+                const hasSupport = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+                const supportSpan = document.getElementById('speech-support');
+                supportSpan.textContent = hasSupport ? '✅ Supported' : '❌ Not Supported';
+                supportSpan.style.color = hasSupport ? 'green' : 'red';
+                
+                return hasSupport;
+            }
+            
+            init() {
+                if (!this.isSupported) {
+                    this.showStatus('Voice input is not supported in your browser. Please use Chrome or Safari.', 'error');
+                    this.micButton.disabled = true;
+                    return;
+                }
+                
+                this.showStatus('Voice input ready! Click the microphone to start.', 'success');
+                
+                this.micButton.addEventListener('click', () => {
+                    if (this.isListening) {
+                        this.stopListening();
+                    } else {
+                        this.startListening();
+                    }
+                });
+            }
+            
+            startListening() {
+                try {
+                    // Create speech recognition instance
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    this.recognition = new SpeechRecognition();
+                    
+                    // Configure recognition
+                    this.recognition.continuous = false;
+                    this.recognition.interimResults = true;
+                    this.recognition.lang = 'en-US';
+                    this.recognition.maxAlternatives = 1;
+                    
+                    // Set up event handlers
+                    this.recognition.onstart = () => {
+                        this.isListening = true;
+                        this.micButton.classList.add('recording');
+                        this.showStatus('🎤 Listening... Speak now!', 'info');
+                    };
+                    
+                    this.recognition.onresult = (event) => {
+                        let transcript = '';
+                        for (let i = event.resultIndex; i < event.results.length; i++) {
+                            transcript += event.results[i][0].transcript;
+                        }
+                        
+                        this.input.value = transcript;
+                        
+                        if (event.results[event.results.length - 1].isFinal) {
+                            const confidence = (event.results[event.results.length - 1][0].confidence * 100).toFixed(1);
+                            this.showStatus(`✅ Complete! Confidence: ${confidence}%`, 'success');
+                        }
+                    };
+                    
+                    this.recognition.onerror = (event) => {
+                        this.isListening = false;
+                        this.micButton.classList.remove('recording');
+                        
+                        let errorMessage = 'Voice input error: ';
+                        switch(event.error) {
+                            case 'not-allowed':
+                                errorMessage += 'Microphone access denied. Please allow microphone access and try again.';
+                                break;
+                            case 'no-speech':
+                                errorMessage += 'No speech detected. Please try speaking more clearly.';
+                                break;
+                            case 'network':
+                                errorMessage += 'Network error. Please check your internet connection.';
+                                break;
+                            default:
+                                errorMessage += event.error;
+                        }
+                        
+                        this.showStatus(errorMessage, 'error');
+                    };
+                    
+                    this.recognition.onend = () => {
+                        this.isListening = false;
+                        this.micButton.classList.remove('recording');
+                        if (!this.statusContainer.lastElementChild.classList.contains('success')) {
+                            this.showStatus('Voice input stopped.', 'warning');
+                        }
+                    };
+                    
+                    // Start recognition
+                    this.recognition.start();
+                    
+                } catch (error) {
+                    this.showStatus(`Failed to start voice recognition: ${error.message}`, 'error');
+                }
+            }
+            
+            stopListening() {
+                if (this.recognition) {
+                    this.recognition.stop();
+                }
+            }
+            
+            showStatus(message, type = 'info') {
+                const statusDiv = document.createElement('div');
+                statusDiv.className = `status ${type}`;
+                statusDiv.textContent = message;
+                
+                // Clear previous messages
+                this.statusContainer.innerHTML = '';
+                this.statusContainer.appendChild(statusDiv);
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new StandaloneVoiceTest();
+        });
+    </script>
+</body>
+</html>

@@ -4,6 +4,8 @@ import { debug } from '../debug.js';
 import { showError } from '../ui.js';
 import { SpeechRecognitionWrapper } from './speechRecognition.js';
 import { VoiceFeedback } from './voiceFeedback.js';
+import { TransactionExtractor } from './transactionExtractor.js';
+import { SmartFormFiller } from './smartFormFiller.js';
 
 /**
  * VoiceInput - Main manager for voice input functionality
@@ -24,10 +26,14 @@ export class VoiceInput {
         this.isSupported = this.checkSupport();
         this.isListening = false;
         this.currentTarget = null; // The input element to fill
+        this.smartMode = true; // Enable smart parsing by default
+        this.transactionExtractor = new TransactionExtractor();
+        this.formFiller = new SmartFormFiller();
         this.callbacks = {
             onResult: null,
             onError: null,
-            onEnd: null
+            onEnd: null,
+            onSmartParsed: null // New callback for smart parsing results
         };
 
         if (this.isSupported) {
@@ -133,9 +139,14 @@ export class VoiceInput {
      */
     handleResult(result) {
         if (result.isFinal) {
-            // Final result - update target and notify
-            if (this.currentTarget) {
-                this.updateTargetInput(result.transcript);
+            // Final result - process with smart parsing if enabled
+            if (this.smartMode && this.isTransactionForm()) {
+                this.handleSmartTransaction(result.transcript);
+            } else {
+                // Basic mode - just fill the target input
+                if (this.currentTarget) {
+                    this.updateTargetInput(result.transcript);
+                }
             }
             
             this.feedback.showTranscript(result.transcript, true);
@@ -147,6 +158,59 @@ export class VoiceInput {
             // Interim result - show live feedback
             this.feedback.showTranscript(result.transcript, false);
         }
+    }
+
+    /**
+     * Handle smart transaction parsing
+     */
+    async handleSmartTransaction(transcript) {
+        try {
+            debug.log('Processing smart transaction:', transcript);
+            
+            // Extract transaction data
+            const extractedData = this.transactionExtractor.extractTransaction(transcript);
+            
+            // Validate extraction
+            const validation = this.transactionExtractor.validateExtraction(extractedData);
+            
+            if (extractedData.confidence > 30) {
+                // High enough confidence - auto-fill form
+                const fillResult = await this.formFiller.fillForm(extractedData, {
+                    showConfirmation: true,
+                    highlightFields: true,
+                    announceChanges: true
+                });
+                
+                if (fillResult.success && this.callbacks.onSmartParsed) {
+                    this.callbacks.onSmartParsed({
+                        extractedData,
+                        validation,
+                        fillResult
+                    });
+                }
+            } else {
+                // Low confidence - fallback to basic description filling
+                debug.log('Low confidence extraction, falling back to basic mode');
+                if (this.currentTarget) {
+                    this.updateTargetInput(transcript);
+                }
+            }
+            
+        } catch (error) {
+            debug.error('Error in smart transaction processing:', error);
+            // Fallback to basic mode
+            if (this.currentTarget) {
+                this.updateTargetInput(transcript);
+            }
+        }
+    }
+
+    /**
+     * Check if current context is a transaction form
+     */
+    isTransactionForm() {
+        // Check if we're in the transaction form context
+        return document.getElementById('transaction-form') !== null;
     }
 
     /**
@@ -276,6 +340,21 @@ export class VoiceInput {
      */
     get listening() {
         return this.isListening;
+    }
+
+    /**
+     * Toggle smart parsing mode
+     */
+    setSmartMode(enabled) {
+        this.smartMode = enabled;
+        debug.log(`Smart mode ${enabled ? 'enabled' : 'disabled'}`);
+    }
+
+    /**
+     * Get current smart mode status
+     */
+    isSmartModeEnabled() {
+        return this.smartMode;
     }
 
     /**

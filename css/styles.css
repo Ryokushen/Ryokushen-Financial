@@ -417,6 +417,18 @@ select.form-control {
   padding-right: var(--space-16);
 }
 
+/* Voice-filled field highlight animation */
+.voice-filled {
+  background-color: rgba(33, 128, 141, 0.1) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 2px rgba(33, 128, 141, 0.2) !important;
+  transition: all 0.3s ease !important;
+}
+
+.voice-filled:focus {
+  box-shadow: 0 0 0 3px rgba(33, 128, 141, 0.3) !important;
+}
+
 .form-label {
   display: block;
   margin-bottom: var(--space-8);
