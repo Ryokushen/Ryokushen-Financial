@@ -15,6 +15,7 @@ import { updateDashboard } from './modules/dashboard.js';
 import { debug } from './modules/debug.js';
 import { addMoney } from './modules/financialMath.js';
 import { privacyManager, togglePrivacyMode, enablePanicMode, reapplyPrivacy, isPrivacyMode } from './modules/privacy.js';
+import { GlobalVoiceInterface } from './modules/voice/globalVoiceInterface.js';
 
 // Configure Chart.js global defaults for better mobile responsiveness
 if (typeof Chart !== 'undefined') {
@@ -41,6 +42,9 @@ const appState = {
     CHART_COLORS: CHART_COLORS,
     balanceCache: new Map()
 };
+
+// Global voice interface instance
+let globalVoiceInterface = null;
 
 // Global error handlers
 window.addEventListener('unhandledrejection', event => {
@@ -92,6 +96,14 @@ async function initializeApp() {
     const transactionDate = document.getElementById("transaction-date");
     if (transactionDate) {
         transactionDate.value = new Date().toISOString().split("T")[0];
+    }
+
+    // Initialize global voice interface after all data is loaded
+    try {
+        globalVoiceInterface = new GlobalVoiceInterface(appState);
+        debug.log('Global voice interface initialized');
+    } catch (error) {
+        debug.error('Failed to initialize voice interface:', error);
     }
 }
 
@@ -224,6 +236,11 @@ function setupEventListeners() {
             .then(kpis => kpis.clearKPICache())
             .catch(error => debug.error('Failed to clear KPI cache:', error));
         updateAllDisplays(appState);
+        
+        // Update voice interface with new app state
+        if (globalVoiceInterface) {
+            globalVoiceInterface.updateAppState(appState);
+        }
     };
 
     document.querySelectorAll(".tab-btn").forEach(button => {
