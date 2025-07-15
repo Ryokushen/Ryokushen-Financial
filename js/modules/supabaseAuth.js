@@ -14,6 +14,9 @@ class SupabaseAuthManager {
      */
     async initializeAuth() {
         try {
+            // Check for password reset on page load
+            this.handlePasswordReset();
+            
             // Get initial session
             const { data: { session } } = await this.supabase.auth.getSession();
             this.session = session;
@@ -45,6 +48,245 @@ class SupabaseAuthManager {
     }
 
     /**
+     * Handle password reset flow
+     */
+    async handlePasswordReset() {
+        // Check if we're coming from a password reset email
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const type = hashParams.get('type');
+        
+        if (type === 'recovery' && accessToken) {
+            // User clicked password reset link
+            this.showPasswordResetForm();
+        }
+    }
+
+    /**
+     * Show password reset form
+     */
+    showPasswordResetForm() {
+        document.body.innerHTML = `
+            <div class="auth-container">
+                <div class="auth-box">
+                    <h1>Reset Your Password</h1>
+                    <h2>Enter your new password</h2>
+                    
+                    <div class="auth-form">
+                        <div class="form-group">
+                            <label for="new-password">New Password</label>
+                            <input type="password" id="new-password" class="form-control" 
+                                   placeholder="Enter new password" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="confirm-password">Confirm Password</label>
+                            <input type="password" id="confirm-password" class="form-control" 
+                                   placeholder="Confirm new password" required>
+                        </div>
+                        
+                        <button id="reset-password-btn" class="btn btn--primary btn--block">
+                            Update Password
+                        </button>
+                    </div>
+                    
+                    <div id="auth-error" class="error-message" style="display: none;"></div>
+                    <div id="auth-success" class="success-message" style="display: none;"></div>
+                </div>
+            </div>
+            
+            <style>
+                body {
+                    margin: 0;
+                    padding: 0;
+                    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                }
+                
+                .auth-container {
+                    width: 100%;
+                    max-width: 400px;
+                    padding: 20px;
+                }
+                
+                .auth-box {
+                    background: white;
+                    border-radius: 12px;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+                    padding: 40px;
+                }
+                
+                .auth-box h1 {
+                    margin: 0 0 10px 0;
+                    color: #333;
+                    font-size: 24px;
+                    text-align: center;
+                }
+                
+                .auth-box h2 {
+                    margin: 0 0 30px 0;
+                    color: #666;
+                    font-size: 16px;
+                    font-weight: normal;
+                    text-align: center;
+                }
+                
+                .auth-form {
+                    display: block;
+                }
+                
+                .form-group {
+                    margin-bottom: 20px;
+                }
+                
+                .form-group label {
+                    display: block;
+                    margin-bottom: 8px;
+                    color: #374151;
+                    font-weight: 500;
+                }
+                
+                .form-control {
+                    width: 100%;
+                    padding: 12px;
+                    border: 2px solid #e5e7eb;
+                    border-radius: 6px;
+                    font-size: 16px;
+                    transition: border-color 0.2s;
+                    box-sizing: border-box;
+                }
+                
+                .form-control:focus {
+                    outline: none;
+                    border-color: #3b82f6;
+                }
+                
+                .btn {
+                    padding: 12px 24px;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 16px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                
+                .btn--primary {
+                    background: #3b82f6;
+                    color: white;
+                }
+                
+                .btn--primary:hover {
+                    background: #2563eb;
+                    transform: translateY(-1px);
+                }
+                
+                .btn--block {
+                    width: 100%;
+                    display: block;
+                }
+                
+                .error-message {
+                    background: #fee;
+                    border: 1px solid #fcc;
+                    color: #c33;
+                    padding: 12px;
+                    border-radius: 6px;
+                    margin-top: 20px;
+                    font-size: 14px;
+                    text-align: center;
+                }
+                
+                .success-message {
+                    background: #d1fae5;
+                    border: 1px solid #34d399;
+                    color: #065f46;
+                    padding: 12px;
+                    border-radius: 6px;
+                    margin-top: 20px;
+                    font-size: 14px;
+                    text-align: center;
+                }
+            </style>
+        `;
+        
+        // Add event handler
+        document.getElementById('reset-password-btn').addEventListener('click', () => this.updatePassword());
+        
+        // Enter key handling
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.updatePassword();
+                }
+            });
+        });
+    }
+
+    /**
+     * Update password
+     */
+    async updatePassword() {
+        const newPassword = document.getElementById('new-password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+        
+        if (!newPassword || !confirmPassword) {
+            this.showError('Please fill in both password fields');
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            this.showError('Passwords do not match');
+            return;
+        }
+        
+        if (newPassword.length < 8) {
+            this.showError('Password must be at least 8 characters');
+            return;
+        }
+        
+        try {
+            const { error } = await this.supabase.auth.updateUser({
+                password: newPassword
+            });
+            
+            if (error) throw error;
+            
+            this.showSuccess('Password updated successfully! Redirecting to login...');
+            
+            // Redirect to login after 2 seconds
+            setTimeout(() => {
+                window.location.hash = '';
+                window.location.reload();
+            }, 2000);
+            
+        } catch (error) {
+            this.showError(error.message || 'Failed to update password');
+        }
+    }
+
+    /**
+     * Request password reset email
+     */
+    async requestPasswordReset(email) {
+        try {
+            const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: 'https://ryokushen-financial.netlify.app',
+            });
+            
+            if (error) throw error;
+            
+            return { success: true, message: 'Password reset email sent! Check your inbox.' };
+        } catch (error) {
+            return { success: false, message: error.message || 'Failed to send reset email' };
+        }
+    }
+
+    /**
      * Show login screen
      */
     showAuthScreen() {
@@ -71,6 +313,12 @@ class SupabaseAuthManager {
                             <label for="login-password">Password</label>
                             <input type="password" id="login-password" class="form-control" 
                                    placeholder="Your password" required>
+                        </div>
+                        
+                        <div class="form-group" style="text-align: right;">
+                            <a href="#" id="forgot-password-link" style="color: #3b82f6; text-decoration: none; font-size: 14px;">
+                                Forgot your password?
+                            </a>
                         </div>
                         
                         <button id="login-btn" class="btn btn--primary btn--block">
@@ -306,6 +554,23 @@ class SupabaseAuthManager {
         // Magic link
         document.getElementById('magic-link-btn').addEventListener('click', () => this.handleMagicLink());
         
+        // Forgot password
+        document.getElementById('forgot-password-link')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            if (email) {
+                this.requestPasswordReset(email).then(result => {
+                    if (result.success) {
+                        this.showSuccess(result.message);
+                    } else {
+                        this.showError(result.message);
+                    }
+                });
+            } else {
+                this.showError('Please enter your email address first');
+            }
+        });
+        
         // Enter key handling
         document.querySelectorAll('input').forEach(input => {
             input.addEventListener('keypress', (e) => {
@@ -402,7 +667,7 @@ class SupabaseAuthManager {
             const { error } = await this.supabase.auth.signInWithOtp({
                 email,
                 options: {
-                    emailRedirectTo: window.location.origin
+                    emailRedirectTo: 'https://ryokushen-financial.netlify.app'
                 }
             });
             
