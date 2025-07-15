@@ -341,12 +341,17 @@ async function updateAllStockPrices(appState, onUpdate) {
 }
 
 async function updateSingleHolding(symbol, appState, onUpdate) {
-    if (!holdingsUpdater || !holdingsUpdater.stockApiService.isConfigured) {
-        showError("Stock price updates require a Finnhub API key. Get a free key at finnhub.io and add it to js/config.js");
-        return;
-    }
-
     try {
+        if (!holdingsUpdater || !holdingsUpdater.stockApiService) {
+            showError("Stock API service not initialized. Please refresh the page.");
+            return;
+        }
+
+        if (!holdingsUpdater.stockApiService.isConfigured) {
+            showError("Stock price updates require a Finnhub API key. Get a free key at finnhub.io and configure it in Settings.");
+            return;
+        }
+
         const success = await holdingsUpdater.updateHoldingBySymbol(symbol);
         if (success) {
             await onUpdate();
@@ -356,7 +361,7 @@ async function updateSingleHolding(symbol, appState, onUpdate) {
         }
     } catch (error) {
         debug.error(`Error updating ${symbol}:`, error);
-        showError(`Failed to update ${symbol}.`);
+        showError(`Failed to update ${symbol}: ${error.message || 'Unknown error'}`);
     }
 }
 

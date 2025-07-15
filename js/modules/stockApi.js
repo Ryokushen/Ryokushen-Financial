@@ -18,6 +18,10 @@ export class StockApiService {
 
         // Validate API key on initialization
         this.isConfigured = this.validateApiKey();
+        
+        if (!this.isConfigured) {
+            debug.info('Stock API service initialized without API key. Stock updates will be disabled.');
+        }
     }
 
     validateApiKey() {
