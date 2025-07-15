@@ -11,6 +11,128 @@
 
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/privacy.css">
+    
+    <!-- Immediate password reset check before modules load -->
+    <script>
+        (function() {
+            // Check for password reset tokens immediately
+            const fullUrl = window.location.href;
+            const urlContainsRecovery = fullUrl.includes('type=recovery') || 
+                                      fullUrl.includes('type%3Drecovery') ||
+                                      fullUrl.includes('#recovery');
+            const urlContainsToken = fullUrl.includes('access_token=') || 
+                                   fullUrl.includes('access_token%3D');
+            
+            if (urlContainsRecovery && urlContainsToken) {
+                console.log('Password reset detected - intercepting page load');
+                
+                // Stop the page from loading normally
+                document.addEventListener('DOMContentLoaded', function(event) {
+                    event.stopImmediatePropagation();
+                    event.preventDefault();
+                });
+                
+                // Show password reset form immediately
+                window.addEventListener('load', function() {
+                    document.body.innerHTML = `
+                        <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                            <div style="width: 100%; max-width: 400px; padding: 20px;">
+                                <div style="background: white; border-radius: 12px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); padding: 40px;">
+                                    <h1 style="margin: 0 0 10px 0; color: #333; font-size: 24px; text-align: center;">Reset Your Password</h1>
+                                    <h2 style="margin: 0 0 30px 0; color: #666; font-size: 16px; font-weight: normal; text-align: center;">Enter your new password below</h2>
+                                    
+                                    <form id="reset-form" onsubmit="handlePasswordReset(event)">
+                                        <div style="margin-bottom: 20px;">
+                                            <label style="display: block; margin-bottom: 8px; color: #374151; font-weight: 500;">New Password</label>
+                                            <input type="password" id="new-password" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 16px; box-sizing: border-box;" required minlength="8">
+                                        </div>
+                                        
+                                        <div style="margin-bottom: 20px;">
+                                            <label style="display: block; margin-bottom: 8px; color: #374151; font-weight: 500;">Confirm Password</label>
+                                            <input type="password" id="confirm-password" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 16px; box-sizing: border-box;" required minlength="8">
+                                        </div>
+                                        
+                                        <button type="submit" id="reset-btn" style="width: 100%; padding: 12px 24px; border: none; border-radius: 6px; font-size: 16px; font-weight: 500; cursor: pointer; background: #3b82f6; color: white;">
+                                            Update Password
+                                        </button>
+                                    </form>
+                                    
+                                    <div style="margin-top: 20px; text-align: center;">
+                                        <a href="/" style="color: #3b82f6; text-decoration: none; font-size: 14px;">Back to Login</a>
+                                    </div>
+                                    
+                                    <div id="error-msg" style="background: #fee; border: 1px solid #fcc; color: #c33; padding: 12px; border-radius: 6px; margin-top: 20px; font-size: 14px; text-align: center; display: none;"></div>
+                                    <div id="success-msg" style="background: #d1fae5; border: 1px solid #34d399; color: #065f46; padding: 12px; border-radius: 6px; margin-top: 20px; font-size: 14px; text-align: center; display: none;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Initialize Supabase client
+                    window.supabaseClient = supabase.createClient(
+                        'https://cqhqobwdpwxnxmyuuvnp.supabase.co',
+                        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxaHFvYndkcHd4bnhteXV1dm5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY1NjA3NzEsImV4cCI6MjA1MjEzNjc3MX0.0Fo9cPA6XJabKHVi4QiJJYNhSre6hRG7RQtqKdKrJro'
+                    );
+                    
+                    // Handle password reset
+                    window.handlePasswordReset = async function(event) {
+                        event.preventDefault();
+                        const newPassword = document.getElementById('new-password').value;
+                        const confirmPassword = document.getElementById('confirm-password').value;
+                        const button = document.getElementById('reset-btn');
+                        const errorDiv = document.getElementById('error-msg');
+                        const successDiv = document.getElementById('success-msg');
+                        
+                        errorDiv.style.display = 'none';
+                        successDiv.style.display = 'none';
+                        
+                        if (newPassword !== confirmPassword) {
+                            errorDiv.textContent = 'Passwords do not match';
+                            errorDiv.style.display = 'block';
+                            return;
+                        }
+                        
+                        button.disabled = true;
+                        button.textContent = 'Updating...';
+                        
+                        try {
+                            // Extract tokens
+                            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                            const queryParams = new URLSearchParams(window.location.search);
+                            const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+                            const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+                            
+                            // Set session first
+                            await window.supabaseClient.auth.setSession({
+                                access_token: accessToken,
+                                refresh_token: refreshToken
+                            });
+                            
+                            // Update password
+                            const { error } = await window.supabaseClient.auth.updateUser({
+                                password: newPassword
+                            });
+                            
+                            if (error) throw error;
+                            
+                            successDiv.textContent = 'Password updated successfully! Redirecting...';
+                            successDiv.style.display = 'block';
+                            
+                            setTimeout(() => {
+                                window.location.href = '/';
+                            }, 2000);
+                            
+                        } catch (error) {
+                            errorDiv.textContent = error.message || 'Failed to update password';
+                            errorDiv.style.display = 'block';
+                            button.disabled = false;
+                            button.textContent = 'Update Password';
+                        }
+                    };
+                });
+            }
+        })();
+    </script>
 </head>
 
 <body>
