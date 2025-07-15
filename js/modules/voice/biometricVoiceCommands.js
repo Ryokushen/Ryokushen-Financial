@@ -2,6 +2,10 @@
 import { debug } from '../debug.js';
 import { 
     isBiometricSupported,
+    isBiometricRegistered,
+    getBiometricPlatformInfo
+} from '../biometricAuth.js';
+import {
     isBiometricPrivacyEnabled,
     enableBiometricPrivacy,
     disableBiometricPrivacy,
