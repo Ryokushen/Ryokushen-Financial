@@ -1,11 +1,12 @@
 # Current Features - Ryokushen Financial Tracker
 
-> Last Updated: July 14, 2025
+> Last Updated: July 15, 2025
 
 This document provides a comprehensive overview of all currently implemented features in the Ryokushen Financial Tracker application.
 
 ## Table of Contents
 - [Core Financial Features](#core-financial-features)
+- [Time Budget System](#time-budget-system)
 - [User Interface & Experience](#user-interface--experience)
 - [Voice & Natural Language](#voice--natural-language)
 - [Technical Infrastructure](#technical-infrastructure)
@@ -155,6 +156,44 @@ Income, Housing, Transportation, Food, Healthcare, Entertainment, Shopping, Util
 - Monthly expense totals
 - Recent activity feed
 - 30-day bill timeline
+
+---
+
+## Time Budget System
+
+### ⏱️ Overview
+The Time Budget System transforms financial expenses into time worked, providing a unique perspective on spending by showing how many hours or minutes of work each purchase represents.
+
+### Configuration
+- **Wage Settings**: Hourly rate input
+- **Tax Rate**: Percentage for after-tax calculations
+- **Enable/Disable**: Toggle system on/off
+- **Settings Storage**: Persistent configuration
+
+### Time Conversion Features
+- **Expense to Time**: Convert any expense to hours/minutes of work
+- **After-Tax Calculations**: Accurate time based on net income
+- **Real-Time Updates**: Instant conversion as you spend
+- **Multiple Formats**: "2h 15m" or "2.25 hours"
+
+### Dashboard Widget
+- **Visual Display**: Prominent time budget widget on dashboard
+- **Period Metrics**: Today, This Week, This Month time totals
+- **Progress Indicator**: Visual gauge of time worked for expenses
+- **Quick Settings**: Direct link to configuration
+- **Privacy Mode**: Blurs sensitive time/wage information
+
+### Voice Integration
+- **Time Queries**: "How much time did I spend on groceries?"
+- **Last Purchase**: "How much work was my last purchase?"
+- **Category Analysis**: "How many hours for dining this month?"
+- **Natural Responses**: "Your coffee cost 15 minutes of work"
+
+### Analytics Features
+- **Time-Based Reports**: See spending in time instead of dollars
+- **Category Breakdown**: Hours worked per spending category
+- **Historical Tracking**: Time trends over periods
+- **Goal Setting**: Set time-based spending limits
 
 ---
 

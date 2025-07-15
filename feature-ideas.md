@@ -159,10 +159,16 @@ This document contains potential feature enhancements organized by category. The
 - Scheduled email reports
 - PDF export with branding
 
-### 24. Time-based Budgets ✅
-- Hourly wage calculator
-- "Hours of work" cost display
-- Time investment tracking
+### 24. Time-based Budgets ✅ IMPLEMENTED
+**Status**: Fully implemented and deployed
+- ✅ Hourly wage calculator with tax rate configuration
+- ✅ "Hours of work" cost display for all expenses
+- ✅ Time investment tracking with dashboard widget
+- ✅ Voice command integration for time-based queries
+- ✅ Period-based time metrics (Today, This Week, This Month)
+- ✅ Visual progress indicators showing work time spent
+- ✅ Privacy mode support for wage information
+- **Web Implementation**: Local storage for settings, real-time calculations
 
 ## 🔐 Security & Privacy
 
@@ -247,6 +253,11 @@ This document contains potential feature enhancements organized by category. The
 3. **Natural Language Queries (#30)** - Basic queries via voice:
    - Financial queries (balance, net worth, debt)
    - Spending analysis by category/merchant
+4. **Time-based Budgets (#24)** - Fully implemented:
+   - Wage configuration with tax calculations
+   - Dashboard widget with time metrics
+   - Voice command integration
+   - Real-time expense-to-time conversion
 
 ### 🚧 In Progress / Partially Complete
 - Privacy Mode (#25) - Missing biometric authentication
