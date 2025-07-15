@@ -5,6 +5,10 @@ import { renderBillsTimeline } from './timeline.js';
 import * as Accounts from './accounts.js';
 import * as Debt from './debt.js';
 import { addMoney, subtractMoney, sumMoney, convertToMonthlyPrecise } from './financialMath.js';
+import { TimeBudgetWidget } from './widgets/timeBudgetWidget.js';
+
+// Initialize time budget widget
+let timeBudgetWidget = null;
 
 function renderFinancialHealth(kpiResults) {
     const container = document.querySelector('.health-score-container');
@@ -94,5 +98,13 @@ export function updateDashboard({ appData }) {
     if (netWorthEl) netWorthEl.textContent = formatCurrency(netWorth);
 
     renderRecentTransactions(appData);
+    
+    // Initialize or update time budget widget
+    if (!timeBudgetWidget && document.getElementById('time-budget-widget')) {
+        timeBudgetWidget = new TimeBudgetWidget('time-budget-widget');
+        timeBudgetWidget.init(appData);
+    } else if (timeBudgetWidget) {
+        timeBudgetWidget.updateAppData(appData);
+    }
 }
 

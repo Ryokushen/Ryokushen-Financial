@@ -58,7 +58,10 @@ export class VoiceAnalytics {
             'query.balance_forecast': this.handleBalanceForecastQuery.bind(this),
             'query.spending_forecast': this.handleSpendingForecastQuery.bind(this),
             'query.debt_freedom': this.handleDebtFreedomQuery.bind(this),
-            'query.anomaly_detection': this.handleAnomalyDetectionQuery.bind(this)
+            'query.anomaly_detection': this.handleAnomalyDetectionQuery.bind(this),
+            
+            // Work time cost queries
+            'query.work_time_cost': this.handleWorkTimeCostQuery.bind(this)
         };
     }
 
@@ -2303,5 +2306,148 @@ export class VoiceAnalytics {
             groups[category] = (groups[category] || 0) + Math.abs(t.amount);
         });
         return groups;
+    }
+
+    /**
+     * Handle work time cost queries
+     */
+    async handleWorkTimeCostQuery(parameters) {
+        try {
+            // Import timeBudgets module
+            const { timeBudgets } = await import('../timeBudgets.js');
+            
+            if (!timeBudgets.isEnabled()) {
+                return {
+                    type: 'query.work_time_cost',
+                    success: true,
+                    response: {
+                        text: 'Time budgets are not enabled. Would you like me to help you set up your hourly wage?',
+                        title: 'Time Budgets Disabled',
+                        emoji: '⏱️',
+                        suggestions: ['Enable time budgets', 'Go to settings']
+                    }
+                };
+            }
+
+            const appData = this.appState?.appData || {};
+            const { workTimeCategory } = parameters;
+
+            // Handle "last transaction" query
+            if (workTimeCategory === 'last_transaction') {
+                const recentTransactions = [...(appData.transactions || [])]
+                    .filter(t => t.amount < 0)
+                    .sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                if (recentTransactions.length === 0) {
+                    return {
+                        type: 'query.work_time_cost',
+                        success: true,
+                        response: {
+                            text: 'No recent expenses found.',
+                            title: 'No Transactions'
+                        }
+                    };
+                }
+
+                const lastTransaction = recentTransactions[0];
+                const timeData = timeBudgets.convertToTime(Math.abs(lastTransaction.amount));
+                
+                return {
+                    type: 'query.work_time_cost',
+                    success: true,
+                    data: {
+                        transaction: lastTransaction,
+                        timeData: timeData
+                    },
+                    response: {
+                        text: `Your last purchase of ${formatCurrency(Math.abs(lastTransaction.amount))} at ${lastTransaction.description} cost ${timeData.formatted} of work.`,
+                        title: 'Time Cost of Last Purchase',
+                        emoji: '⏰',
+                        details: `At your rate of ${formatCurrency(timeBudgets.getConfig().afterTaxRate)}/hour after taxes`
+                    }
+                };
+            }
+
+            // Handle category-based queries
+            if (workTimeCategory) {
+                const categoryTransactions = (appData.transactions || [])
+                    .filter(t => 
+                        t.amount < 0 && 
+                        t.category && 
+                        t.category.toLowerCase().includes(workTimeCategory.toLowerCase())
+                    );
+
+                if (categoryTransactions.length === 0) {
+                    return {
+                        type: 'query.work_time_cost',
+                        success: true,
+                        response: {
+                            text: `No ${workTimeCategory} expenses found.`,
+                            title: 'No Matching Expenses'
+                        }
+                    };
+                }
+
+                // Calculate time for this month
+                const now = new Date();
+                const thisMonthTransactions = categoryTransactions.filter(t => {
+                    const transDate = new Date(t.date);
+                    return transDate.getMonth() === now.getMonth() && 
+                           transDate.getFullYear() === now.getFullYear();
+                });
+
+                const thisMonthTotal = sumMoney(thisMonthTransactions.map(t => Math.abs(t.amount)));
+                const timeData = timeBudgets.convertToTime(thisMonthTotal);
+
+                return {
+                    type: 'query.work_time_cost',
+                    success: true,
+                    data: {
+                        category: workTimeCategory,
+                        amount: thisMonthTotal,
+                        timeData: timeData,
+                        transactionCount: thisMonthTransactions.length
+                    },
+                    response: {
+                        text: `You've worked ${timeData.formatted} this month just for ${workTimeCategory} (${formatCurrency(thisMonthTotal)}).`,
+                        title: `Time Cost: ${workTimeCategory}`,
+                        emoji: '💼',
+                        details: `Based on ${thisMonthTransactions.length} transaction${thisMonthTransactions.length !== 1 ? 's' : ''}`
+                    }
+                };
+            }
+
+            // General spending to time conversion
+            const thisMonthExpenses = (appData.transactions || [])
+                .filter(t => {
+                    const transDate = new Date(t.date);
+                    const now = new Date();
+                    return t.amount < 0 &&
+                           transDate.getMonth() === now.getMonth() && 
+                           transDate.getFullYear() === now.getFullYear();
+                });
+
+            const totalExpenses = sumMoney(thisMonthExpenses.map(t => Math.abs(t.amount)));
+            const timeData = timeBudgets.convertToTime(totalExpenses);
+
+            return {
+                type: 'query.work_time_cost',
+                success: true,
+                data: {
+                    totalExpenses: totalExpenses,
+                    timeData: timeData
+                },
+                response: {
+                    text: `This month's expenses of ${formatCurrency(totalExpenses)} equal ${timeData.formatted} of work time.`,
+                    title: 'Monthly Time Cost',
+                    emoji: '📊',
+                    details: 'Ask about specific categories for more details'
+                }
+            };
+
+        } catch (error) {
+            debug.error('Work time cost query error:', error);
+            return this.handleQueryError(error);
+        }
     }
 }

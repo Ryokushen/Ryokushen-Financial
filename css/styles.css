@@ -611,6 +611,10 @@ select.form-control {
   margin-bottom: var(--space-24);
 }
 
+.time-budget-section {
+  margin-bottom: var(--space-24);
+}
+
 .enhanced-charts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
@@ -636,6 +640,10 @@ select.form-control {
 }
 
 .bills-timeline-section {
+  margin-bottom: var(--space-24);
+}
+
+.time-budget-section {
   margin-bottom: var(--space-24);
 }
 

@@ -188,6 +188,20 @@ export class VoiceCommandEngine {
                 confidence: 0.85
             },
 
+            // Work Time Cost Queries
+            WORK_TIME_QUERY: {
+                patterns: [
+                    /\bhow\s+(?:many\s+)?(?:hours?|much\s+time)\s+(?:of\s+work\s+)?(?:was|is|did)\s+(?:my\s+)?(?:last\s+)?(?:purchase|transaction|expense)/gi,
+                    /\b(?:convert|show)\s+(?:my\s+)?(?:spending|expenses?)\s+(?:to|in)\s+(?:work\s+)?(?:hours?|time)/gi,
+                    /\bhow\s+(?:many\s+)?hours?\s+(?:did\s+i\s+)?work(?:ed)?\s+(?:for|on)\s+([a-zA-Z\s]+)/gi,
+                    /\btime\s+cost\s+(?:of|for)\s+(?:my\s+)?(?:last\s+)?(?:purchase|transaction|([a-zA-Z\s]+))/gi,
+                    /\bwork\s+(?:hours?|time)\s+(?:for|spent\s+on)\s+([a-zA-Z\s]+)/gi,
+                    /\bhow\s+(?:much|long)\s+(?:do|did)\s+i\s+(?:have\s+to\s+)?work\s+(?:for|to\s+pay\s+for)/gi
+                ],
+                intent: 'query.work_time_cost',
+                confidence: 0.9
+            },
+
             // Bill Management Queries
             BILLS_DUE_QUERY: {
                 patterns: [
@@ -627,6 +641,31 @@ export class VoiceCommandEngine {
                         /need\s+(?:to\s+save\s+)?for\s+(?:my\s+)?(.+)$/i,
                         /(?:remaining|left)\s+(?:to\s+save\s+)?for\s+(?:my\s+)?(.+)$/i,
                         /^(.+?)\s+goal\s+(?:remaining|balance|needed)/i
+                    ];
+                    
+                    for (const pattern of patterns) {
+                        const match = text.match(pattern);
+                        if (match && match[1]) {
+                            return match[1].trim();
+                        }
+                    }
+                }
+                return null;
+            },
+
+            // Extract category or time period for work time queries
+            workTimeCategory: (text, intent) => {
+                if (intent === 'query.work_time_cost') {
+                    // Check for "last purchase/transaction"
+                    if (/\b(?:last|recent)\s+(?:purchase|transaction|expense)/i.test(text)) {
+                        return 'last_transaction';
+                    }
+                    
+                    // Extract category from patterns like "worked for groceries"
+                    const patterns = [
+                        /work(?:ed)?\s+(?:for|on)\s+([a-zA-Z\s]+?)(?:\s+this|\s+last|$)/i,
+                        /time\s+cost\s+(?:of|for)\s+([a-zA-Z\s]+?)(?:\s+this|\s+last|$)/i,
+                        /hours?\s+(?:for|on|spent\s+on)\s+([a-zA-Z\s]+?)(?:\s+this|\s+last|$)/i
                     ];
                     
                     for (const pattern of patterns) {
