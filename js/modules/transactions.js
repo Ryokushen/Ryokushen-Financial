@@ -6,6 +6,9 @@ import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, Valid
 import { handleSavingsGoalTransactionDeletion } from './savings.js';
 import { debug } from './debug.js';
 import { addMoney, subtractMoney } from './financialMath.js';
+import { dataIndex } from './dataIndex.js';
+import { debounce } from './performanceUtils.js';
+import { populateFormFromData, extractFormData } from './formUtils.js';
 
 let currentCategoryFilter = "";
 let editingTransactionId = null;
@@ -21,10 +24,13 @@ export function setupEventListeners(appState, onUpdate) {
         }
     });
 
-    document.getElementById("filter-category")?.addEventListener("change", (e) => {
+    // Debounced filter handler for better performance
+    const debouncedFilter = debounce((e) => {
         currentCategoryFilter = e.target.value;
         renderTransactions(appState, currentCategoryFilter);
-    });
+    }, 300);
+    
+    document.getElementById("filter-category")?.addEventListener("change", debouncedFilter);
 
     document.getElementById("transactions-table-body")?.addEventListener('click', (event) => {
         const transactionId = parseInt(event.target.getAttribute('data-id'));
@@ -87,7 +93,7 @@ async function setupVoiceInput() {
                         const { extractedData, validation, fillResult } = smartResult;
                         
                         if (validation.warnings.length > 0) {
-                            console.warn('Voice parsing warnings:', validation.warnings);
+                            debug.warn('Voice parsing warnings:', validation.warnings);
                         }
                         
                         if (fillResult.success) {
@@ -141,40 +147,30 @@ function editTransaction(id, appState) {
     // Show cancel button
     showCancelButton();
 
-    // Populate form with transaction data
-    const dateInput = document.getElementById("transaction-date");
-    if (dateInput) dateInput.value = transaction.date;
+    // Populate form with transaction data using formUtils
+    const formData = {
+        date: transaction.date,
+        account: transaction.account_id || '',
+        category: transaction.category,
+        description: transaction.description,
+        amount: transaction.amount,
+        cleared: transaction.cleared || false
+    };
+    
+    // Add debt account if applicable
+    if (transaction.category === "Debt" && transaction.debt_account_id) {
+        const debtAccount = appState.appData.debtAccounts.find(d => d.id === transaction.debt_account_id);
+        if (debtAccount) {
+            formData['debt-account-select'] = debtAccount.name;
+        }
+    }
+    
+    populateFormFromData('transaction-form', formData, 'transaction-');
 
-    const accountSelect = document.getElementById("transaction-account");
-    if (accountSelect) accountSelect.value = transaction.account_id || '';
-
-    const categorySelect = document.getElementById("transaction-category");
-    if (categorySelect) categorySelect.value = transaction.category;
-
-    const descriptionInput = document.getElementById("transaction-description");
-    if (descriptionInput) descriptionInput.value = transaction.description;
-
-    const amountInput = document.getElementById("transaction-amount");
-    if (amountInput) amountInput.value = transaction.amount;
-
-    const clearedCheckbox = document.getElementById("transaction-cleared");
-    if (clearedCheckbox) clearedCheckbox.checked = transaction.cleared;
-
-    // Handle debt account selection
+    // Handle debt account visibility
     const debtGroup = document.getElementById("debt-account-group");
     if (debtGroup) {
-        if (transaction.category === "Debt" && transaction.debt_account_id) {
-            debtGroup.style.display = "block";
-
-            // Find the debt account name for the dropdown
-            const debtAccount = appState.appData.debtAccounts.find(d => d.id === transaction.debt_account_id);
-            const debtSelect = document.getElementById("debt-account-select");
-            if (debtSelect && debtAccount) {
-                debtSelect.value = debtAccount.name;
-            }
-        } else {
-            debtGroup.style.display = "none";
-        }
+        debtGroup.style.display = transaction.category === "Debt" ? "block" : "none";
     }
 
     // Scroll to form
@@ -442,6 +438,11 @@ async function updateDebtAccountBalance(debtAccountId, amount, appState) {
     }
 }
 
+// Virtual scrolling configuration
+const VISIBLE_ROWS = 50; // Number of rows to render at once
+const BUFFER_ROWS = 10; // Extra rows to render for smooth scrolling
+let visibleStartIndex = 0;
+
 export function renderTransactions(appState, categoryFilter = currentCategoryFilter) {
     const { appData } = appState;
     const tbody = document.getElementById("transactions-table-body");
@@ -452,8 +453,9 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
         filterSelect.value = categoryFilter;
     }
 
+    // Use dataIndex for faster category filtering
     let transactions = categoryFilter ?
-        appData.transactions.filter(t => t.category === categoryFilter) :
+        dataIndex.getTransactionsByCategory(categoryFilter) :
         [...appData.transactions];
 
     transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -463,17 +465,26 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
         return;
     }
 
+    // For very large transaction lists, use virtual scrolling
+    if (transactions.length > 100) {
+        renderTransactionsVirtual(tbody, transactions, appState);
+        return;
+    }
+
+    // For smaller lists, render all at once
     tbody.innerHTML = transactions.map(t => {
         // Handle both cash account transactions and credit card transactions
         let accountName = 'Credit Card Transaction';
 
         if (t.account_id) {
-            // Regular cash account transaction
-            const account = appData.cashAccounts.find(a => a.id === t.account_id);
+            // Regular cash account transaction - use index for O(1) lookup
+            const account = dataIndex.cashAccountsById.get(t.account_id) || 
+                           appData.cashAccounts.find(a => a.id === t.account_id);
             accountName = account ? escapeHtml(account.name) : 'Unknown Account';
         } else if (t.debt_account_id) {
-            // Credit card transaction - show the credit card name
-            const debtAccount = appData.debtAccounts.find(d => d.id === t.debt_account_id);
+            // Credit card transaction - show the credit card name - use index for O(1) lookup
+            const debtAccount = dataIndex.debtAccountsById.get(t.debt_account_id) ||
+                               appData.debtAccounts.find(d => d.id === t.debt_account_id);
             accountName = debtAccount ? `${escapeHtml(debtAccount.name)} (Credit Card)` : 'Unknown Credit Card';
         }
 
@@ -642,4 +653,142 @@ function calculatePreviousDueDate(currentDateStr, frequency) {
     }
 
     return date.toISOString().split('T')[0];
+}
+
+// Virtual scrolling implementation
+function renderTransactionsVirtual(tbody, transactions, appState) {
+    const { appData } = appState;
+    const container = tbody.parentElement;
+    
+    // Create a wrapper for virtual scrolling if it doesn't exist
+    let wrapper = container.querySelector('.virtual-scroll-wrapper');
+    if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.className = 'virtual-scroll-wrapper';
+        wrapper.style.position = 'relative';
+        wrapper.style.height = `${transactions.length * 40}px`; // Approximate row height
+        
+        container.style.overflow = 'auto';
+        container.style.height = '600px'; // Fixed height for scrolling
+        
+        // Add scroll listener with throttling
+        const { throttle } = import('./utils.js').then(module => {
+            container.addEventListener('scroll', module.throttle(() => {
+                const scrollTop = container.scrollTop;
+                const rowHeight = 40;
+                const newStartIndex = Math.floor(scrollTop / rowHeight);
+                
+                if (Math.abs(newStartIndex - visibleStartIndex) > 5) {
+                    visibleStartIndex = newStartIndex;
+                    renderVisibleTransactions(tbody, transactions, appState);
+                }
+            }, 100));
+        });
+    }
+    
+    renderVisibleTransactions(tbody, transactions, appState);
+}
+
+function renderVisibleTransactions(tbody, transactions, appState) {
+    const { appData } = appState;
+    const startIndex = Math.max(0, visibleStartIndex - BUFFER_ROWS);
+    const endIndex = Math.min(transactions.length, visibleStartIndex + VISIBLE_ROWS + BUFFER_ROWS);
+    const visibleTransactions = transactions.slice(startIndex, endIndex);
+    
+    // Clear and render only visible rows
+    tbody.innerHTML = '';
+    
+    // Add spacer for rows above
+    if (startIndex > 0) {
+        const spacer = document.createElement('tr');
+        spacer.style.height = `${startIndex * 40}px`;
+        tbody.appendChild(spacer);
+    }
+    
+    // Render visible transactions
+    visibleTransactions.forEach(t => {
+        const row = createTransactionRow(t, appData);
+        tbody.appendChild(row);
+    });
+    
+    // Add spacer for rows below
+    if (endIndex < transactions.length) {
+        const spacer = document.createElement('tr');
+        spacer.style.height = `${(transactions.length - endIndex) * 40}px`;
+        tbody.appendChild(spacer);
+    }
+}
+
+function createTransactionRow(t, appData) {
+    const row = document.createElement('tr');
+    
+    // Handle both cash account transactions and credit card transactions
+    let accountName = 'Credit Card Transaction';
+    
+    if (t.account_id) {
+        // Use dataIndex for O(1) lookup if available
+        const account = dataIndex.cashAccountsById.get(t.account_id) || 
+                       appData.cashAccounts.find(a => a.id === t.account_id);
+        accountName = account ? escapeHtml(account.name) : 'Unknown Account';
+    } else if (t.debt_account_id) {
+        const debtAccount = dataIndex.debtAccountsById.get(t.debt_account_id) ||
+                           appData.debtAccounts.find(d => d.id === t.debt_account_id);
+        accountName = debtAccount ? `${escapeHtml(debtAccount.name)} (Credit Card)` : 'Unknown Credit Card';
+    }
+    
+    let description = escapeHtml(t.description);
+    
+    if (t.category === "Debt") {
+        let debtAccountName = '';
+        if (t.debt_account_id) {
+            const debtAccount = appData.debtAccounts.find(d => d.id === t.debt_account_id);
+            if (debtAccount) {
+                debtAccountName = debtAccount.name;
+            }
+        } else if (t.debt_account) {
+            debtAccountName = t.debt_account;
+        }
+        
+        if (debtAccountName) {
+            description += ` (${escapeHtml(debtAccountName)})`;
+        }
+    }
+    
+    let amountClass;
+    let displayAmount;
+    
+    if (t.account_id) {
+        amountClass = t.amount >= 0 ? 'text-success' : 'text-error';
+        displayAmount = formatCurrency(t.amount);
+    } else if (t.debt_account_id) {
+        amountClass = t.amount >= 0 ? 'text-error' : 'text-success';
+        displayAmount = formatCurrency(t.amount);
+    } else {
+        amountClass = t.amount >= 0 ? 'text-success' : 'text-error';
+        displayAmount = formatCurrency(t.amount);
+    }
+    
+    const isEditing = editingTransactionId === t.id;
+    if (isEditing) {
+        row.style.backgroundColor = 'var(--color-secondary)';
+    }
+    
+    row.innerHTML = `
+        <td>${formatDate(t.date)}</td>
+        <td>${escapeHtml(accountName)}</td>
+        <td>${escapeHtml(t.category)}</td>
+        <td>${description}</td>
+        <td class="${amountClass}" data-sensitive="true">${displayAmount}</td>
+        <td class="${t.cleared ? 'status-cleared' : 'status-pending'}">${t.cleared ? "Cleared" : "Pending"}</td>
+        <td>
+            <div class="transaction-actions">
+                <button class="btn btn-small btn-edit" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>
+                    ${isEditing ? 'Editing...' : 'Edit'}
+                </button>
+                <button class="btn btn-small btn-delete" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>Delete</button>
+            </div>
+        </td>
+    `;
+    
+    return row;
 }

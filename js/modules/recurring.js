@@ -242,7 +242,7 @@ async function handleRecurringSubmit(event, appState, onUpdate) {
         announceToScreenReader("Recurring bill saved successfully.");
 
     } catch (error) {
-        console.error("Error saving recurring bill:", error);
+        debug.error("Error saving recurring bill:", error);
         showError(`Failed to save recurring bill: ${error.message}`);
     }
 }
@@ -258,7 +258,7 @@ async function deleteRecurringBill(id, appState, onUpdate) {
             onUpdate();
             announceToScreenReader("Recurring bill deleted.");
         } catch (error) {
-            console.error("Error deleting recurring bill:", error);
+            debug.error("Error deleting recurring bill:", error);
             showError("Failed to delete recurring bill.");
         }
     }
@@ -343,7 +343,7 @@ async function payRecurringBill(id, appState, onUpdate) {
             onUpdate();
             announceToScreenReader("Payment recorded successfully.");
         } catch (error) {
-            console.error("Error paying bill:", error);
+            debug.error("Error paying bill:", error);
             showError("Failed to record payment.");
         }
     }

@@ -1,6 +1,7 @@
 // js/modules/modalManager.js
 
 import { domCache } from './domCache.js';
+import { debug } from './debug.js';
 
 /**
  * Centralized Modal Manager
@@ -50,6 +51,13 @@ class ModalManager {
                 }
             }
         };
+        
+        // Listen for custom close-modal events from formUtils
+        window.addEventListener('close-modal', (e) => {
+            if (e.detail && e.detail.modalId) {
+                this.close(e.detail.modalId);
+            }
+        });
         
         // Setup global event listeners with bound handlers
         document.addEventListener('keydown', this.boundHandlers.keydown);
@@ -144,7 +152,7 @@ class ModalManager {
         
         const modal = domCache.getElementById(modalId);
         if (!modal) {
-            console.error(`Modal ${modalId} not found`);
+            debug.error(`Modal ${modalId} not found`);
             return;
         }
         

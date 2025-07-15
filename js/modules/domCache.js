@@ -6,9 +6,11 @@
  * Automatically clears cache when elements are removed from DOM
  */
 class DOMCache {
-    constructor() {
+    constructor(maxSize = 50) {
         this.cache = new Map();
         this.observer = null;
+        this.maxSize = maxSize;
+        this.accessOrder = []; // Track access order for LRU eviction
         this.initObserver();
     }
     
@@ -67,7 +69,7 @@ class DOMCache {
         
         const element = document.getElementById(id);
         if (element) {
-            this.cache.set(cacheKey, element);
+            this.setCacheEntry(cacheKey, element);
         }
         return element;
     }
@@ -151,12 +153,48 @@ class DOMCache {
     }
     
     /**
+     * Set cache entry with LRU eviction
+     */
+    setCacheEntry(key, value) {
+        // Check if we need to evict
+        if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
+            this.evictLRU();
+        }
+        
+        this.cache.set(key, value);
+        this.updateAccessOrder(key);
+    }
+    
+    /**
+     * Update access order for LRU
+     */
+    updateAccessOrder(key) {
+        const index = this.accessOrder.indexOf(key);
+        if (index > -1) {
+            this.accessOrder.splice(index, 1);
+        }
+        this.accessOrder.push(key);
+    }
+    
+    /**
+     * Evict least recently used entry
+     */
+    evictLRU() {
+        if (this.accessOrder.length === 0) return;
+        
+        const keyToEvict = this.accessOrder.shift();
+        this.cache.delete(keyToEvict);
+    }
+    
+    /**
      * Get cache statistics
      */
     getStats() {
         return {
             size: this.cache.size,
-            entries: Array.from(this.cache.keys())
+            maxSize: this.maxSize,
+            entries: Array.from(this.cache.keys()),
+            oldestEntry: this.accessOrder[0] || null
         };
     }
     

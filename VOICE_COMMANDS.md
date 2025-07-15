@@ -58,6 +58,9 @@ This document lists all voice commands available in Ryokushen Financial Tracker.
 - "Show entertainment expenses"
 - "Groceries spending this month"
 - "Show [category] spending" (any category name)
+- "What's my highest expense category?"
+- "Which category do I spend the most on?"
+- "Show my top expense categories"
 
 ### Merchant Spending
 - "How much at Walmart this month?"
@@ -81,6 +84,11 @@ This document lists all voice commands available in Ryokushen Financial Tracker.
 - "What's my biggest expense increase?"
 - "Where am I spending more?"
 - "Show expense increases"
+- "Compare my spending this month vs last 3 months"
+- "How does my spending compare to last year?"
+- "Show unusual transactions"
+- "Find suspicious activity"
+- "Detect anomalies in my spending"
 
 ## Bills & Recurring Charges
 
@@ -116,6 +124,10 @@ This document lists all voice commands available in Ryokushen Financial Tracker.
 - "Am I on track for my savings goals?"
 - "Show goal progress"
 - "How much more do I need for [goal name]?" (e.g., "How much more do I need for vacation?")
+- "When will I reach my [goal name] goal?" (e.g., "When will I reach my emergency fund goal?")
+- "How many months of expenses do I have saved?"
+- "What's my emergency fund status?"
+- "How long can my savings last?"
 
 ## Search & Discovery
 
@@ -192,6 +204,27 @@ This document lists all voice commands available in Ryokushen Financial Tracker.
 - "Winning investments"
 - "Losing investments"
 - "Year to date returns"
+
+## Predictive Analytics
+
+### Balance Forecasting
+- "What will my balance be next month?"
+- "Project my balance for December"
+- "Will I have enough money for rent?"
+- "When will I run out of money?"
+
+### Spending Predictions
+- "What will I spend on groceries this month?"
+- "At this rate, what will I spend this year?"
+- "Project my spending for next month"
+- "Spending forecast for dining"
+
+### Debt & Goal Projections
+- "When will I be debt free?"
+- "When can I pay off all my debt?"
+- "How long until I'm debt free?"
+- "When will I reach my vacation goal?"
+- "How long until I can afford a new car?"
 
 ## Help
 

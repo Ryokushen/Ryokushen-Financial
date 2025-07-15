@@ -184,7 +184,7 @@ export async function handleSavingsGoalTransactionDeletion(transaction, appState
     const goal = appState.appData.savingsGoals.find(g => g.linkedAccountId === transaction.account_id);
     
     if (!goal) {
-        console.warn('Could not find savings goal for transaction:', transaction.description);
+        debug.warn('Could not find savings goal for transaction:', transaction.description);
         return;
     }
 
@@ -362,7 +362,7 @@ async function handleContributionSubmit(event, appState, onUpdate) {
         announceToScreenReader("Contribution saved.");
 
     } catch (error) {
-        console.error("Error processing contribution:", error);
+        debug.error("Error processing contribution:", error);
         showError("Failed to process contribution.");
     }
 }

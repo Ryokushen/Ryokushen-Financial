@@ -5,9 +5,11 @@
  * Includes TTL (time-to-live) support and dependency tracking
  */
 class MemoizationCache {
-    constructor() {
+    constructor(maxSize = 100) {
         this.cache = new Map();
         this.dependencies = new Map();
+        this.maxSize = maxSize;
+        this.accessOrder = []; // Track access order for LRU eviction
     }
     
     /**
@@ -36,6 +38,8 @@ class MemoizationCache {
                 
                 // Check TTL
                 if (!ttl || (Date.now() - cached.timestamp < ttl)) {
+                    // Update access order for LRU
+                    this.updateAccessOrder(key);
                     return cached.value;
                 }
             }
@@ -43,12 +47,20 @@ class MemoizationCache {
             // Compute new value
             const value = fn(...args);
             
+            // Check if we need to evict entries
+            if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
+                this.evictLRU();
+            }
+            
             // Store in cache
             this.cache.set(key, {
                 value,
                 timestamp: Date.now(),
                 dependencies
             });
+            
+            // Update access order
+            this.updateAccessOrder(key);
             
             // Track dependencies
             dependencies.forEach(dep => {
@@ -97,12 +109,50 @@ class MemoizationCache {
     }
     
     /**
+     * Update access order for LRU eviction
+     */
+    updateAccessOrder(key) {
+        const index = this.accessOrder.indexOf(key);
+        if (index > -1) {
+            this.accessOrder.splice(index, 1);
+        }
+        this.accessOrder.push(key);
+    }
+    
+    /**
+     * Evict least recently used entry
+     */
+    evictLRU() {
+        if (this.accessOrder.length === 0) return;
+        
+        const keyToEvict = this.accessOrder.shift();
+        const cached = this.cache.get(keyToEvict);
+        
+        // Clean up dependencies
+        if (cached && cached.dependencies) {
+            cached.dependencies.forEach(dep => {
+                const depSet = this.dependencies.get(dep);
+                if (depSet) {
+                    depSet.delete(keyToEvict);
+                    if (depSet.size === 0) {
+                        this.dependencies.delete(dep);
+                    }
+                }
+            });
+        }
+        
+        this.cache.delete(keyToEvict);
+    }
+    
+    /**
      * Get cache statistics
      */
     getStats() {
         return {
             size: this.cache.size,
-            dependencies: this.dependencies.size
+            maxSize: this.maxSize,
+            dependencies: this.dependencies.size,
+            oldestEntry: this.accessOrder[0] || null
         };
     }
 }

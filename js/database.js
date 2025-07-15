@@ -9,7 +9,6 @@ class FinancialDatabase {
 
     // Helper method for error handling
     handleError(operation, error) {
-        // console.error(`Error in ${operation}:`, error);  // Comment out
         throw new Error(`Database operation failed: ${operation} - ${error.message}`);
     }
 

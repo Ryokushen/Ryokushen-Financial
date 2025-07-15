@@ -43,6 +43,13 @@ export function showError(message) {
     }
 }
 
+// Listen for custom show-error events from formUtils
+window.addEventListener('show-error', (e) => {
+    if (e.detail && e.detail.message) {
+        showError(e.detail.message);
+    }
+});
+
 export function switchTab(tabName, appState) {
     const tabContents = document.querySelectorAll(".tab-content");
     tabContents.forEach(content => {

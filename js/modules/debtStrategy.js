@@ -4,6 +4,8 @@
  * and related financial projections
  */
 
+import { debug } from './debug.js';
+
 export const DebtStrategy = (() => {
     /**
      * Sort debts according to Snowball strategy (lowest balance first)
@@ -147,7 +149,7 @@ export const DebtStrategy = (() => {
 
             // Safety check to prevent infinite loops
             if (currentMonth > 360) { // 30 years
-                console.warn('Payoff calculation exceeded 30 years');
+                debug.warn('Payoff calculation exceeded 30 years');
                 break;
             }
         }

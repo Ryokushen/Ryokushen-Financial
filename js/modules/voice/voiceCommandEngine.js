@@ -386,6 +386,96 @@ export class VoiceCommandEngine {
                 ],
                 intent: 'query.top_spending',
                 confidence: 0.85
+            },
+
+            // New Natural Language Query Patterns
+            GOAL_TIMELINE_QUERY: {
+                patterns: [
+                    /\bwhen\s+will\s+i\s+(?:reach|achieve|hit)\s+(?:my\s+)?(.+?)\s+goal/gi,
+                    /\bhow\s+long\s+(?:until|before)\s+i\s+(?:reach|save)\s+(?:for\s+)?(.+)/gi,
+                    /\bwhen\s+(?:can|will)\s+i\s+(?:afford|have\s+enough\s+for)\s+(.+)/gi,
+                    /\b(.+)\s+goal\s+(?:timeline|date|when)/gi
+                ],
+                intent: 'query.goal_timeline',
+                confidence: 0.85
+            },
+
+            EMERGENCY_FUND_QUERY: {
+                patterns: [
+                    /\bhow\s+many\s+months?\s+(?:of\s+)?(?:expenses?\s+)?(?:do\s+i\s+)?have\s+(?:saved|in\s+savings)/gi,
+                    /\b(?:what'?s?\s+)?my\s+emergency\s+fund\s+(?:status|months|coverage)/gi,
+                    /\bhow\s+long\s+(?:can|will)\s+my\s+savings\s+last/gi,
+                    /\bmonths?\s+of\s+(?:expenses?\s+)?(?:coverage|runway)/gi
+                ],
+                intent: 'query.emergency_fund',
+                confidence: 0.85
+            },
+
+            HIGHEST_CATEGORY_QUERY: {
+                patterns: [
+                    /\bwhat'?s?\s+my\s+(?:highest|biggest|largest)\s+(?:expense|spending)\s+category/gi,
+                    /\b(?:which|what)\s+category\s+(?:do\s+i\s+)?spend\s+(?:the\s+)?most\s+(?:on|in)/gi,
+                    /\b(?:show\s+)?(?:my\s+)?top\s+(?:expense|spending)\s+categor(?:y|ies)/gi,
+                    /\bhighest\s+category\s+(?:expense|spending)/gi
+                ],
+                intent: 'query.highest_category',
+                confidence: 0.85
+            },
+
+            COMPARATIVE_SPENDING_QUERY: {
+                patterns: [
+                    /\bcompare\s+(?:my\s+)?spending\s+(?:this\s+month\s+)?(?:vs\.?|versus|to)\s+(.+)/gi,
+                    /\bhow\s+does\s+(?:my\s+)?spending\s+compare\s+to\s+(.+)/gi,
+                    /\bspending\s+comparison\s+(?:with|to)\s+(.+)/gi,
+                    /\b(?:am\s+i|is\s+my)\s+spending\s+(?:more|less|higher|lower)\s+than\s+(.+)/gi
+                ],
+                intent: 'query.comparative_spending',
+                confidence: 0.8
+            },
+
+            BALANCE_FORECAST_QUERY: {
+                patterns: [
+                    /\bwhat\s+will\s+my\s+balance\s+be\s+(.+)/gi,
+                    /\b(?:project|forecast|predict)\s+(?:my\s+)?balance\s+(?:for\s+)?(.+)/gi,
+                    /\bwill\s+i\s+have\s+enough\s+(?:money\s+)?(?:for|by)\s+(.+)/gi,
+                    /\bwhen\s+will\s+i\s+run\s+out\s+of\s+money/gi,
+                    /\bbalance\s+(?:projection|forecast|prediction)\s+(?:for\s+)?(.+)/gi
+                ],
+                intent: 'query.balance_forecast',
+                confidence: 0.85
+            },
+
+            SPENDING_FORECAST_QUERY: {
+                patterns: [
+                    /\b(?:what|how\s+much)\s+will\s+i\s+spend\s+(?:on\s+)?(.+?)\s+(?:this\s+month|this\s+year|next\s+month)/gi,
+                    /\bat\s+this\s+rate\s+(?:what|how\s+much)\s+will\s+i\s+spend/gi,
+                    /\b(?:project|forecast|predict)\s+(?:my\s+)?(?:spending|expenses)\s+(?:for\s+)?(.+)/gi,
+                    /\bspending\s+(?:projection|forecast|trend)\s+(?:for\s+)?(.+)/gi
+                ],
+                intent: 'query.spending_forecast',
+                confidence: 0.8
+            },
+
+            DEBT_FREEDOM_QUERY: {
+                patterns: [
+                    /\bwhen\s+will\s+i\s+be\s+(?:debt\s+)?free/gi,
+                    /\bwhen\s+(?:can|will)\s+i\s+pay\s+off\s+all\s+(?:my\s+)?(?:debt|loans|credit\s+cards?)/gi,
+                    /\bhow\s+long\s+(?:until|before)\s+(?:i'?m\s+)?debt\s+free/gi,
+                    /\bdebt\s+(?:freedom|free)\s+(?:date|timeline|when)/gi
+                ],
+                intent: 'query.debt_freedom',
+                confidence: 0.9
+            },
+
+            ANOMALY_DETECTION_QUERY: {
+                patterns: [
+                    /\b(?:show|find)\s+unusual\s+(?:transactions?|spending|expenses?)/gi,
+                    /\b(?:any|what)\s+(?:suspicious|strange|abnormal)\s+(?:activity|transactions?)/gi,
+                    /\b(?:detect|find)\s+(?:anomalies|outliers)\s+in\s+(?:my\s+)?(?:spending|transactions?)/gi,
+                    /\bunusual\s+(?:spending|activity|transactions?)/gi
+                ],
+                intent: 'query.anomaly_detection',
+                confidence: 0.8
             }
         };
 
@@ -402,7 +492,15 @@ export class VoiceCommandEngine {
             'last weekend': /\blast\s+weekend/gi,
             'tomorrow': /\btomorrow/gi,
             'next week': /\bnext\s+week/gi,
-            'year to date': /\b(?:year\s+to\s+date|ytd)/gi
+            'next month': /\bnext\s+month/gi,
+            'next year': /\bnext\s+year/gi,
+            'year to date': /\b(?:year\s+to\s+date|ytd)/gi,
+            'month to date': /\b(?:month\s+to\s+date|mtd)/gi,
+            'quarter to date': /\b(?:quarter\s+to\s+date|qtd)/gi,
+            'last 30 days': /\blast\s+30\s+days/gi,
+            'last 90 days': /\blast\s+90\s+days/gi,
+            'this quarter': /\bthis\s+quarter/gi,
+            'last quarter': /\blast\s+quarter/gi
         };
 
         // Category mappings for spending queries

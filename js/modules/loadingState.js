@@ -1,5 +1,7 @@
 // js/modules/loadingState.js
 
+import { debug } from './debug.js';
+
 /**
  * Loading State Manager
  * Handles loading states and operation locks to prevent concurrent operations
@@ -96,7 +98,7 @@ class LoadingStateManager {
         
         // Check if operation is already running
         if (this.isOperationActive(operationId)) {
-            console.warn(`Operation ${operationId} is already running`);
+            debug.warn(`Operation ${operationId} is already running`);
             return null;
         }
         

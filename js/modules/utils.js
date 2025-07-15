@@ -135,3 +135,61 @@ export function debounce(func, wait, immediate = false) {
         if (callNow) func.apply(this, args);
     };
 }
+
+/**
+ * Throttle function execution
+ * @param {Function} func - Function to throttle
+ * @param {number} limit - Minimum time between executions in milliseconds
+ * @returns {Function} Throttled function
+ */
+export function throttle(func, limit) {
+    let inThrottle;
+    let lastFunc;
+    let lastRan;
+    
+    return function(...args) {
+        if (!inThrottle) {
+            func.apply(this, args);
+            lastRan = Date.now();
+            inThrottle = true;
+        } else {
+            clearTimeout(lastFunc);
+            lastFunc = setTimeout(() => {
+                if ((Date.now() - lastRan) >= limit) {
+                    func.apply(this, args);
+                    lastRan = Date.now();
+                }
+            }, Math.max(limit - (Date.now() - lastRan), 0));
+        }
+    };
+}
+
+/**
+ * Request Animation Frame throttle
+ * @param {Function} func - Function to throttle
+ * @returns {Function} RAF-throttled function
+ */
+export function rafThrottle(func) {
+    let rafId = null;
+    let lastArgs = null;
+    
+    const throttled = function(...args) {
+        lastArgs = args;
+        
+        if (rafId === null) {
+            rafId = requestAnimationFrame(() => {
+                func.apply(this, lastArgs);
+                rafId = null;
+            });
+        }
+    };
+    
+    throttled.cancel = () => {
+        if (rafId !== null) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+        }
+    };
+    
+    return throttled;
+}

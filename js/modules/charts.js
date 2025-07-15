@@ -4,6 +4,7 @@ import { calculateDebtToIncomeRatio } from './kpis.js';
 import { debug } from './debug.js';
 import { DebtStrategy } from './debtStrategy.js';
 import { isPrivacyMode } from './privacy.js';
+import { throttle } from './performanceUtils.js';
 
 let chartInstances = {};
 
@@ -174,42 +175,175 @@ function createInvestmentAllocationChart({ appData, CHART_COLORS }) {
 }
 
 
+// Track if privacy mode has changed
+let lastPrivacyMode = null;
+
+// Create throttled version of createCharts for better performance
+const throttledCreateCharts = throttle((appState) => {
+    createChartsInternal(appState);
+}, 250);
+
 export function createCharts(appState) {
+    // Use throttled version for non-critical updates
+    if (document.hidden) {
+        // If document is hidden, delay chart creation
+        return;
+    }
+    throttledCreateCharts(appState);
+}
+
+// Export immediate version for critical updates
+export function createChartsImmediate(appState) {
+    createChartsInternal(appState);
+}
+
+// Original createCharts renamed to internal version
+function createChartsInternal(appState) {
     try {
         const currentPrivacyMode = isPrivacyMode();
+        const privacyModeChanged = lastPrivacyMode !== null && lastPrivacyMode !== currentPrivacyMode;
+        lastPrivacyMode = currentPrivacyMode;
         
         // Get the current active tab
         const activeTab = document.querySelector('.tab-content.active');
         const activeTabId = activeTab ? activeTab.id : 'dashboard';
         
-        Object.keys(chartInstances).forEach(key => {
-            if (chartInstances[key]) {
-                chartInstances[key].destroy();
-                delete chartInstances[key];
-            }
-        });
+        // Only destroy and recreate charts if privacy mode changed
+        if (privacyModeChanged) {
+            Object.keys(chartInstances).forEach(key => {
+                if (chartInstances[key]) {
+                    chartInstances[key].destroy();
+                    delete chartInstances[key];
+                }
+            });
+        }
 
-        // Only create charts that exist on the current tab
+        // Only create/update charts that exist on the current tab
         if (activeTabId === 'dashboard') {
             // Dashboard charts only
-            if (document.getElementById("debtHealthGauge")) createDebtHealthGauge({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
-            if (document.getElementById("investmentAllocation")) createInvestmentAllocationChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
-            if (document.getElementById("netWorthChart")) createNetWorthChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
-            if (document.getElementById("expenseCategoryChart")) createExpenseCategoryChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
-            if (document.getElementById("cashFlowChart")) createCashFlowChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
-            if (document.getElementById("assetsDebtChart")) createAssetsDebtChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+            updateOrCreateChart('debtHealthGauge', () => createDebtHealthGauge({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
+            updateOrCreateChart('investmentAllocation', () => createInvestmentAllocationChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
+            updateOrCreateChart('netWorthChart', () => createNetWorthChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
+            updateOrCreateChart('expenseCategoryChart', () => createExpenseCategoryChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
+            updateOrCreateChart('cashFlowChart', () => createCashFlowChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
+            updateOrCreateChart('assetsDebtChart', () => createAssetsDebtChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
         } else if (activeTabId === 'debt') {
             // Debt-specific charts only
-            if (document.getElementById("debt-breakdown-chart")) createDebtBreakdownChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
-            if (document.getElementById("payoff-timeline-chart")) createPayoffTimelineChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
-            if (document.getElementById("interest-analysis-chart")) createInterestAnalysisChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
-            if (document.getElementById("credit-utilization-chart")) createCreditUtilizationChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS });
+            updateOrCreateChart('debtBreakdownChart', () => createDebtBreakdownChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
+            updateOrCreateChart('payoffTimelineChart', () => createPayoffTimelineChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
+            updateOrCreateChart('interestAnalysisChart', () => createInterestAnalysisChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
+            updateOrCreateChart('creditUtilizationChart', () => createCreditUtilizationChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
         }
         // Other tabs don't have charts managed by createCharts()
 
     } catch (error) {
         debug.error("Error creating charts:", error);
     }
+}
+
+// Helper function to update existing chart or create new one
+function updateOrCreateChart(chartName, createFn, appState) {
+    const canvasId = getCanvasIdForChart(chartName);
+    if (!document.getElementById(canvasId)) return;
+    
+    if (chartInstances[chartName]) {
+        // Try to update existing chart data without recreating
+        try {
+            updateChartData(chartName, appState);
+            // Use Chart.js update() method for efficient updates
+            chartInstances[chartName].update('none'); // 'none' skips animations for performance
+        } catch (error) {
+            // If update fails, recreate the chart
+            debug.warn(`Failed to update ${chartName}, recreating:`, error);
+            chartInstances[chartName].destroy();
+            delete chartInstances[chartName];
+            createFn();
+        }
+    } else {
+        // Create new chart
+        createFn();
+    }
+}
+
+// Map chart names to canvas IDs
+function getCanvasIdForChart(chartName) {
+    const mapping = {
+        'debtHealthGauge': 'debtHealthGauge',
+        'investmentAllocation': 'investmentAllocation',
+        'netWorthChart': 'netWorthChart',
+        'expenseCategoryChart': 'expenseCategoryChart',
+        'cashFlowChart': 'cashFlowChart',
+        'assetsDebtChart': 'assetsDebtChart',
+        'debtBreakdownChart': 'debt-breakdown-chart',
+        'payoffTimelineChart': 'payoff-timeline-chart',
+        'interestAnalysisChart': 'interest-analysis-chart',
+        'creditUtilizationChart': 'credit-utilization-chart',
+        'investmentGrowthChart': 'investment-growth-chart',
+        'contributionComparisonChart': 'contribution-comparison-chart'
+    };
+    return mapping[chartName] || chartName;
+}
+
+// Update chart data without recreating
+function updateChartData(chartName, appState) {
+    const chart = chartInstances[chartName];
+    if (!chart) return;
+    
+    const { appData } = appState;
+    
+    switch (chartName) {
+        case 'debtHealthGauge':
+            const dti = calculateDebtToIncomeRatio(appData);
+            const gaugeMax = 60;
+            const value = Math.min(dti, gaugeMax);
+            chart.data.datasets[0].data = [value, gaugeMax - value];
+            
+            // Update needle color
+            let needleColor = appState.CHART_COLORS[5];
+            if (dti <= 20) needleColor = appState.CHART_COLORS[0];
+            else if (dti <= 35) needleColor = appState.CHART_COLORS[7];
+            else if (dti <= 43) needleColor = appState.CHART_COLORS[6];
+            chart.data.datasets[0].backgroundColor[0] = needleColor;
+            break;
+            
+        case 'investmentAllocation':
+            const allocationData = appData.investmentAccounts.reduce((acc, account) => {
+                const type = account.accountType || 'Other';
+                if (!acc[type]) acc[type] = 0;
+                acc[type] += account.balance;
+                return acc;
+            }, {});
+            chart.data.labels = Object.keys(allocationData);
+            chart.data.datasets[0].data = Object.values(allocationData);
+            break;
+            
+        case 'expenseCategoryChart':
+            const expenseData = {};
+            appData.transactions
+                .filter(t => (t.amount < 0 && t.category !== 'Transfer') || (t.amount > 0 && t.debt_account_id))
+                .forEach(t => {
+                    if (!expenseData[t.category]) expenseData[t.category] = 0;
+                    expenseData[t.category] += Math.abs(t.amount);
+                });
+            chart.data.labels = Object.keys(expenseData);
+            chart.data.datasets[0].data = Object.values(expenseData);
+            break;
+            
+        case 'assetsDebtChart':
+            const totalCash = appData.cashAccounts.reduce((sum, account) => sum + (account.balance || 0), 0);
+            const totalInvestments = appData.investmentAccounts.reduce((sum, account) => sum + account.balance, 0);
+            const totalDebt = appData.debtAccounts.reduce((sum, account) => sum + account.balance, 0);
+            chart.data.datasets[0].data = [totalCash + totalInvestments, totalDebt];
+            break;
+            
+        // Add more cases for other charts as needed
+        default:
+            // For charts we haven't optimized yet, throw error to trigger recreation
+            throw new Error(`Update not implemented for ${chartName}`);
+    }
+    
+    // Update the chart
+    chart.update('none'); // 'none' animation mode for better performance
 }
 
 function createNetWorthChart({ appData, CHART_COLORS }) {

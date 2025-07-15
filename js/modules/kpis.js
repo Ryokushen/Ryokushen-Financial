@@ -55,7 +55,7 @@ const calculateAverageMonthlyIncome = memoCache.memoize(
 
         return monthsWithIncome > 0 ? divideMoney(totalIncome, monthsWithIncome) : 0;
     },
-    { name: 'calculateAverageMonthlyIncome', ttl: 60000 } // Cache for 1 minute
+    { name: 'calculateAverageMonthlyIncome', ttl: 300000 } // Cache for 5 minutes
 );
 
 /**
@@ -85,7 +85,7 @@ const calculateAverageMonthlyExpenses = memoCache.memoize(
         const average = monthsWithExpenses > 0 ? divideMoney(totalExpenses, monthsWithExpenses) : 0;
         return Math.abs(average); // Return as a positive value
     },
-    { name: 'calculateAverageMonthlyExpenses', ttl: 60000 } // Cache for 1 minute
+    { name: 'calculateAverageMonthlyExpenses', ttl: 300000 } // Cache for 5 minutes
 );
 
 

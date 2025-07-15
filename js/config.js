@@ -35,7 +35,7 @@ window.setFinnhubApiKey = function(apiKey) {
     }
     
     if (window.DEBUG || localStorage.getItem('debug') === 'true') {
-        console.log('Finnhub API key updated successfully');
+        if (window.debug) window.debug.log('Finnhub API key updated successfully');
     }
     return true;
 };
@@ -48,7 +48,7 @@ window.clearFinnhubApiKey = function() {
     localStorage.removeItem('finnhub_api_key');
     FINNHUB_CONFIG.apiKey = '';
     if (window.DEBUG || localStorage.getItem('debug') === 'true') {
-        console.log('Finnhub API key cleared');
+        if (window.debug) window.debug.log('Finnhub API key cleared');
     }
 };
 
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Show setup modal if API key is not configured
     if (!window.isFinnhubConfigured()) {
-        console.log('Finnhub API key not configured. Stock price updates will be disabled.');
+        if (window.debug) window.debug.log('Finnhub API key not configured. Stock price updates will be disabled.');
     }
 });
 

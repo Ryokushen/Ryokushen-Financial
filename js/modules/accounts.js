@@ -3,12 +3,16 @@ import db from '../database.js';
 import { formatCurrency, escapeHtml, safeParseFloat } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
 import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, validateWithAsyncRules, AsyncValidators } from './validation.js';
+import { setupModalEventListeners, createFormSubmitHandler, populateFormFromData, displayValidationErrors } from './formUtils.js';
 
 export function setupEventListeners(appState, onUpdate) {
     document.getElementById("add-cash-account-btn")?.addEventListener("click", () => openCashAccountModal(appState.appData));
-    document.getElementById("close-cash-account-modal")?.addEventListener("click", () => closeModal('cash-account-modal'));
-    document.getElementById("cancel-cash-account-btn")?.addEventListener("click", () => closeModal('cash-account-modal'));
-    document.getElementById("cash-account-form")?.addEventListener("submit", (e) => handleCashAccountSubmit(e, appState, onUpdate));
+    
+    // Use the new modal event listener utility
+    setupModalEventListeners('cash-account-modal', {
+        onSubmit: (e) => handleCashAccountSubmit(e, appState, onUpdate)
+    });
+    
     document.getElementById("cash-accounts-list")?.addEventListener('click', (event) => {
         const target = event.target;
         const id = parseInt(target.getAttribute('data-id'));
@@ -36,11 +40,13 @@ function openCashAccountModal(appData, accountId = null) {
         if (account) {
             // Modal will be reset by modalManager, so we need to populate after open
             setTimeout(() => {
-                document.getElementById("cash-account-id").value = account.id;
-                document.getElementById("cash-account-name").value = account.name;
-                document.getElementById("cash-account-type").value = account.type;
-                document.getElementById("cash-account-institution").value = account.institution || "";
-                document.getElementById("cash-account-notes").value = account.notes || "";
+                populateFormFromData('cash-account-form', {
+                    id: account.id,
+                    name: account.name,
+                    type: account.type,
+                    institution: account.institution || "",
+                    notes: account.notes || ""
+                }, 'cash-account-');
                 if (initialBalanceField) {
                     initialBalanceField.disabled = true;
                 }

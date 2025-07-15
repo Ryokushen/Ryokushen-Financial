@@ -4,6 +4,8 @@ import { debug } from '../debug.js';
 import { formatCurrency, formatDate } from '../utils.js';
 import { addMoney, subtractMoney, sumMoney } from '../financialMath.js';
 import * as KPIs from '../kpis.js';
+import DateParser from './utils/dateParser.js';
+import FinancialCalculations from './utils/financialCalcs.js';
 
 /**
  * Voice Analytics Engine - Processes financial queries and returns data
@@ -46,7 +48,17 @@ export class VoiceAnalytics {
             'query.investment_performance': this.handleInvestmentPerformanceQuery.bind(this),
             'query.find_transactions': this.handleFindTransactionsQuery.bind(this),
             'query.recurring_charges': this.handleRecurringChargesQuery.bind(this),
-            'query.top_spending': this.handleTopSpendingQuery.bind(this)
+            'query.top_spending': this.handleTopSpendingQuery.bind(this),
+            
+            // Enhanced Natural Language Query handlers
+            'query.goal_timeline': this.handleGoalTimelineQuery.bind(this),
+            'query.emergency_fund': this.handleEmergencyFundQuery.bind(this),
+            'query.highest_category': this.handleHighestCategoryQuery.bind(this),
+            'query.comparative_spending': this.handleComparativeSpendingQuery.bind(this),
+            'query.balance_forecast': this.handleBalanceForecastQuery.bind(this),
+            'query.spending_forecast': this.handleSpendingForecastQuery.bind(this),
+            'query.debt_freedom': this.handleDebtFreedomQuery.bind(this),
+            'query.anomaly_detection': this.handleAnomalyDetectionQuery.bind(this)
         };
     }
 
@@ -1666,5 +1678,630 @@ export class VoiceAnalytics {
                 'What\'s my cheapest bill?'
             ]
         };
+    }
+
+    /**
+     * Handle goal timeline query - When will I reach my goal?
+     */
+    async handleGoalTimelineQuery(parameters) {
+        try {
+            const appData = this.appState?.appData || {};
+            const goals = appData.savingsGoals || [];
+            
+            if (goals.length === 0) {
+                return {
+                    type: 'query.goal_timeline',
+                    success: false,
+                    response: {
+                        text: 'You don\'t have any savings goals set up yet.',
+                        title: 'No Goals Found'
+                    }
+                };
+            }
+            
+            // Extract goal name from parameters
+            const goalName = parameters.goalName || '';
+            const targetGoal = goalName ? 
+                goals.find(g => g.name.toLowerCase().includes(goalName.toLowerCase())) :
+                goals[0]; // Default to first goal if no name specified
+            
+            if (!targetGoal) {
+                return {
+                    type: 'query.goal_timeline',
+                    success: false,
+                    response: {
+                        text: `I couldn't find a goal matching "${goalName}".`,
+                        title: 'Goal Not Found'
+                    }
+                };
+            }
+            
+            // Calculate progress and timeline
+            const currentAmount = targetGoal.currentAmount || 0;
+            const targetAmount = targetGoal.targetAmount || 0;
+            const remaining = targetAmount - currentAmount;
+            
+            if (remaining <= 0) {
+                return {
+                    type: 'query.goal_timeline',
+                    success: true,
+                    response: {
+                        text: `Congratulations! You've already reached your ${targetGoal.name} goal!`,
+                        title: 'Goal Achieved',
+                        emoji: '🎉'
+                    }
+                };
+            }
+            
+            // Calculate average monthly contribution based on recent history
+            const transactions = appData.transactions || [];
+            const recentDate = new Date();
+            recentDate.setMonth(recentDate.getMonth() - 3);
+            
+            const recentContributions = transactions.filter(t => 
+                new Date(t.date) >= recentDate &&
+                t.category === 'Savings' &&
+                t.amount > 0
+            );
+            
+            const totalContributions = recentContributions.reduce((sum, t) => sum + t.amount, 0);
+            const monthlyAverage = totalContributions / 3;
+            
+            if (monthlyAverage <= 0) {
+                return {
+                    type: 'query.goal_timeline',
+                    success: true,
+                    response: {
+                        text: `You need ${formatCurrency(remaining)} more for your ${targetGoal.name} goal. Start saving regularly to reach it!`,
+                        title: 'Goal Timeline',
+                        details: 'Based on your recent saving history, you haven\'t been contributing to this goal.'
+                    }
+                };
+            }
+            
+            const monthsToGoal = Math.ceil(remaining / monthlyAverage);
+            const targetDate = new Date();
+            targetDate.setMonth(targetDate.getMonth() + monthsToGoal);
+            
+            return {
+                type: 'query.goal_timeline',
+                success: true,
+                data: {
+                    goal: targetGoal.name,
+                    current: currentAmount,
+                    target: targetAmount,
+                    remaining: remaining,
+                    monthlyAverage: monthlyAverage,
+                    monthsToGoal: monthsToGoal,
+                    targetDate: targetDate
+                },
+                response: {
+                    text: `At your current savings rate of ${formatCurrency(monthlyAverage)}/month, you'll reach your ${targetGoal.name} goal in ${monthsToGoal} months (${targetDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}).`,
+                    title: 'Goal Timeline',
+                    details: `${formatCurrency(currentAmount)} saved of ${formatCurrency(targetAmount)} (${Math.round((currentAmount/targetAmount) * 100)}% complete)`
+                }
+            };
+        } catch (error) {
+            debug.error('Goal timeline query error:', error);
+            return this.handleQueryError(error);
+        }
+    }
+
+    /**
+     * Handle emergency fund query - How many months of expenses do I have saved?
+     */
+    async handleEmergencyFundQuery(parameters) {
+        try {
+            const appData = this.appState?.appData || {};
+            const cashAccounts = appData.cashAccounts || [];
+            const transactions = appData.transactions || [];
+            const recurringBills = appData.recurringBills || [];
+            
+            // Calculate total savings
+            const totalSavings = cashAccounts
+                .filter(account => account.type === 'savings')
+                .reduce((sum, account) => sum + (account.balance || 0), 0);
+            
+            // Calculate months of expenses covered
+            const monthsCovered = FinancialCalculations.calculateEmergencyFundMonths(
+                totalSavings,
+                transactions,
+                recurringBills
+            );
+            
+            if (monthsCovered === Infinity) {
+                return {
+                    type: 'query.emergency_fund',
+                    success: true,
+                    response: {
+                        text: 'You have no recorded expenses, so your savings could last indefinitely!',
+                        title: 'Emergency Fund Status'
+                    }
+                };
+            }
+            
+            const monthsRounded = Math.round(monthsCovered * 10) / 10;
+            const recommended = 6; // Standard recommendation is 6 months
+            
+            let statusEmoji = '❌';
+            let statusText = 'needs improvement';
+            if (monthsCovered >= recommended) {
+                statusEmoji = '✅';
+                statusText = 'excellent';
+            } else if (monthsCovered >= 3) {
+                statusEmoji = '⚠️';
+                statusText = 'good, but could be better';
+            }
+            
+            return {
+                type: 'query.emergency_fund',
+                success: true,
+                data: {
+                    totalSavings: totalSavings,
+                    monthsCovered: monthsRounded,
+                    recommended: recommended,
+                    status: statusText
+                },
+                response: {
+                    text: `Your emergency fund can cover ${monthsRounded} months of expenses ${statusEmoji}`,
+                    title: 'Emergency Fund Status',
+                    details: `Total savings: ${formatCurrency(totalSavings)}. Recommendation: ${recommended} months of expenses. Your status: ${statusText}.`
+                }
+            };
+        } catch (error) {
+            debug.error('Emergency fund query error:', error);
+            return this.handleQueryError(error);
+        }
+    }
+
+    /**
+     * Handle highest category query - What's my highest expense category?
+     */
+    async handleHighestCategoryQuery(parameters) {
+        try {
+            const appData = this.appState?.appData || {};
+            const transactions = appData.transactions || [];
+            
+            // Get time period
+            const timePeriod = parameters.timePeriod || 'this month';
+            const dateRange = this.getDateRangeForPeriod(timePeriod);
+            
+            // Filter transactions for the period
+            const periodTransactions = transactions.filter(t => {
+                const tDate = new Date(t.date);
+                return tDate >= dateRange.start && 
+                       tDate <= dateRange.end && 
+                       t.amount < 0; // Only expenses
+            });
+            
+            if (periodTransactions.length === 0) {
+                return {
+                    type: 'query.highest_category',
+                    success: true,
+                    response: {
+                        text: `No expenses found for ${timePeriod}.`,
+                        title: 'Highest Expense Category'
+                    }
+                };
+            }
+            
+            // Group by category
+            const categoryTotals = {};
+            periodTransactions.forEach(t => {
+                const category = t.category || 'Uncategorized';
+                categoryTotals[category] = (categoryTotals[category] || 0) + Math.abs(t.amount);
+            });
+            
+            // Sort categories by total
+            const sortedCategories = Object.entries(categoryTotals)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5); // Top 5
+            
+            const [topCategory, topAmount] = sortedCategories[0];
+            const totalExpenses = Object.values(categoryTotals).reduce((a, b) => a + b, 0);
+            const percentage = Math.round((topAmount / totalExpenses) * 100);
+            
+            return {
+                type: 'query.highest_category',
+                success: true,
+                data: {
+                    topCategories: sortedCategories.map(([cat, amt]) => ({
+                        category: cat,
+                        amount: amt,
+                        percentage: Math.round((amt / totalExpenses) * 100)
+                    })),
+                    period: timePeriod
+                },
+                response: {
+                    text: `Your highest expense category ${timePeriod} is ${topCategory} at ${formatCurrency(topAmount)} (${percentage}% of total spending).`,
+                    title: 'Top Expense Categories',
+                    details: sortedCategories.slice(1).map(([cat, amt]) => 
+                        `${cat}: ${formatCurrency(amt)}`
+                    ).join(', ')
+                }
+            };
+        } catch (error) {
+            debug.error('Highest category query error:', error);
+            return this.handleQueryError(error);
+        }
+    }
+
+    /**
+     * Handle comparative spending query - Compare spending periods
+     */
+    async handleComparativeSpendingQuery(parameters) {
+        try {
+            const appData = this.appState?.appData || {};
+            const transactions = appData.transactions || [];
+            
+            // Parse comparison period from parameters
+            const comparisonText = parameters.comparison || 'last month';
+            const basePeriod = parameters.timePeriod || 'this month';
+            
+            const baseRange = this.getDateRangeForPeriod(basePeriod);
+            const compareRange = this.getDateRangeForPeriod(comparisonText);
+            
+            // Get transactions for both periods
+            const baseTransactions = transactions.filter(t => {
+                const tDate = new Date(t.date);
+                return tDate >= baseRange.start && 
+                       tDate <= baseRange.end && 
+                       t.amount < 0;
+            });
+            
+            const compareTransactions = transactions.filter(t => {
+                const tDate = new Date(t.date);
+                return tDate >= compareRange.start && 
+                       tDate <= compareRange.end && 
+                       t.amount < 0;
+            });
+            
+            const baseTotal = baseTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+            const compareTotal = compareTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+            
+            const difference = baseTotal - compareTotal;
+            const percentChange = compareTotal === 0 ? 100 : 
+                Math.round(((baseTotal - compareTotal) / compareTotal) * 100);
+            
+            // Category breakdown
+            const baseByCat = this.groupByCategory(baseTransactions);
+            const compareByCat = this.groupByCategory(compareTransactions);
+            
+            const categoryChanges = Object.keys({...baseByCat, ...compareByCat})
+                .map(cat => {
+                    const base = baseByCat[cat] || 0;
+                    const compare = compareByCat[cat] || 0;
+                    const change = base - compare;
+                    return { category: cat, base, compare, change };
+                })
+                .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
+                .slice(0, 3);
+            
+            const trend = difference > 0 ? 'more' : 'less';
+            const emoji = difference > 0 ? '📈' : '📉';
+            
+            return {
+                type: 'query.comparative_spending',
+                success: true,
+                data: {
+                    basePeriod: basePeriod,
+                    comparePeriod: comparisonText,
+                    baseTotal: baseTotal,
+                    compareTotal: compareTotal,
+                    difference: Math.abs(difference),
+                    percentChange: Math.abs(percentChange),
+                    categoryChanges: categoryChanges
+                },
+                response: {
+                    text: `You spent ${formatCurrency(Math.abs(difference))} ${trend} ${basePeriod} compared to ${comparisonText} (${Math.abs(percentChange)}% ${trend}) ${emoji}`,
+                    title: 'Spending Comparison',
+                    details: `${basePeriod}: ${formatCurrency(baseTotal)}, ${comparisonText}: ${formatCurrency(compareTotal)}`
+                }
+            };
+        } catch (error) {
+            debug.error('Comparative spending query error:', error);
+            return this.handleQueryError(error);
+        }
+    }
+
+    /**
+     * Handle balance forecast query - Project future balance
+     */
+    async handleBalanceForecastQuery(parameters) {
+        try {
+            const appData = this.appState?.appData || {};
+            const cashAccounts = appData.cashAccounts || [];
+            const transactions = appData.transactions || [];
+            const recurringBills = appData.recurringBills || [];
+            
+            // Parse target date
+            const targetDateText = parameters.date || parameters.timePeriod || 'next month';
+            const dateParser = new DateParser();
+            const parsedDate = dateParser.parseNaturalLanguage(targetDateText);
+            
+            if (!parsedDate) {
+                return {
+                    type: 'query.balance_forecast',
+                    success: false,
+                    response: {
+                        text: `I couldn't understand the date "${targetDateText}".`,
+                        title: 'Invalid Date'
+                    }
+                };
+            }
+            
+            // Calculate current total balance
+            const currentBalance = cashAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
+            
+            // Calculate days to project
+            const today = new Date();
+            const targetDate = parsedDate.endDate || parsedDate.startDate;
+            const daysToProject = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
+            
+            if (daysToProject <= 0) {
+                return {
+                    type: 'query.balance_forecast',
+                    success: false,
+                    response: {
+                        text: 'Please specify a future date for the balance projection.',
+                        title: 'Future Date Required'
+                    }
+                };
+            }
+            
+            // Project balance
+            const projection = FinancialCalculations.projectBalance(
+                currentBalance,
+                transactions,
+                recurringBills,
+                daysToProject
+            );
+            
+            const willHaveEnough = projection.projectedBalance > 0;
+            const emoji = willHaveEnough ? '✅' : '⚠️';
+            
+            return {
+                type: 'query.balance_forecast',
+                success: true,
+                data: projection,
+                response: {
+                    text: `Your projected balance for ${dateParser.formatDate(targetDate)} is ${formatCurrency(projection.projectedBalance)} ${emoji}`,
+                    title: 'Balance Projection',
+                    details: `Based on ${formatCurrency(projection.breakdown.avgDailyIncome)}/day income and ${formatCurrency(projection.breakdown.avgDailyExpenses + projection.breakdown.recurringDaily)}/day expenses.`
+                }
+            };
+        } catch (error) {
+            debug.error('Balance forecast query error:', error);
+            return this.handleQueryError(error);
+        }
+    }
+
+    /**
+     * Handle spending forecast query - Project future spending
+     */
+    async handleSpendingForecastQuery(parameters) {
+        try {
+            const appData = this.appState?.appData || {};
+            const transactions = appData.transactions || [];
+            
+            // Extract category and time period
+            const category = parameters.category || null;
+            const timePeriod = parameters.timePeriod || 'this month';
+            
+            // Analyze spending trend
+            const trendData = FinancialCalculations.analyzeCategoryTrend(
+                transactions,
+                category || 'all',
+                6 // Last 6 months
+            );
+            
+            const projection = trendData.projection;
+            const trend = trendData.trend;
+            const percentChange = trendData.percentChange;
+            
+            let trendEmoji = '➡️';
+            if (trend === 'increasing') trendEmoji = '📈';
+            if (trend === 'decreasing') trendEmoji = '📉';
+            
+            const categoryText = category ? `on ${category}` : '';
+            
+            return {
+                type: 'query.spending_forecast',
+                success: true,
+                data: {
+                    category: category,
+                    trend: trend,
+                    average: trendData.average,
+                    projection: projection,
+                    monthlyData: trendData.monthlyTotals,
+                    percentChange: percentChange
+                },
+                response: {
+                    text: `Based on your ${trend} trend (${Math.abs(percentChange)}%), you'll likely spend ${formatCurrency(projection)} ${categoryText} next month ${trendEmoji}`,
+                    title: 'Spending Forecast',
+                    details: `Average monthly: ${formatCurrency(trendData.average)}. Trend: ${trend}`
+                }
+            };
+        } catch (error) {
+            debug.error('Spending forecast query error:', error);
+            return this.handleQueryError(error);
+        }
+    }
+
+    /**
+     * Handle debt freedom query - When will I be debt free?
+     */
+    async handleDebtFreedomQuery(parameters) {
+        try {
+            const appData = this.appState?.appData || {};
+            const debtAccounts = appData.debtAccounts || [];
+            
+            const activeDebts = debtAccounts.filter(d => (d.balance || 0) > 0);
+            
+            if (activeDebts.length === 0) {
+                return {
+                    type: 'query.debt_freedom',
+                    success: true,
+                    response: {
+                        text: 'Congratulations! You are already debt free! 🎉',
+                        title: 'Debt Free Status'
+                    }
+                };
+            }
+            
+            // Calculate payoff for each debt
+            const payoffCalculations = activeDebts.map(debt => {
+                const payoff = FinancialCalculations.calculateLoanPayoff(
+                    debt.balance,
+                    (debt.interestRate || 0) / 100,
+                    debt.minimumPayment || 50,
+                    0 // No extra payment for base calculation
+                );
+                
+                return {
+                    name: debt.name,
+                    balance: debt.balance,
+                    payoff: payoff
+                };
+            });
+            
+            // Find the debt that will take longest to pay off
+            const longestPayoff = payoffCalculations.reduce((max, current) => 
+                current.payoff.months > max.payoff.months ? current : max
+            );
+            
+            const totalDebt = activeDebts.reduce((sum, d) => sum + d.balance, 0);
+            const totalMonthlyPayments = activeDebts.reduce((sum, d) => sum + (d.minimumPayment || 0), 0);
+            
+            return {
+                type: 'query.debt_freedom',
+                success: true,
+                data: {
+                    totalDebt: totalDebt,
+                    debtCount: activeDebts.length,
+                    monthlyPayments: totalMonthlyPayments,
+                    longestPayoff: longestPayoff,
+                    payoffDate: longestPayoff.payoff.payoffDate
+                },
+                response: {
+                    text: `Making minimum payments, you'll be debt free in ${longestPayoff.payoff.months} months (${longestPayoff.payoff.payoffDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}).`,
+                    title: 'Debt Freedom Timeline',
+                    details: `Total debt: ${formatCurrency(totalDebt)}. Monthly payments: ${formatCurrency(totalMonthlyPayments)}. Consider extra payments to accelerate payoff!`
+                }
+            };
+        } catch (error) {
+            debug.error('Debt freedom query error:', error);
+            return this.handleQueryError(error);
+        }
+    }
+
+    /**
+     * Handle anomaly detection query - Find unusual transactions
+     */
+    async handleAnomalyDetectionQuery(parameters) {
+        try {
+            const appData = this.appState?.appData || {};
+            const transactions = appData.transactions || [];
+            
+            // Get recent transactions (last 90 days)
+            const recentDate = new Date();
+            recentDate.setDate(recentDate.getDate() - 90);
+            
+            const recentTransactions = transactions.filter(t => 
+                new Date(t.date) >= recentDate && t.amount < 0
+            );
+            
+            if (recentTransactions.length === 0) {
+                return {
+                    type: 'query.anomaly_detection',
+                    success: true,
+                    response: {
+                        text: 'No transactions found to analyze.',
+                        title: 'Anomaly Detection'
+                    }
+                };
+            }
+            
+            // Calculate statistics for each category
+            const categoryStats = {};
+            recentTransactions.forEach(t => {
+                const category = t.category || 'Uncategorized';
+                if (!categoryStats[category]) {
+                    categoryStats[category] = [];
+                }
+                categoryStats[category].push(Math.abs(t.amount));
+            });
+            
+            // Find anomalies (transactions > 2 standard deviations from mean)
+            const anomalies = [];
+            
+            Object.entries(categoryStats).forEach(([category, amounts]) => {
+                if (amounts.length < 3) return; // Need at least 3 transactions
+                
+                const mean = amounts.reduce((a, b) => a + b, 0) / amounts.length;
+                const variance = amounts.reduce((sum, amt) => sum + Math.pow(amt - mean, 2), 0) / amounts.length;
+                const stdDev = Math.sqrt(variance);
+                const threshold = mean + (2 * stdDev);
+                
+                // Find transactions above threshold
+                recentTransactions.forEach(t => {
+                    if (t.category === category && Math.abs(t.amount) > threshold) {
+                        anomalies.push({
+                            transaction: t,
+                            expected: mean,
+                            deviation: Math.abs(t.amount) - mean
+                        });
+                    }
+                });
+            });
+            
+            // Sort by deviation amount
+            anomalies.sort((a, b) => b.deviation - a.deviation);
+            const topAnomalies = anomalies.slice(0, 5);
+            
+            if (topAnomalies.length === 0) {
+                return {
+                    type: 'query.anomaly_detection',
+                    success: true,
+                    response: {
+                        text: 'No unusual transactions detected. Your spending patterns look consistent.',
+                        title: 'No Anomalies Found',
+                        emoji: '✅'
+                    }
+                };
+            }
+            
+            return {
+                type: 'query.anomaly_detection',
+                success: true,
+                data: {
+                    anomalies: topAnomalies,
+                    totalFound: anomalies.length
+                },
+                response: {
+                    text: `Found ${anomalies.length} unusual transaction${anomalies.length > 1 ? 's' : ''}. The largest was ${formatCurrency(Math.abs(topAnomalies[0].transaction.amount))} at ${topAnomalies[0].transaction.description}.`,
+                    title: 'Unusual Transactions Detected',
+                    details: topAnomalies.slice(1, 3).map(a => 
+                        `${a.transaction.description}: ${formatCurrency(Math.abs(a.transaction.amount))}`
+                    ).join(', '),
+                    emoji: '⚠️'
+                }
+            };
+        } catch (error) {
+            debug.error('Anomaly detection query error:', error);
+            return this.handleQueryError(error);
+        }
+    }
+
+    /**
+     * Helper: Group transactions by category
+     */
+    groupByCategory(transactions) {
+        const groups = {};
+        transactions.forEach(t => {
+            const category = t.category || 'Uncategorized';
+            groups[category] = (groups[category] || 0) + Math.abs(t.amount);
+        });
+        return groups;
     }
 }

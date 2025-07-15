@@ -1,5 +1,7 @@
 // js/modules/dataTransform.js
 
+import { debug } from './debug.js';
+
 /**
  * Converts snake_case to camelCase
  */
@@ -238,7 +240,7 @@ export const DataSchemas = {
 export function transformFromDB(dataArray, schemaName) {
     const schema = DataSchemas[schemaName];
     if (!schema || !schema.fromDB) {
-        console.warn(`No schema found for ${schemaName}, using generic transformation`);
+        debug.warn(`No schema found for ${schemaName}, using generic transformation`);
         return transformToCamelCase(dataArray);
     }
     
@@ -255,7 +257,7 @@ export function transformFromDB(dataArray, schemaName) {
 export function transformToDB(data, schemaName) {
     const schema = DataSchemas[schemaName];
     if (!schema || !schema.toDB) {
-        console.warn(`No schema found for ${schemaName}, using generic transformation`);
+        debug.warn(`No schema found for ${schemaName}, using generic transformation`);
         return transformToSnakeCase(data);
     }
     
