@@ -20,6 +20,7 @@ import { dataIndex } from './modules/dataIndex.js';
 import { timeBudgets } from './modules/timeBudgets.js';
 import { initializeTimeSettings } from './modules/timeSettings.js';
 import { initializeTransactionTimePreview } from './modules/transactionTimePreview.js';
+import { initializePrivacySettings } from './modules/privacySettings.js';
 
 // Configure Chart.js global defaults for better mobile responsiveness
 if (typeof Chart !== 'undefined') {
@@ -267,6 +268,11 @@ function setupEventListeners() {
     // Initialize transaction time preview
     initializeTransactionTimePreview();
     
+    // Initialize privacy settings when settings tab is clicked
+    document.getElementById('settings-tab-btn')?.addEventListener('click', () => {
+        setTimeout(() => initializePrivacySettings(), 100);
+    });
+    
     // Expose timeBudgets globally for debugging (only in development)
     if (window.location.hostname === 'localhost' || window.location.protocol === 'file:') {
         window.timeBudgets = timeBudgets;
@@ -289,8 +295,8 @@ function setupEventListeners() {
     // Setup privacy mode event listeners
     const privacyToggleBtn = document.getElementById('privacy-toggle-btn');
     if (privacyToggleBtn) {
-        privacyToggleBtn.addEventListener('click', () => {
-            togglePrivacyMode();
+        privacyToggleBtn.addEventListener('click', async () => {
+            await togglePrivacyMode();
         });
     }
     
