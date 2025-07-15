@@ -7,7 +7,9 @@ import {
     getBiometricPlatformInfo,
     enableBiometricPrivacy,
     disableBiometricPrivacy,
-    isBiometricPrivacyEnabled
+    isBiometricPrivacyEnabled,
+    setMasterPassword,
+    hasMasterPassword
 } from './privacy.js';
 
 class PrivacySettingsManager {
@@ -40,9 +42,41 @@ class PrivacySettingsManager {
                 </div>
                 <div class="card__body">
                     <div class="privacy-settings-section">
+                        <div class="info-note" style="background: #E3F2FD; border-color: #1976D2; margin-bottom: 20px;">
+                            <strong>How Privacy Mode Works:</strong>
+                            <ul style="margin: 10px 0 0 20px; padding: 0;">
+                                <li>Enable privacy mode instantly without authentication (for quick privacy)</li>
+                                <li>Authentication required to disable privacy mode (prevents unauthorized access)</li>
+                                <li>Use biometric authentication, master password, or both for maximum security</li>
+                            </ul>
+                        </div>
+
+                        <h4>Master Password</h4>
+                        <div class="info-note">
+                            Set a master password as a backup authentication method or primary security option.
+                        </div>
+                        
+                        <div class="master-password-section" style="margin-top: 15px;">
+                            <div class="status-row">
+                                <span class="status-label">Master Password:</span>
+                                <span id="master-password-status" class="status-value"></span>
+                            </div>
+                            
+                            <div class="master-password-actions" style="margin-top: 15px;">
+                                <button id="set-master-password-btn" class="btn btn--primary" style="display: none;">
+                                    Set Master Password
+                                </button>
+                                <button id="change-master-password-btn" class="btn btn--secondary" style="display: none;">
+                                    Change Master Password
+                                </button>
+                            </div>
+                        </div>
+
+                        <hr style="margin: 25px 0;">
+
                         <h4>Biometric Authentication</h4>
                         <div class="info-note">
-                            <strong>Enhanced Security:</strong> Require biometric authentication (fingerprint, Face ID, Touch ID) to enable privacy mode.
+                            Use fingerprint, Face ID, or Touch ID for quick and secure authentication.
                         </div>
                         
                         <div class="biometric-status-container">
@@ -74,7 +108,7 @@ class PrivacySettingsManager {
                                 <li>Click the button above to start setup</li>
                                 <li>Your browser will prompt for biometric authentication</li>
                                 <li>Follow the on-screen instructions to scan your fingerprint or face</li>
-                                <li>Once complete, biometric authentication will be required to enable privacy mode</li>
+                                <li>Once complete, biometric authentication will be available when disabling privacy mode</li>
                             </ol>
                         </div>
                     </div>
@@ -112,6 +146,8 @@ class PrivacySettingsManager {
     attachEventListeners() {
         const setupBtn = document.getElementById('setup-biometric-btn');
         const disableBtn = document.getElementById('disable-biometric-btn');
+        const setPasswordBtn = document.getElementById('set-master-password-btn');
+        const changePasswordBtn = document.getElementById('change-master-password-btn');
 
         if (setupBtn) {
             setupBtn.addEventListener('click', () => this.handleSetupBiometric());
@@ -119,6 +155,14 @@ class PrivacySettingsManager {
 
         if (disableBtn) {
             disableBtn.addEventListener('click', () => this.handleDisableBiometric());
+        }
+
+        if (setPasswordBtn) {
+            setPasswordBtn.addEventListener('click', () => this.handleSetMasterPassword());
+        }
+
+        if (changePasswordBtn) {
+            changePasswordBtn.addEventListener('click', () => this.handleChangeMasterPassword());
         }
     }
 
@@ -133,7 +177,7 @@ class PrivacySettingsManager {
             await enableBiometricPrivacy();
             
             announceToScreenReader('Biometric authentication has been enabled successfully');
-            this.showSuccessMessage('Biometric authentication enabled! Privacy mode will now require biometric verification.');
+            this.showSuccessMessage('Biometric authentication enabled! It will be required when disabling privacy mode.');
             this.updateUI();
         } catch (error) {
             debug.error('Biometric setup failed:', error);
@@ -158,7 +202,159 @@ class PrivacySettingsManager {
         }
     }
 
+    async handleSetMasterPassword() {
+        const password = await this.promptForNewPassword('Set Master Password');
+        if (password) {
+            try {
+                await setMasterPassword(password);
+                this.showSuccessMessage('Master password has been set successfully!');
+                this.updateUI();
+            } catch (error) {
+                showError(error.message || 'Failed to set master password');
+            }
+        }
+    }
+
+    async handleChangeMasterPassword() {
+        const password = await this.promptForNewPassword('Change Master Password', true);
+        if (password) {
+            try {
+                await setMasterPassword(password);
+                this.showSuccessMessage('Master password has been changed successfully!');
+                this.updateUI();
+            } catch (error) {
+                showError(error.message || 'Failed to change master password');
+            }
+        }
+    }
+
+    async promptForNewPassword(title, requireOldPassword = false) {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'password-setup-modal-overlay';
+            modal.innerHTML = `
+                <div class="password-setup-modal">
+                    <div class="password-setup-modal-header">
+                        <h3>${title}</h3>
+                        <button class="password-setup-modal-close">&times;</button>
+                    </div>
+                    <div class="password-setup-modal-body">
+                        ${requireOldPassword ? `
+                            <div class="form-group">
+                                <label for="old-password">Current Password:</label>
+                                <input type="password" id="old-password" class="form-control" placeholder="Enter current password">
+                            </div>
+                        ` : ''}
+                        <div class="form-group">
+                            <label for="new-password">New Password:</label>
+                            <input type="password" id="new-password" class="form-control" placeholder="At least 6 characters">
+                        </div>
+                        <div class="form-group">
+                            <label for="confirm-password">Confirm Password:</label>
+                            <input type="password" id="confirm-password" class="form-control" placeholder="Re-enter password">
+                        </div>
+                        <div class="password-requirements">
+                            <small>Password must be at least 6 characters long</small>
+                        </div>
+                        <div class="password-setup-error" style="display: none; color: red; margin-top: 10px;"></div>
+                    </div>
+                    <div class="password-setup-modal-footer">
+                        <button class="btn btn--secondary password-setup-cancel">Cancel</button>
+                        <button class="btn btn--primary password-setup-submit">Save Password</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            const newPasswordInput = modal.querySelector('#new-password');
+            const confirmPasswordInput = modal.querySelector('#confirm-password');
+            const errorDiv = modal.querySelector('.password-setup-error');
+            const submitBtn = modal.querySelector('.password-setup-submit');
+            const cancelBtn = modal.querySelector('.password-setup-cancel');
+            const closeBtn = modal.querySelector('.password-setup-modal-close');
+
+            const cleanup = () => {
+                modal.remove();
+            };
+
+            const handleSubmit = async () => {
+                const newPassword = newPasswordInput.value;
+                const confirmPassword = confirmPasswordInput.value;
+
+                // Reset error
+                errorDiv.style.display = 'none';
+                errorDiv.textContent = '';
+
+                // Validate
+                if (newPassword.length < 6) {
+                    errorDiv.textContent = 'Password must be at least 6 characters';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                if (newPassword !== confirmPassword) {
+                    errorDiv.textContent = 'Passwords do not match';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                cleanup();
+                resolve(newPassword);
+            };
+
+            const handleCancel = () => {
+                cleanup();
+                resolve(null);
+            };
+
+            // Event listeners
+            submitBtn.addEventListener('click', handleSubmit);
+            cancelBtn.addEventListener('click', handleCancel);
+            closeBtn.addEventListener('click', handleCancel);
+            
+            // Enter key handling
+            [newPasswordInput, confirmPasswordInput].forEach(input => {
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') handleSubmit();
+                });
+            });
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) handleCancel();
+            });
+
+            // Focus first input
+            if (requireOldPassword) {
+                modal.querySelector('#old-password').focus();
+            } else {
+                newPasswordInput.focus();
+            }
+        });
+    }
+
     updateUI() {
+        // Update master password status
+        const passwordStatus = document.getElementById('master-password-status');
+        const setPasswordBtn = document.getElementById('set-master-password-btn');
+        const changePasswordBtn = document.getElementById('change-master-password-btn');
+
+        if (passwordStatus) {
+            const hasPassword = hasMasterPassword();
+            if (hasPassword) {
+                passwordStatus.textContent = 'Set';
+                passwordStatus.className = 'status-value enabled';
+                if (setPasswordBtn) setPasswordBtn.style.display = 'none';
+                if (changePasswordBtn) changePasswordBtn.style.display = 'inline-block';
+            } else {
+                passwordStatus.textContent = 'Not Set';
+                passwordStatus.className = 'status-value disabled';
+                if (setPasswordBtn) setPasswordBtn.style.display = 'inline-block';
+                if (changePasswordBtn) changePasswordBtn.style.display = 'none';
+            }
+        }
+
+        // Update biometric status
         const supportStatus = document.getElementById('biometric-support-status');
         const currentStatus = document.getElementById('biometric-status');
         const platformInfo = document.getElementById('biometric-platform-info');
@@ -260,7 +456,7 @@ export function initializePrivacySettings() {
     privacySettings.init();
 }
 
-// Add CSS for animations
+// Add CSS for animations and modal
 const style = document.createElement('style');
 style.textContent = `
     @keyframes slideIn {
@@ -273,7 +469,8 @@ style.textContent = `
         to { transform: translateX(100%); opacity: 0; }
     }
     
-    .biometric-status-container {
+    .biometric-status-container,
+    .master-password-section {
         background: var(--color-surface);
         padding: 15px;
         border-radius: 8px;
@@ -357,6 +554,108 @@ style.textContent = `
     
     .privacy-settings-section:last-child {
         margin-bottom: 0;
+    }
+    
+    .info-note {
+        background: #F5F5F5;
+        border-left: 4px solid #2196F3;
+        padding: 12px 16px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+    }
+    
+    /* Password setup modal styles */
+    .password-setup-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    }
+    
+    .password-setup-modal {
+        background: var(--color-background);
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        width: 90%;
+        max-width: 450px;
+        overflow: hidden;
+    }
+    
+    .password-setup-modal-header {
+        background: var(--color-primary);
+        color: white;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .password-setup-modal-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+    }
+    
+    .password-setup-modal-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+    
+    .password-setup-modal-close:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .password-setup-modal-body {
+        padding: 20px;
+    }
+    
+    .password-setup-modal-body .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .password-setup-modal-body label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+    }
+    
+    .password-setup-modal-body input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+    
+    .password-requirements {
+        margin-top: 5px;
+        color: var(--color-text-secondary);
+        font-size: 0.875rem;
+    }
+    
+    .password-setup-modal-footer {
+        padding: 15px 20px;
+        background: var(--color-background-secondary);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
     }
 `;
 document.head.appendChild(style);
