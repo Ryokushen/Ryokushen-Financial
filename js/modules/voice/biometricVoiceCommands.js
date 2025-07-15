@@ -4,7 +4,9 @@ import {
     isBiometricSupported,
     isBiometricPrivacyEnabled,
     enableBiometricPrivacy,
-    disableBiometricPrivacy
+    disableBiometricPrivacy,
+    hasMasterPassword,
+    setMasterPassword
 } from '../privacy.js';
 
 /**
@@ -12,6 +14,30 @@ import {
  */
 export async function handleBiometricVoiceCommand(command) {
     const lowerCommand = command.toLowerCase();
+    
+    // Check privacy security status
+    if (lowerCommand.includes('privacy security status') || 
+        lowerCommand.includes('authentication status')) {
+        const isSupported = isBiometricSupported();
+        const isBiometricEnabled = isBiometricPrivacyEnabled();
+        const hasPassword = hasMasterPassword();
+        
+        let status = [];
+        if (isBiometricEnabled) status.push('biometric authentication');
+        if (hasPassword) status.push('master password');
+        
+        if (status.length === 0) {
+            return {
+                success: true,
+                message: 'No authentication is currently set up. Privacy mode can be disabled by anyone. Consider setting up biometric authentication or a master password for security.'
+            };
+        }
+        
+        return {
+            success: true,
+            message: `Privacy mode is protected by: ${status.join(' and ')}. Authentication is required to disable privacy mode.`
+        };
+    }
     
     // Check biometric status
     if (lowerCommand.includes('biometric status') || 
@@ -29,7 +55,7 @@ export async function handleBiometricVoiceCommand(command) {
         return {
             success: true,
             message: isEnabled ? 
-                'Biometric authentication is enabled for privacy mode.' : 
+                'Biometric authentication is enabled. It will be required when disabling privacy mode.' : 
                 'Biometric authentication is disabled.'
         };
     }
@@ -57,7 +83,7 @@ export async function handleBiometricVoiceCommand(command) {
             await enableBiometricPrivacy();
             return {
                 success: true,
-                message: 'Biometric authentication has been enabled. You will need to authenticate with your fingerprint or face to enable privacy mode.'
+                message: 'Biometric authentication has been enabled. You will need to authenticate with your fingerprint or face to disable privacy mode.'
             };
         } catch (error) {
             debug.error('Failed to enable biometric via voice:', error);
@@ -88,12 +114,26 @@ export async function handleBiometricVoiceCommand(command) {
         };
     }
     
+    // Master password status
+    if (lowerCommand.includes('master password status') || 
+        lowerCommand.includes('is master password set')) {
+        const hasPassword = hasMasterPassword();
+        
+        return {
+            success: true,
+            message: hasPassword ? 
+                'Master password is set. It can be used to disable privacy mode if biometric authentication fails.' : 
+                'Master password is not set. You can set one in Settings > Privacy & Security.'
+        };
+    }
+    
     // Help command
-    if (lowerCommand.includes('biometric help') || 
+    if (lowerCommand.includes('privacy security help') || 
+        lowerCommand.includes('biometric help') || 
         lowerCommand.includes('what is biometric')) {
         return {
             success: true,
-            message: 'Biometric authentication adds an extra layer of security to privacy mode. When enabled, you must verify your identity with your fingerprint, Face ID, or Windows Hello before sensitive data can be hidden. Say "enable biometric" to set it up.'
+            message: 'Privacy mode security protects your sensitive data. You can enable privacy mode instantly to hide your financial information. To disable it and reveal your data, authentication is required. You can use biometric authentication (fingerprint, Face ID) or a master password. Say "enable biometric" to set up biometric authentication.'
         };
     }
     
@@ -105,7 +145,11 @@ export async function handleBiometricVoiceCommand(command) {
  */
 export function getBiometricVoicePatterns() {
     return [
-        // Status commands
+        // General security status
+        { pattern: /privacy security status/i, handler: 'privacy_security_status' },
+        { pattern: /authentication status/i, handler: 'privacy_security_status' },
+        
+        // Biometric status commands
         { pattern: /biometric status/i, handler: 'biometric_status' },
         { pattern: /is biometric (enabled|on|active)/i, handler: 'biometric_status' },
         
@@ -121,9 +165,14 @@ export function getBiometricVoicePatterns() {
         { pattern: /deactivate biometric/i, handler: 'disable_biometric' },
         { pattern: /remove biometric/i, handler: 'disable_biometric' },
         
+        // Master password commands
+        { pattern: /master password status/i, handler: 'master_password_status' },
+        { pattern: /is master password set/i, handler: 'master_password_status' },
+        
         // Help commands
-        { pattern: /biometric help/i, handler: 'biometric_help' },
-        { pattern: /what is biometric/i, handler: 'biometric_help' },
-        { pattern: /explain biometric/i, handler: 'biometric_help' }
+        { pattern: /privacy security help/i, handler: 'privacy_security_help' },
+        { pattern: /biometric help/i, handler: 'privacy_security_help' },
+        { pattern: /what is biometric/i, handler: 'privacy_security_help' },
+        { pattern: /explain biometric/i, handler: 'privacy_security_help' }
     ];
 }
