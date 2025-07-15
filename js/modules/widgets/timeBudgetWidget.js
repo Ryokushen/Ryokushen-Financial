@@ -132,8 +132,8 @@ export class TimeBudgetWidget {
      * Render enabled state with metrics
      */
     renderEnabledState(config, metrics) {
-        const hourlyRate = config.hourlyWage || 0;
-        const afterTaxRate = config.afterTaxRate || 0;
+        const hourlyRate = config.hourlyRate || 0;
+        const afterTaxRate = timeBudgets.calculateNetRate();
 
         return `
             <div class="time-budget-widget enabled">
