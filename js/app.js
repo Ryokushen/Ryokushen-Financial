@@ -1,4 +1,5 @@
 // js/app.js - Main Application Orchestrator
+import { supabaseAuth } from './modules/supabaseAuth.js';
 import db from './database.js';
 import { CHART_COLORS } from './modules/utils.js';
 import { showError, switchTab, announceToScreenReader } from './modules/ui.js';
@@ -22,441 +23,512 @@ import { initializeTimeSettings } from './modules/timeSettings.js';
 import { initializeTransactionTimePreview } from './modules/transactionTimePreview.js';
 import { initializePrivacySettings } from './modules/privacySettings.js';
 
-// Configure Chart.js global defaults for better mobile responsiveness
-if (typeof Chart !== 'undefined') {
-    Chart.defaults.responsive = true;
-    Chart.defaults.maintainAspectRatio = false;
-    Chart.defaults.plugins.legend.display = true;
-    Chart.defaults.plugins.legend.position = 'bottom';
-    Chart.defaults.plugins.legend.labels.boxWidth = 12;
-    Chart.defaults.plugins.legend.labels.padding = 10;
-    Chart.defaults.plugins.legend.labels.font = {
-        size: 11
-    };
-}
-
-const appState = {
-    appData: {
-        transactions: [],
-        cashAccounts: [],
-        investmentAccounts: [],
-        debtAccounts: [],
-        recurringBills: [],
-        savingsGoals: []
-    },
-    CHART_COLORS: CHART_COLORS,
-    balanceCache: new Map()
-};
-
-// Global voice interface instance
-let globalVoiceInterface = null;
-
-// Global error handlers
-window.addEventListener('unhandledrejection', event => {
-    debug.error('Unhandled promise rejection:', event.reason);
-    showError('An unexpected error occurred. Please refresh the page if issues persist.');
-    event.preventDefault();
-});
-
-window.addEventListener('error', event => {
-    debug.error('Global error:', event.error);
-    showError('An unexpected error occurred. Please refresh the page if issues persist.');
-    event.preventDefault();
-});
-
-// Network status handlers
-window.addEventListener('online', () => {
-    const banner = document.getElementById('offline-banner');
-    if (banner) banner.style.display = 'none';
-    announceToScreenReader('Connection restored');
-});
-
-window.addEventListener('offline', () => {
-    showError('No internet connection. Some features may not work.');
-});
-
-document.addEventListener("DOMContentLoaded", async () => {
-    try {
-        await initializeApp();
-        setupEventListeners();
-    } catch (error) {
-        showError("Fatal: Could not initialize the application. " + error.message);
-        debug.error("Initialization Error:", error);
-    }
-});
-
-async function initializeApp() {
-    // Setup modal manager
-    const { setupCommonModals } = await import('./modules/modalManager.js');
-    setupCommonModals();
+// Check authentication before loading the app
+if (!supabaseAuth.isAuthenticated()) {
+    supabaseAuth.showAuthScreen();
+} else {
+    // User is authenticated, proceed with app initialization
     
-    // Initialize privacy manager now that DOM is ready
-    privacyManager.init();
-    
-    await loadAllData();
-
-    calculateAccountBalances();
-
-    await updateAllDisplays(appState); // Initial render
-    const transactionDate = document.getElementById("transaction-date");
-    if (transactionDate) {
-        transactionDate.value = new Date().toISOString().split("T")[0];
+    // Configure Chart.js global defaults for better mobile responsiveness
+    if (typeof Chart !== 'undefined') {
+        Chart.defaults.responsive = true;
+        Chart.defaults.maintainAspectRatio = false;
+        Chart.defaults.plugins.legend.display = true;
+        Chart.defaults.plugins.legend.position = 'bottom';
+        Chart.defaults.plugins.legend.labels.boxWidth = 12;
+        Chart.defaults.plugins.legend.labels.padding = 10;
+        Chart.defaults.plugins.legend.labels.font = {
+            size: 11
+        };
     }
 
-    // Initialize global voice interface after all data is loaded
-    try {
-        globalVoiceInterface = new GlobalVoiceInterface(appState);
-        debug.log('Global voice interface initialized');
-    } catch (error) {
-        debug.error('Failed to initialize voice interface:', error);
-    }
-}
-
-async function loadAllData() {
-    try {
-        const dataTypes = ['transactions', 'investmentAccounts', 'cashAccounts', 'debtAccounts', 'recurringBills', 'savingsGoals'];
-        const results = await Promise.allSettled([
-            db.getTransactions(),
-            db.getInvestmentAccounts(),
-            db.getCashAccounts(),
-            db.getDebtAccounts(),
-            db.getRecurringBills(),
-            db.getSavingsGoals()
-        ]);
-        
-        // Process results and handle partial failures
-        const [transactionsResult, investmentAccountsResult, cashAccountsResult, debtAccountsResult, recurringBillsResult, savingsGoalsResult] = results;
-        
-        // Set default empty arrays for failed loads
-        const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
-        const investmentAccounts = investmentAccountsResult.status === 'fulfilled' ? investmentAccountsResult.value : [];
-        const cashAccounts = cashAccountsResult.status === 'fulfilled' ? cashAccountsResult.value : [];
-        const debtAccounts = debtAccountsResult.status === 'fulfilled' ? debtAccountsResult.value : [];
-        const recurringBills = recurringBillsResult.status === 'fulfilled' ? recurringBillsResult.value : [];
-        const savingsGoals = savingsGoalsResult.status === 'fulfilled' ? savingsGoalsResult.value : [];
-        
-        // Log any failures
-        results.forEach((result, index) => {
-            if (result.status === 'rejected') {
-                debug.error(`Failed to load ${dataTypes[index]}:`, result.reason);
-                showError(`Warning: Failed to load ${dataTypes[index]}. Some features may be limited.`);
-            }
-        });
-
-        // Map data with proper null checks and safe parsing
-        appState.appData.transactions = transactions.map(t => ({ 
-            ...t, 
-            amount: t.amount != null ? parseFloat(t.amount) : 0 
-        }));
-        
-        appState.appData.cashAccounts = cashAccounts.map(c => ({ 
-            ...c, 
-            isActive: c.is_active,
-            balance: c.balance != null ? parseFloat(c.balance) : 0
-        }));
-        
-        appState.appData.investmentAccounts = investmentAccounts.map(Investments.mapInvestmentAccount);
-        
-        appState.appData.debtAccounts = debtAccounts.map(d => ({
-            ...d,
-            balance: d.balance != null ? parseFloat(d.balance) : 0,
-            interestRate: d.interest_rate != null ? parseFloat(d.interest_rate) : 0,
-            minimumPayment: d.minimum_payment != null ? parseFloat(d.minimum_payment) : 0,
-            creditLimit: d.credit_limit != null ? parseFloat(d.credit_limit) : null,
-            dueDate: d.due_date
-        }));
-
-        // UPDATED: Handle new payment method fields for recurring bills
-        appState.appData.recurringBills = recurringBills.map(b => ({
-            ...b,
-            amount: b.amount != null ? parseFloat(b.amount) : 0,
-            nextDue: b.next_due,
-            active: b.active !== undefined ? b.active : true,
-            paymentMethod: b.payment_method || 'cash', // Default to cash for backward compatibility
-            debtAccountId: b.debt_account_id // Add debt account ID field
-        }));
-
-        appState.appData.savingsGoals = savingsGoals.map(g => ({
-            ...g,
-            targetAmount: g.target_amount != null ? parseFloat(g.target_amount) : 0,
-            currentAmount: g.current_amount != null ? parseFloat(g.current_amount) : 0,
-            linkedAccountId: g.linked_account_id,
-            targetDate: g.target_date,
-            createdDate: g.created_date,
-            completedDate: g.completed_date
-        }));
-
-        await migrateDebtTransactions(appState.appData.transactions, appState.appData.debtAccounts);
-        
-        // Build data indexes for fast lookups
-        dataIndex.rebuildIndexes(appState.appData);
-    } catch (error) {
-        debug.error("Data Loading Error:", error);
-        showError("Could not load financial data from the database. Please refresh the page.");
-        // Prevent app from proceeding with empty state
-        appState.appData = {
+    const appState = {
+        appData: {
             transactions: [],
             cashAccounts: [],
             investmentAccounts: [],
             debtAccounts: [],
             recurringBills: [],
             savingsGoals: []
-        };
-    }
-}
-
-// Optimized account balance calculation with better data structures
-function calculateAccountBalances() {
-    appState.balanceCache.clear();
-
-    // Create a map for O(1) balance updates
-    const balanceMap = new Map();
-    
-    // Initialize all accounts with 0 balance
-    appState.appData.cashAccounts.forEach(account => {
-        balanceMap.set(account.id, 0);
-    });
-
-    // Single pass through transactions to calculate balances
-    appState.appData.transactions.forEach(transaction => {
-        if (transaction.account_id && balanceMap.has(transaction.account_id)) {
-            const currentBalance = balanceMap.get(transaction.account_id);
-            balanceMap.set(transaction.account_id, currentBalance + transaction.amount);
-        }
-    });
-
-    // Update accounts and cache
-    appState.appData.cashAccounts.forEach(account => {
-        const balance = balanceMap.get(account.id) || 0;
-        account.balance = balance;
-        appState.balanceCache.set(account.id, balance);
-    });
-}
-
-function updateAccountBalance(accountId, amountChange) {
-    const account = appState.appData.cashAccounts.find(a => a.id === accountId);
-    if (account) {
-        account.balance = addMoney(account.balance || 0, amountChange);
-        appState.balanceCache.set(accountId, account.balance);
-    }
-}
-
-function setupEventListeners() {
-    const onUpdate = () => {
-        // Rebuild data indexes for fast lookups
-        dataIndex.rebuildIndexes(appState.appData);
-        
-        // Clear KPI cache when data is updated
-        import('./modules/kpis.js')
-            .then(kpis => kpis.clearKPICache())
-            .catch(error => debug.error('Failed to clear KPI cache:', error));
-        updateAllDisplays(appState);
-        
-        // Update voice interface with new app state
-        if (globalVoiceInterface) {
-            globalVoiceInterface.updateAppState(appState);
-        }
+        },
+        CHART_COLORS: CHART_COLORS,
+        balanceCache: new Map()
     };
 
-    document.querySelectorAll(".tab-btn").forEach(button => {
-        button.addEventListener("click", function () { switchTab(this.getAttribute("data-tab"), appState); });
-    });
-    
-    // Initialize time settings UI
-    initializeTimeSettings();
-    
-    // Initialize transaction time preview
-    initializeTransactionTimePreview();
-    
-    // Initialize privacy settings when settings tab is clicked
-    document.getElementById('settings-tab-btn')?.addEventListener('click', () => {
-        setTimeout(() => initializePrivacySettings(), 100);
-    });
-    
-    // Expose timeBudgets globally for debugging (only in development)
-    if (window.location.hostname === 'localhost' || window.location.protocol === 'file:') {
-        window.timeBudgets = timeBudgets;
-        debug.log('TimeBudgets exposed globally for debugging');
-    }
+    // Global voice interface instance
+    let globalVoiceInterface = null;
 
-    // Pass the balance update function to modules that need it
-    const enhancedAppState = {
-        ...appState,
-        updateAccountBalance
-    };
+    // Global error handlers
+    window.addEventListener('unhandledrejection', event => {
+        debug.error('Unhandled promise rejection:', event.reason);
+        showError('An unexpected error occurred. Please refresh the page if issues persist.');
+        event.preventDefault();
+    });
 
-    Accounts.setupEventListeners(enhancedAppState, onUpdate);
-    Transactions.setupEventListeners(enhancedAppState, onUpdate);
-    Investments.setupEventListeners(enhancedAppState, onUpdate);
-    Debt.setupEventListeners(enhancedAppState, onUpdate);
-    Recurring.setupEventListeners(enhancedAppState, onUpdate);
-    Savings.setupEventListeners(enhancedAppState, onUpdate);
-    
-    // Setup privacy mode event listeners
-    const privacyToggleBtn = document.getElementById('privacy-toggle-btn');
-    if (privacyToggleBtn) {
-        privacyToggleBtn.addEventListener('click', async () => {
-            await togglePrivacyMode();
-        });
-    }
-    
-    const panicButton = document.getElementById('panic-button');
-    if (panicButton) {
-        panicButton.addEventListener('click', () => {
-            enablePanicMode();
-        });
-    }
-    
-    // Add privacy listener to reapply on data updates
-    privacyManager.addListener(() => {
-        // First, reapply privacy mode to blur/unblur elements
-        reapplyPrivacy();
-        
-        // Then refresh charts with a single delay to ensure privacy state is propagated
-        setTimeout(() => {
-            const currentPrivacyMode = isPrivacyMode();
+    window.addEventListener('error', event => {
+        debug.error('Global error:', event.error);
+        showError('An unexpected error occurred. Please refresh the page if issues persist.');
+        event.preventDefault();
+    });
+
+    // Network status handlers
+    window.addEventListener('online', () => {
+        const banner = document.getElementById('offline-banner');
+        if (banner) banner.style.display = 'none';
+        announceToScreenReader('Connection restored');
+    });
+
+    window.addEventListener('offline', () => {
+        showError('No internet connection. Some features may not work.');
+    });
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        try {
+            // Add user info and logout button to header
+            addUserInfoToHeader();
             
-            // Get the current active tab
-            const activeTab = document.querySelector('.tab-content.active');
-            const activeTabId = activeTab ? activeTab.id : 'dashboard';
-            
-            // Refresh charts based on active tab
-            if (activeTabId === 'dashboard') {
-                createCharts(appState);
-            } else if (activeTabId === 'debt' && window.updateDebtCharts) {
-                window.updateDebtCharts(appState);
-            } else if (activeTabId === 'investments' && window.lastInvestmentData && window.lastInvestmentChartType) {
-                window.updateInvestmentCharts(window.lastInvestmentData, window.lastInvestmentChartType);
-            }
-        }, 250); // Chart refresh delay - kept at 250ms for stability
+            await initializeApp();
+            setupEventListeners();
+        } catch (error) {
+            showError("Fatal: Could not initialize the application. " + error.message);
+            debug.error("Initialization Error:", error);
+        }
     });
-}
 
-// This function just re-renders the components with the current state.
-// Optimized to only update visible content
-async function updateAllDisplays(state, options = {}) {
-    const { forceAll = false, specificUpdate = null } = options;
-    
-    // Track what needs updating
-    const updates = {
-        dashboard: false,
-        dropdowns: false,
-        activeTab: true
-    };
-    
-    // If specific update requested, only do that
-    if (specificUpdate) {
-        switch (specificUpdate) {
-            case 'dashboard':
-                updateDashboard(state);
-                return;
-            case 'accounts':
-                Accounts.renderCashAccounts(state);
-                Accounts.populateAccountDropdowns(state.appData);
-                return;
-            case 'transactions':
-                Transactions.renderTransactions(state);
-                return;
-            case 'charts':
-                createCharts(state);
-                return;
+    async function initializeApp() {
+        // Setup modal manager
+        const { setupCommonModals } = await import('./modules/modalManager.js');
+        setupCommonModals();
+        
+        // Initialize privacy manager now that DOM is ready
+        privacyManager.init();
+        
+        await loadAllData();
+
+        calculateAccountBalances();
+
+        await updateAllDisplays(appState); // Initial render
+        const transactionDate = document.getElementById("transaction-date");
+        if (transactionDate) {
+            transactionDate.value = new Date().toISOString().split("T")[0];
+        }
+
+        // Initialize global voice interface after all data is loaded
+        try {
+            globalVoiceInterface = new GlobalVoiceInterface(appState);
+            debug.log('Global voice interface initialized');
+        } catch (error) {
+            debug.error('Failed to initialize voice interface:', error);
         }
     }
-    
-    // Always update dashboard metrics and dropdowns as they're lightweight
-    updateDashboard(state);
-    Accounts.populateAccountDropdowns(state.appData);
-    Debt.populateDebtAccountDropdown(state.appData);
-    
-    // Get the current active tab
-    const activeTab = document.querySelector('.tab-content.active');
-    const activeTabId = activeTab ? activeTab.id : 'dashboard';
-    
-    // If forcing all updates or no active tab, update everything
-    if (forceAll || !activeTab) {
-        const cashList = document.getElementById("cash-accounts-list");
-        if (cashList) Accounts.renderCashAccounts(state);
 
-        const transactionsBody = document.getElementById("transactions-table-body");
-        if (transactionsBody) Transactions.renderTransactions(state);
-
-        const investmentsList = document.getElementById("investment-accounts-list");
-        if (investmentsList) Investments.renderInvestmentAccountsEnhanced(state);
-
-        const savingsList = document.getElementById("savings-goals-list");
-        if (savingsList) Savings.renderSavingsGoals(state);
-
-        const debtList = document.getElementById("debt-accounts-list");
-        if (debtList) Debt.renderDebtAccounts(state);
-
-        const recurringList = document.getElementById("all-recurring-bills-list");
-        if (recurringList) Recurring.renderRecurringBills(state);
-
-        createCharts(state);
-    } else {
-        // Only update content for the active tab
-        switch (activeTabId) {
-            case 'dashboard':
-                createCharts(state);
-                break;
-            case 'accounts':
-                const cashList = document.getElementById("cash-accounts-list");
-                if (cashList) Accounts.renderCashAccounts(state);
-                break;
-            case 'transactions':
-                Transactions.renderTransactions(state);
-                break;
-            case 'investments':
-                const investmentsList = document.getElementById("investment-accounts-list");
-                if (investmentsList) Investments.renderInvestmentAccountsEnhanced(state);
-                const savingsList = document.getElementById("savings-goals-list");
-                if (savingsList) Savings.renderSavingsGoals(state);
-                break;
-            case 'debt':
-                const debtList = document.getElementById("debt-accounts-list");
-                if (debtList) Debt.renderDebtAccounts(state);
-                if (window.updateDebtCharts) {
-                    window.updateDebtCharts(state);
+    async function loadAllData() {
+        try {
+            const dataTypes = ['transactions', 'investmentAccounts', 'cashAccounts', 'debtAccounts', 'recurringBills', 'savingsGoals'];
+            const results = await Promise.allSettled([
+                db.getTransactions(),
+                db.getInvestmentAccounts(),
+                db.getCashAccounts(),
+                db.getDebtAccounts(),
+                db.getRecurringBills(),
+                db.getSavingsGoals()
+            ]);
+            
+            // Process results and handle partial failures
+            const [transactionsResult, investmentAccountsResult, cashAccountsResult, debtAccountsResult, recurringBillsResult, savingsGoalsResult] = results;
+            
+            // Set default empty arrays for failed loads
+            const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
+            const investmentAccounts = investmentAccountsResult.status === 'fulfilled' ? investmentAccountsResult.value : [];
+            const cashAccounts = cashAccountsResult.status === 'fulfilled' ? cashAccountsResult.value : [];
+            const debtAccounts = debtAccountsResult.status === 'fulfilled' ? debtAccountsResult.value : [];
+            const recurringBills = recurringBillsResult.status === 'fulfilled' ? recurringBillsResult.value : [];
+            const savingsGoals = savingsGoalsResult.status === 'fulfilled' ? savingsGoalsResult.value : [];
+            
+            // Log any failures
+            results.forEach((result, index) => {
+                if (result.status === 'rejected') {
+                    debug.error(`Failed to load ${dataTypes[index]}:`, result.reason);
+                    showError(`Warning: Failed to load ${dataTypes[index]}. Some features may be limited.`);
                 }
-                break;
-            case 'recurring':
-                const recurringList = document.getElementById("all-recurring-bills-list");
-                if (recurringList) Recurring.renderRecurringBills(state);
-                break;
+            });
+
+            // Map data with proper null checks and safe parsing
+            appState.appData.transactions = transactions.map(t => ({ 
+                ...t, 
+                amount: t.amount != null ? parseFloat(t.amount) : 0 
+            }));
+            
+            appState.appData.cashAccounts = cashAccounts.map(c => ({ 
+                ...c, 
+                isActive: c.is_active,
+                balance: c.balance != null ? parseFloat(c.balance) : 0
+            }));
+            
+            appState.appData.investmentAccounts = investmentAccounts.map(Investments.mapInvestmentAccount);
+            
+            appState.appData.debtAccounts = debtAccounts.map(d => ({
+                ...d,
+                balance: d.balance != null ? parseFloat(d.balance) : 0,
+                interestRate: d.interest_rate != null ? parseFloat(d.interest_rate) : 0,
+                minimumPayment: d.minimum_payment != null ? parseFloat(d.minimum_payment) : 0,
+                creditLimit: d.credit_limit != null ? parseFloat(d.credit_limit) : null,
+                dueDate: d.due_date
+            }));
+
+            // UPDATED: Handle new payment method fields for recurring bills
+            appState.appData.recurringBills = recurringBills.map(b => ({
+                ...b,
+                amount: b.amount != null ? parseFloat(b.amount) : 0,
+                nextDue: b.next_due,
+                active: b.active !== undefined ? b.active : true,
+                paymentMethod: b.payment_method || 'cash', // Default to cash for backward compatibility
+                debtAccountId: b.debt_account_id // Add debt account ID field
+            }));
+
+            appState.appData.savingsGoals = savingsGoals.map(g => ({
+                ...g,
+                targetAmount: g.target_amount != null ? parseFloat(g.target_amount) : 0,
+                currentAmount: g.current_amount != null ? parseFloat(g.current_amount) : 0,
+                linkedAccountId: g.linked_account_id,
+                targetDate: g.target_date,
+                createdDate: g.created_date,
+                completedDate: g.completed_date
+            }));
+
+            await migrateDebtTransactions(appState.appData.transactions, appState.appData.debtAccounts);
+            
+            // Build data indexes for fast lookups
+            dataIndex.rebuildIndexes(appState.appData);
+        } catch (error) {
+            debug.error("Data Loading Error:", error);
+            showError("Could not load financial data from the database. Please refresh the page.");
+            // Prevent app from proceeding with empty state
+            appState.appData = {
+                transactions: [],
+                cashAccounts: [],
+                investmentAccounts: [],
+                debtAccounts: [],
+                recurringBills: [],
+                savingsGoals: []
+            };
+        }
+    }
+
+    // Function to add user info and logout button to header
+    function addUserInfoToHeader() {
+        const header = document.querySelector('.header');
+        if (!header) return;
+        
+        const user = supabaseAuth.getUser();
+        if (!user) return;
+        
+        // Create user info container
+        const userInfoContainer = document.createElement('div');
+        userInfoContainer.className = 'user-info-container';
+        userInfoContainer.innerHTML = `
+            <span class="user-email">${user.email}</span>
+            <button id="logout-btn" class="btn btn--small btn--secondary">Logout</button>
+        `;
+        
+        // Add styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .user-info-container {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                margin-left: auto;
+                margin-right: 20px;
+            }
+            
+            .user-email {
+                color: var(--color-text-secondary);
+                font-size: 14px;
+            }
+            
+            #logout-btn {
+                padding: 6px 12px;
+                font-size: 14px;
+            }
+            
+            @media (max-width: 768px) {
+                .user-email {
+                    display: none;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Insert before the voice button or at the end of header
+        const voiceBtn = document.getElementById('global-voice-btn');
+        if (voiceBtn) {
+            header.insertBefore(userInfoContainer, voiceBtn);
+        } else {
+            header.appendChild(userInfoContainer);
         }
         
-        // Handle specific updates if requested
+        // Add logout handler
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            if (confirm('Are you sure you want to logout?')) {
+                supabaseAuth.logout();
+            }
+        });
+    }
+
+    // Optimized account balance calculation with better data structures
+    function calculateAccountBalances() {
+        appState.balanceCache.clear();
+
+        // Create a map for O(1) balance updates
+        const balanceMap = new Map();
+        
+        // Initialize all accounts with 0 balance
+        appState.appData.cashAccounts.forEach(account => {
+            balanceMap.set(account.id, 0);
+        });
+
+        // Single pass through transactions to calculate balances
+        appState.appData.transactions.forEach(transaction => {
+            if (transaction.account_id && balanceMap.has(transaction.account_id)) {
+                const currentBalance = balanceMap.get(transaction.account_id);
+                balanceMap.set(transaction.account_id, currentBalance + transaction.amount);
+            }
+        });
+
+        // Update accounts and cache
+        appState.appData.cashAccounts.forEach(account => {
+            const balance = balanceMap.get(account.id) || 0;
+            account.balance = balance;
+            appState.balanceCache.set(account.id, balance);
+        });
+    }
+
+    function updateAccountBalance(accountId, amountChange) {
+        const account = appState.appData.cashAccounts.find(a => a.id === accountId);
+        if (account) {
+            account.balance = addMoney(account.balance || 0, amountChange);
+            appState.balanceCache.set(accountId, account.balance);
+        }
+    }
+
+    function setupEventListeners() {
+        const onUpdate = () => {
+            // Rebuild data indexes for fast lookups
+            dataIndex.rebuildIndexes(appState.appData);
+            
+            // Clear KPI cache when data is updated
+            import('./modules/kpis.js')
+                .then(kpis => kpis.clearKPICache())
+                .catch(error => debug.error('Failed to clear KPI cache:', error));
+            updateAllDisplays(appState);
+            
+            // Update voice interface with new app state
+            if (globalVoiceInterface) {
+                globalVoiceInterface.updateAppState(appState);
+            }
+        };
+
+        document.querySelectorAll(".tab-btn").forEach(button => {
+            button.addEventListener("click", function () { switchTab(this.getAttribute("data-tab"), appState); });
+        });
+        
+        // Initialize time settings UI
+        initializeTimeSettings();
+        
+        // Initialize transaction time preview
+        initializeTransactionTimePreview();
+        
+        // Initialize privacy settings when settings tab is clicked
+        document.getElementById('settings-tab-btn')?.addEventListener('click', () => {
+            setTimeout(() => initializePrivacySettings(), 100);
+        });
+        
+        // Expose timeBudgets globally for debugging (only in development)
+        if (window.location.hostname === 'localhost' || window.location.protocol === 'file:') {
+            window.timeBudgets = timeBudgets;
+            debug.log('TimeBudgets exposed globally for debugging');
+        }
+
+        // Pass the balance update function to modules that need it
+        const enhancedAppState = {
+            ...appState,
+            updateAccountBalance
+        };
+
+        Accounts.setupEventListeners(enhancedAppState, onUpdate);
+        Transactions.setupEventListeners(enhancedAppState, onUpdate);
+        Investments.setupEventListeners(enhancedAppState, onUpdate);
+        Debt.setupEventListeners(enhancedAppState, onUpdate);
+        Recurring.setupEventListeners(enhancedAppState, onUpdate);
+        Savings.setupEventListeners(enhancedAppState, onUpdate);
+        
+        // Setup privacy mode event listeners
+        const privacyToggleBtn = document.getElementById('privacy-toggle-btn');
+        if (privacyToggleBtn) {
+            privacyToggleBtn.addEventListener('click', async () => {
+                await togglePrivacyMode();
+            });
+        }
+        
+        const panicButton = document.getElementById('panic-button');
+        if (panicButton) {
+            panicButton.addEventListener('click', () => {
+                enablePanicMode();
+            });
+        }
+        
+        // Add privacy listener to reapply on data updates
+        privacyManager.addListener(() => {
+            // First, reapply privacy mode to blur/unblur elements
+            reapplyPrivacy();
+            
+            // Then refresh charts with a single delay to ensure privacy state is propagated
+            setTimeout(() => {
+                const currentPrivacyMode = isPrivacyMode();
+                
+                // Get the current active tab
+                const activeTab = document.querySelector('.tab-content.active');
+                const activeTabId = activeTab ? activeTab.id : 'dashboard';
+                
+                // Refresh charts based on active tab
+                if (activeTabId === 'dashboard') {
+                    createCharts(appState);
+                } else if (activeTabId === 'debt' && window.updateDebtCharts) {
+                    window.updateDebtCharts(appState);
+                } else if (activeTabId === 'investments' && window.lastInvestmentData && window.lastInvestmentChartType) {
+                    window.updateInvestmentCharts(window.lastInvestmentData, window.lastInvestmentChartType);
+                }
+            }, 250); // Chart refresh delay - kept at 250ms for stability
+        });
+    }
+
+    // This function just re-renders the components with the current state.
+    // Optimized to only update visible content
+    async function updateAllDisplays(state, options = {}) {
+        const { forceAll = false, specificUpdate = null } = options;
+        
+        // Track what needs updating
+        const updates = {
+            dashboard: false,
+            dropdowns: false,
+            activeTab: true
+        };
+        
+        // If specific update requested, only do that
         if (specificUpdate) {
             switch (specificUpdate) {
+                case 'dashboard':
+                    updateDashboard(state);
+                    return;
+                case 'accounts':
+                    Accounts.renderCashAccounts(state);
+                    Accounts.populateAccountDropdowns(state.appData);
+                    return;
                 case 'transactions':
                     Transactions.renderTransactions(state);
+                    return;
+                case 'charts':
+                    createCharts(state);
+                    return;
+            }
+        }
+        
+        // Always update dashboard metrics and dropdowns as they're lightweight
+        updateDashboard(state);
+        Accounts.populateAccountDropdowns(state.appData);
+        Debt.populateDebtAccountDropdown(state.appData);
+        
+        // Get the current active tab
+        const activeTab = document.querySelector('.tab-content.active');
+        const activeTabId = activeTab ? activeTab.id : 'dashboard';
+        
+        // If forcing all updates or no active tab, update everything
+        if (forceAll || !activeTab) {
+            const cashList = document.getElementById("cash-accounts-list");
+            if (cashList) Accounts.renderCashAccounts(state);
+
+            const transactionsBody = document.getElementById("transactions-table-body");
+            if (transactionsBody) Transactions.renderTransactions(state);
+
+            const investmentsList = document.getElementById("investment-accounts-list");
+            if (investmentsList) Investments.renderInvestmentAccountsEnhanced(state);
+
+            const savingsList = document.getElementById("savings-goals-list");
+            if (savingsList) Savings.renderSavingsGoals(state);
+
+            const debtList = document.getElementById("debt-accounts-list");
+            if (debtList) Debt.renderDebtAccounts(state);
+
+            const recurringList = document.getElementById("all-recurring-bills-list");
+            if (recurringList) Recurring.renderRecurringBills(state);
+
+            createCharts(state);
+        } else {
+            // Only update content for the active tab
+            switch (activeTabId) {
+                case 'dashboard':
+                    createCharts(state);
                     break;
                 case 'accounts':
                     const cashList = document.getElementById("cash-accounts-list");
                     if (cashList) Accounts.renderCashAccounts(state);
                     break;
-                // Add more specific update cases as needed
+                case 'transactions':
+                    Transactions.renderTransactions(state);
+                    break;
+                case 'investments':
+                    const investmentsList = document.getElementById("investment-accounts-list");
+                    if (investmentsList) Investments.renderInvestmentAccountsEnhanced(state);
+                    const savingsList = document.getElementById("savings-goals-list");
+                    if (savingsList) Savings.renderSavingsGoals(state);
+                    break;
+                case 'debt':
+                    const debtList = document.getElementById("debt-accounts-list");
+                    if (debtList) Debt.renderDebtAccounts(state);
+                    if (window.updateDebtCharts) {
+                        window.updateDebtCharts(state);
+                    }
+                    break;
+                case 'recurring':
+                    const recurringList = document.getElementById("all-recurring-bills-list");
+                    if (recurringList) Recurring.renderRecurringBills(state);
+                    break;
+            }
+            
+            // Handle specific updates if requested
+            if (specificUpdate) {
+                switch (specificUpdate) {
+                    case 'transactions':
+                        Transactions.renderTransactions(state);
+                        break;
+                    case 'accounts':
+                        const cashList = document.getElementById("cash-accounts-list");
+                        if (cashList) Accounts.renderCashAccounts(state);
+                        break;
+                    // Add more specific update cases as needed
+                }
             }
         }
+        
+        // Reapply privacy mode after all updates
+        reapplyPrivacy();
     }
-    
-    // Reapply privacy mode after all updates
-    reapplyPrivacy();
-}
 
-// Dashboard functionality moved to dashboard.js module
+    // Dashboard functionality moved to dashboard.js module
 
-async function migrateDebtTransactions(transactions, debtAccounts) {
-    // Make migration idempotent: only migrate if debt_account exists and debt_account_id is null
-    const db = (await import('./database.js')).default;
-    for (const t of transactions.filter(t => t.category === 'Debt' && t.debt_account && !t.debt_account_id)) {
-        const debtAccount = debtAccounts.find(d => d.name === t.debt_account);
-        if (debtAccount) {
-            t.debt_account_id = debtAccount.id;
-            await db.updateTransaction(t.id, { debt_account_id: t.debt_account_id });
-            delete t.debt_account;  // Clean up old field
-        } else {
-            debug.warn(`Migration: No matching debt account for transaction ${t.id}`);
+    async function migrateDebtTransactions(transactions, debtAccounts) {
+        // Make migration idempotent: only migrate if debt_account exists and debt_account_id is null
+        const db = (await import('./database.js')).default;
+        for (const t of transactions.filter(t => t.category === 'Debt' && t.debt_account && !t.debt_account_id)) {
+            const debtAccount = debtAccounts.find(d => d.name === t.debt_account);
+            if (debtAccount) {
+                t.debt_account_id = debtAccount.id;
+                await db.updateTransaction(t.id, { debt_account_id: t.debt_account_id });
+                delete t.debt_account;  // Clean up old field
+            } else {
+                debug.warn(`Migration: No matching debt account for transaction ${t.id}`);
+            }
         }
     }
 }
