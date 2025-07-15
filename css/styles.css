@@ -2689,3 +2689,177 @@ select.form-control {
     max-height: 200px !important;
   }
 }
+
+/* Time-Based Budgets Styles */
+.settings-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.feature-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.feature-label {
+  font-weight: 500;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Toggle Switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-border);
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--color-primary);
+}
+
+input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+/* Input Group */
+.input-group {
+  display: flex;
+  align-items: center;
+}
+
+.input-group-addon {
+  padding: var(--space-8) var(--space-12);
+  background-color: var(--color-surface-secondary);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.input-group-addon:first-child {
+  border-right: 0;
+  border-radius: var(--radius-4) 0 0 var(--radius-4);
+}
+
+.input-group-addon:last-child {
+  border-left: 0;
+  border-radius: 0 var(--radius-4) var(--radius-4) 0;
+}
+
+.input-group .form-control {
+  border-radius: 0;
+  margin: 0;
+}
+
+.input-group .form-control:only-child {
+  border-radius: var(--radius-4);
+}
+
+/* Wage Preview */
+.wage-preview {
+  margin-top: var(--space-20);
+  padding: var(--space-16);
+  background-color: var(--color-surface-secondary);
+  border-radius: var(--radius-8);
+  border: 1px solid var(--color-border);
+}
+
+.wage-preview h4 {
+  margin: 0 0 var(--space-12) 0;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.preview-examples {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.example-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--font-size-sm);
+}
+
+.example-amount {
+  flex: 1;
+  color: var(--color-text-secondary);
+}
+
+.example-arrow {
+  color: var(--color-text-tertiary);
+}
+
+.example-time {
+  flex: 1;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Time Cost Badge */
+.time-cost-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-8);
+  background-color: rgba(33, 128, 141, 0.1);
+  color: var(--color-primary);
+  border-radius: var(--radius-4);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.transaction-amount-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.monetary-amount {
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .preview-examples {
+    font-size: var(--font-size-xs);
+  }
+  
+  .example-item {
+    flex-wrap: wrap;
+  }
+}

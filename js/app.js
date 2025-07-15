@@ -17,6 +17,9 @@ import { addMoney } from './modules/financialMath.js';
 import { privacyManager, togglePrivacyMode, enablePanicMode, reapplyPrivacy, isPrivacyMode } from './modules/privacy.js';
 import { GlobalVoiceInterface } from './modules/voice/globalVoiceInterface.js';
 import { dataIndex } from './modules/dataIndex.js';
+import { timeBudgets } from './modules/timeBudgets.js';
+import { initializeTimeSettings } from './modules/timeSettings.js';
+import { initializeTransactionTimePreview } from './modules/transactionTimePreview.js';
 
 // Configure Chart.js global defaults for better mobile responsiveness
 if (typeof Chart !== 'undefined') {
@@ -257,6 +260,12 @@ function setupEventListeners() {
     document.querySelectorAll(".tab-btn").forEach(button => {
         button.addEventListener("click", function () { switchTab(this.getAttribute("data-tab"), appState); });
     });
+    
+    // Initialize time settings UI
+    initializeTimeSettings();
+    
+    // Initialize transaction time preview
+    initializeTransactionTimePreview();
 
     // Pass the balance update function to modules that need it
     const enhancedAppState = {

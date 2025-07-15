@@ -9,6 +9,7 @@ import { addMoney, subtractMoney } from './financialMath.js';
 import { dataIndex } from './dataIndex.js';
 import { debounce } from './performanceUtils.js';
 import { populateFormFromData, extractFormData } from './formUtils.js';
+import { timeBudgets } from './timeBudgets.js';
 
 let currentCategoryFilter = "";
 let editingTransactionId = null;
@@ -535,7 +536,12 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
             <td>${escapeHtml(accountName)}</td>
             <td>${escapeHtml(t.category)}</td>
             <td>${description}</td>
-            <td class="${amountClass}" data-sensitive="true">${displayAmount}</td>
+            <td class="${amountClass}" data-sensitive="true">
+                <div class="transaction-amount-container">
+                    <span class="monetary-amount">${displayAmount}</span>
+                    ${timeBudgets.isEnabled() && t.amount < 0 ? timeBudgets.createTimeDisplay(Math.abs(t.amount), { className: 'time-cost-badge', showIcon: true }) : ''}
+                </div>
+            </td>
             <td class="${t.cleared ? 'status-cleared' : 'status-pending'}">${t.cleared ? "Cleared" : "Pending"}</td>
             <td>
                 <div class="transaction-actions">
@@ -778,7 +784,12 @@ function createTransactionRow(t, appData) {
         <td>${escapeHtml(accountName)}</td>
         <td>${escapeHtml(t.category)}</td>
         <td>${description}</td>
-        <td class="${amountClass}" data-sensitive="true">${displayAmount}</td>
+        <td class="${amountClass}" data-sensitive="true">
+            <div class="transaction-amount-container">
+                <span class="monetary-amount">${displayAmount}</span>
+                ${timeBudgets.isEnabled() && t.amount < 0 ? timeBudgets.createTimeDisplay(Math.abs(t.amount), { className: 'time-cost-badge', showIcon: true }) : ''}
+            </div>
+        </td>
         <td class="${t.cleared ? 'status-cleared' : 'status-pending'}">${t.cleared ? "Cleared" : "Pending"}</td>
         <td>
             <div class="transaction-actions">

@@ -38,6 +38,8 @@
                 <button class="tab-btn" data-tab="debt" id="debt-tab-btn" aria-label="Debt tab">Debt</button>
                 <button class="tab-btn" data-tab="recurring" id="recurring-tab-btn"
                     aria-label="Recurring Bills tab">Recurring Bills</button>
+                <button class="tab-btn" data-tab="settings" id="settings-tab-btn"
+                    aria-label="Settings tab">Settings</button>
             </nav>
         </header>
 
@@ -257,6 +259,9 @@
                                     <label class="form-label" for="transaction-amount">Amount</label>
                                     <input type="number" id="transaction-amount" class="form-control" step="0.01"
                                         required>
+                                    <div id="transaction-time-preview" class="time-cost-preview" style="display: none; margin-top: 8px;">
+                                        <span class="time-cost-badge"></span>
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">
@@ -640,6 +645,80 @@
                         <div class="card__body">
                             <div id="all-recurring-bills-list" class="recurring-bills-grid">
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="settings" class="tab-content" role="region" aria-labelledby="settings-tab-btn">
+                <div class="settings-container">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Time-Based Budgeting</h3>
+                            <div class="feature-toggle">
+                                <label class="switch">
+                                    <input type="checkbox" id="enable-time-budgets">
+                                    <span class="slider"></span>
+                                </label>
+                                <label for="enable-time-budgets" class="feature-label">Enable Time Costs</label>
+                            </div>
+                        </div>
+                        <div class="card__body" id="time-settings-body">
+                            <div class="info-note">
+                                <strong>See what your time is worth!</strong> Time-based budgeting shows you how many hours of work each purchase represents, helping you make more mindful spending decisions.
+                            </div>
+                            <form id="wage-config-form">
+                                <div class="form-group">
+                                    <label class="form-label" for="hourly-wage">Hourly Wage (After Tax)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-addon">$</span>
+                                        <input type="number" id="hourly-wage" class="form-control" step="0.01" min="0" placeholder="25.00">
+                                        <span class="input-group-addon">/hour</span>
+                                    </div>
+                                    <small class="form-text">Enter your take-home pay per hour</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label" for="tax-rate">Tax Rate (Optional)</label>
+                                    <div class="input-group">
+                                        <input type="number" id="tax-rate" class="form-control" step="0.01" min="0" max="100" placeholder="25">
+                                        <span class="input-group-addon">%</span>
+                                    </div>
+                                    <small class="form-text">If you enter gross wage above, specify tax rate for net calculations</small>
+                                </div>
+
+                                <div class="wage-preview" id="wage-preview" style="display: none;">
+                                    <h4>Preview</h4>
+                                    <div class="preview-examples">
+                                        <div class="example-item">
+                                            <span class="example-amount">$50 purchase</span>
+                                            <span class="example-arrow">→</span>
+                                            <span class="example-time" id="preview-50">2h</span>
+                                        </div>
+                                        <div class="example-item">
+                                            <span class="example-amount">$200 purchase</span>
+                                            <span class="example-arrow">→</span>
+                                            <span class="example-time" id="preview-200">8h</span>
+                                        </div>
+                                        <div class="example-item">
+                                            <span class="example-amount">$1000 purchase</span>
+                                            <span class="example-arrow">→</span>
+                                            <span class="example-time" id="preview-1000">40h</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn--primary">Save Time Settings</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <div class="card__header">
+                            <h3>Other Settings</h3>
+                        </div>
+                        <div class="card__body">
+                            <p>Additional settings and preferences will appear here in future updates.</p>
                         </div>
                     </div>
                 </div>
