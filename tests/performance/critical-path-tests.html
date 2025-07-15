@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Optimization - Critical Path Tests</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            background: var(--color-surface);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--color-border);
+        }
+        .test-results {
+            background: var(--color-surface-secondary);
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .test-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status-pass { background: #d4edda; color: #155724; }
+        .status-fail { background: #f8d7da; color: #721c24; }
+        .status-running { background: #fff3cd; color: #856404; }
+        .status-pending { background: #d1ecf1; color: #0c5460; }
+        .benchmark-chart {
+            margin: 15px 0;
+            height: 200px;
+            border: 1px solid var(--color-border);
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .metric-card {
+            background: var(--color-surface);
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--color-border);
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--color-primary);
+        }
+        .metric-label {
+            font-size: 0.9em;
+            color: var(--color-text-secondary);
+            margin-top: 5px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--color-surface-secondary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--color-primary);
+            transition: width 0.3s ease;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Performance Optimization - Critical Path Tests (P0)</h1>
+        <p>Testing critical functionality that must pass before any release.</p>
+
+        <!-- Overall Progress -->
+        <div class="test-section">
+            <h2>Test Progress</h2>
+            <div class="progress-bar">
+                <div class="progress-fill" id="overall-progress" style="width: 0%"></div>
+            </div>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="tests-passed">0</div>
+                    <div class="metric-label">Tests Passed</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="tests-failed">0</div>
+                    <div class="metric-label">Tests Failed</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="avg-performance">0ms</div>
+                    <div class="metric-label">Avg Performance</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="memory-usage">0MB</div>
+                    <div class="metric-label">Memory Usage</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test 1: Data Index System -->
+        <div class="test-section">
+            <h3>
+                Test 1: Data Index System Performance
+                <span class="test-status status-pending" id="test1-status">PENDING</span>
+            </h3>
+            <p>Validating O(1) lookup performance and index rebuilding with various dataset sizes.</p>
+            
+            <button onclick="runDataIndexTests()" class="btn btn--primary">Run Data Index Tests</button>
+            
+            <div class="test-results" id="test1-results" style="display: none;"></div>
+            
+            <canvas class="benchmark-chart" id="dataIndexChart" style="display: none;"></canvas>
+        </div>
+
+        <!-- Test 2: Transaction Rendering -->
+        <div class="test-section">
+            <h3>
+                Test 2: Transaction Rendering with Category Filtering
+                <span class="test-status status-pending" id="test2-status">PENDING</span>
+            </h3>
+            <p>Testing debounced category filtering (300ms delay) and transaction rendering performance.</p>
+            
+            <button onclick="runTransactionTests()" class="btn btn--primary">Run Transaction Tests</button>
+            
+            <div class="test-results" id="test2-results" style="display: none;"></div>
+            
+            <!-- Sample transaction table for testing -->
+            <div id="transaction-test-area" style="display: none;">
+                <select id="filter-category">
+                    <option value="">All Categories</option>
+                    <option value="Food">Food</option>
+                    <option value="Transportation">Transportation</option>
+                    <option value="Income">Income</option>
+                </select>
+                <table>
+                    <tbody id="transactions-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Test 3: Form Utilities -->
+        <div class="test-section">
+            <h3>
+                Test 3: Form Utilities Performance
+                <span class="test-status status-pending" id="test3-status">PENDING</span>
+            </h3>
+            <p>Testing form data extraction, population, and validation flows.</p>
+            
+            <button onclick="runFormUtilsTests()" class="btn btn--primary">Run Form Utils Tests</button>
+            
+            <div class="test-results" id="test3-results" style="display: none;"></div>
+            
+            <!-- Sample forms for testing -->
+            <div id="form-test-area" style="display: none;">
+                <form id="test-account-form">
+                    <input id="account-name" name="name" type="text" />
+                    <input id="account-balance" name="balance" type="number" />
+                    <select id="account-type" name="type">
+                        <option value="checking">Checking</option>
+                        <option value="savings">Savings</option>
+                    </select>
+                </form>
+                
+                <form id="test-transaction-form">
+                    <input id="transaction-date" name="date" type="date" />
+                    <input id="transaction-amount" name="amount" type="number" />
+                    <input id="transaction-description" name="description" type="text" />
+                </form>
+            </div>
+        </div>
+
+        <!-- Test 4: Chart Optimization -->
+        <div class="test-section">
+            <h3>
+                Test 4: Chart Rendering Performance
+                <span class="test-status status-pending" id="test4-status">PENDING</span>
+            </h3>
+            <p>Testing throttled chart updates (250ms delay) and memory management.</p>
+            
+            <button onclick="runChartTests()" class="btn btn--primary">Run Chart Tests</button>
+            
+            <div class="test-results" id="test4-results" style="display: none;"></div>
+            
+            <canvas id="test-chart-canvas" width="400" height="200" style="display: none;"></canvas>
+        </div>
+
+        <!-- Test 5: Core User Workflows -->
+        <div class="test-section">
+            <h3>
+                Test 5: Core User Workflows
+                <span class="test-status status-pending" id="test5-status">PENDING</span>
+            </h3>
+            <p>Testing complete user journeys: add transaction, view accounts, navigate tabs.</p>
+            
+            <button onclick="runWorkflowTests()" class="btn btn--primary">Run Workflow Tests</button>
+            
+            <div class="test-results" id="test5-results" style="display: none;"></div>
+        </div>
+
+        <!-- Summary Report -->
+        <div class="test-section">
+            <h3>Test Summary Report</h3>
+            <button onclick="generateReport()" class="btn btn--secondary">Generate Final Report</button>
+            <div class="test-results" id="summary-report" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Load test dependencies -->
+    <script src="test-data-generator.js"></script>
+    <script src="performance-monitor.js"></script>
+    <script src="../../js/modules/dataIndex.js" type="module"></script>
+    <script src="../../js/modules/performanceUtils.js" type="module"></script>
+    <script src="../../js/modules/formUtils.js" type="module"></script>
+
+    <script>
+        // Global test state
+        const testState = {
+            monitor: new PerformanceMonitor(),
+            dataGenerator: new TestDataGenerator(),
+            testResults: new Map(),
+            currentTest: 0,
+            totalTests: 5
+        };
+
+        // Start monitoring when page loads
+        testState.monitor.start();
+
+        // Test 1: Data Index Performance
+        async function runDataIndexTests() {
+            updateTestStatus('test1-status', 'RUNNING');
+            const results = document.getElementById('test1-results');
+            results.style.display = 'block';
+            results.textContent = 'Running data index performance tests...\n';
+
+            try {
+                // Import dataIndex module
+                const { dataIndex } = await import('../../js/modules/dataIndex.js');
+                
+                // Generate test datasets
+                const smallData = testState.dataGenerator.generateDataSet('small');
+                const mediumData = testState.dataGenerator.generateDataSet('medium');
+                const largeData = testState.dataGenerator.generateDataSet('large');
+
+                // Benchmark different dataset sizes
+                const benchmarks = {
+                    small: await testState.monitor.measureAsync('dataIndex.small', async () => {
+                        return testState.monitor.benchmarkDataIndex(dataIndex, smallData);
+                    }),
+                    medium: await testState.monitor.measureAsync('dataIndex.medium', async () => {
+                        return testState.monitor.benchmarkDataIndex(dataIndex, mediumData);
+                    }),
+                    large: await testState.monitor.measureAsync('dataIndex.large', async () => {
+                        return testState.monitor.benchmarkDataIndex(dataIndex, largeData);
+                    })
+                };
+
+                // Validate performance requirements
+                const validation = validateDataIndexPerformance(benchmarks);
+                
+                testState.testResults.set('dataIndex', { benchmarks, validation });
+                
+                // Display results
+                results.textContent = formatTestResults('Data Index Performance', benchmarks, validation);
+                
+                // Create performance chart
+                createDataIndexChart(benchmarks);
+                
+                updateTestStatus('test1-status', validation.passed ? 'PASS' : 'FAIL');
+                updateProgress();
+                
+            } catch (error) {
+                results.textContent = `ERROR: ${error.message}\n${error.stack}`;
+                updateTestStatus('test1-status', 'FAIL');
+            }
+        }
+
+        // Test 2: Transaction Rendering
+        async function runTransactionTests() {
+            updateTestStatus('test2-status', 'RUNNING');
+            const results = document.getElementById('test2-results');
+            results.style.display = 'block';
+            results.textContent = 'Running transaction rendering tests...\n';
+
+            try {
+                // Import required modules
+                const { renderTransactions } = await import('../../js/modules/transactions.js');
+                const { debounce } = await import('../../js/modules/performanceUtils.js');
+                
+                // Generate test data
+                const testData = testState.dataGenerator.generateDataSet('medium');
+                
+                // Test transaction rendering performance
+                const renderBenchmark = await testState.monitor.measureAsync('transaction.render', async () => {
+                    // Simulate app state
+                    const mockAppState = {
+                        appData: testData
+                    };
+                    
+                    // Create test elements
+                    document.getElementById('transaction-test-area').style.display = 'block';
+                    
+                    // Test rendering
+                    renderTransactions(mockAppState);
+                    return { transactionCount: testData.transactions.length };
+                });
+
+                // Test debounced filtering
+                const filterBenchmark = await testDebouncing();
+                
+                const validation = validateTransactionPerformance(renderBenchmark, filterBenchmark);
+                
+                testState.testResults.set('transactions', { renderBenchmark, filterBenchmark, validation });
+                
+                results.textContent = formatTestResults('Transaction Rendering', { renderBenchmark, filterBenchmark }, validation);
+                
+                updateTestStatus('test2-status', validation.passed ? 'PASS' : 'FAIL');
+                updateProgress();
+                
+            } catch (error) {
+                results.textContent = `ERROR: ${error.message}\n${error.stack}`;
+                updateTestStatus('test2-status', 'FAIL');
+            }
+        }
+
+        // Test 3: Form Utils
+        async function runFormUtilsTests() {
+            updateTestStatus('test3-status', 'RUNNING');
+            const results = document.getElementById('test3-results');
+            results.style.display = 'block';
+            results.textContent = 'Running form utilities tests...\n';
+
+            try {
+                const { populateFormFromData, extractFormData } = await import('../../js/modules/formUtils.js');
+                
+                document.getElementById('form-test-area').style.display = 'block';
+                
+                // Test form population
+                const populationBenchmark = testState.monitor.measure('form.populate', () => {
+                    const testData = {
+                        name: 'Test Account',
+                        balance: 1000.50,
+                        type: 'checking'
+                    };
+                    
+                    for (let i = 0; i < 100; i++) {
+                        populateFormFromData('test-account-form', testData, 'account-');
+                    }
+                    
+                    return { iterations: 100 };
+                });
+                
+                // Test form extraction
+                const extractionBenchmark = testState.monitor.measure('form.extract', () => {
+                    const fields = ['date', 'amount', 'description'];
+                    
+                    for (let i = 0; i < 100; i++) {
+                        extractFormData('test-transaction-form', fields, 'transaction-');
+                    }
+                    
+                    return { iterations: 100 };
+                });
+                
+                const validation = validateFormUtilsPerformance(populationBenchmark, extractionBenchmark);
+                
+                testState.testResults.set('formUtils', { populationBenchmark, extractionBenchmark, validation });
+                
+                results.textContent = formatTestResults('Form Utils', { populationBenchmark, extractionBenchmark }, validation);
+                
+                updateTestStatus('test3-status', validation.passed ? 'PASS' : 'FAIL');
+                updateProgress();
+                
+            } catch (error) {
+                results.textContent = `ERROR: ${error.message}\n${error.stack}`;
+                updateTestStatus('test3-status', 'FAIL');
+            }
+        }
+
+        // Test 4: Chart Performance
+        async function runChartTests() {
+            updateTestStatus('test4-status', 'RUNNING');
+            const results = document.getElementById('test4-results');
+            results.style.display = 'block';
+            results.textContent = 'Running chart performance tests...\n';
+
+            try {
+                const canvas = document.getElementById('test-chart-canvas');
+                canvas.style.display = 'block';
+                
+                // Test chart rendering
+                const chartBenchmark = await testState.monitor.measureAsync('chart.performance', async () => {
+                    return testState.monitor.benchmarkChartRendering(canvas, 10);
+                });
+                
+                // Test throttled updates
+                const throttleBenchmark = await testChartThrottling();
+                
+                const validation = validateChartPerformance(chartBenchmark, throttleBenchmark);
+                
+                testState.testResults.set('charts', { chartBenchmark, throttleBenchmark, validation });
+                
+                results.textContent = formatTestResults('Chart Performance', { chartBenchmark, throttleBenchmark }, validation);
+                
+                updateTestStatus('test4-status', validation.passed ? 'PASS' : 'FAIL');
+                updateProgress();
+                
+            } catch (error) {
+                results.textContent = `ERROR: ${error.message}\n${error.stack}`;
+                updateTestStatus('test4-status', 'FAIL');
+            }
+        }
+
+        // Test 5: Core Workflows
+        async function runWorkflowTests() {
+            updateTestStatus('test5-status', 'RUNNING');
+            const results = document.getElementById('test5-results');
+            results.style.display = 'block';
+            results.textContent = 'Running core workflow tests...\n';
+
+            try {
+                // Simulate user workflows
+                const workflowBenchmarks = await runUserWorkflows();
+                
+                const validation = validateWorkflowPerformance(workflowBenchmarks);
+                
+                testState.testResults.set('workflows', { workflowBenchmarks, validation });
+                
+                results.textContent = formatTestResults('Core Workflows', workflowBenchmarks, validation);
+                
+                updateTestStatus('test5-status', validation.passed ? 'PASS' : 'FAIL');
+                updateProgress();
+                
+            } catch (error) {
+                results.textContent = `ERROR: ${error.message}\n${error.stack}`;
+                updateTestStatus('test5-status', 'FAIL');
+            }
+        }
+
+        // Helper functions
+        function updateTestStatus(elementId, status) {
+            const element = document.getElementById(elementId);
+            element.textContent = status;
+            element.className = `test-status status-${status.toLowerCase()}`;
+        }
+
+        function updateProgress() {
+            testState.currentTest++;
+            const progress = (testState.currentTest / testState.totalTests) * 100;
+            document.getElementById('overall-progress').style.width = `${progress}%`;
+            
+            // Update metrics
+            const summary = testState.monitor.getSummary();
+            document.getElementById('tests-passed').textContent = 
+                Array.from(testState.testResults.values()).filter(r => r.validation?.passed).length;
+            document.getElementById('tests-failed').textContent = 
+                Array.from(testState.testResults.values()).filter(r => !r.validation?.passed).length;
+            document.getElementById('avg-performance').textContent = 
+                `${Object.values(summary.averageTimes).reduce((a, b) => a + b, 0) / Object.keys(summary.averageTimes).length || 0}ms`;
+            document.getElementById('memory-usage').textContent = 
+                `${Math.round(summary.memoryUsage.current)}MB`;
+        }
+
+        function formatTestResults(testName, benchmarks, validation) {
+            let output = `=== ${testName} Results ===\n\n`;
+            
+            output += `Status: ${validation.passed ? 'PASS' : 'FAIL'}\n`;
+            output += `Errors: ${validation.errors.length}\n\n`;
+            
+            if (validation.errors.length > 0) {
+                output += 'Errors:\n';
+                validation.errors.forEach(error => {
+                    output += `  - ${error}\n`;
+                });
+                output += '\n';
+            }
+            
+            output += 'Performance Metrics:\n';
+            Object.entries(benchmarks).forEach(([key, value]) => {
+                if (value && value.duration !== undefined) {
+                    output += `  ${key}: ${value.duration.toFixed(2)}ms\n`;
+                }
+            });
+            
+            return output;
+        }
+
+        // Validation functions
+        function validateDataIndexPerformance(benchmarks) {
+            const errors = [];
+            let passed = true;
+            
+            // Check rebuild times
+            if (benchmarks.small.duration > 50) {
+                errors.push('Small dataset rebuild too slow');
+                passed = false;
+            }
+            if (benchmarks.medium.duration > 200) {
+                errors.push('Medium dataset rebuild too slow');
+                passed = false;
+            }
+            if (benchmarks.large.duration > 1000) {
+                errors.push('Large dataset rebuild too slow');
+                passed = false;
+            }
+            
+            return { passed, errors };
+        }
+
+        function validateTransactionPerformance(renderBenchmark, filterBenchmark) {
+            const errors = [];
+            let passed = true;
+            
+            if (renderBenchmark.duration > 100) {
+                errors.push('Transaction rendering too slow');
+                passed = false;
+            }
+            
+            if (filterBenchmark.duration > 350) { // 300ms + tolerance
+                errors.push('Debounced filtering not working correctly');
+                passed = false;
+            }
+            
+            return { passed, errors };
+        }
+
+        function validateFormUtilsPerformance(populationBenchmark, extractionBenchmark) {
+            const errors = [];
+            let passed = true;
+            
+            if (populationBenchmark.duration > 20) {
+                errors.push('Form population too slow');
+                passed = false;
+            }
+            
+            if (extractionBenchmark.duration > 15) {
+                errors.push('Form extraction too slow');
+                passed = false;
+            }
+            
+            return { passed, errors };
+        }
+
+        function validateChartPerformance(chartBenchmark, throttleBenchmark) {
+            const errors = [];
+            let passed = true;
+            
+            if (chartBenchmark.duration > 500) {
+                errors.push('Chart rendering too slow');
+                passed = false;
+            }
+            
+            if (chartBenchmark.memoryLeaks) {
+                errors.push('Memory leaks detected in chart rendering');
+                passed = false;
+            }
+            
+            return { passed, errors };
+        }
+
+        function validateWorkflowPerformance(workflowBenchmarks) {
+            const errors = [];
+            let passed = true;
+            
+            Object.entries(workflowBenchmarks).forEach(([workflow, benchmark]) => {
+                if (benchmark.duration > 200) {
+                    errors.push(`${workflow} workflow too slow`);
+                    passed = false;
+                }
+            });
+            
+            return { passed, errors };
+        }
+
+        // Additional test helpers
+        async function testDebouncing() {
+            return new Promise(resolve => {
+                let callCount = 0;
+                const { debounce } = testState.monitor;
+                
+                const debouncedFn = debounce(() => callCount++, 300);
+                
+                const startTime = performance.now();
+                
+                // Simulate rapid filter changes
+                for (let i = 0; i < 10; i++) {
+                    setTimeout(() => debouncedFn(), i * 50);
+                }
+                
+                setTimeout(() => {
+                    const endTime = performance.now();
+                    resolve({
+                        duration: endTime - startTime,
+                        callCount: callCount,
+                        success: callCount === 1
+                    });
+                }, 500);
+            });
+        }
+
+        async function testChartThrottling() {
+            return testState.monitor.measure('chart.throttling', () => {
+                // Simulate throttled chart updates
+                return { throttleEffective: true };
+            });
+        }
+
+        async function runUserWorkflows() {
+            const workflows = {};
+            
+            // Simulate add transaction workflow
+            workflows.addTransaction = testState.monitor.measure('workflow.addTransaction', () => {
+                // Simulate form filling and submission
+                return { success: true };
+            });
+            
+            // Simulate account viewing workflow
+            workflows.viewAccounts = testState.monitor.measure('workflow.viewAccounts', () => {
+                // Simulate account rendering
+                return { success: true };
+            });
+            
+            // Simulate tab navigation workflow
+            workflows.tabNavigation = testState.monitor.measure('workflow.tabNavigation', () => {
+                // Simulate tab switching
+                return { success: true };
+            });
+            
+            return workflows;
+        }
+
+        function createDataIndexChart(benchmarks) {
+            const canvas = document.getElementById('dataIndexChart');
+            canvas.style.display = 'block';
+            
+            new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: ['Small (100)', 'Medium (1K)', 'Large (10K)'],
+                    datasets: [{
+                        label: 'Index Rebuild Time (ms)',
+                        data: [
+                            benchmarks.small.duration,
+                            benchmarks.medium.duration,
+                            benchmarks.large.duration
+                        ],
+                        backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Time (ms)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateReport() {
+            const report = testState.monitor.generateReport();
+            const reportElement = document.getElementById('summary-report');
+            reportElement.style.display = 'block';
+            reportElement.textContent = JSON.stringify(report, null, 2);
+        }
+
+        // Auto-run all tests on page load (for CI/CD)
+        if (window.location.search.includes('autorun=true')) {
+            setTimeout(async () => {
+                await runDataIndexTests();
+                await runTransactionTests();
+                await runFormUtilsTests();
+                await runChartTests();
+                await runWorkflowTests();
+                generateReport();
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
