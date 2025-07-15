@@ -6,6 +6,7 @@ class SupabaseAuthManager {
         this.user = null;
         this.session = null;
         this.supabase = window.supabaseClient;
+        this.isResettingPassword = false;
         this.initializeAuth();
     }
 
@@ -14,8 +15,17 @@ class SupabaseAuthManager {
      */
     async initializeAuth() {
         try {
-            // Check for password reset on page load
-            this.handlePasswordReset();
+            // Check for password reset FIRST, before anything else
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const accessToken = hashParams.get('access_token');
+            const type = hashParams.get('type');
+            
+            if (type === 'recovery' && accessToken) {
+                // We're in password reset mode
+                this.isResettingPassword = true;
+                debug.log('Password reset token detected');
+                return; // Don't continue with normal auth flow
+            }
             
             // Get initial session
             const { data: { session } } = await this.supabase.auth.getSession();
@@ -30,8 +40,8 @@ class SupabaseAuthManager {
                 if (event === 'SIGNED_OUT') {
                     // Redirect to login
                     window.location.reload();
-                } else if (event === 'SIGNED_IN') {
-                    // Reload to show app
+                } else if (event === 'SIGNED_IN' && !this.isResettingPassword) {
+                    // Reload to show app (but not during password reset)
                     window.location.reload();
                 }
             });
@@ -44,22 +54,22 @@ class SupabaseAuthManager {
      * Check if user is authenticated
      */
     isAuthenticated() {
+        // If we're resetting password, treat as not authenticated
+        if (this.isResettingPassword) {
+            return false;
+        }
         return !!this.session;
     }
 
     /**
-     * Handle password reset flow
+     * Check if we should show password reset form instead of login
      */
-    async handlePasswordReset() {
-        // Check if we're coming from a password reset email
+    shouldShowPasswordReset() {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = hashParams.get('access_token');
         const type = hashParams.get('type');
         
-        if (type === 'recovery' && accessToken) {
-            // User clicked password reset link
-            this.showPasswordResetForm();
-        }
+        return type === 'recovery' && accessToken;
     }
 
     /**
@@ -88,6 +98,12 @@ class SupabaseAuthManager {
                         <button id="reset-password-btn" class="btn btn--primary btn--block">
                             Update Password
                         </button>
+                        
+                        <div style="margin-top: 20px; text-align: center;">
+                            <a href="#" id="back-to-login" style="color: #3b82f6; text-decoration: none; font-size: 14px;">
+                                Back to Login
+                            </a>
+                        </div>
                     </div>
                     
                     <div id="auth-error" class="error-message" style="display: none;"></div>
@@ -214,8 +230,14 @@ class SupabaseAuthManager {
             </style>
         `;
         
-        // Add event handler
+        // Add event handlers
         document.getElementById('reset-password-btn').addEventListener('click', () => this.updatePassword());
+        
+        document.getElementById('back-to-login').addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.hash = '';
+            window.location.reload();
+        });
         
         // Enter key handling
         document.querySelectorAll('input').forEach(input => {
@@ -225,6 +247,9 @@ class SupabaseAuthManager {
                 }
             });
         });
+        
+        // Focus on first input
+        document.getElementById('new-password').focus();
     }
 
     /**
@@ -258,9 +283,10 @@ class SupabaseAuthManager {
             
             this.showSuccess('Password updated successfully! Redirecting to login...');
             
-            // Redirect to login after 2 seconds
+            // Clear the hash and redirect to login after 2 seconds
             setTimeout(() => {
                 window.location.hash = '';
+                this.isResettingPassword = false;
                 window.location.reload();
             }, 2000);
             
@@ -290,6 +316,12 @@ class SupabaseAuthManager {
      * Show login screen
      */
     showAuthScreen() {
+        // Check if we should show password reset instead
+        if (this.shouldShowPasswordReset()) {
+            this.showPasswordResetForm();
+            return;
+        }
+        
         document.body.innerHTML = `
             <div class="auth-container">
                 <div class="auth-box">
