@@ -1,6 +1,7 @@
 // js/modules/voice/voiceCommandEngine.js - Voice Command Recognition & Intent Processing
 
 import { debug } from '../debug.js';
+import { getBiometricVoicePatterns } from './biometricVoiceCommands.js';
 
 /**
  * Voice Command Engine - Processes voice commands and extracts intent + parameters
@@ -87,9 +88,9 @@ export class VoiceCommandEngine {
             // Navigation Commands  
             TAB_NAVIGATION: {
                 patterns: [
-                    /\b(?:go to|open|show|navigate to)\s+(dashboard|accounts|transactions|investments|debt|recurring)/gi,
-                    /\b(?:switch to|view)\s+(dashboard|accounts|transactions|investments|debt|recurring)/gi,
-                    /\b(dashboard|accounts|transactions|investments|debt|recurring)\s+(?:tab|page|section)/gi
+                    /\b(?:go to|open|show|navigate to)\s+(dashboard|accounts|transactions|investments|debt|recurring|settings)/gi,
+                    /\b(?:switch to|view)\s+(dashboard|accounts|transactions|investments|debt|recurring|settings)/gi,
+                    /\b(dashboard|accounts|transactions|investments|debt|recurring|settings)\s+(?:tab|page|section)/gi
                 ],
                 intent: 'navigation.tab',
                 confidence: 0.95
@@ -114,6 +115,35 @@ export class VoiceCommandEngine {
                     /\bpanic\s+(?:mode|button)/gi
                 ],
                 intent: 'settings.privacy',
+                confidence: 0.9
+            },
+
+            // Biometric and Security Commands
+            BIOMETRIC_COMMANDS: {
+                patterns: [
+                    // General privacy security status
+                    /\bprivacy\s+security\s+status/gi,
+                    /\bauthentication\s+status/gi,
+                    /\bwhat(?:'s| is)\s+protecting\s+(?:my\s+)?privacy/gi,
+                    
+                    // Biometric specific
+                    /\bbiometric\s+status/gi,
+                    /\bis\s+biometric\s+(?:enabled|on|active)/gi,
+                    /\b(?:enable|turn\s+on|activate|set\s+up)\s+biometric(?:\s+authentication)?/gi,
+                    /\b(?:disable|turn\s+off|deactivate|remove)\s+biometric(?:\s+authentication)?/gi,
+                    
+                    // Master password
+                    /\bmaster\s+password\s+status/gi,
+                    /\bis\s+master\s+password\s+set/gi,
+                    /\b(?:set|create|add)\s+master\s+password/gi,
+                    /\b(?:change|update)\s+master\s+password/gi,
+                    
+                    // Help
+                    /\bbiometric\s+help/gi,
+                    /\bwhat\s+is\s+biometric(?:\s+authentication)?/gi,
+                    /\bprivacy\s+security\s+help/gi
+                ],
+                intent: 'settings.biometric',
                 confidence: 0.9
             },
 
@@ -548,6 +578,11 @@ export class VoiceCommandEngine {
      */
     initializeParameterExtractors() {
         this.parameterExtractors = {
+            // Extract original text for biometric commands
+            originalText: (text) => {
+                return text;
+            },
+
             // Extract category from spending queries
             category: (text, intent) => {
                 if (intent.startsWith('query.spending')) {
@@ -574,7 +609,7 @@ export class VoiceCommandEngine {
             // Extract tab name for navigation
             targetTab: (text, intent) => {
                 if (intent === 'navigation.tab') {
-                    const tabMatch = text.match(/\b(dashboard|accounts|transactions|investments|debt|recurring)\b/gi);
+                    const tabMatch = text.match(/\b(dashboard|accounts|transactions|investments|debt|recurring|settings)\b/gi);
                     return tabMatch ? tabMatch[0].toLowerCase() : null;
                 }
                 return null;
@@ -897,8 +932,13 @@ export class VoiceCommandEngine {
                 "Create account",
                 "Pay bill"
             ],
-            'Settings': [
+            'Privacy & Security': [
                 "Enable privacy mode",
+                "Privacy security status",
+                "Enable biometric authentication",
+                "Master password status"
+            ],
+            'Settings': [
                 "Toggle privacy",
                 "Panic mode"
             ]
