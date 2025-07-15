@@ -34,6 +34,16 @@
                 
                 // Show password reset form immediately
                 window.addEventListener('load', function() {
+                    // Extract tokens from URL
+                    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                    const queryParams = new URLSearchParams(window.location.search);
+                    
+                    const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+                    const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+                    
+                    console.log('Access token found:', !!accessToken);
+                    console.log('Refresh token found:', !!refreshToken);
+                    
                     document.body.innerHTML = `
                         <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                             <div style="width: 100%; max-width: 400px; padding: 20px;">
@@ -68,6 +78,12 @@
                         </div>
                     `;
                     
+                    // Store tokens globally for use in the handler
+                    window.resetTokens = {
+                        accessToken: accessToken,
+                        refreshToken: refreshToken
+                    };
+                    
                     // Initialize Supabase client
                     window.supabaseClient = supabase.createClient(
                         'https://cqhqobwdpwxnxmyuuvnp.supabase.co',
@@ -96,34 +112,49 @@
                         button.textContent = 'Updating...';
                         
                         try {
-                            // Extract tokens
-                            const hashParams = new URLSearchParams(window.location.hash.substring(1));
-                            const queryParams = new URLSearchParams(window.location.search);
-                            const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
-                            const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+                            // First, ensure we have tokens
+                            if (!window.resetTokens.accessToken) {
+                                throw new Error('No access token found. Please use the link from your email.');
+                            }
                             
-                            // Set session first
-                            await window.supabaseClient.auth.setSession({
-                                access_token: accessToken,
-                                refresh_token: refreshToken
+                            console.log('Setting session with tokens...');
+                            
+                            // Set session with the recovery tokens
+                            const { data: sessionData, error: sessionError } = await window.supabaseClient.auth.setSession({
+                                access_token: window.resetTokens.accessToken,
+                                refresh_token: window.resetTokens.refreshToken
                             });
                             
-                            // Update password
-                            const { error } = await window.supabaseClient.auth.updateUser({
+                            if (sessionError) {
+                                console.error('Session error:', sessionError);
+                                throw sessionError;
+                            }
+                            
+                            console.log('Session set successfully, updating password...');
+                            
+                            // Now update the password
+                            const { data, error } = await window.supabaseClient.auth.updateUser({
                                 password: newPassword
                             });
                             
-                            if (error) throw error;
+                            if (error) {
+                                console.error('Update error:', error);
+                                throw error;
+                            }
                             
                             successDiv.textContent = 'Password updated successfully! Redirecting...';
                             successDiv.style.display = 'block';
+                            
+                            // Sign out first to ensure clean login
+                            await window.supabaseClient.auth.signOut();
                             
                             setTimeout(() => {
                                 window.location.href = '/';
                             }, 2000);
                             
                         } catch (error) {
-                            errorDiv.textContent = error.message || 'Failed to update password';
+                            console.error('Password reset error:', error);
+                            errorDiv.textContent = error.message || 'Failed to update password. Please try again or request a new reset link.';
                             errorDiv.style.display = 'block';
                             button.disabled = false;
                             button.textContent = 'Update Password';
