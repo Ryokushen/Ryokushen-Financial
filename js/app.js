@@ -23,12 +23,30 @@ import { initializeTimeSettings } from './modules/timeSettings.js';
 import { initializeTransactionTimePreview } from './modules/transactionTimePreview.js';
 import { initializePrivacySettings } from './modules/privacySettings.js';
 
-// Check authentication before loading the app
-if (!supabaseAuth.isAuthenticated()) {
-    supabaseAuth.showAuthScreen();
-} else {
-    // User is authenticated, proceed with app initialization
+// Wait for auth initialization before checking authentication
+async function initializeApplication() {
+    // Give supabaseAuth a moment to initialize and check for password reset tokens
+    await new Promise(resolve => setTimeout(resolve, 100));
     
+    // Check if we should show password reset form
+    if (supabaseAuth.shouldShowPasswordReset()) {
+        supabaseAuth.showPasswordResetForm();
+        return; // Don't continue with app initialization
+    }
+    
+    // Now check authentication
+    if (!supabaseAuth.isAuthenticated()) {
+        supabaseAuth.showAuthScreen();
+    } else {
+        // User is authenticated, proceed with app initialization
+        startApp();
+    }
+}
+
+// Start the initialization process
+initializeApplication();
+
+function startApp() {
     // Configure Chart.js global defaults for better mobile responsiveness
     if (typeof Chart !== 'undefined') {
         Chart.defaults.responsive = true;
