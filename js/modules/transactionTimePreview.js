@@ -16,9 +16,18 @@ export function initializeTransactionTimePreview() {
     const previewBadge = previewContainer?.querySelector('.time-cost-badge');
     
     if (!amountInput || !previewContainer || !previewBadge) {
-        debug.warn('Transaction time preview elements not found');
+        debug.warn('Transaction time preview elements not found', {
+            amountInput: !!amountInput,
+            previewContainer: !!previewContainer,
+            previewBadge: !!previewBadge
+        });
         return;
     }
+    
+    debug.log('Transaction time preview initialized');
+    
+    // Initially hide the preview
+    previewContainer.style.display = 'none';
     
     // Update preview on amount change
     amountInput.addEventListener('input', updatePreview);
@@ -28,6 +37,11 @@ export function initializeTransactionTimePreview() {
     window.addEventListener('wage-config-updated', updatePreview);
     
     function updatePreview() {
+        debug.log('updatePreview called', {
+            enabled: timeBudgets.isEnabled(),
+            amount: amountInput.value,
+            category: categorySelect?.value
+        });
         if (!timeBudgets.isEnabled()) {
             previewContainer.style.display = 'none';
             return;
@@ -36,12 +50,22 @@ export function initializeTransactionTimePreview() {
         const amount = parseFloat(amountInput.value) || 0;
         const category = categorySelect?.value || '';
         
-        // Only show preview for expenses (negative amounts or specific categories)
-        const isExpense = amount < 0 || 
-            ['Food', 'Transportation', 'Shopping', 'Entertainment', 'Healthcare', 
-             'Education', 'Groceries', 'Debt', 'Fees'].includes(category);
+        // Show preview for any non-zero amount
+        // For positive amounts, only show if it's an expense category
+        const expenseCategories = ['Food', 'Transportation', 'Shopping', 'Entertainment', 
+                                   'Healthcare', 'Education', 'Groceries', 'Debt', 'Fees', 
+                                   'Bills', 'Utilities', 'Insurance', 'Other'];
         
-        if (amount === 0 || !isExpense) {
+        const shouldShowPreview = amount !== 0 && (amount < 0 || expenseCategories.includes(category));
+        
+        debug.log('Preview visibility check', {
+            amount,
+            category,
+            shouldShowPreview,
+            isExpenseCategory: expenseCategories.includes(category)
+        });
+        
+        if (!shouldShowPreview) {
             previewContainer.style.display = 'none';
             return;
         }

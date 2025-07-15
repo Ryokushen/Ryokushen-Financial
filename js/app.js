@@ -266,6 +266,12 @@ function setupEventListeners() {
     
     // Initialize transaction time preview
     initializeTransactionTimePreview();
+    
+    // Expose timeBudgets globally for debugging (only in development)
+    if (window.location.hostname === 'localhost' || window.location.protocol === 'file:') {
+        window.timeBudgets = timeBudgets;
+        debug.log('TimeBudgets exposed globally for debugging');
+    }
 
     // Pass the balance update function to modules that need it
     const enhancedAppState = {
