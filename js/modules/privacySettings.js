@@ -4,7 +4,9 @@ import { showError, announceToScreenReader } from './ui.js';
 import { 
     isBiometricSupported, 
     isBiometricRegistered,
-    getBiometricPlatformInfo,
+    getBiometricPlatformInfo
+} from './biometricAuth.js';
+import {
     enableBiometricPrivacy,
     disableBiometricPrivacy,
     isBiometricPrivacyEnabled,
