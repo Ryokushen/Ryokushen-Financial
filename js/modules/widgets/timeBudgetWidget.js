@@ -7,6 +7,7 @@ import { timeBudgets } from '../timeBudgets.js';
 import { formatCurrency, escapeHtml } from '../utils.js';
 import { debug } from '../debug.js';
 import { sumMoney } from '../financialMath.js';
+import { switchTab } from '../ui.js';
 
 export class TimeBudgetWidget {
     constructor(containerId) {
@@ -50,6 +51,7 @@ export class TimeBudgetWidget {
 
         if (!isEnabled) {
             this.container.innerHTML = this.renderDisabledState();
+            this.attachEventListeners();
             return;
         }
 
@@ -118,7 +120,7 @@ export class TimeBudgetWidget {
                 </div>
                 <div class="widget-content">
                     <p class="empty-state">Enable time budgets in settings to see how much time your spending costs.</p>
-                    <button class="btn btn-sm btn-primary" onclick="document.querySelector('[data-tab=\"settings\"]').click()">
+                    <button class="btn btn-sm btn-primary go-to-settings-btn">
                         Go to Settings
                     </button>
                 </div>
@@ -202,6 +204,18 @@ export class TimeBudgetWidget {
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Attach event listeners to widget elements
+     */
+    attachEventListeners() {
+        const settingsBtn = this.container.querySelector('.go-to-settings-btn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => {
+                switchTab('settings', this.appData);
+            });
+        }
     }
 
     /**
