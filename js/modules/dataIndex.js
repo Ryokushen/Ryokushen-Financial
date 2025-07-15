@@ -68,7 +68,7 @@ export class DataIndex {
         if (appData.transactions) {
             appData.transactions.forEach(transaction => {
                 // By account
-                const accountId = transaction.accountId || transaction.cashAccountId;
+                const accountId = transaction.account_id || transaction.accountId || transaction.cashAccountId;
                 if (accountId) {
                     if (!this.indexes.transactionsByAccount.has(accountId)) {
                         this.indexes.transactionsByAccount.set(accountId, []);

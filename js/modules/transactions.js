@@ -478,12 +478,12 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
 
         if (t.account_id) {
             // Regular cash account transaction - use index for O(1) lookup
-            const account = dataIndex.cashAccountsById.get(t.account_id) || 
+            const account = (dataIndex?.indexes?.cashAccountsById?.get(t.account_id)) || 
                            appData.cashAccounts.find(a => a.id === t.account_id);
             accountName = account ? escapeHtml(account.name) : 'Unknown Account';
         } else if (t.debt_account_id) {
             // Credit card transaction - show the credit card name - use index for O(1) lookup
-            const debtAccount = dataIndex.debtAccountsById.get(t.debt_account_id) ||
+            const debtAccount = (dataIndex?.indexes?.debtAccountsById?.get(t.debt_account_id)) ||
                                appData.debtAccounts.find(d => d.id === t.debt_account_id);
             accountName = debtAccount ? `${escapeHtml(debtAccount.name)} (Credit Card)` : 'Unknown Credit Card';
         }
@@ -727,11 +727,11 @@ function createTransactionRow(t, appData) {
     
     if (t.account_id) {
         // Use dataIndex for O(1) lookup if available
-        const account = dataIndex.cashAccountsById.get(t.account_id) || 
+        const account = (dataIndex?.indexes?.cashAccountsById?.get(t.account_id)) || 
                        appData.cashAccounts.find(a => a.id === t.account_id);
         accountName = account ? escapeHtml(account.name) : 'Unknown Account';
     } else if (t.debt_account_id) {
-        const debtAccount = dataIndex.debtAccountsById.get(t.debt_account_id) ||
+        const debtAccount = (dataIndex?.indexes?.debtAccountsById?.get(t.debt_account_id)) ||
                            appData.debtAccounts.find(d => d.id === t.debt_account_id);
         accountName = debtAccount ? `${escapeHtml(debtAccount.name)} (Credit Card)` : 'Unknown Credit Card';
     }
