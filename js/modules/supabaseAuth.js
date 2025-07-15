@@ -7,7 +7,55 @@ class SupabaseAuthManager {
         this.session = null;
         this.supabase = window.supabaseClient;
         this.isResettingPassword = false;
+        
+        // Check for password reset immediately
+        this.checkForPasswordReset();
+        
         this.initializeAuth();
+    }
+
+    /**
+     * Check for password reset tokens immediately
+     */
+    checkForPasswordReset() {
+        // Get the full URL
+        const fullUrl = window.location.href;
+        debug.log('Checking for password reset. Full URL:', fullUrl);
+        
+        // Check multiple possible parameter locations
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const queryParams = new URLSearchParams(window.location.search);
+        
+        // Also check if the URL contains these patterns
+        const urlContainsRecovery = fullUrl.includes('type=recovery') || 
+                                  fullUrl.includes('type%3Drecovery') ||
+                                  fullUrl.includes('#recovery');
+        const urlContainsToken = fullUrl.includes('access_token=') || 
+                               fullUrl.includes('access_token%3D');
+        
+        // Check all possible locations for the token
+        const accessTokenFromHash = hashParams.get('access_token');
+        const typeFromHash = hashParams.get('type');
+        const accessTokenFromQuery = queryParams.get('access_token');
+        const typeFromQuery = queryParams.get('type');
+        
+        debug.log('URL contains recovery:', urlContainsRecovery);
+        debug.log('URL contains token:', urlContainsToken);
+        debug.log('Hash params:', Object.fromEntries(hashParams));
+        debug.log('Query params:', Object.fromEntries(queryParams));
+        
+        // Set password reset mode if any indication is found
+        if ((typeFromHash === 'recovery' && accessTokenFromHash) ||
+            (typeFromQuery === 'recovery' && accessTokenFromQuery) ||
+            (urlContainsRecovery && urlContainsToken)) {
+            
+            this.isResettingPassword = true;
+            debug.log('PASSWORD RESET MODE ACTIVATED!');
+            
+            // Store the token for later use
+            this.resetToken = accessTokenFromHash || accessTokenFromQuery;
+            this.refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+        }
     }
 
     /**
@@ -15,37 +63,13 @@ class SupabaseAuthManager {
      */
     async initializeAuth() {
         try {
-            // Debug: Log the current URL to see what we're working with
-            debug.log('Current URL:', window.location.href);
-            debug.log('Hash:', window.location.hash);
-            debug.log('Search:', window.location.search);
-            
-            // Check for password reset in both hash and query parameters
-            const hashParams = new URLSearchParams(window.location.hash.substring(1));
-            const queryParams = new URLSearchParams(window.location.search);
-            
-            // Check hash parameters first (Supabase usually uses hash)
-            let accessToken = hashParams.get('access_token');
-            let type = hashParams.get('type');
-            
-            // If not in hash, check query parameters
-            if (!accessToken) {
-                accessToken = queryParams.get('access_token');
-                type = queryParams.get('type');
-            }
-            
-            debug.log('Access token found:', !!accessToken);
-            debug.log('Type:', type);
-            
-            if (type === 'recovery' && accessToken) {
-                // We're in password reset mode
-                this.isResettingPassword = true;
-                debug.log('Password reset mode activated');
+            // If we're in password reset mode, set the session
+            if (this.isResettingPassword && this.resetToken) {
+                debug.log('Setting recovery session with token');
                 
-                // Set the session with the recovery token
                 const { data, error } = await this.supabase.auth.setSession({
-                    access_token: accessToken,
-                    refresh_token: hashParams.get('refresh_token') || queryParams.get('refresh_token')
+                    access_token: this.resetToken,
+                    refresh_token: this.refreshToken
                 });
                 
                 if (error) {
@@ -100,22 +124,13 @@ class SupabaseAuthManager {
      * Check if we should show password reset form instead of login
      */
     shouldShowPasswordReset() {
-        // Check both hash and query parameters
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const queryParams = new URLSearchParams(window.location.search);
+        // Re-check in case it wasn't detected initially
+        if (!this.isResettingPassword) {
+            this.checkForPasswordReset();
+        }
         
-        const hashAccessToken = hashParams.get('access_token');
-        const hashType = hashParams.get('type');
-        
-        const queryAccessToken = queryParams.get('access_token');
-        const queryType = queryParams.get('type');
-        
-        const shouldReset = (hashType === 'recovery' && hashAccessToken) || 
-                          (queryType === 'recovery' && queryAccessToken) ||
-                          this.isResettingPassword;
-                          
-        debug.log('Should show password reset:', shouldReset);
-        return shouldReset;
+        debug.log('Should show password reset:', this.isResettingPassword);
+        return this.isResettingPassword;
     }
 
     /**
@@ -123,51 +138,30 @@ class SupabaseAuthManager {
      */
     showPasswordResetForm() {
         debug.log('Showing password reset form');
-        document.body.innerHTML = `
-            <div class="auth-container">
-                <div class="auth-box">
-                    <h1>Reset Your Password</h1>
-                    <h2>Enter your new password</h2>
-                    
-                    <div class="auth-form">
-                        <div class="form-group">
-                            <label for="new-password">New Password</label>
-                            <input type="password" id="new-password" class="form-control" 
-                                   placeholder="Enter new password" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="confirm-password">Confirm Password</label>
-                            <input type="password" id="confirm-password" class="form-control" 
-                                   placeholder="Confirm new password" required>
-                        </div>
-                        
-                        <button id="reset-password-btn" class="btn btn--primary btn--block">
-                            Update Password
-                        </button>
-                        
-                        <div style="margin-top: 20px; text-align: center;">
-                            <a href="#" id="back-to-login" style="color: #3b82f6; text-decoration: none; font-size: 14px;">
-                                Back to Login
-                            </a>
-                        </div>
-                    </div>
-                    
-                    <div id="auth-error" class="error-message" style="display: none;"></div>
-                    <div id="auth-success" class="success-message" style="display: none;"></div>
-                </div>
-            </div>
-            
+        
+        // Clear the entire page and show only the reset form
+        document.documentElement.innerHTML = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Reset Password - Ryokushen Financial</title>
             <style>
-                body {
+                * {
                     margin: 0;
                     padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
                     background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
                     min-height: 100vh;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    color: #333;
                 }
                 
                 .auth-container {
@@ -198,10 +192,6 @@ class SupabaseAuthManager {
                     text-align: center;
                 }
                 
-                .auth-form {
-                    display: block;
-                }
-                
                 .form-group {
                     margin-bottom: 20px;
                 }
@@ -220,7 +210,6 @@ class SupabaseAuthManager {
                     border-radius: 6px;
                     font-size: 16px;
                     transition: border-color 0.2s;
-                    box-sizing: border-box;
                 }
                 
                 .form-control:focus {
@@ -229,6 +218,7 @@ class SupabaseAuthManager {
                 }
                 
                 .btn {
+                    width: 100%;
                     padding: 12px 24px;
                     border: none;
                     border-radius: 6px;
@@ -236,21 +226,19 @@ class SupabaseAuthManager {
                     font-weight: 500;
                     cursor: pointer;
                     transition: all 0.2s;
-                }
-                
-                .btn--primary {
                     background: #3b82f6;
                     color: white;
                 }
                 
-                .btn--primary:hover {
+                .btn:hover {
                     background: #2563eb;
                     transform: translateY(-1px);
                 }
                 
-                .btn--block {
-                    width: 100%;
-                    display: block;
+                .btn:disabled {
+                    background: #9ca3af;
+                    cursor: not-allowed;
+                    transform: none;
                 }
                 
                 .error-message {
@@ -262,6 +250,7 @@ class SupabaseAuthManager {
                     margin-top: 20px;
                     font-size: 14px;
                     text-align: center;
+                    display: none;
                 }
                 
                 .success-message {
@@ -273,32 +262,88 @@ class SupabaseAuthManager {
                     margin-top: 20px;
                     font-size: 14px;
                     text-align: center;
+                    display: none;
+                }
+                
+                .back-link {
+                    margin-top: 20px;
+                    text-align: center;
+                }
+                
+                .back-link a {
+                    color: #3b82f6;
+                    text-decoration: none;
+                    font-size: 14px;
+                }
+                
+                .back-link a:hover {
+                    text-decoration: underline;
                 }
             </style>
+        </head>
+        <body>
+            <div class="auth-container">
+                <div class="auth-box">
+                    <h1>Reset Your Password</h1>
+                    <h2>Enter your new password below</h2>
+                    
+                    <form id="reset-form">
+                        <div class="form-group">
+                            <label for="new-password">New Password</label>
+                            <input type="password" id="new-password" class="form-control" 
+                                   placeholder="Enter new password" required minlength="8">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="confirm-password">Confirm Password</label>
+                            <input type="password" id="confirm-password" class="form-control" 
+                                   placeholder="Confirm new password" required minlength="8">
+                        </div>
+                        
+                        <button type="submit" id="reset-password-btn" class="btn">
+                            Update Password
+                        </button>
+                    </form>
+                    
+                    <div class="back-link">
+                        <a href="#" id="back-to-login">Back to Login</a>
+                    </div>
+                    
+                    <div id="auth-error" class="error-message"></div>
+                    <div id="auth-success" class="success-message"></div>
+                </div>
+            </div>
+        </body>
+        </html>
         `;
         
-        // Add event handlers
-        document.getElementById('reset-password-btn').addEventListener('click', () => this.updatePassword());
+        // Re-attach the Supabase client script
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+        document.head.appendChild(script);
         
-        document.getElementById('back-to-login').addEventListener('click', (e) => {
-            e.preventDefault();
-            // Clear URL parameters
-            window.history.replaceState({}, document.title, window.location.pathname);
-            this.isResettingPassword = false;
-            window.location.reload();
-        });
-        
-        // Enter key handling
-        document.querySelectorAll('input').forEach(input => {
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    this.updatePassword();
-                }
+        script.onload = () => {
+            // Re-initialize Supabase client
+            window.supabaseClient = window.supabase.createClient(
+                'https://cqhqobwdpwxnxmyuuvnp.supabase.co',
+                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxaHFvYndkcHd4bnhteXV1dm5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY1NjA3NzEsImV4cCI6MjA1MjEzNjc3MX0.0Fo9cPA6XJabKHVi4QiJJYNhSre6hRG7RQtqKdKrJro'
+            );
+            
+            // Add event handlers
+            document.getElementById('reset-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.updatePassword();
             });
-        });
-        
-        // Focus on first input
-        document.getElementById('new-password').focus();
+            
+            document.getElementById('back-to-login').addEventListener('click', (e) => {
+                e.preventDefault();
+                // Clear URL and go back to main page
+                window.location.href = window.location.origin;
+            });
+            
+            // Focus on first input
+            document.getElementById('new-password').focus();
+        };
     }
 
     /**
@@ -307,6 +352,7 @@ class SupabaseAuthManager {
     async updatePassword() {
         const newPassword = document.getElementById('new-password').value;
         const confirmPassword = document.getElementById('confirm-password').value;
+        const button = document.getElementById('reset-password-btn');
         
         if (!newPassword || !confirmPassword) {
             this.showError('Please fill in both password fields');
@@ -323,8 +369,12 @@ class SupabaseAuthManager {
             return;
         }
         
+        // Disable button while processing
+        button.disabled = true;
+        button.textContent = 'Updating...';
+        
         try {
-            const { error } = await this.supabase.auth.updateUser({
+            const { error } = await window.supabaseClient.auth.updateUser({
                 password: newPassword
             });
             
@@ -332,15 +382,15 @@ class SupabaseAuthManager {
             
             this.showSuccess('Password updated successfully! Redirecting to login...');
             
-            // Clear the URL parameters and redirect to login after 2 seconds
+            // Redirect to login after 2 seconds
             setTimeout(() => {
-                window.history.replaceState({}, document.title, window.location.pathname);
-                this.isResettingPassword = false;
-                window.location.reload();
+                window.location.href = window.location.origin;
             }, 2000);
             
         } catch (error) {
             this.showError(error.message || 'Failed to update password');
+            button.disabled = false;
+            button.textContent = 'Update Password';
         }
     }
 
