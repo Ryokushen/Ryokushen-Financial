@@ -12,6 +12,15 @@ class FinancialDatabase {
         throw new Error(`Database operation failed: ${operation} - ${error.message}`);
     }
 
+    // Helper method to get current user ID
+    async getCurrentUserId() {
+        const { data: { user } } = await this.supabase.auth.getUser();
+        if (!user) {
+            throw new Error('User not authenticated');
+        }
+        return user.id;
+    }
+
     // --- CASH ACCOUNTS ---
     async getCashAccounts() {
         try {
@@ -23,12 +32,14 @@ class FinancialDatabase {
 
     async addCashAccount(account) {
         try {
+            const userId = await this.getCurrentUserId();
             const { data, error } = await this.supabase.from('cash_accounts').insert({
                 name: account.name,
                 type: account.type,
                 institution: account.institution,
                 notes: account.notes,
-                is_active: account.isActive
+                is_active: account.isActive,
+                user_id: userId
             }).select().single();
             if (error) throw error;
             return data;
@@ -70,6 +81,7 @@ class FinancialDatabase {
 
     async addTransaction(transaction) {
         try {
+            const userId = await this.getCurrentUserId();
             const { data, error } = await this.supabase.from('transactions').insert({
                 date: transaction.date,
                 account_id: transaction.account_id,
@@ -77,7 +89,8 @@ class FinancialDatabase {
                 description: transaction.description,
                 amount: transaction.amount,
                 cleared: transaction.cleared,
-                debt_account_id: transaction.debt_account_id || null
+                debt_account_id: transaction.debt_account_id || null,
+                user_id: userId
             }).select().single();
             if (error) throw error;
             return data;
@@ -119,15 +132,31 @@ class FinancialDatabase {
 
     async addInvestmentAccount(account) {
         try {
-            const { data, error } = await this.supabase.from('investment_accounts').insert({ name: account.name, institution: account.institution, account_type: account.accountType, balance: account.balance, day_change: account.dayChange }).select().single();
-            if (error) throw error; return data;
+            const userId = await this.getCurrentUserId();
+            const { data, error } = await this.supabase.from('investment_accounts').insert({ 
+                name: account.name, 
+                institution: account.institution, 
+                account_type: account.accountType, 
+                balance: account.balance, 
+                day_change: account.dayChange,
+                user_id: userId
+            }).select().single();
+            if (error) throw error; 
+            return data;
         } catch (error) { this.handleError('addInvestmentAccount', error); }
     }
 
     async updateInvestmentAccount(id, account) {
         try {
-            const { data, error } = await this.supabase.from('investment_accounts').update({ name: account.name, institution: account.institution, account_type: account.accountType, balance: account.balance, day_change: account.dayChange }).eq('id', id).select().single();
-            if (error) throw error; return data;
+            const { data, error } = await this.supabase.from('investment_accounts').update({ 
+                name: account.name, 
+                institution: account.institution, 
+                account_type: account.accountType, 
+                balance: account.balance, 
+                day_change: account.dayChange 
+            }).eq('id', id).select().single();
+            if (error) throw error; 
+            return data;
         } catch (error) { this.handleError('updateInvestmentAccount', error); }
     }
 
@@ -141,15 +170,22 @@ class FinancialDatabase {
 
     async addHolding(accountId, holding) {
         try {
-            const { data, error } = await this.supabase.from('holdings').insert({ ...holding, investment_account_id: accountId }).select().single();
-            if (error) throw error; return data;
+            const userId = await this.getCurrentUserId();
+            const { data, error } = await this.supabase.from('holdings').insert({ 
+                ...holding, 
+                investment_account_id: accountId,
+                user_id: userId
+            }).select().single();
+            if (error) throw error; 
+            return data;
         } catch (error) { this.handleError('addHolding', error); }
     }
 
     async updateHolding(id, holding) {
         try {
             const { data, error } = await this.supabase.from('holdings').update(holding).eq('id', id).select().single();
-            if (error) throw error; return data;
+            if (error) throw error; 
+            return data;
         } catch (error) { this.handleError('updateHolding', error); }
     }
 
@@ -171,6 +207,7 @@ class FinancialDatabase {
 
     async addDebtAccount(debtData) {
         try {
+            const userId = await this.getCurrentUserId();
             const { data, error } = await this.supabase.from('debt_accounts').insert({
                 name: debtData.name,
                 type: debtData.type,
@@ -180,7 +217,8 @@ class FinancialDatabase {
                 minimum_payment: debtData.minimumPayment,
                 due_date: debtData.dueDate,
                 credit_limit: debtData.creditLimit,
-                notes: debtData.notes
+                notes: debtData.notes,
+                user_id: userId
             }).select().single();
             if (error) throw error;
             return data;
@@ -231,6 +269,7 @@ class FinancialDatabase {
 
     async addRecurringBill(bill) {
         try {
+            const userId = await this.getCurrentUserId();
             // UPDATED: Support payment method and debt account
             const billData = {
                 name: bill.name,
@@ -242,7 +281,8 @@ class FinancialDatabase {
                 payment_method: bill.payment_method || 'cash', // 'cash' or 'credit'
                 debt_account_id: bill.debt_account_id || null, // For credit card payments
                 notes: bill.notes || null,
-                active: bill.active !== undefined ? bill.active : true
+                active: bill.active !== undefined ? bill.active : true,
+                user_id: userId
             };
 
             const { data, error } = await this.supabase.from('recurring_bills').insert(billData).select().single();
@@ -295,7 +335,11 @@ class FinancialDatabase {
 
     async addSavingsGoal(goalData) {
         try {
-            const { data, error } = await this.supabase.from('savings_goals').insert(goalData).select().single();
+            const userId = await this.getCurrentUserId();
+            const { data, error } = await this.supabase.from('savings_goals').insert({
+                ...goalData,
+                user_id: userId
+            }).select().single();
             if (error) throw error;
             return data;
         } catch (error) { this.handleError('addSavingsGoal', error); }
