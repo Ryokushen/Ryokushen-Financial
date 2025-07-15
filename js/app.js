@@ -334,7 +334,7 @@ async function updateAllDisplays(state, options = {}) {
                 Accounts.populateAccountDropdowns(state.appData);
                 return;
             case 'transactions':
-                Transactions.displayRecentTransactions(state.appData.transactions);
+                Transactions.renderTransactions(state);
                 return;
             case 'charts':
                 createCharts(state);
@@ -383,8 +383,7 @@ async function updateAllDisplays(state, options = {}) {
                 if (cashList) Accounts.renderCashAccounts(state);
                 break;
             case 'transactions':
-                const transactionsBody = document.getElementById("transactions-table-body");
-                if (transactionsBody) Transactions.renderTransactions(state);
+                Transactions.renderTransactions(state);
                 break;
             case 'investments':
                 const investmentsList = document.getElementById("investment-accounts-list");
@@ -409,8 +408,7 @@ async function updateAllDisplays(state, options = {}) {
         if (specificUpdate) {
             switch (specificUpdate) {
                 case 'transactions':
-                    const transactionsBody = document.getElementById("transactions-table-body");
-                    if (transactionsBody) Transactions.renderTransactions(state);
+                    Transactions.renderTransactions(state);
                     break;
                 case 'accounts':
                     const cashList = document.getElementById("cash-accounts-list");
