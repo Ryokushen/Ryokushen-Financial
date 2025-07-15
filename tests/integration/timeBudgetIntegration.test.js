@@ -2,10 +2,9 @@
  * Integration tests for Time Budget features
  */
 
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { JSDOM } from 'jsdom';
-import { timeBudgets } from '../../js/modules/timeBudgets.js';
-import { TimeBudgetWidget } from '../../js/modules/widgets/timeBudgetWidget.js';
+const { JSDOM } = await import('jsdom');
+const { timeBudgets } = await import('../../js/modules/timeBudgets.js');
+const { TimeBudgetWidget } = await import('../../js/modules/widgets/timeBudgetWidget.js');
 
 describe('Time Budget Integration Tests', () => {
     let dom;

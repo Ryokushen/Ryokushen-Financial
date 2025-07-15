@@ -2,8 +2,7 @@
  * Unit tests for Time Budgets module
  */
 
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { timeBudgets } from '../../js/modules/timeBudgets.js';
+const { timeBudgets } = await import('../../js/modules/timeBudgets.js');
 
 describe('TimeBudgets Module', () => {
     // Save original localStorage
