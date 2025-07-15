@@ -46,7 +46,7 @@ export class TimeBudgetWidget {
         if (!this.container) return;
 
         const isEnabled = timeBudgets.isEnabled();
-        const config = timeBudgets.getConfig();
+        const config = timeBudgets.getWageConfig();
 
         if (!isEnabled) {
             this.container.innerHTML = this.renderDisabledState();

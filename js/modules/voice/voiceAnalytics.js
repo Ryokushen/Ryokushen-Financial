@@ -2363,7 +2363,7 @@ export class VoiceAnalytics {
                         text: `Your last purchase of ${formatCurrency(Math.abs(lastTransaction.amount))} at ${lastTransaction.description} cost ${timeData.formatted} of work.`,
                         title: 'Time Cost of Last Purchase',
                         emoji: '⏰',
-                        details: `At your rate of ${formatCurrency(timeBudgets.getConfig().afterTaxRate)}/hour after taxes`
+                        details: `At your rate of ${formatCurrency(timeBudgets.getAfterTaxRate())}/hour after taxes`
                     }
                 };
             }
