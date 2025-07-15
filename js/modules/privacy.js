@@ -1,6 +1,13 @@
-// js/modules/privacy.js - Privacy Mode Management
+// js/modules/privacy.js - Privacy Mode Management with Biometric Authentication
 import { debug } from './debug.js';
-import { announceToScreenReader } from './ui.js';
+import { announceToScreenReader, showError } from './ui.js';
+import { 
+    isBiometricSupported, 
+    isBiometricRegistered, 
+    authenticateWithBiometric,
+    registerBiometric,
+    clearBiometricRegistration 
+} from './biometricAuth.js';
 
 // Centralized timing configuration for privacy operations
 const PRIVACY_TIMING = {
@@ -17,6 +24,8 @@ class PrivacyManager {
         this.blurredElements = new WeakMap();
         this.temporarilyRevealed = new WeakSet();
         this.isInitialized = false;
+        this.biometricEnabled = this.loadBiometricPreference();
+        this.biometricBypassTimeout = null;
     }
     
     // Initialize privacy manager after DOM is ready
@@ -34,6 +43,9 @@ class PrivacyManager {
         if (this.isPrivate) {
             this.enablePrivacyMode();
         }
+        
+        // Update biometric status in UI
+        this.updateBiometricUI();
     }
     
     // Load privacy state from localStorage
@@ -55,6 +67,25 @@ class PrivacyManager {
         }
     }
     
+    // Load biometric preference from localStorage
+    loadBiometricPreference() {
+        try {
+            return localStorage.getItem('biometricPrivacy') === 'true';
+        } catch (e) {
+            debug.warn('Could not load biometric preference:', e);
+            return false;
+        }
+    }
+    
+    // Save biometric preference to localStorage
+    saveBiometricPreference() {
+        try {
+            localStorage.setItem('biometricPrivacy', this.biometricEnabled.toString());
+        } catch (e) {
+            debug.warn('Could not save biometric preference:', e);
+        }
+    }
+    
     // Setup keyboard shortcuts
     setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
@@ -66,8 +97,31 @@ class PrivacyManager {
         });
     }
     
-    // Toggle privacy mode
-    togglePrivacy() {
+    // Toggle privacy mode with biometric authentication if enabled
+    async togglePrivacy() {
+        // If enabling privacy mode and biometric is enabled and registered
+        if (!this.isPrivate && this.biometricEnabled && isBiometricRegistered()) {
+            try {
+                // Check if we're within the bypass timeout
+                if (this.biometricBypassTimeout && Date.now() < this.biometricBypassTimeout) {
+                    debug.log('Within biometric bypass timeout, skipping authentication');
+                } else {
+                    // Require biometric authentication
+                    const authenticated = await authenticateWithBiometric();
+                    if (!authenticated) {
+                        showError('Biometric authentication failed. Privacy mode not enabled.');
+                        return;
+                    }
+                    
+                    // Set bypass timeout for 5 minutes
+                    this.biometricBypassTimeout = Date.now() + (5 * 60 * 1000);
+                }
+            } catch (error) {
+                showError(error.message || 'Biometric authentication failed');
+                return;
+            }
+        }
+        
         this.isPrivate = !this.isPrivate;
         this.savePrivacyState();
         
@@ -77,10 +131,60 @@ class PrivacyManager {
         } else {
             this.disablePrivacyMode();
             announceToScreenReader('Privacy mode disabled');
+            // Clear bypass timeout when disabling privacy mode
+            this.biometricBypassTimeout = null;
         }
         
         // Notify all listeners
         this.notifyListeners();
+    }
+    
+    // Enable biometric authentication for privacy mode
+    async enableBiometricAuth() {
+        if (!isBiometricSupported()) {
+            throw new Error('Biometric authentication is not supported on this device');
+        }
+        
+        try {
+            if (!isBiometricRegistered()) {
+                await registerBiometric();
+            }
+            
+            this.biometricEnabled = true;
+            this.saveBiometricPreference();
+            this.updateBiometricUI();
+            
+            return true;
+        } catch (error) {
+            debug.error('Failed to enable biometric auth:', error);
+            throw error;
+        }
+    }
+    
+    // Disable biometric authentication
+    disableBiometricAuth() {
+        this.biometricEnabled = false;
+        this.saveBiometricPreference();
+        this.biometricBypassTimeout = null;
+        clearBiometricRegistration();
+        this.updateBiometricUI();
+    }
+    
+    // Update biometric UI elements
+    updateBiometricUI() {
+        const biometricStatus = document.getElementById('biometric-status');
+        if (biometricStatus) {
+            if (!isBiometricSupported()) {
+                biometricStatus.textContent = 'Not supported on this device';
+                biometricStatus.className = 'biometric-status unsupported';
+            } else if (this.biometricEnabled && isBiometricRegistered()) {
+                biometricStatus.textContent = 'Enabled';
+                biometricStatus.className = 'biometric-status enabled';
+            } else {
+                biometricStatus.textContent = 'Disabled';
+                biometricStatus.className = 'biometric-status disabled';
+            }
+        }
     }
     
     // Enable privacy mode
@@ -272,6 +376,11 @@ class PrivacyManager {
         return this.isPrivate;
     }
     
+    // Check if biometric auth is enabled
+    isBiometricEnabled() {
+        return this.biometricEnabled && isBiometricRegistered();
+    }
+    
     // Force refresh privacy mode (for debugging)
     forceRefresh() {
         if (this.isPrivate) {
@@ -291,7 +400,7 @@ export const privacyManager = new PrivacyManager();
 
 // Export convenience functions
 export function togglePrivacyMode() {
-    privacyManager.togglePrivacy();
+    return privacyManager.togglePrivacy();
 }
 
 export function isPrivacyMode() {
@@ -316,6 +425,19 @@ export function enablePanicMode() {
 
 export function forceRefreshPrivacy() {
     privacyManager.forceRefresh();
+}
+
+// Biometric authentication functions
+export async function enableBiometricPrivacy() {
+    return privacyManager.enableBiometricAuth();
+}
+
+export function disableBiometricPrivacy() {
+    privacyManager.disableBiometricAuth();
+}
+
+export function isBiometricPrivacyEnabled() {
+    return privacyManager.isBiometricEnabled();
 }
 
 // Make privacyManager available globally for debugging
