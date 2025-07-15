@@ -25,20 +25,23 @@ import { initializePrivacySettings } from './modules/privacySettings.js';
 
 // Wait for auth initialization before checking authentication
 async function initializeApplication() {
-    // Give supabaseAuth a moment to initialize and check for password reset tokens
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Give supabaseAuth more time to initialize and check for password reset tokens
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     // Check if we should show password reset form
     if (supabaseAuth.shouldShowPasswordReset()) {
+        debug.log('Password reset detected, showing reset form');
         supabaseAuth.showPasswordResetForm();
         return; // Don't continue with app initialization
     }
     
     // Now check authentication
     if (!supabaseAuth.isAuthenticated()) {
+        debug.log('User not authenticated, showing auth screen');
         supabaseAuth.showAuthScreen();
     } else {
         // User is authenticated, proceed with app initialization
+        debug.log('User authenticated, starting app');
         startApp();
     }
 }
