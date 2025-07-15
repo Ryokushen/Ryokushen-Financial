@@ -3,6 +3,7 @@
 import { debug } from '../debug.js';
 import { switchTab, announceToScreenReader } from '../ui.js';
 import { togglePrivacyMode, enablePanicMode } from '../privacy.js';
+import { handleBiometricVoiceCommand } from './biometricVoiceCommands.js';
 
 /**
  * Voice Navigation Handler - Controls app navigation and actions via voice
@@ -24,6 +25,7 @@ export class VoiceNavigation {
             'action.mark_paid': this.handleMarkPaidAction.bind(this),
             'action.filter': this.handleFilterAction.bind(this),
             'settings.privacy': this.handlePrivacyAction.bind(this),
+            'settings.biometric': this.handleBiometricAction.bind(this),
             'general.help': this.handleHelpAction.bind(this)
         };
 
@@ -69,6 +71,24 @@ export class VoiceNavigation {
         debug.log('Processing voice navigation:', intent, parameters);
 
         try {
+            // Check if this is a biometric-related command
+            if (intent.startsWith('settings.biometric') || 
+                intent === 'query.privacy_security_status' ||
+                intent === 'query.master_password_status') {
+                const result = await handleBiometricVoiceCommand(parameters.originalText || '');
+                if (result) {
+                    return {
+                        type: 'biometric',
+                        success: result.success,
+                        response: {
+                            text: result.message,
+                            title: 'Biometric Security',
+                            details: result.details || ''
+                        }
+                    };
+                }
+            }
+
             const handler = this.navigationHandlers[intent];
             if (!handler) {
                 return this.createErrorResponse(`Navigation "${intent}" not supported`);
@@ -244,17 +264,17 @@ export class VoiceNavigation {
 
             switch (privacyAction) {
                 case 'enable':
-                    togglePrivacyMode(true);
+                    await togglePrivacyMode(true);
                     actionText = 'Privacy mode enabled';
                     break;
 
                 case 'disable':
-                    togglePrivacyMode(false);
+                    await togglePrivacyMode(false);
                     actionText = 'Privacy mode disabled';
                     break;
 
                 case 'toggle':
-                    togglePrivacyMode();
+                    await togglePrivacyMode();
                     actionText = 'Privacy mode toggled';
                     break;
 
@@ -288,6 +308,46 @@ export class VoiceNavigation {
         } catch (error) {
             debug.error('Error handling privacy action:', error);
             return this.createErrorResponse('Failed to change privacy settings');
+        }
+    }
+
+    /**
+     * Handle biometric-related actions
+     */
+    async handleBiometricAction(parameters) {
+        const { originalText } = parameters;
+        
+        try {
+            const result = await handleBiometricVoiceCommand(originalText || '');
+            
+            if (result) {
+                // Navigate to settings if requested
+                if (result.action === 'navigate_settings') {
+                    switchTab('settings', this.appState);
+                    setTimeout(() => {
+                        const privacySection = document.querySelector('.privacy-settings-section');
+                        if (privacySection) {
+                            privacySection.scrollIntoView({ behavior: 'smooth' });
+                        }
+                    }, 300);
+                }
+                
+                return {
+                    type: 'biometric',
+                    success: result.success,
+                    response: {
+                        text: result.message,
+                        title: 'Biometric Security',
+                        details: result.details || ''
+                    }
+                };
+            }
+            
+            return this.createErrorResponse('Biometric command not recognized');
+            
+        } catch (error) {
+            debug.error('Error handling biometric action:', error);
+            return this.createErrorResponse('Failed to process biometric command');
         }
     }
 
@@ -520,7 +580,9 @@ export class VoiceNavigation {
             'Try: "Go to transactions"',
             'Try: "Add new transaction"',
             'Try: "What did I spend on groceries?"',
-            'Try: "Enable privacy mode"'
+            'Try: "Enable privacy mode"',
+            'Try: "Privacy security status"',
+            'Try: "Enable biometric authentication"'
         ];
 
         announceToScreenReader('Voice help information displayed');
@@ -617,6 +679,12 @@ export class VoiceNavigation {
                 'Disable privacy mode',
                 'Toggle privacy',
                 'Panic mode'
+            ],
+            'Biometric Security': [
+                'Privacy security status',
+                'Enable biometric authentication',
+                'Disable biometric authentication',
+                'Master password status'
             ],
             'Help': [
                 'Help',
