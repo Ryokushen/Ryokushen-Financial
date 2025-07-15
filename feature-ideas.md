@@ -172,13 +172,19 @@ This document contains potential feature enhancements organized by category. The
 
 ## 🔐 Security & Privacy
 
-### 25. Privacy Mode 🌐 ✅ PARTIALLY IMPLEMENTED
-**Status**: Core privacy features completed
+### 25. Privacy Mode 🌐 ✅ FULLY IMPLEMENTED
+**Status**: All features completed including biometric authentication
 - ✅ Blur sensitive numbers
 - ✅ Panic button to hide all data
 - ✅ Voice command integration ("Enable privacy mode", "Panic mode")
-- ⏳ Biometric authentication (not yet implemented)
-- **Web Implementation**: WebAuthn API for fingerprint/face ID, CSS blur filters
+- ✅ **Biometric authentication** (IMPLEMENTED July 15, 2025)
+  - WebAuthn API integration for fingerprint/Face ID/Windows Hello
+  - 5-minute bypass timeout after successful authentication
+  - Platform detection (Touch ID, Face ID, Windows Hello)
+  - Settings UI for setup/management
+  - Voice commands for biometric control
+  - Graceful fallback for unsupported devices
+- **Web Implementation**: WebAuthn API for biometric auth, CSS blur filters
 
 ### 26. Audit Trail ✅
 - Track all data changes
@@ -246,10 +252,11 @@ This document contains potential feature enhancements organized by category. The
    - Phase 1: Basic speech-to-text
    - Phase 2: Smart NLP parsing
    - Phase 3: Global voice commands
-2. **Privacy Mode (#25)** - Core features implemented:
+2. **Privacy Mode (#25)** - Fully implemented:
    - Blur sensitive data
    - Panic button
    - Voice command integration
+   - Biometric authentication (WebAuthn)
 3. **Natural Language Queries (#30)** - Basic queries via voice:
    - Financial queries (balance, net worth, debt)
    - Spending analysis by category/merchant
@@ -260,11 +267,13 @@ This document contains potential feature enhancements organized by category. The
    - Real-time expense-to-time conversion
 
 ### 🚧 In Progress / Partially Complete
-- Privacy Mode (#25) - Missing biometric authentication
 - Natural Language Queries (#30) - Missing complex queries
 
 ### 📋 Next Priority Features
 Based on feasibility and impact:
+1. **Cash Flow Forecasting (#1)** - Natural extension of existing data
+2. **Subscription Audit (#19)** - High value, moderate effort
+3. **Smart Rules Engine (#9)** - Foundation for automation
 
 ## Implementation Considerations
 
