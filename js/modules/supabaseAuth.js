@@ -15,25 +15,56 @@ class SupabaseAuthManager {
      */
     async initializeAuth() {
         try {
-            // Check for password reset FIRST, before anything else
+            // Debug: Log the current URL to see what we're working with
+            debug.log('Current URL:', window.location.href);
+            debug.log('Hash:', window.location.hash);
+            debug.log('Search:', window.location.search);
+            
+            // Check for password reset in both hash and query parameters
             const hashParams = new URLSearchParams(window.location.hash.substring(1));
-            const accessToken = hashParams.get('access_token');
-            const type = hashParams.get('type');
+            const queryParams = new URLSearchParams(window.location.search);
+            
+            // Check hash parameters first (Supabase usually uses hash)
+            let accessToken = hashParams.get('access_token');
+            let type = hashParams.get('type');
+            
+            // If not in hash, check query parameters
+            if (!accessToken) {
+                accessToken = queryParams.get('access_token');
+                type = queryParams.get('type');
+            }
+            
+            debug.log('Access token found:', !!accessToken);
+            debug.log('Type:', type);
             
             if (type === 'recovery' && accessToken) {
                 // We're in password reset mode
                 this.isResettingPassword = true;
-                debug.log('Password reset token detected');
+                debug.log('Password reset mode activated');
+                
+                // Set the session with the recovery token
+                const { data, error } = await this.supabase.auth.setSession({
+                    access_token: accessToken,
+                    refresh_token: hashParams.get('refresh_token') || queryParams.get('refresh_token')
+                });
+                
+                if (error) {
+                    debug.error('Error setting recovery session:', error);
+                } else {
+                    debug.log('Recovery session set successfully');
+                }
+                
                 return; // Don't continue with normal auth flow
             }
             
-            // Get initial session
+            // Get initial session for normal auth flow
             const { data: { session } } = await this.supabase.auth.getSession();
             this.session = session;
             this.user = session?.user || null;
 
             // Listen for auth changes
             this.supabase.auth.onAuthStateChange((event, session) => {
+                debug.log('Auth state change:', event);
                 this.session = session;
                 this.user = session?.user || null;
                 
@@ -43,6 +74,10 @@ class SupabaseAuthManager {
                 } else if (event === 'SIGNED_IN' && !this.isResettingPassword) {
                     // Reload to show app (but not during password reset)
                     window.location.reload();
+                } else if (event === 'PASSWORD_RECOVERY') {
+                    // Handle password recovery event
+                    this.isResettingPassword = true;
+                    debug.log('PASSWORD_RECOVERY event detected');
                 }
             });
         } catch (error) {
@@ -65,17 +100,29 @@ class SupabaseAuthManager {
      * Check if we should show password reset form instead of login
      */
     shouldShowPasswordReset() {
+        // Check both hash and query parameters
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const type = hashParams.get('type');
+        const queryParams = new URLSearchParams(window.location.search);
         
-        return type === 'recovery' && accessToken;
+        const hashAccessToken = hashParams.get('access_token');
+        const hashType = hashParams.get('type');
+        
+        const queryAccessToken = queryParams.get('access_token');
+        const queryType = queryParams.get('type');
+        
+        const shouldReset = (hashType === 'recovery' && hashAccessToken) || 
+                          (queryType === 'recovery' && queryAccessToken) ||
+                          this.isResettingPassword;
+                          
+        debug.log('Should show password reset:', shouldReset);
+        return shouldReset;
     }
 
     /**
      * Show password reset form
      */
     showPasswordResetForm() {
+        debug.log('Showing password reset form');
         document.body.innerHTML = `
             <div class="auth-container">
                 <div class="auth-box">
@@ -235,7 +282,9 @@ class SupabaseAuthManager {
         
         document.getElementById('back-to-login').addEventListener('click', (e) => {
             e.preventDefault();
-            window.location.hash = '';
+            // Clear URL parameters
+            window.history.replaceState({}, document.title, window.location.pathname);
+            this.isResettingPassword = false;
             window.location.reload();
         });
         
@@ -283,9 +332,9 @@ class SupabaseAuthManager {
             
             this.showSuccess('Password updated successfully! Redirecting to login...');
             
-            // Clear the hash and redirect to login after 2 seconds
+            // Clear the URL parameters and redirect to login after 2 seconds
             setTimeout(() => {
-                window.location.hash = '';
+                window.history.replaceState({}, document.title, window.location.pathname);
                 this.isResettingPassword = false;
                 window.location.reload();
             }, 2000);
@@ -301,7 +350,7 @@ class SupabaseAuthManager {
     async requestPasswordReset(email) {
         try {
             const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: 'https://ryokushen-financial.netlify.app',
+                redirectTo: window.location.origin,
             });
             
             if (error) throw error;
@@ -316,7 +365,7 @@ class SupabaseAuthManager {
      * Show login screen
      */
     showAuthScreen() {
-        // Check if we should show password reset instead
+        // Double-check if we should show password reset instead
         if (this.shouldShowPasswordReset()) {
             this.showPasswordResetForm();
             return;
@@ -672,7 +721,10 @@ class SupabaseAuthManager {
         try {
             const { data, error } = await this.supabase.auth.signUp({
                 email,
-                password
+                password,
+                options: {
+                    emailRedirectTo: window.location.origin
+                }
             });
             
             if (error) throw error;
@@ -699,7 +751,7 @@ class SupabaseAuthManager {
             const { error } = await this.supabase.auth.signInWithOtp({
                 email,
                 options: {
-                    emailRedirectTo: 'https://ryokushen-financial.netlify.app'
+                    emailRedirectTo: window.location.origin
                 }
             });
             
