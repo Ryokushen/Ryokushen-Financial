@@ -24,8 +24,8 @@ import { initializeTransactionTimePreview } from './modules/transactionTimePrevi
 import { initializePrivacySettings } from './modules/privacySettings.js';
 
 // Check for password reset token first
-const hashParams = new URLSearchParams(window.location.hash.substring(1));
-const isPasswordReset = hashParams.get('type') === 'recovery' && hashParams.get('access_token');
+const hash = window.location.hash.substring(1);
+const isPasswordReset = hash.includes('recovery');
 
 if (isPasswordReset) {
     // Handle password reset flow - let supabaseAuth handle it

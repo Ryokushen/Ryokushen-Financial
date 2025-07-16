@@ -52,14 +52,24 @@ class SupabaseAuthManager {
      */
     async handlePasswordReset() {
         // Check if we're coming from a password reset email
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const type = hashParams.get('type');
+        const hash = window.location.hash.substring(1);
         
-        if (type === 'recovery' && accessToken) {
-            // User clicked password reset link
-            this.showPasswordResetForm();
+        // Check for recovery in the hash (e.g., #recovery&access_token=...)
+        if (hash.includes('recovery')) {
+            // Parse the hash parameters
+            const hashParams = new URLSearchParams(hash);
+            const accessToken = hashParams.get('access_token');
+            const type = hashParams.get('type');
+            
+            // Show password reset form if we have recovery type or just recovery in URL
+            if ((type === 'recovery' && accessToken) || hash.startsWith('recovery')) {
+                // User clicked password reset link
+                this.showPasswordResetForm();
+                return true; // Indicate that we handled the reset
+            }
         }
+        
+        return false; // No password reset to handle
     }
 
     /**
@@ -274,8 +284,10 @@ class SupabaseAuthManager {
      */
     async requestPasswordReset(email) {
         try {
+            // Use window.location.origin to support both local and production environments
+            const baseUrl = window.location.origin;
             const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: 'https://ryokushen-financial.netlify.app',
+                redirectTo: `${baseUrl}/#recovery`,
             });
             
             if (error) throw error;
