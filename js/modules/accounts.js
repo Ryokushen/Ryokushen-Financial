@@ -204,13 +204,42 @@ export function populateAccountDropdowns(appData) {
         document.getElementById("recurring-account")
     ];
     
+    // Get active cash accounts
     const activeAccounts = appData.cashAccounts.filter(a => a.isActive);
-    const optionsHtml = activeAccounts.map(account => `<option value="${account.id}">${escapeHtml(account.name)}</option>`).join('');
-
+    
+    // Get credit card accounts (type = 'Credit Card')
+    const creditCardAccounts = appData.debtAccounts.filter(a => a.type === 'Credit Card' && a.isActive);
+    
+    // Build options HTML with optgroups for better organization
+    let optionsHtml = '';
+    
+    // Add cash accounts
+    if (activeAccounts.length > 0) {
+        optionsHtml += '<optgroup label="Cash Accounts">';
+        optionsHtml += activeAccounts.map(account => 
+            `<option value="cash_${account.id}">${escapeHtml(account.name)}</option>`
+        ).join('');
+        optionsHtml += '</optgroup>';
+    }
+    
+    // Add credit card accounts (only for transaction-account selector)
+    const transactionAccountSelect = document.getElementById("transaction-account");
+    
     selectors.forEach(select => {
         if (select) {
             const currentValue = select.value;
-            select.innerHTML = `<option value="" disabled selected>— Select account —</option>${optionsHtml}`;
+            let selectOptionsHtml = optionsHtml;
+            
+            // Only add credit cards to the transaction account dropdown
+            if (select === transactionAccountSelect && creditCardAccounts.length > 0) {
+                selectOptionsHtml += '<optgroup label="Credit Cards">';
+                selectOptionsHtml += creditCardAccounts.map(account => 
+                    `<option value="cc_${account.id}">${escapeHtml(account.name)} (CC)</option>`
+                ).join('');
+                selectOptionsHtml += '</optgroup>';
+            }
+            
+            select.innerHTML = `<option value="" disabled selected>— Select account —</option>${selectOptionsHtml}`;
             if (currentValue) select.value = currentValue;
         }
     });

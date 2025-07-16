@@ -151,14 +151,23 @@ function editTransaction(id, appState) {
     // Populate form with transaction data using formUtils
     const formData = {
         date: transaction.date,
-        account: transaction.account_id || '',
+        account: '', // Will be set below with proper format
         category: transaction.category,
         description: transaction.description,
         amount: transaction.amount,
         cleared: transaction.cleared || false
     };
     
-    // Add debt account if applicable
+    // Set the account value in the correct format
+    if (transaction.debt_account_id && !transaction.account_id) {
+        // This is a credit card transaction
+        formData.account = `cc_${transaction.debt_account_id}`;
+    } else if (transaction.account_id) {
+        // This is a cash account transaction
+        formData.account = `cash_${transaction.account_id}`;
+    }
+    
+    // Add debt account if applicable (for old debt category transactions)
     if (transaction.category === "Debt" && transaction.debt_account_id) {
         const debtAccount = appState.appData.debtAccounts.find(d => d.id === transaction.debt_account_id);
         if (debtAccount) {
@@ -249,14 +258,31 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
     clearFormErrors('transaction-form');
 
     try {
+        // Get the selected account value (format: "cash_123" or "cc_123")
+        const accountValue = document.getElementById("transaction-account")?.value;
+        let accountId = null;
+        let debtAccountId = null;
+        let isCredit = false;
+        
+        // Parse the account type and ID
+        if (accountValue) {
+            const [accountType, id] = accountValue.split('_');
+            if (accountType === 'cash') {
+                accountId = parseInt(id);
+            } else if (accountType === 'cc') {
+                debtAccountId = parseInt(id);
+                isCredit = true;
+            }
+        }
+        
         const transactionData = {
             date: document.getElementById("transaction-date")?.value,
-            account_id: parseInt(document.getElementById("transaction-account")?.value) || null,
+            account_id: accountId,
             category: document.getElementById("transaction-category")?.value,
             description: document.getElementById("transaction-description")?.value,
             amount: safeParseFloat(document.getElementById("transaction-amount")?.value),
             cleared: document.getElementById("transaction-cleared")?.checked,
-            debt_account_id: null
+            debt_account_id: debtAccountId
         };
 
         // Validate using validation schema
@@ -271,8 +297,18 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
             return;
         }
 
-        // Handle debt category with sign guidance
-        if (transactionData.category === "Debt") {
+        // Handle credit card transactions
+        if (isCredit) {
+            // For credit card transactions, automatically set category if not already Debt
+            if (transactionData.category !== "Debt") {
+                // Keep the selected category but ensure the debt account is set
+                // This allows proper categorization of credit card purchases
+            }
+            
+            // Credit card: positive = purchase (increase balance), negative = payment (decrease balance)
+            // This is intuitive - enter purchases as positive, payments as negative
+        } else if (transactionData.category === "Debt") {
+            // Old debt category logic for backwards compatibility
             const debtAccountName = document.getElementById("debt-account-select")?.value;
             if (!debtAccountName) {
                 showError("Please select a debt account for this payment.");
@@ -291,7 +327,7 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
                 return;
             }
         } else {
-            // Non-debt transactions need an account
+            // Cash transactions need an account
             if (!transactionData.account_id || isNaN(transactionData.account_id)) {
                 showError("Please select a valid account.");
                 return;
@@ -326,7 +362,8 @@ async function addNewTransaction(transactionData, appState, onUpdate) {
         updateCashAccountBalance(newTransaction.account_id, newTransaction.amount, appState);
     }
 
-    if (newTransaction.category === 'Debt' && newTransaction.debt_account_id) {
+    // Update credit card balance if it's a credit card transaction
+    if (newTransaction.debt_account_id) {
         await updateDebtAccountBalance(newTransaction.debt_account_id, newTransaction.amount, appState);
     }
 
