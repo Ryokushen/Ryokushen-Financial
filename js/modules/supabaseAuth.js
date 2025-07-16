@@ -7,6 +7,14 @@ class SupabaseAuthManager {
         this.session = null;
         this.supabase = window.supabaseClient;
         this.isResettingPassword = false;
+        this.resetToken = null;
+        this.refreshToken = null;
+        
+        // Store tokens globally for password reset
+        window.passwordResetTokens = {
+            access: null,
+            refresh: null
+        };
         
         // Check for password reset immediately
         this.checkForPasswordReset();
@@ -26,35 +34,44 @@ class SupabaseAuthManager {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const queryParams = new URLSearchParams(window.location.search);
         
-        // Also check if the URL contains these patterns
-        const urlContainsRecovery = fullUrl.includes('type=recovery') || 
-                                  fullUrl.includes('type%3Drecovery') ||
-                                  fullUrl.includes('#recovery');
-        const urlContainsToken = fullUrl.includes('access_token=') || 
-                               fullUrl.includes('access_token%3D');
+        // Extract tokens from all possible locations
+        let accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+        let refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+        let type = hashParams.get('type') || queryParams.get('type');
         
-        // Check all possible locations for the token
-        const accessTokenFromHash = hashParams.get('access_token');
-        const typeFromHash = hashParams.get('type');
-        const accessTokenFromQuery = queryParams.get('access_token');
-        const typeFromQuery = queryParams.get('type');
+        // Also check for encoded parameters in the URL
+        if (!accessToken && fullUrl.includes('access_token')) {
+            // Try to extract from URL even if encoding is messed up
+            const match = fullUrl.match(/access_token=([^&]+)/);
+            if (match) accessToken = decodeURIComponent(match[1]);
+        }
         
-        debug.log('URL contains recovery:', urlContainsRecovery);
-        debug.log('URL contains token:', urlContainsToken);
-        debug.log('Hash params:', Object.fromEntries(hashParams));
-        debug.log('Query params:', Object.fromEntries(queryParams));
+        if (!type && fullUrl.includes('type')) {
+            const match = fullUrl.match(/type=([^&]+)/);
+            if (match) type = decodeURIComponent(match[1]);
+        }
         
-        // Set password reset mode if any indication is found
-        if ((typeFromHash === 'recovery' && accessTokenFromHash) ||
-            (typeFromQuery === 'recovery' && accessTokenFromQuery) ||
-            (urlContainsRecovery && urlContainsToken)) {
-            
+        debug.log('Extracted tokens:', {
+            accessToken: accessToken ? 'found' : 'not found',
+            refreshToken: refreshToken ? 'found' : 'not found',
+            type: type
+        });
+        
+        // Set password reset mode if recovery token is found
+        if (type === 'recovery' && accessToken) {
             this.isResettingPassword = true;
-            debug.log('PASSWORD RESET MODE ACTIVATED!');
+            this.resetToken = accessToken;
+            this.refreshToken = refreshToken;
             
-            // Store the token for later use
-            this.resetToken = accessTokenFromHash || accessTokenFromQuery;
-            this.refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+            // Store tokens globally
+            window.passwordResetTokens = {
+                access: accessToken,
+                refresh: refreshToken
+            };
+            
+            debug.log('PASSWORD RESET MODE ACTIVATED!');
+            debug.log('Access token found:', true);
+            debug.log('Refresh token found:', !!refreshToken);
         }
     }
 
@@ -63,22 +80,10 @@ class SupabaseAuthManager {
      */
     async initializeAuth() {
         try {
-            // If we're in password reset mode, set the session
-            if (this.isResettingPassword && this.resetToken) {
-                debug.log('Setting recovery session with token');
-                
-                const { data, error } = await this.supabase.auth.setSession({
-                    access_token: this.resetToken,
-                    refresh_token: this.refreshToken
-                });
-                
-                if (error) {
-                    debug.error('Error setting recovery session:', error);
-                } else {
-                    debug.log('Recovery session set successfully');
-                }
-                
-                return; // Don't continue with normal auth flow
+            // Skip normal auth flow if in password reset mode
+            if (this.isResettingPassword) {
+                debug.log('Skipping normal auth flow - password reset mode active');
+                return;
             }
             
             // Get initial session for normal auth flow
@@ -124,12 +129,6 @@ class SupabaseAuthManager {
      * Check if we should show password reset form instead of login
      */
     shouldShowPasswordReset() {
-        // Re-check in case it wasn't detected initially
-        if (!this.isResettingPassword) {
-            this.checkForPasswordReset();
-        }
-        
-        debug.log('Should show password reset:', this.isResettingPassword);
         return this.isResettingPassword;
     }
 
@@ -138,6 +137,12 @@ class SupabaseAuthManager {
      */
     showPasswordResetForm() {
         debug.log('Showing password reset form');
+        
+        // Store current tokens in a more persistent way
+        const tokens = {
+            access: this.resetToken,
+            refresh: this.refreshToken
+        };
         
         // Clear the entire page and show only the reset form
         document.documentElement.innerHTML = `
@@ -217,6 +222,19 @@ class SupabaseAuthManager {
                     border-color: #3b82f6;
                 }
                 
+                .password-strength {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin-top: 8px;
+                }
+                
+                .strength-icon {
+                    width: 20px;
+                    height: 20px;
+                    display: inline-block;
+                }
+                
                 .btn {
                     width: 100%;
                     padding: 12px 24px;
@@ -292,6 +310,10 @@ class SupabaseAuthManager {
                             <label for="new-password">New Password</label>
                             <input type="password" id="new-password" class="form-control" 
                                    placeholder="Enter new password" required minlength="8">
+                            <div class="password-strength">
+                                <span class="strength-icon">🔒</span>
+                                <small style="color: #666;">Minimum 8 characters</small>
+                            </div>
                         </div>
                         
                         <div class="form-group">
@@ -313,37 +335,144 @@ class SupabaseAuthManager {
                     <div id="auth-success" class="success-message"></div>
                 </div>
             </div>
+            
+            <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+            <script>
+                // Initialize everything in the page context
+                (function() {
+                    console.log('Password reset detected - intercepting page load');
+                    
+                    // Re-initialize Supabase client
+                    const supabaseUrl = 'https://cqhqobwdpwxnxmyuuvnp.supabase.co';
+                    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxaHFvYndkcHd4bnhteXV1dm5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY1NjA3NzEsImV4cCI6MjA1MjEzNjc3MX0.0Fo9cPA6XJabKHVi4QiJJYNhSre6hRG7RQtqKdKrJro';
+                    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+                    
+                    // Extract tokens from URL
+                    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                    const queryParams = new URLSearchParams(window.location.search);
+                    
+                    const accessToken = hashParams.get('access_token') || queryParams.get('access_token') || '${tokens.access || ''}';
+                    const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token') || '${tokens.refresh || ''}';
+                    
+                    console.log('Access token found:', !!accessToken);
+                    console.log('Refresh token found:', !!refreshToken);
+                    
+                    // Set the session with the recovery token
+                    async function setupSession() {
+                        if (accessToken) {
+                            try {
+                                const { data, error } = await supabase.auth.setSession({
+                                    access_token: accessToken,
+                                    refresh_token: refreshToken
+                                });
+                                
+                                if (error) {
+                                    console.error('Error setting session:', error);
+                                    showError('Session setup failed: ' + error.message);
+                                } else {
+                                    console.log('Session set successfully');
+                                }
+                            } catch (err) {
+                                console.error('Failed to set session:', err);
+                                showError('Failed to initialize password reset session');
+                            }
+                        }
+                    }
+                    
+                    // Call setup session immediately
+                    setupSession();
+                    
+                    // Form submission handler
+                    document.getElementById('reset-form').addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        
+                        const newPassword = document.getElementById('new-password').value;
+                        const confirmPassword = document.getElementById('confirm-password').value;
+                        const button = document.getElementById('reset-password-btn');
+                        
+                        if (!newPassword || !confirmPassword) {
+                            showError('Please fill in both password fields');
+                            return;
+                        }
+                        
+                        if (newPassword !== confirmPassword) {
+                            showError('Passwords do not match');
+                            return;
+                        }
+                        
+                        if (newPassword.length < 8) {
+                            showError('Password must be at least 8 characters');
+                            return;
+                        }
+                        
+                        // Disable button while processing
+                        button.disabled = true;
+                        button.textContent = 'Updating...';
+                        
+                        try {
+                            // Ensure session is set before updating
+                            await setupSession();
+                            
+                            // Update the password
+                            const { data, error } = await supabase.auth.updateUser({
+                                password: newPassword
+                            });
+                            
+                            if (error) {
+                                throw error;
+                            }
+                            
+                            showSuccess('Password updated successfully! Redirecting to login...');
+                            
+                            // Clear the URL parameters and redirect
+                            setTimeout(() => {
+                                window.location.href = window.location.origin + window.location.pathname;
+                            }, 2000);
+                            
+                        } catch (error) {
+                            console.error('Password update error:', error);
+                            showError(error.message || 'Failed to update password. Please try again.');
+                            button.disabled = false;
+                            button.textContent = 'Update Password';
+                        }
+                    });
+                    
+                    // Back to login handler
+                    document.getElementById('back-to-login').addEventListener('click', (e) => {
+                        e.preventDefault();
+                        window.location.href = window.location.origin + window.location.pathname;
+                    });
+                    
+                    // Helper functions
+                    function showError(message) {
+                        const errorDiv = document.getElementById('auth-error');
+                        const successDiv = document.getElementById('auth-success');
+                        
+                        if (successDiv) successDiv.style.display = 'none';
+                        if (errorDiv) {
+                            errorDiv.textContent = message;
+                            errorDiv.style.display = 'block';
+                        }
+                    }
+                    
+                    function showSuccess(message) {
+                        const errorDiv = document.getElementById('auth-error');
+                        const successDiv = document.getElementById('auth-success');
+                        
+                        if (errorDiv) errorDiv.style.display = 'none';
+                        if (successDiv) {
+                            successDiv.textContent = message;
+                            successDiv.style.display = 'block';
+                        }
+                    }
+                    
+                    // Focus on first input
+                    document.getElementById('new-password').focus();
+                })();
+            </script>
         </body>
         </html>
         `;
-        
-        // Re-attach the Supabase client script
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-        document.head.appendChild(script);
-        
-        script.onload = () => {
-            // Re-initialize Supabase client
-            window.supabaseClient = window.supabase.createClient(
-                'https://cqhqobwdpwxnxmyuuvnp.supabase.co',
-                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxaHFvYndkcHd4bnhteXV1dm5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY1NjA3NzEsImV4cCI6MjA1MjEzNjc3MX0.0Fo9cPA6XJabKHVi4QiJJYNhSre6hRG7RQtqKdKrJro'
-            );
-            
-            // Add event handlers
-            document.getElementById('reset-form').addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.updatePassword();
-            });
-            
-            document.getElementById('back-to-login').addEventListener('click', (e) => {
-                e.preventDefault();
-                // Clear URL and go back to main page
-                window.location.href = window.location.origin;
-            });
-            
-            // Focus on first input
-            document.getElementById('new-password').focus();
-        };
     }
 
     /**
