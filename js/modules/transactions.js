@@ -299,14 +299,18 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
 
         // Handle credit card transactions
         if (isCredit) {
-            // For credit card transactions, automatically set category if not already Debt
-            if (transactionData.category !== "Debt") {
-                // Keep the selected category but ensure the debt account is set
-                // This allows proper categorization of credit card purchases
-            }
+            // For display consistency: all expenses should be negative, all payments/income positive
+            // User enters purchases as positive amounts, but we store them as negative
+            // User enters payments as negative amounts, but we store them as positive
+            // This creates visual consistency while maintaining correct balance calculations
             
-            // Credit card: positive = purchase (increase balance), negative = payment (decrease balance)
-            // This is intuitive - enter purchases as positive, payments as negative
+            if (transactionData.amount > 0) {
+                // This is a purchase/charge - convert to negative for display consistency
+                transactionData.amount = -Math.abs(transactionData.amount);
+            } else if (transactionData.amount < 0) {
+                // This is a payment - convert to positive for display consistency
+                transactionData.amount = Math.abs(transactionData.amount);
+            }
         } else if (transactionData.category === "Debt") {
             // Old debt category logic for backwards compatibility
             const debtAccountName = document.getElementById("debt-account-select")?.value;
@@ -470,7 +474,12 @@ function updateCashAccountBalance(accountId, amount, appState) {
 async function updateDebtAccountBalance(debtAccountId, amount, appState) {
     const debtAccount = appState.appData.debtAccounts.find(d => d.id === debtAccountId);
     if (debtAccount) {
-        const newBalance = addMoney(debtAccount.balance, amount);
+        // With new sign convention:
+        // - Purchases are stored as negative but increase debt balance
+        // - Payments are stored as positive but decrease debt balance
+        // So we need to negate the amount for balance calculation
+        const balanceChange = -amount;
+        const newBalance = addMoney(debtAccount.balance, balanceChange);
         await db.updateDebtBalance(debtAccount.id, newBalance);
         debtAccount.balance = newBalance;
     }
@@ -545,23 +554,10 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
             }
         }
 
-        // FIXED: Determine transaction color based on whether it's a cash or credit card transaction
-        let amountClass;
-        let displayAmount;
-
-        if (t.account_id) {
-            // Regular cash account transaction: positive = income (green), negative = expense (red)
-            amountClass = t.amount >= 0 ? 'text-success' : 'text-error';
-            displayAmount = formatCurrency(t.amount);
-        } else if (t.debt_account_id) {
-            // Credit card transaction: positive = expense/debt increase (red), negative = payment/debt decrease (green)
-            amountClass = t.amount >= 0 ? 'text-error' : 'text-success';
-            displayAmount = formatCurrency(t.amount);
-        } else {
-            // Fallback for transactions without proper account assignment
-            amountClass = t.amount >= 0 ? 'text-success' : 'text-error';
-            displayAmount = formatCurrency(t.amount);
-        }
+        // Consistent color logic for all transactions:
+        // Positive = income/payment (green), Negative = expense (red)
+        const amountClass = t.amount >= 0 ? 'text-success' : 'text-error';
+        const displayAmount = formatCurrency(t.amount);
 
         // Highlight transaction being edited
         const isEditing = editingTransactionId === t.id;
@@ -797,19 +793,10 @@ function createTransactionRow(t, appData) {
         }
     }
     
-    let amountClass;
-    let displayAmount;
-    
-    if (t.account_id) {
-        amountClass = t.amount >= 0 ? 'text-success' : 'text-error';
-        displayAmount = formatCurrency(t.amount);
-    } else if (t.debt_account_id) {
-        amountClass = t.amount >= 0 ? 'text-error' : 'text-success';
-        displayAmount = formatCurrency(t.amount);
-    } else {
-        amountClass = t.amount >= 0 ? 'text-success' : 'text-error';
-        displayAmount = formatCurrency(t.amount);
-    }
+    // Consistent color logic for all transactions:
+    // Positive = income/payment (green), Negative = expense (red)
+    const amountClass = t.amount >= 0 ? 'text-success' : 'text-error';
+    const displayAmount = formatCurrency(t.amount);
     
     const isEditing = editingTransactionId === t.id;
     if (isEditing) {

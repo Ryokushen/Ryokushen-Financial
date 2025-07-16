@@ -213,6 +213,9 @@ import { initializePrivacySettings } from './modules/privacySettings.js';
 
             await migrateDebtTransactions(appState.appData.transactions, appState.appData.debtAccounts);
             
+            // Run credit card sign migration
+            await migrateCreditCardTransactionSigns(appState.appData.transactions);
+            
             // Build data indexes for fast lookups
             dataIndex.rebuildIndexes(appState.appData);
         } catch (error) {
@@ -700,5 +703,49 @@ import { initializePrivacySettings } from './modules/privacySettings.js';
                 debug.warn(`Migration: No matching debt account for transaction ${t.id}`);
             }
         }
+    }
+    
+    async function migrateCreditCardTransactionSigns(transactions) {
+        // One-time migration to fix credit card transaction signs
+        // This ensures all expenses are negative and all payments are positive
+        const db = (await import('./database.js')).default;
+        const migrationKey = 'creditCardSignMigration_v1';
+        
+        // Check if migration has already been run
+        if (localStorage.getItem(migrationKey) === 'completed') {
+            return;
+        }
+        
+        debug.log('Running credit card transaction sign migration...');
+        
+        // Find all credit card transactions that need sign adjustment
+        const ccTransactions = transactions.filter(t => t.debt_account_id && !t.account_id);
+        let migratedCount = 0;
+        
+        for (const t of ccTransactions) {
+            let needsUpdate = false;
+            let newAmount = t.amount;
+            
+            // If it's a positive amount (old system: debt increase), make it negative (expense)
+            if (t.amount > 0) {
+                newAmount = -Math.abs(t.amount);
+                needsUpdate = true;
+            }
+            // If it's a negative amount (old system: payment), make it positive
+            else if (t.amount < 0) {
+                newAmount = Math.abs(t.amount);
+                needsUpdate = true;
+            }
+            
+            if (needsUpdate) {
+                t.amount = newAmount;
+                await db.updateTransaction(t.id, { amount: newAmount });
+                migratedCount++;
+            }
+        }
+        
+        // Mark migration as completed
+        localStorage.setItem(migrationKey, 'completed');
+        debug.log(`Credit card sign migration completed. Updated ${migratedCount} transactions.`);
     }
 })(); // Close the async IIFE
