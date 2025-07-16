@@ -14,8 +14,12 @@ import { timeBudgets } from './timeBudgets.js';
 let currentCategoryFilter = "";
 let editingTransactionId = null;
 let originalTransaction = null;
+let appStateReference = null;
 
 export function setupEventListeners(appState, onUpdate) {
+    // Store reference to appState for use in other functions
+    appStateReference = appState;
+    
     document.getElementById("transaction-form")?.addEventListener("submit", (e) => handleTransactionSubmit(e, appState, onUpdate));
 
     document.getElementById("transaction-category")?.addEventListener("change", function () {
@@ -45,6 +49,7 @@ export function setupEventListeners(appState, onUpdate) {
 
     // Cancel edit button
     document.getElementById("cancel-edit-btn")?.addEventListener('click', () => {
+        console.log('Cancel edit button clicked');
         cancelEdit();
     });
 
@@ -124,11 +129,13 @@ async function setupVoiceInput() {
 }
 
 function editTransaction(id, appState) {
+    debug.log('editTransaction called with id:', id);
     const transaction = appState.appData.transactions.find(t => t.id === id);
     if (!transaction) {
         showError("Transaction not found.");
         return;
     }
+    debug.log('Found transaction:', transaction);
 
     // Store the original transaction for reverting changes
     originalTransaction = { ...transaction };
@@ -136,11 +143,13 @@ function editTransaction(id, appState) {
 
     // Update form title and button text
     const formTitle = document.querySelector('.card__header h3');
+    debug.log('Form title element:', formTitle);
     if (formTitle) {
         formTitle.textContent = 'Edit Transaction';
     }
 
     const submitBtn = document.querySelector('#transaction-form button[type="submit"]');
+    debug.log('Submit button element:', submitBtn);
     if (submitBtn) {
         submitBtn.textContent = 'Update Transaction';
     }
@@ -162,6 +171,17 @@ function editTransaction(id, appState) {
     if (transaction.debt_account_id && !transaction.account_id) {
         // This is a credit card transaction
         formData.account = `cc_${transaction.debt_account_id}`;
+        
+        // Reverse the sign conversion for user-friendly editing
+        // Purchases are stored as negative but should show as positive
+        // Payments are stored as positive but should show as negative
+        if (transaction.amount < 0) {
+            // Stored purchase (negative) -> show as positive
+            formData.amount = Math.abs(transaction.amount);
+        } else if (transaction.amount > 0) {
+            // Stored payment (positive) -> show as negative
+            formData.amount = -Math.abs(transaction.amount);
+        }
     } else if (transaction.account_id) {
         // This is a cash account transaction
         formData.account = `cash_${transaction.account_id}`;
@@ -175,7 +195,33 @@ function editTransaction(id, appState) {
         }
     }
     
-    populateFormFromData('transaction-form', formData, 'transaction-');
+    // Debug log to check form data
+    debug.log('Editing transaction with formData:', formData);
+    
+    // Check if form fields exist before populating
+    const dateField = document.getElementById('transaction-date');
+    const accountField = document.getElementById('transaction-account');
+    const categoryField = document.getElementById('transaction-category');
+    const descriptionField = document.getElementById('transaction-description');
+    const amountField = document.getElementById('transaction-amount');
+    const clearedField = document.getElementById('transaction-cleared');
+    
+    debug.log('Form fields found:', {
+        date: !!dateField,
+        account: !!accountField,
+        category: !!categoryField,
+        description: !!descriptionField,
+        amount: !!amountField,
+        cleared: !!clearedField
+    });
+    
+    // Populate fields manually if they exist
+    if (dateField) dateField.value = formData.date;
+    if (accountField) accountField.value = formData.account;
+    if (categoryField) categoryField.value = formData.category;
+    if (descriptionField) descriptionField.value = formData.description;
+    if (amountField) amountField.value = formData.amount;
+    if (clearedField) clearedField.checked = formData.cleared;
 
     // Handle debt account visibility
     const debtGroup = document.getElementById("debt-account-group");
@@ -193,6 +239,7 @@ function editTransaction(id, appState) {
 }
 
 function cancelEdit() {
+    console.log('cancelEdit called');
     editingTransactionId = null;
     originalTransaction = null;
 
@@ -214,6 +261,12 @@ function cancelEdit() {
     const form = document.getElementById("transaction-form");
     if (form) {
         form.reset();
+        
+        // Reset the account dropdown to default
+        const accountSelect = document.getElementById("transaction-account");
+        if (accountSelect) {
+            accountSelect.value = "";
+        }
     }
     const dateInput = document.getElementById("transaction-date");
     if (dateInput) {
@@ -222,6 +275,11 @@ function cancelEdit() {
     const debtGroup = document.getElementById("debt-account-group");
     if (debtGroup) {
         debtGroup.style.display = "none";
+    }
+
+    // Re-render transactions to remove the highlighted row
+    if (appStateReference) {
+        renderTransactions(appStateReference);
     }
 
     announceToScreenReader("Edit cancelled");
@@ -240,6 +298,12 @@ function showCancelButton() {
         cancelBtn.textContent = 'Cancel Edit';
         cancelBtn.style.marginLeft = '10px';
         submitBtn.parentNode.insertBefore(cancelBtn, submitBtn.nextSibling);
+        
+        // Add event listener to the newly created button
+        cancelBtn.addEventListener('click', () => {
+            console.log('Cancel edit button clicked (from dynamic creation)');
+            cancelEdit();
+        });
     }
     cancelBtn.style.display = 'inline-block';
 }
