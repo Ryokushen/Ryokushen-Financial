@@ -189,13 +189,13 @@ async function handleRecurringSubmit(event, appState, onUpdate) {
             return;
         }
 
-        // UPDATED: Build bill data with payment method support
+        // FIXED: Build bill data using formData object for amount and nextDue
         const billData = {
-            name: document.getElementById("recurring-name").value.trim(),
-            category: document.getElementById("recurring-category").value,
-            amount: amount,
-            frequency: document.getElementById("recurring-frequency").value,
-            next_due: nextDue,
+            name: formData.name,
+            category: formData.category,
+            amount: formData.amount,  // Fixed: was 'amount' (undefined), now 'formData.amount'
+            frequency: formData.frequency,
+            next_due: formData.nextDue,  // Fixed: was 'nextDue' (undefined), now 'formData.nextDue'
             payment_method: paymentMethod,
             account_id: accountId,
             debt_account_id: debtAccountId,
