@@ -1,17 +1,22 @@
 # Voice Commands Documentation
 
+> Last Updated: July 16, 2025
+
 This document lists all voice commands available in Ryokushen Financial Tracker. Access voice commands using the microphone button in the header or press **Ctrl/Cmd+K**.
 
 ## Table of Contents
 - [Financial Queries](#financial-queries)
 - [Spending Analysis](#spending-analysis)
+- [Time Budget Queries](#time-budget-queries)
 - [Bills & Recurring Charges](#bills--recurring-charges)
 - [Goals & Savings](#goals--savings)
 - [Search & Discovery](#search--discovery)
 - [Navigation](#navigation)
 - [Quick Actions](#quick-actions)
 - [Settings & Privacy](#settings--privacy)
+- [Biometric Security](#biometric-security)
 - [View Filters](#view-filters)
+- [Predictive Analytics](#predictive-analytics)
 - [Help](#help)
 
 ## Financial Queries
@@ -89,6 +94,25 @@ This document lists all voice commands available in Ryokushen Financial Tracker.
 - "Show unusual transactions"
 - "Find suspicious activity"
 - "Detect anomalies in my spending"
+
+## Time Budget Queries
+
+### Work Time Cost Analysis
+- "How many hours of work was my last purchase?"
+- "How much time did my last transaction cost?"
+- "Time cost of my last expense"
+- "How many hours did I work for groceries?"
+- "How many hours did I work on dining this month?"
+- "Time cost for entertainment"
+- "How much work was that coffee?"
+- "Show time worked for shopping this week"
+
+### Time Budget Status
+- "Are time budgets enabled?"
+- "Show my time budget settings"
+- "What's my hourly wage?"
+- "Enable time budgets"
+- "Go to time budget settings"
 
 ## Bills & Recurring Charges
 
@@ -187,6 +211,36 @@ This document lists all voice commands available in Ryokushen Financial Tracker.
 - "Toggle privacy"
 - "Panic mode"
 - "Panic button"
+
+## Biometric Security
+
+### Authentication Status
+- "Authentication status"
+- "Privacy security status"
+- "What security is enabled?"
+- "Security status"
+
+### Biometric Control
+- "Biometric status"
+- "Is biometric enabled?"
+- "Enable biometric authentication"
+- "Turn on biometric"
+- "Activate biometric"
+- "Set up biometric"
+- "Disable biometric authentication"
+- "Turn off biometric"
+- "Deactivate biometric"
+
+### Master Password
+- "Master password status"
+- "Is master password set?"
+- "Remove master password"
+
+### Help & Information
+- "Biometric help"
+- "What is biometric authentication?"
+- "Explain biometric security"
+- "How does privacy security work?"
 
 ## View Filters
 
