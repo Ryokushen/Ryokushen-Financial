@@ -38,6 +38,9 @@ export function setupEventListeners(appState, onUpdate) {
     document.getElementById("filter-category")?.addEventListener("change", debouncedFilter);
 
     document.getElementById("transactions-table-body")?.addEventListener('click', (event) => {
+        // Only handle clicks within the transactions table
+        if (!event.target.closest('#transactions-table-body')) return;
+        
         const transactionId = parseInt(event.target.getAttribute('data-id'));
 
         if (event.target.classList.contains('btn-delete')) {
