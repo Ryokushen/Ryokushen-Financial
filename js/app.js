@@ -100,6 +100,7 @@ import { initializePrivacySettings } from './modules/privacySettings.js';
         try {
             // Add user info and logout button to header
             addUserInfoToHeader();
+    checkEmailVerification();
             
             await initializeApp();
             setupEventListeners();
@@ -229,6 +230,118 @@ import { initializePrivacySettings } from './modules/privacySettings.js';
         }
     }
 
+    // Function to check email verification status
+    function checkEmailVerification() {
+        if (!supabaseAuth.isAuthenticated()) return;
+        
+        if (!supabaseAuth.isEmailVerified()) {
+            // Create verification banner
+            const banner = document.createElement('div');
+            banner.id = 'email-verification-banner';
+            banner.className = 'verification-banner';
+            banner.innerHTML = `
+                <div class="verification-content">
+                    <span class="verification-icon">⚠️</span>
+                    <span class="verification-text">Please verify your email address. Check your inbox for a verification link.</span>
+                    <button id="resend-verification" class="btn btn--small">Resend Email</button>
+                </div>
+            `;
+            
+            // Add styles
+            const style = document.createElement('style');
+            style.textContent = `
+                .verification-banner {
+                    background: var(--color-warning, #FFA500);
+                    color: white;
+                    padding: 12px 20px;
+                    text-align: center;
+                    position: sticky;
+                    top: 0;
+                    z-index: 1000;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                
+                .verification-content {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 12px;
+                    max-width: 800px;
+                    margin: 0 auto;
+                }
+                
+                .verification-icon {
+                    font-size: 20px;
+                }
+                
+                .verification-text {
+                    flex: 1;
+                    font-size: 14px;
+                }
+                
+                #resend-verification {
+                    background: white;
+                    color: var(--color-warning, #FFA500);
+                    border: none;
+                    padding: 6px 16px;
+                    font-size: 13px;
+                    font-weight: 500;
+                }
+                
+                #resend-verification:hover {
+                    background: rgba(255, 255, 255, 0.9);
+                }
+                
+                @media (max-width: 768px) {
+                    .verification-content {
+                        flex-wrap: wrap;
+                        text-align: center;
+                    }
+                    
+                    .verification-text {
+                        width: 100%;
+                        margin-bottom: 8px;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Insert banner at the top of the body
+            document.body.insertBefore(banner, document.body.firstChild);
+            
+            // Add resend handler
+            document.getElementById('resend-verification').addEventListener('click', async () => {
+                const btn = document.getElementById('resend-verification');
+                const originalText = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = 'Sending...';
+                
+                try {
+                    const user = supabaseAuth.getUser();
+                    const { error } = await supabaseAuth.supabase.auth.resend({
+                        type: 'signup',
+                        email: user.email,
+                    });
+                    
+                    if (error) throw error;
+                    
+                    btn.textContent = 'Email Sent!';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }, 3000);
+                } catch (error) {
+                    console.error('Failed to resend verification email:', error);
+                    btn.textContent = 'Failed';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }, 3000);
+                }
+            });
+        }
+    }
+
     // Function to add user info and logout button to header
     function addUserInfoToHeader() {
         const header = document.querySelector('.header');
@@ -236,6 +349,16 @@ import { initializePrivacySettings } from './modules/privacySettings.js';
         
         const user = supabaseAuth.getUser();
         if (!user) return;
+        
+        // Create a wrapper for the header content
+        const headerContent = document.createElement('div');
+        headerContent.className = 'header-content';
+        
+        // Move existing header children to the wrapper
+        const h1 = header.querySelector('h1');
+        const tabNav = header.querySelector('.tab-nav');
+        
+        if (h1) headerContent.appendChild(h1);
         
         // Create user info container
         const userInfoContainer = document.createElement('div');
@@ -245,28 +368,63 @@ import { initializePrivacySettings } from './modules/privacySettings.js';
             <button id="logout-btn" class="btn btn--small btn--secondary">Logout</button>
         `;
         
+        headerContent.appendChild(userInfoContainer);
+        if (tabNav) headerContent.appendChild(tabNav);
+        
+        // Clear header and add the new structure
+        header.innerHTML = '';
+        header.appendChild(headerContent);
+        
         // Add styles
         const style = document.createElement('style');
         style.textContent = `
+            .header-content {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .header h1 {
+                margin-bottom: 0;
+            }
+            
             .user-info-container {
                 display: flex;
                 align-items: center;
-                gap: 15px;
-                margin-left: auto;
+                gap: 12px;
+                align-self: flex-end;
+                margin-top: -30px;
                 margin-right: 20px;
+                margin-bottom: 10px;
             }
             
             .user-email {
                 color: var(--color-text-secondary);
-                font-size: 14px;
+                font-size: 13px;
             }
             
             #logout-btn {
-                padding: 6px 12px;
-                font-size: 14px;
+                padding: 5px 12px;
+                font-size: 13px;
+                background: var(--color-surface);
+                border: 1px solid var(--color-border);
+                color: var(--color-text);
+                transition: all 0.2s ease;
+            }
+            
+            #logout-btn:hover {
+                background: var(--color-error);
+                color: white;
+                border-color: var(--color-error);
             }
             
             @media (max-width: 768px) {
+                .user-info-container {
+                    margin-top: 0;
+                    margin-bottom: 15px;
+                    align-self: center;
+                }
+                
                 .user-email {
                     display: none;
                 }
@@ -274,12 +432,10 @@ import { initializePrivacySettings } from './modules/privacySettings.js';
         `;
         document.head.appendChild(style);
         
-        // Insert before the voice button or at the end of header
+        // Re-add the voice button if it exists
         const voiceBtn = document.getElementById('global-voice-btn');
-        if (voiceBtn) {
-            header.insertBefore(userInfoContainer, voiceBtn);
-        } else {
-            header.appendChild(userInfoContainer);
+        if (voiceBtn && voiceBtn.parentElement !== header) {
+            header.appendChild(voiceBtn);
         }
         
         // Add logout handler
