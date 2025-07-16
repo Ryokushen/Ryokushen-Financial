@@ -1,6 +1,6 @@
 # Current Features - Ryokushen Financial Tracker
 
-> Last Updated: July 15, 2025
+> Last Updated: July 16, 2025
 
 This document provides a comprehensive overview of all currently implemented features in the Ryokushen Financial Tracker application.
 
@@ -10,6 +10,7 @@ This document provides a comprehensive overview of all currently implemented fea
 - [User Interface & Experience](#user-interface--experience)
 - [Voice & Natural Language](#voice--natural-language)
 - [Technical Infrastructure](#technical-infrastructure)
+- [Authentication & User Management](#authentication--user-management)
 - [Privacy & Security](#privacy--security)
 - [Performance Optimizations](#performance-optimizations)
 
@@ -410,6 +411,72 @@ The Time Budget System transforms financial expenses into time worked, providing
 - Error handling
 - API key management
 - Fallback strategies
+
+---
+
+## Authentication & User Management
+
+### 🔐 User Authentication
+
+#### Authentication System (Supabase)
+- **Secure Login**: Email and password authentication
+- **Magic Link Support**: Passwordless login via email
+- **Session Management**: Persistent sessions with automatic refresh
+- **Account Creation**: Sign up with email verification requirement
+
+#### Password Management
+- **Password Reset**: Email-based password recovery flow
+- **Secure Reset Form**: Dedicated password reset interface
+- **Password Requirements**: Minimum 8 characters enforced
+- **Update Password**: Change password through reset flow
+
+### 👤 User Interface
+
+#### Header Integration
+- **User Info Display**: Email shown in header (right-aligned)
+- **Logout Button**: Styled logout with hover effects
+- **Responsive Design**: Mobile-optimized with email hidden on small screens
+- **Clean Layout**: Non-intrusive positioning
+
+#### Email Verification
+- **Verification Banner**: Warning displayed for unverified emails
+- **Resend Functionality**: One-click email resend with status feedback
+- **Persistent Notice**: Sticky banner at top of page
+- **Visual Indicators**: Warning icon and clear messaging
+
+### 🔒 Security Features
+
+#### Session Security
+- **Auto-logout**: Session expiry handling
+- **Secure Storage**: Encrypted session tokens
+- **Auth State Sync**: Real-time auth state updates across tabs
+- **Protected Routes**: Authentication required for app access
+
+#### Data Isolation
+- **User-specific Data**: Each user's financial data is isolated
+- **Row-level Security**: Database-level access control
+- **No Data Sharing**: Complete data privacy between users
+
+### 🚀 Authentication Flow
+
+#### Sign Up Process
+1. User enters email and password
+2. Account created with unverified status
+3. Verification email sent automatically
+4. User must verify email to access full features
+5. Automatic login after verification
+
+#### Login Process
+1. Email/password or magic link option
+2. Session established on successful auth
+3. Automatic redirect to main app
+4. Session persists across browser sessions
+
+#### Password Reset Flow
+1. User requests reset from login page
+2. Reset email sent with secure token
+3. Click link opens password reset form
+4. New password saved and user logged in
 
 ---
 
