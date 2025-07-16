@@ -172,9 +172,9 @@ class SupabaseAuthManager {
             refresh: this.refreshToken
         };
         
-        // Get the current Supabase config
-        const supabaseUrl = this.supabase.supabaseUrl || 'https://cqhqobwdpwxnxmyuuvnp.supabase.co';
-        const supabaseKey = this.supabase.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxaHFvYndkcHd4bnhteXV1dm5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY1NjA3NzEsImV4cCI6MjA1MjEzNjc3MX0.0Fo9cPA6XJabKHVi4QiJJYNhSre6hRG7RQtqKdKrJro';
+        // Get the current Supabase config from the initialized client
+        const supabaseUrl = this.supabase?.supabaseUrl || 'https://rplbjnknqxdyjgsuavcp.supabase.co';
+        const supabaseKey = this.supabase?.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJwbGJqbmtucXhkeWpnc3VhdmNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4NjY2OTIsImV4cCI6MjA2NzQ0MjY5Mn0.09RYF_oOrH8mmPjLo7fulai7ofwW5k94Y3_CIJbn6rI';
         
         // Clear the entire page and show only the reset form
         document.documentElement.innerHTML = `
