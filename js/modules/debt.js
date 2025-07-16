@@ -140,8 +140,8 @@ export function renderDebtAccounts(appState) {
             </div>
             <div class="due-date ${getDueDateClass(account.dueDate)}">${getDueDateText(account.dueDate)}</div>
             <div class="debt-actions">
-                <button class="btn btn--secondary btn--sm btn-edit" data-id="${account.id}">Edit</button>
-                <button class="btn btn--outline btn--sm btn-delete" data-id="${account.id}">Delete</button>
+                <button class="btn btn--secondary btn--sm btn-edit-debt" data-id="${account.id}">Edit</button>
+                <button class="btn btn--outline btn--sm btn-delete-debt" data-id="${account.id}">Delete</button>
             </div>
         </div>`).join('');
 }
@@ -269,8 +269,14 @@ export function setupEventListeners(appState, onUpdate) {
         const id = parseInt(target.getAttribute('data-id'));
         if (!id) return;
         
-        if (target.classList.contains('btn-edit')) openDebtModal(appState.appData, id);
-        if (target.classList.contains('btn-delete')) deleteDebtAccount(id, appState, onUpdate);
+        if (target.classList.contains('btn-edit-debt')) {
+            event.stopPropagation();
+            openDebtModal(appState.appData, id);
+        }
+        if (target.classList.contains('btn-delete-debt')) {
+            event.stopPropagation();
+            deleteDebtAccount(id, appState, onUpdate);
+        }
     });
     
     // Add new event listeners for payoff calculation

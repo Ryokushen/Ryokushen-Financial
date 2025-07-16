@@ -38,14 +38,13 @@ export function setupEventListeners(appState, onUpdate) {
     document.getElementById("filter-category")?.addEventListener("change", debouncedFilter);
 
     document.getElementById("transactions-table-body")?.addEventListener('click', (event) => {
-        // Only handle clicks within the transactions table
-        if (!event.target.closest('#transactions-table-body')) return;
-        
         const transactionId = parseInt(event.target.getAttribute('data-id'));
 
-        if (event.target.classList.contains('btn-delete')) {
+        if (event.target.classList.contains('btn-delete-transaction')) {
+            event.stopPropagation();
             deleteTransaction(transactionId, appState, onUpdate);
-        } else if (event.target.classList.contains('btn-edit')) {
+        } else if (event.target.classList.contains('btn-edit-transaction')) {
+            event.stopPropagation();
             editTransaction(transactionId, appState);
         }
     });
@@ -645,10 +644,10 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
             <td class="${t.cleared ? 'status-cleared' : 'status-pending'}">${t.cleared ? "Cleared" : "Pending"}</td>
             <td>
                 <div class="transaction-actions">
-                    <button class="btn btn-small btn-edit" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>
+                    <button class="btn btn-small btn-edit-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>
                         ${isEditing ? 'Editing...' : 'Edit'}
                     </button>
-                    <button class="btn btn-small btn-delete" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>Delete</button>
+                    <button class="btn btn-small btn-delete-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>Delete</button>
                 </div>
             </td>
         </tr>`;
@@ -884,10 +883,10 @@ function createTransactionRow(t, appData) {
         <td class="${t.cleared ? 'status-cleared' : 'status-pending'}">${t.cleared ? "Cleared" : "Pending"}</td>
         <td>
             <div class="transaction-actions">
-                <button class="btn btn-small btn-edit" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>
+                <button class="btn btn-small btn-edit-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>
                     ${isEditing ? 'Editing...' : 'Edit'}
                 </button>
-                <button class="btn btn-small btn-delete" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>Delete</button>
+                <button class="btn btn-small btn-delete-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>Delete</button>
             </div>
         </td>
     `;

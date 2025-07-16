@@ -20,9 +20,19 @@ export function setupEventListeners(appState, onUpdate) {
     document.getElementById("all-recurring-bills-list")?.addEventListener('click', (event) => {
         const id = parseInt(event.target.getAttribute('data-id'));
         if (!id) return;
-        if (event.target.classList.contains('btn-pay-bill')) payRecurringBill(id, appState, onUpdate);
-        if (event.target.classList.contains('btn-edit-bill')) openRecurringModal(appState.appData, id);
-        if (event.target.classList.contains('btn-delete-bill')) deleteRecurringBill(id, appState, onUpdate);
+        
+        if (event.target.classList.contains('btn-pay-bill')) {
+            event.stopPropagation();
+            payRecurringBill(id, appState, onUpdate);
+        }
+        if (event.target.classList.contains('btn-edit-bill')) {
+            event.stopPropagation();
+            openRecurringModal(appState.appData, id);
+        }
+        if (event.target.classList.contains('btn-delete-bill')) {
+            event.stopPropagation();
+            deleteRecurringBill(id, appState, onUpdate);
+        }
     });
 }
 
