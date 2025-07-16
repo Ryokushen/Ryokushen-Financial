@@ -208,7 +208,7 @@ export function populateAccountDropdowns(appData) {
     const activeAccounts = appData.cashAccounts.filter(a => a.isActive);
     
     // Get credit card accounts (type = 'Credit Card')
-    const creditCardAccounts = appData.debtAccounts.filter(a => a.type === 'Credit Card' && a.isActive);
+    const creditCardAccounts = appData.debtAccounts.filter(a => a.type === 'Credit Card');
     
     // Build options HTML with optgroups for better organization
     let optionsHtml = '';
