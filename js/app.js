@@ -23,8 +23,15 @@ import { initializeTimeSettings } from './modules/timeSettings.js';
 import { initializeTransactionTimePreview } from './modules/transactionTimePreview.js';
 import { initializePrivacySettings } from './modules/privacySettings.js';
 
-// Check authentication before loading the app
-if (!supabaseAuth.isAuthenticated()) {
+// Check for password reset token first
+const hashParams = new URLSearchParams(window.location.hash.substring(1));
+const isPasswordReset = hashParams.get('type') === 'recovery' && hashParams.get('access_token');
+
+if (isPasswordReset) {
+    // Handle password reset flow - let supabaseAuth handle it
+    // The handlePasswordReset is called in initializeAuth
+} else if (!supabaseAuth.isAuthenticated()) {
+    // Show login screen only if not in password reset flow
     supabaseAuth.showAuthScreen();
 } else {
     // User is authenticated, proceed with app initialization
