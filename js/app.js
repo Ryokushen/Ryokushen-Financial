@@ -25,24 +25,48 @@ import { initializePrivacySettings } from './modules/privacySettings.js';
 
 // Wait for auth initialization before checking authentication
 async function initializeApplication() {
-    // Give supabaseAuth more time to initialize and check for password reset tokens
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Check if we should show password reset form
-    if (supabaseAuth.shouldShowPasswordReset()) {
-        debug.log('Password reset detected, showing reset form');
-        supabaseAuth.showPasswordResetForm();
-        return; // Don't continue with app initialization
-    }
-    
-    // Now check authentication
-    if (!supabaseAuth.isAuthenticated()) {
-        debug.log('User not authenticated, showing auth screen');
-        supabaseAuth.showAuthScreen();
-    } else {
-        // User is authenticated, proceed with app initialization
-        debug.log('User authenticated, starting app');
-        startApp();
+    try {
+        // Wait for DOM to be ready
+        if (document.readyState !== 'complete' && document.readyState !== 'interactive') {
+            await new Promise(resolve => {
+                window.addEventListener('DOMContentLoaded', resolve);
+            });
+        }
+        
+        // Give supabaseAuth time to check for password reset tokens
+        // This is crucial - the URL parsing needs to complete
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Re-check for password reset tokens in case they weren't caught initially
+        if (!supabaseAuth.isResettingPassword) {
+            supabaseAuth.checkForPasswordReset();
+        }
+        
+        // Check if we should show password reset form
+        if (supabaseAuth.shouldShowPasswordReset()) {
+            debug.log('Password reset detected, showing reset form');
+            supabaseAuth.showPasswordResetForm();
+            return; // Don't continue with app initialization
+        }
+        
+        // Wait a bit more to ensure auth state is settled
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Now check authentication
+        if (!supabaseAuth.isAuthenticated()) {
+            debug.log('User not authenticated, showing auth screen');
+            supabaseAuth.showAuthScreen();
+        } else {
+            // User is authenticated, proceed with app initialization
+            debug.log('User authenticated, starting app');
+            startApp();
+        }
+    } catch (error) {
+        debug.error('Failed to initialize application:', error);
+        // Show login screen as fallback
+        if (supabaseAuth && supabaseAuth.showAuthScreen) {
+            supabaseAuth.showAuthScreen();
+        }
     }
 }
 
