@@ -23,17 +23,15 @@
             const urlContainsToken = fullUrl.includes('access_token=') || 
                                    fullUrl.includes('access_token%3D');
             
+            // Only intercept if BOTH recovery type AND token are present
             if (urlContainsRecovery && urlContainsToken) {
                 console.log('Password reset detected - intercepting page load');
                 
-                // Stop the page from loading normally
-                document.addEventListener('DOMContentLoaded', function(event) {
-                    event.stopImmediatePropagation();
-                    event.preventDefault();
-                });
+                // Flag to prevent normal app load
+                window.isPasswordReset = true;
                 
-                // Show password reset form immediately
-                window.addEventListener('load', function() {
+                // Show password reset form after DOM loads
+                document.addEventListener('DOMContentLoaded', function(event) {
                     // Extract tokens from URL
                     const hashParams = new URLSearchParams(window.location.hash.substring(1));
                     const queryParams = new URLSearchParams(window.location.search);
@@ -160,7 +158,13 @@
                             button.textContent = 'Update Password';
                         }
                     };
+                    
+                    // Prevent normal modules from loading
+                    event.stopImmediatePropagation();
                 });
+            } else {
+                // Normal page load - no password reset
+                console.log('Normal page load - no password reset detected');
             }
         })();
     </script>
@@ -1280,11 +1284,31 @@
 
     <div aria-live="polite" class="sr-only" id="screen-reader-announcer"></div>
 
-    <script type="module" src="js/config.js"></script>
-    <script type="module" src="js/database.js"></script>
-    <script type="module" src="js/app.js"></script>
-
-    <script type="module" src="js/modules/stockApi.js"></script>
+    <!-- Only load modules if NOT in password reset mode -->
+    <script>
+        if (!window.isPasswordReset) {
+            // Normal page load - import modules
+            const configScript = document.createElement('script');
+            configScript.type = 'module';
+            configScript.src = 'js/config.js';
+            document.body.appendChild(configScript);
+            
+            const dbScript = document.createElement('script');
+            dbScript.type = 'module';
+            dbScript.src = 'js/database.js';
+            document.body.appendChild(dbScript);
+            
+            const appScript = document.createElement('script');
+            appScript.type = 'module';
+            appScript.src = 'js/app.js';
+            document.body.appendChild(appScript);
+            
+            const stockScript = document.createElement('script');
+            stockScript.type = 'module';
+            stockScript.src = 'js/modules/stockApi.js';
+            document.body.appendChild(stockScript);
+        }
+    </script>
 
 </body>
 
