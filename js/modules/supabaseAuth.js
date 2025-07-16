@@ -6,7 +6,8 @@ class SupabaseAuthManager {
         this.user = null;
         this.session = null;
         this.supabase = window.supabaseClient;
-        this.initializeAuth();
+        this.initialized = false;
+        this.initPromise = this.initializeAuth();
     }
 
     /**
@@ -21,6 +22,7 @@ class SupabaseAuthManager {
             const { data: { session } } = await this.supabase.auth.getSession();
             this.session = session;
             this.user = session?.user || null;
+            this.initialized = true;
 
             // Listen for auth changes
             this.supabase.auth.onAuthStateChange((event, session) => {
@@ -37,7 +39,15 @@ class SupabaseAuthManager {
             });
         } catch (error) {
             debug.error('Failed to initialize auth:', error);
+            this.initialized = true; // Mark as initialized even on error
         }
+    }
+
+    /**
+     * Wait for authentication to be initialized
+     */
+    async waitForInit() {
+        await this.initPromise;
     }
 
     /**

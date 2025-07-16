@@ -23,17 +23,24 @@ import { initializeTimeSettings } from './modules/timeSettings.js';
 import { initializeTransactionTimePreview } from './modules/transactionTimePreview.js';
 import { initializePrivacySettings } from './modules/privacySettings.js';
 
-// Check for password reset token first
-const hash = window.location.hash.substring(1);
-const isPasswordReset = hash.includes('recovery');
+// Initialize app after auth is ready
+(async function initApp() {
+    // Wait for authentication to initialize
+    await supabaseAuth.waitForInit();
+    
+    // Check for password reset token first
+    const hash = window.location.hash.substring(1);
+    const isPasswordReset = hash.includes('recovery');
 
-if (isPasswordReset) {
-    // Handle password reset flow - let supabaseAuth handle it
-    // The handlePasswordReset is called in initializeAuth
-} else if (!supabaseAuth.isAuthenticated()) {
-    // Show login screen only if not in password reset flow
-    supabaseAuth.showAuthScreen();
-} else {
+    if (isPasswordReset) {
+        // Handle password reset flow - already handled in initializeAuth
+        return;
+    } else if (!supabaseAuth.isAuthenticated()) {
+        // Show login screen only if not in password reset flow
+        supabaseAuth.showAuthScreen();
+        return;
+    }
+    
     // User is authenticated, proceed with app initialization
     
     // Configure Chart.js global defaults for better mobile responsiveness
@@ -538,4 +545,4 @@ if (isPasswordReset) {
             }
         }
     }
-}
+})(); // Close the async IIFE
