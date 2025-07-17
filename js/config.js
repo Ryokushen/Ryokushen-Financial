@@ -134,7 +134,7 @@ function setupApiKeyModal() {
         modal.classList.remove('active');
     });
     
-    // Test API key
+    // Test API key - FIXED: Added timeout protection
     testBtn?.addEventListener('click', async () => {
         const apiKey = input.value.trim();
         if (!apiKey) {
@@ -147,20 +147,43 @@ function setupApiKeyModal() {
         testResult.innerHTML = '<span style="color: var(--color-info);">Testing connection...</span>';
         
         try {
-            const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=${apiKey}`);
+            // Add timeout protection
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            
+            const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=${apiKey}`, {
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Invalid API key');
+                } else if (response.status === 429) {
+                    throw new Error('Rate limit exceeded');
+                } else {
+                    throw new Error(`API returned ${response.status}`);
+                }
+            }
+            
             const data = await response.json();
             
-            if (response.ok && data.c && data.c > 0) {
+            if (data.c && data.c > 0) {
                 testResult.innerHTML = '<span style="color: var(--color-success);">✓ API key works! AAPL: $' + data.c.toFixed(2) + '</span>';
             } else {
                 testResult.innerHTML = '<span style="color: var(--color-error);">✗ Invalid API key or connection failed</span>';
             }
         } catch (error) {
-            testResult.innerHTML = '<span style="color: var(--color-error);">✗ Connection failed: ' + error.message + '</span>';
+            if (error.name === 'AbortError') {
+                testResult.innerHTML = '<span style="color: var(--color-error);">✗ Connection timeout - please try again</span>';
+            } else {
+                testResult.innerHTML = '<span style="color: var(--color-error);">✗ ' + error.message + '</span>';
+            }
+        } finally {
+            testBtn.disabled = false;
+            testBtn.textContent = 'Test API Key';
         }
-        
-        testBtn.disabled = false;
-        testBtn.textContent = 'Test API Key';
     });
     
     // Save API key
