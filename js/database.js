@@ -9,6 +9,7 @@ class FinancialDatabase {
 
     // Helper method for error handling
     handleError(operation, error) {
+        console.error(`Database operation failed: ${operation}`, error);
         throw new Error(`Database operation failed: ${operation} - ${error.message}`);
     }
 
@@ -21,13 +22,60 @@ class FinancialDatabase {
         return user.id;
     }
 
+    // FIXED: Add retry logic for database operations
+    async executeWithRetry(operation, operationName, maxRetries = 3) {
+        let lastError;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                return await operation();
+            } catch (error) {
+                lastError = error;
+                
+                // Don't retry on validation errors or auth errors
+                if (error.message && (
+                    error.message.includes('required') || 
+                    error.message.includes('authenticated') ||
+                    error.message.includes('validation') ||
+                    error.message.includes('duplicate key') ||
+                    error.message.includes('foreign key violation')
+                )) {
+                    throw error;
+                }
+                
+                // Check if it's a network/timeout error worth retrying
+                const isRetryable = 
+                    error.code === 'PGRST301' || // Network error
+                    error.code === '40001' || // Serialization failure
+                    error.code === '57014' || // Query canceled
+                    error.code === 'ECONNREFUSED' ||
+                    error.code === 'ETIMEDOUT' ||
+                    error.code === 'ENOTFOUND' ||
+                    error.message?.includes('network') ||
+                    error.message?.includes('timeout') ||
+                    error.message?.includes('fetch');
+                
+                if (!isRetryable || attempt === maxRetries) {
+                    throw error;
+                }
+                
+                // Exponential backoff: 1s, 2s, 4s
+                const delay = Math.pow(2, attempt - 1) * 1000;
+                console.warn(`${operationName} failed (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`, error);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+        
+        throw lastError;
+    }
+
     // --- CASH ACCOUNTS ---
     async getCashAccounts() {
-        try {
+        return this.executeWithRetry(async () => {
             const { data, error } = await this.supabase.from('cash_accounts').select('*').order('created_at', { ascending: true });
             if (error) throw error;
             return data || [];
-        } catch (error) { this.handleError('getCashAccounts', error); }
+        }, 'getCashAccounts');
     }
 
     async addCashAccount(account) {
@@ -60,10 +108,91 @@ class FinancialDatabase {
         } catch (error) { this.handleError('updateCashAccount', error); }
     }
 
+    // FIXED: Handle partial failures in delete operations
     async deleteCashAccount(id) {
+        if (!id) {
+            throw new Error('Account ID is required');
+        }
+
         try {
-            await this.supabase.from('transactions').delete().eq('account_id', id);
-            await this.supabase.from('cash_accounts').delete().eq('id', id);
+            // First, get all related data for potential recovery
+            const { data: transactionsToDelete } = await this.supabase
+                .from('transactions')
+                .select('*')
+                .eq('account_id', id);
+            
+            const { data: recurringBillsToUpdate } = await this.supabase
+                .from('recurring_bills')
+                .select('*')
+                .eq('account_id', id);
+
+            // Step 1: Try to delete/update related records
+            const results = await Promise.allSettled([
+                // Delete transactions
+                this.supabase.from('transactions').delete().eq('account_id', id),
+                // Update recurring bills to remove account reference
+                this.supabase.from('recurring_bills').update({ account_id: null }).eq('account_id', id)
+            ]);
+
+            // Check for failures in related records
+            const [transactionResult, recurringBillResult] = results;
+            const failedOperations = [];
+
+            if (transactionResult.status === 'rejected') {
+                failedOperations.push('transactions');
+                console.error('Failed to delete transactions:', transactionResult.reason);
+            }
+
+            if (recurringBillResult.status === 'rejected') {
+                failedOperations.push('recurring bills');
+                console.error('Failed to update recurring bills:', recurringBillResult.reason);
+            }
+
+            // If any related operations failed, don't proceed with account deletion
+            if (failedOperations.length > 0) {
+                throw new Error(`Failed to update related records: ${failedOperations.join(', ')}`);
+            }
+
+            // Step 2: Try to delete the account
+            const { error: accountError } = await this.supabase
+                .from('cash_accounts')
+                .delete()
+                .eq('id', id);
+
+            if (accountError) {
+                // Account deletion failed - attempt to restore data
+                console.error('Account deletion failed, attempting to restore related data...');
+                
+                const restorePromises = [];
+
+                // Restore transactions if they were deleted
+                if (transactionResult.status === 'fulfilled' && transactionsToDelete && transactionsToDelete.length > 0) {
+                    restorePromises.push(
+                        this.supabase.from('transactions').insert(transactionsToDelete)
+                            .then(() => console.log('Transactions restored successfully'))
+                            .catch(err => console.error('Failed to restore transactions:', err))
+                    );
+                }
+
+                // Restore recurring bill references if they were updated
+                if (recurringBillResult.status === 'fulfilled' && recurringBillsToUpdate && recurringBillsToUpdate.length > 0) {
+                    const billRestorePromises = recurringBillsToUpdate.map(bill => 
+                        this.supabase.from('recurring_bills')
+                            .update({ account_id: id })
+                            .eq('id', bill.id)
+                    );
+                    restorePromises.push(...billRestorePromises);
+                }
+
+                // Wait for all restore operations
+                if (restorePromises.length > 0) {
+                    await Promise.allSettled(restorePromises);
+                    throw new Error(`Account deletion failed: ${accountError.message}. Related data has been restored where possible.`);
+                } else {
+                    throw new Error(`Account deletion failed: ${accountError.message}`);
+                }
+            }
+
             return true;
         } catch (error) {
             this.handleError('deleteCashAccount', error);
@@ -72,11 +201,11 @@ class FinancialDatabase {
 
     // --- TRANSACTIONS ---
     async getTransactions() {
-        try {
+        return this.executeWithRetry(async () => {
             const { data, error } = await this.supabase.from('transactions').select('*').order('date', { ascending: false });
             if (error) throw error;
             return data || [];
-        } catch (error) { this.handleError('getTransactions', error); }
+        }, 'getTransactions');
     }
 
     async addTransaction(transaction) {
@@ -123,11 +252,11 @@ class FinancialDatabase {
 
     // --- INVESTMENTS & HOLDINGS ---
     async getInvestmentAccounts() {
-        try {
+        return this.executeWithRetry(async () => {
             const { data, error } = await this.supabase.from('investment_accounts').select(`*, holdings (*)`).order('created_at', { ascending: true });
             if (error) throw error;
             return data || [];
-        } catch (error) { this.handleError('getInvestmentAccounts', error); }
+        }, 'getInvestmentAccounts');
     }
 
     async addInvestmentAccount(account) {
@@ -160,12 +289,52 @@ class FinancialDatabase {
         } catch (error) { this.handleError('updateInvestmentAccount', error); }
     }
 
+    // FIXED: Handle partial failures for investment account deletion
     async deleteInvestmentAccount(id) {
+        if (!id) {
+            throw new Error('Investment account ID is required');
+        }
+
         try {
-            await this.supabase.from('holdings').delete().eq('account_id', id);
-            await this.supabase.from('investment_accounts').delete().eq('id', id);
+            // Get holdings for potential recovery
+            const { data: holdingsToDelete } = await this.supabase
+                .from('holdings')
+                .select('*')
+                .eq('investment_account_id', id);
+
+            // Try to delete holdings first
+            const { error: holdingsError } = await this.supabase
+                .from('holdings')
+                .delete()
+                .eq('investment_account_id', id);
+
+            if (holdingsError) {
+                throw new Error(`Failed to delete holdings: ${holdingsError.message}`);
+            }
+
+            // Try to delete the account
+            const { error: accountError } = await this.supabase
+                .from('investment_accounts')
+                .delete()
+                .eq('id', id);
+
+            if (accountError) {
+                // Attempt to restore holdings
+                if (holdingsToDelete && holdingsToDelete.length > 0) {
+                    try {
+                        await this.supabase.from('holdings').insert(holdingsToDelete);
+                        throw new Error(`Account deletion failed: ${accountError.message}. Holdings have been restored.`);
+                    } catch (restoreError) {
+                        throw new Error(`Account deletion failed AND holdings restoration failed. Data may be in inconsistent state.`);
+                    }
+                }
+                throw new Error(`Account deletion failed: ${accountError.message}`);
+            }
+
             return true;
-        } catch (error) { this.handleError('deleteInvestmentAccount', error); }
+        } catch (error) { 
+            this.handleError('deleteInvestmentAccount', error); 
+        }
     }
 
     async addHolding(accountId, holding) {
@@ -198,11 +367,11 @@ class FinancialDatabase {
 
     // --- DEBT ---
     async getDebtAccounts() {
-        try {
+        return this.executeWithRetry(async () => {
             const { data, error } = await this.supabase.from('debt_accounts').select('*');
             if (error) throw error;
             return data || [];
-        } catch (error) { this.handleError('getDebtAccounts', error); }
+        }, 'getDebtAccounts');
     }
 
     async addDebtAccount(debtData) {
@@ -260,11 +429,11 @@ class FinancialDatabase {
 
     // --- RECURRING BILLS - UPDATED TO SUPPORT CREDIT CARD PAYMENTS ---
     async getRecurringBills() {
-        try {
+        return this.executeWithRetry(async () => {
             const { data, error } = await this.supabase.from('recurring_bills').select('*');
             if (error) throw error;
             return data || [];
-        } catch (error) { this.handleError('getRecurringBills', error); }
+        }, 'getRecurringBills');
     }
 
     async addRecurringBill(bill) {
@@ -326,11 +495,11 @@ class FinancialDatabase {
 
     // --- SAVINGS GOALS ---
     async getSavingsGoals() {
-        try {
+        return this.executeWithRetry(async () => {
             const { data, error } = await this.supabase.from('savings_goals').select('*');
             if (error) throw error;
             return data || [];
-        } catch (error) { this.handleError('getSavingsGoals', error); }
+        }, 'getSavingsGoals');
     }
 
     async addSavingsGoal(goalData) {
