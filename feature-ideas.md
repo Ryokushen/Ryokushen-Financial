@@ -86,17 +86,61 @@ This document contains potential feature enhancements organized by category. The
 
 ## 📈 Advanced Planning Tools
 
-### 14. Retirement Planner Enhancement ✅
+### 14. Visual Bills Calendar & Pay Modeler ✅
+**Status**: Planned for implementation
+- Visual calendar view for recurring bills and pay schedules
+- Cash flow planning with bill/pay timing visualization
+- Integration with existing time budget philosophy
+- Color-coded event types (bills, pay days, warnings)
+
+**Implementation Phases**:
+- **Phase 1**: Visual Calendar for Bills
+  - Add calendar view to recurring bills tab
+  - Display existing bill due dates on monthly calendar
+  - Color-code bills by category and payment method
+  - Click-to-view bill details and quick pay functionality
+  
+- **Phase 2**: Pay Schedule Configuration
+  - Add pay frequency settings (weekly, bi-weekly, monthly, semi-monthly)
+  - Configure pay dates based on start date and frequency
+  - Calculate and display upcoming pay days
+  - Integration with wage settings from time budget system
+  
+- **Phase 3**: Unified Calendar View
+  - Combine bills and pay days in single calendar interface
+  - Visual cash flow indicators (green for pay days, red for bills)
+  - Balance projection warnings for potential overdrafts
+  - Month/week navigation with summary metrics
+  
+- **Phase 4**: Advanced Cash Flow Planning
+  - "What-if" scenarios for bill timing changes
+  - Automatic low balance warnings based on upcoming bills vs pay
+  - Export calendar view to PDF/image for planning
+  - Integration with existing financial health scoring
+
+**Technical Implementation**:
+- **Calendar Library**: Custom lightweight calendar or FullCalendar.js
+- **Data Structure**: Extend existing recurring bills with calendar events
+- **Integration Points**: Time budgets, recurring bills module, dashboard KPIs
+- **UI Components**: Month/week view, event tooltips, quick actions
+
+**Benefits**:
+- Visual cash flow planning prevents overdrafts
+- Integrates with existing time budget philosophy
+- Enhances current "upcoming bills timeline" feature
+- Supports comprehensive financial planning goals
+
+### 15. Retirement Planner Enhancement ✅
 - Social Security benefit estimation
 - Healthcare cost projections
 - Multiple scenario modeling
 
-### 15. Loan Comparison Tool ✅
+### 16. Loan Comparison Tool ✅
 - Compare refinancing options
 - Total interest calculations
 - Break-even analysis
 
-### 16. Insurance Tracker ✅
+### 17. Insurance Tracker ✅
 - Track all insurance policies
 - Premium payment reminders
 - Coverage gap analysis
