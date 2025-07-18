@@ -38,11 +38,27 @@ export function setupEventListeners(appState, onUpdate) {
     // Transaction form submit
     const transactionSubmitHandler = (e) => handleTransactionSubmit(e, appState, onUpdate);
     addEventListener("transaction-form", "submit", transactionSubmitHandler);
+    
+    // Add account change listener to warn about Debt category
+    document.getElementById("transaction-account")?.addEventListener("change", function () {
+        const categoryValue = document.getElementById("transaction-category")?.value;
+        if (categoryValue === "Debt" && this.value && this.value.startsWith('cc_')) {
+            showError("For credit card transactions, please use a regular category instead of 'Debt'. The 'Debt' category is for non-account debt payments.");
+            document.getElementById("transaction-category").value = ""; // Reset the category
+        }
+    });
 
     document.getElementById("transaction-category")?.addEventListener("change", function () {
         const debtGroup = document.getElementById("debt-account-group");
         if (debtGroup) {
             debtGroup.style.display = this.value === "Debt" ? "block" : "none";
+        }
+        
+        // Warn users about using Debt category with credit card accounts
+        const accountValue = document.getElementById("transaction-account")?.value;
+        if (this.value === "Debt" && accountValue && accountValue.startsWith('cc_')) {
+            showError("For credit card transactions, please use a regular category (like 'Shopping' or 'Payment') instead of 'Debt'. The 'Debt' category is for non-account debt payments.");
+            this.value = ""; // Reset the category
         }
     });
 
@@ -430,11 +446,14 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
                 debug.log('Credit card purchase:', userAmount, 'stored as:', transactionData.amount);
             } else if (userAmount < 0) {
                 // User entered negative amount = payment
-                // Store as positive (income/payment)
+                // Store as positive (income/payment)  
                 transactionData.amount = Math.abs(userAmount);
                 debug.log('Credit card payment:', userAmount, 'stored as:', transactionData.amount);
             }
-        } else if (transactionData.category === "Debt") {
+            
+            // IMPORTANT: Don't process as "Debt" category if it's a credit card transaction
+            // The old "Debt" category logic below is for legacy compatibility only
+        } else if (transactionData.category === "Debt" && !isCredit) {
             // Old debt category logic for backwards compatibility
             const debtAccountName = document.getElementById("debt-account-select")?.value;
             if (!debtAccountName) {
@@ -753,6 +772,18 @@ async function updateDebtAccountBalance(debtAccountId, amount, appState) {
         const balanceChange = -amount;
         const oldBalance = debtAccount.balance || 0;
         const newBalance = addMoney(oldBalance, balanceChange);
+        
+        // Enhanced debugging to track the issue
+        console.log('Credit Card Balance Update Debug:', {
+            accountId: debtAccountId,
+            accountName: debtAccount.name,
+            transactionAmount: amount,
+            balanceChange: balanceChange,
+            oldBalance: oldBalance,
+            newBalance: newBalance,
+            isPayment: amount > 0,
+            isPurchase: amount < 0
+        });
         
         debug.log('Updating debt balance:', {
             accountId: debtAccountId,
