@@ -57,7 +57,7 @@ export function setupEventListeners(appState, onUpdate) {
         // Warn users about using Debt category with credit card accounts
         const accountValue = document.getElementById("transaction-account")?.value;
         if (this.value === "Debt" && accountValue && accountValue.startsWith('cc_')) {
-            showError("For credit card transactions, please use a regular category (like 'Shopping' or 'Payment') instead of 'Debt'. The 'Debt' category is for non-account debt payments.");
+            showError("For credit card transactions, please use a regular category instead of 'Debt'. For payments, use the 'Payment' category. The 'Debt' category is for non-account debt payments.");
             this.value = ""; // Reset the category
         }
     });
