@@ -7,6 +7,7 @@ class SupabaseAuthManager {
         this.session = null;
         this.supabase = window.supabaseClient;
         this.initialized = false;
+        this.previousUserId = null;
         this.initPromise = this.initializeAuth();
     }
 
@@ -23,19 +24,36 @@ class SupabaseAuthManager {
             this.session = session;
             this.user = session?.user || null;
             this.initialized = true;
+            
+            // Track previous user ID to detect actual auth changes
+            this.previousUserId = this.user?.id || null;
 
             // Listen for auth changes
             this.supabase.auth.onAuthStateChange((event, session) => {
+                const currentUserId = session?.user?.id || null;
+                const wasSignedIn = !!this.previousUserId;
+                const isSignedIn = !!currentUserId;
+                const userChanged = currentUserId !== this.previousUserId;
+                
+                // Update session and user
                 this.session = session;
                 this.user = session?.user || null;
                 
-                if (event === 'SIGNED_OUT') {
-                    // Redirect to login
+                // Only reload on actual auth state changes
+                if (event === 'SIGNED_OUT' && wasSignedIn) {
+                    // User actually signed out
                     window.location.reload();
-                } else if (event === 'SIGNED_IN') {
-                    // Reload to show app
+                } else if (event === 'SIGNED_IN' && !wasSignedIn && isSignedIn) {
+                    // New user signed in (was null, now has user)
+                    window.location.reload();
+                } else if (event === 'SIGNED_IN' && userChanged && wasSignedIn && isSignedIn) {
+                    // Different user signed in (user switch)
                     window.location.reload();
                 }
+                // Ignore SIGNED_IN events where user hasn't changed (tab/app refocus)
+                
+                // Update tracked user ID
+                this.previousUserId = currentUserId;
             });
         } catch (error) {
             debug.error('Failed to initialize auth:', error);
