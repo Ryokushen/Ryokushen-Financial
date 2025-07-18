@@ -40,6 +40,35 @@ This session focused on fixing two major UX issues that were impacting user expe
 
 ---
 
+## 2025-07-18 Session Summary (Part 2)
+
+### Accomplishments:
+- Fixed credit card payment bug
+  - Identified issue with "Debt" category conflicting with credit card accounts
+  - Added validation to prevent using "Debt" category with credit card accounts
+  - Added helpful error messages guiding users to correct category usage
+  - Enhanced debugging for credit card balance updates
+
+- Added "Payment" category for credit card payments
+  - Added to transaction form, filter dropdown, and recurring bills
+  - Makes it clearer for users to categorize credit card payments
+
+- Alphabetized all category dropdowns
+  - Sorted transaction form categories A-Z
+  - Sorted transaction filter categories A-Z  
+  - Sorted recurring bills categories A-Z
+  - Restored accidentally removed categories (Pet Care, Technology, Subscriptions, Savings)
+
+### Context:
+User reported a bug where credit card payments were showing confusing confirmation messages and potentially increasing debt instead of decreasing it. Investigation revealed the issue was caused by selecting the "Debt" category when entering credit card transactions, which triggered legacy debt payment logic. The fix prevents this category combination and guides users to use regular categories instead.
+
+### Technical Details:
+- Modified `js/modules/transactions.js` to add category validation
+- Updated `index.html` to add Payment category and alphabetize all dropdowns
+- Added console logging for credit card balance updates to aid debugging
+
+---
+
 ## 2025-07-17 Session Summary
 
 ### Accomplishments:
