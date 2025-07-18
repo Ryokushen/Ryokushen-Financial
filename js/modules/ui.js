@@ -51,6 +51,14 @@ window.addEventListener('show-error', (e) => {
 });
 
 export function switchTab(tabName, appState) {
+    // Force scroll to top when switching tabs
+    window.scrollTo(0, 0);
+    
+    // Prevent any focus that might cause scrolling
+    if (document.activeElement && document.activeElement !== document.body) {
+        document.activeElement.blur();
+    }
+
     const tabContents = document.querySelectorAll(".tab-content");
     tabContents.forEach(content => {
         content.classList.remove("active");

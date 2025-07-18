@@ -502,6 +502,19 @@ import { initializePrivacySettings } from './modules/privacySettings.js';
             }
         };
 
+        // Prevent unwanted scrolling on body clicks
+        document.addEventListener('click', (e) => {
+            // If clicking on body or non-interactive elements
+            if (e.target === document.body || 
+                (!e.target.closest('button, a, input, select, textarea, [role="button"], .clickable, label'))) {
+                e.preventDefault();
+                // Keep focus on current element or blur
+                if (document.activeElement && document.activeElement !== document.body) {
+                    document.activeElement.blur();
+                }
+            }
+        }, true);
+
         document.querySelectorAll(".tab-btn").forEach(button => {
             button.addEventListener("click", function () { switchTab(this.getAttribute("data-tab"), appState); });
         });

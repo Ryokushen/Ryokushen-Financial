@@ -2871,3 +2871,18 @@ input:checked + .slider:before {
     flex-wrap: wrap;
   }
 }
+
+/* Prevent scroll on focus for tab content */
+.tab-content:focus {
+  outline: none;
+}
+
+/* Ensure smooth behavior without jumps */
+html {
+  scroll-behavior: auto; /* Not smooth to prevent delays */
+}
+
+/* Prevent focus outline on non-interactive elements */
+body:focus {
+  outline: none;
+}
