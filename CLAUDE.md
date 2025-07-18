@@ -8,7 +8,7 @@ Ryokushen Financial is a privacy-focused personal financial management applicati
 
 ## Custom Commands
 
-### /summary
+### /progress
 When you see this command, you should:
 1. Summarize all accomplishments from the current session
 2. Include: changes made, features implemented, bugs fixed, documentation updated
