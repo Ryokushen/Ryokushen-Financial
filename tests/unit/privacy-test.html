@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Mode Test Suite</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/privacy.css">
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/privacy.css">
     <style>
         .test-section {
             margin: 20px;
@@ -100,8 +100,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="module">
-        import { privacyManager, togglePrivacyMode, isPrivacyMode, reapplyPrivacy } from './js/modules/privacy.js';
-        import { debug } from './js/modules/debug.js';
+        import { privacyManager, togglePrivacyMode, isPrivacyMode, reapplyPrivacy } from '../../js/modules/privacy.js';
+        import { debug } from '../../js/modules/debug.js';
 
         // Make functions globally available for tests
         window.privacyManager = privacyManager;
