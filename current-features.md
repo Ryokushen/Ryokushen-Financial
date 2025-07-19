@@ -127,6 +127,18 @@ Income, Housing, Transportation, Food, Healthcare, Entertainment, Shopping, Util
   - 30-day upcoming bills forecast
   - Notes field
 
+#### Visual Calendar View (NEW)
+- **Monthly Calendar Display**: Visual grid showing all bill due dates
+- **Color-Coded Categories**: Bills colored by spending category
+- **Interactive Features**:
+  - Click days to view bill details
+  - Quick pay actions from calendar
+  - Month navigation controls
+  - Today button for quick navigation
+- **Summary Metrics**: Monthly bill totals and net flow
+- **View Toggle**: Switch between calendar and list views
+- **Privacy Mode**: Sensitive amounts blur on demand
+
 #### Payment Processing
 - One-click bill payment
 - Automatic transaction creation

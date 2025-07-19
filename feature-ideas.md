@@ -99,19 +99,23 @@ This document contains potential feature enhancements organized by category. The
 
 ## 📈 Advanced Planning Tools
 
-### 14. Visual Bills Calendar & Pay Modeler ✅
-**Status**: Planned for implementation
+### 14. Visual Bills Calendar & Pay Modeler ✅ PARTIALLY IMPLEMENTED [July 19, 2025]
+**Status**: Phase 1 completed - Visual Calendar for Bills
 - Visual calendar view for recurring bills and pay schedules
 - Cash flow planning with bill/pay timing visualization
 - Integration with existing time budget philosophy
 - Color-coded event types (bills, pay days, warnings)
 
 **Implementation Phases**:
-- **Phase 1**: Visual Calendar for Bills
-  - Add calendar view to recurring bills tab
-  - Display existing bill due dates on monthly calendar
-  - Color-code bills by category and payment method
-  - Click-to-view bill details and quick pay functionality
+- **Phase 1**: Visual Calendar for Bills ✅ COMPLETED
+  - ✅ Added calendar view to recurring bills tab
+  - ✅ Display existing bill due dates on monthly calendar
+  - ✅ Color-code bills by category and payment method
+  - ✅ Click-to-view bill details and quick pay functionality
+  - ✅ Month navigation with current month display
+  - ✅ Toggle between calendar and list views
+  - ✅ Monthly summary (total bills, net flow)
+  - ✅ Privacy mode integration
   
 - **Phase 2**: Pay Schedule Configuration
   - Add pay frequency settings (weekly, bi-weekly, monthly, semi-monthly)
@@ -340,6 +344,18 @@ This document contains potential feature enhancements organized by category. The
    - Dashboard widget with time metrics
    - Voice command integration
    - Real-time expense-to-time conversion
+6. **Smart Rules Engine (#9)** - Phase 1 implemented:
+   - Auto-categorize transactions based on patterns
+   - Pattern matching with 12+ operators
+   - Actions: Set category, add tags, add notes
+   - Rule priority system
+   - Apply rules to existing transactions
+7. **Visual Bills Calendar (#14)** - Phase 1 implemented:
+   - Monthly calendar view for recurring bills
+   - Color-coded by category
+   - Interactive day details
+   - Quick pay from calendar
+   - Toggle between calendar and list views
 
 ### 🚧 In Progress / Partially Complete
 - Natural Language Queries (#31) - Missing complex queries

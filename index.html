@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/privacy.css">
     <link rel="stylesheet" href="css/rules.css">
+    <link rel="stylesheet" href="css/calendar.css">
 </head>
 
 <body>
@@ -644,13 +645,24 @@
                     </div>
                 </div>
 
-                <div class="upcoming-bills mt-16">
+                <div class="calendar-view mt-16">
                     <div class="card">
                         <div class="card__header">
-                            <h3>Upcoming Bills (Next 30 Days)</h3>
+                            <h3>Bills Calendar</h3>
+                            <div class="view-toggle">
+                                <label for="calendar-view-toggle" class="sr-only">Calendar View</label>
+                                <select id="calendar-view-toggle" class="form-control form-control--sm">
+                                    <option value="month">Month View</option>
+                                    <option value="list">List View</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="card__body">
-                            <div id="upcoming-bills-list">
+                            <div id="calendar-container">
+                                <!-- Calendar will be rendered here -->
+                            </div>
+                            <div id="upcoming-bills-list" style="display: none;">
+                                <!-- List view content -->
                             </div>
                         </div>
                     </div>

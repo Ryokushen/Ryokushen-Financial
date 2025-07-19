@@ -23,6 +23,7 @@ import { initializeTimeSettings } from './modules/timeSettings.js';
 import { initializeTransactionTimePreview } from './modules/transactionTimePreview.js';
 import { initializePrivacySettings } from './modules/privacySettings.js';
 import { initRulesUI } from './modules/rulesUI.js';
+import { calendar } from './modules/calendar.js';
 
 // Initialize app after auth is ready
 (async function initApp() {
@@ -127,6 +128,9 @@ import { initRulesUI } from './modules/rulesUI.js';
         
         // Initialize smart rules UI
         initRulesUI();
+        
+        // Initialize calendar
+        calendar.init();
 
         calculateAccountBalances();
 

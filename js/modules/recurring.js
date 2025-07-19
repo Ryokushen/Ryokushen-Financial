@@ -5,12 +5,16 @@ import { showError, announceToScreenReader, openModal, closeModal } from './ui.j
 import { debug } from './debug.js';
 import { subtractMoney, addMoney } from './financialMath.js';
 import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, CrossFieldValidators, validateFormWithCrossFields } from './validation.js';
+import { calendarUI } from './calendarUI.js';
 
 export function setupEventListeners(appState, onUpdate) {
     document.getElementById("add-recurring-btn")?.addEventListener("click", () => openRecurringModal(appState.appData));
     document.getElementById("close-recurring-modal")?.addEventListener("click", () => closeModal('recurring-modal'));
     document.getElementById("cancel-recurring-btn")?.addEventListener("click", () => closeModal('recurring-modal'));
     document.getElementById("recurring-form")?.addEventListener("submit", (e) => handleRecurringSubmit(e, appState, onUpdate));
+    
+    // Calendar integration
+    setupCalendarEventListeners(appState, onUpdate);
 
     // NEW: Payment method change handler
     document.getElementById("recurring-payment-method")?.addEventListener("change", function () {
@@ -34,6 +38,47 @@ export function setupEventListeners(appState, onUpdate) {
             deleteRecurringBill(id, appState, onUpdate);
         }
     });
+    
+    // View toggle for calendar/list view
+    document.getElementById('calendar-view-toggle')?.addEventListener('change', (e) => {
+        toggleCalendarView(e.target.value);
+    });
+}
+
+// Setup calendar-specific event listeners
+function setupCalendarEventListeners(appState, onUpdate) {
+    // Listen for calendar data requests
+    window.addEventListener('calendar:needsData', () => {
+        if (appState.appData.recurringBills) {
+            calendarUI.updateData(appState.appData.recurringBills);
+        }
+    });
+    
+    // Listen for pay bill events from calendar
+    window.addEventListener('calendar:payBill', (e) => {
+        if (e.detail && e.detail.billId) {
+            payRecurringBill(e.detail.billId, appState, onUpdate);
+        }
+    });
+}
+
+// Toggle between calendar and list views
+function toggleCalendarView(view) {
+    const calendarContainer = document.getElementById('calendar-container');
+    const listContainer = document.getElementById('upcoming-bills-list');
+    
+    if (view === 'month') {
+        calendarContainer.style.display = 'block';
+        listContainer.style.display = 'none';
+        
+        // Initialize calendar if not already done
+        if (!calendarUI.isInitialized) {
+            calendarUI.init();
+        }
+    } else {
+        calendarContainer.style.display = 'none';
+        listContainer.style.display = 'block';
+    }
 }
 
 // NEW: Toggle payment method fields based on selection
@@ -248,6 +293,10 @@ async function handleRecurringSubmit(event, appState, onUpdate) {
         }
 
         closeModal('recurring-modal');
+        
+        // Dispatch event for calendar update
+        window.dispatchEvent(new CustomEvent('recurring:updated', { detail: savedBill }));
+        
         onUpdate();
         announceToScreenReader("Recurring bill saved successfully.");
 
@@ -265,6 +314,10 @@ async function deleteRecurringBill(id, appState, onUpdate) {
         try {
             await db.deleteRecurringBill(id);
             appState.appData.recurringBills = appState.appData.recurringBills.filter(b => b.id !== id);
+            
+            // Dispatch event for calendar update
+            window.dispatchEvent(new CustomEvent('recurring:deleted', { detail: { id } }));
+            
             onUpdate();
             announceToScreenReader("Recurring bill deleted.");
         } catch (error) {
@@ -364,6 +417,11 @@ export function renderRecurringBills(appState) {
     renderSummary(appData);
     renderUpcomingBills(appData);
     renderAllRecurringBills(appData);
+    
+    // Initialize calendar with recurring bills data
+    if (appData.recurringBills && calendarUI.isInitialized) {
+        calendarUI.updateData(appData.recurringBills);
+    }
 }
 
 function renderSummary(appData) {
