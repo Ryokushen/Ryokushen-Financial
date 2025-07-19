@@ -22,6 +22,7 @@ import { timeBudgets } from './modules/timeBudgets.js';
 import { initializeTimeSettings } from './modules/timeSettings.js';
 import { initializeTransactionTimePreview } from './modules/transactionTimePreview.js';
 import { initializePrivacySettings } from './modules/privacySettings.js';
+import { initRulesUI } from './modules/rulesUI.js';
 
 // Initialize app after auth is ready
 (async function initApp() {
@@ -119,6 +120,13 @@ import { initializePrivacySettings } from './modules/privacySettings.js';
         privacyManager.init();
         
         await loadAllData();
+        
+        // Initialize smart rules after data is loaded
+        const { smartRules } = await import('./modules/smartRules.js');
+        await smartRules.init();
+        
+        // Initialize smart rules UI
+        initRulesUI();
 
         calculateAccountBalances();
 
@@ -679,6 +687,9 @@ import { initializePrivacySettings } from './modules/privacySettings.js';
                 case 'recurring':
                     const recurringList = document.getElementById("all-recurring-bills-list");
                     if (recurringList) Recurring.renderRecurringBills(state);
+                    break;
+                case 'rules':
+                    // Rules UI manages its own rendering
                     break;
             }
             

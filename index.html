@@ -11,6 +11,7 @@
 
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/privacy.css">
+    <link rel="stylesheet" href="css/rules.css">
 </head>
 
 <body>
@@ -38,6 +39,8 @@
                 <button class="tab-btn" data-tab="debt" id="debt-tab-btn" aria-label="Debt tab">Debt</button>
                 <button class="tab-btn" data-tab="recurring" id="recurring-tab-btn"
                     aria-label="Recurring Bills tab">Recurring Bills</button>
+                <button class="tab-btn" data-tab="rules" id="rules-tab-btn"
+                    aria-label="Smart Rules tab">Rules</button>
                 <button class="tab-btn" data-tab="settings" id="settings-tab-btn"
                     aria-label="Settings tab">Settings</button>
             </nav>
@@ -666,6 +669,58 @@
                 </div>
             </div>
 
+            <div id="rules" class="tab-content" role="region" aria-labelledby="rules-tab-btn">
+                <div class="rules-container">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Smart Rules</h3>
+                            <button class="btn btn--primary" id="add-rule-btn">
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                Add Rule
+                            </button>
+                        </div>
+                        <div class="card__body">
+                            <div class="rules-summary">
+                                <div class="summary-item">
+                                    <span class="summary-label">Active Rules:</span>
+                                    <span class="summary-value" id="active-rules-count">0</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="summary-label">Total Matches:</span>
+                                    <span class="summary-value" id="total-matches-count">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rules-list mt-16">
+                        <div class="card">
+                            <div class="card__header">
+                                <h3>Your Rules</h3>
+                                <div class="rules-controls">
+                                    <button class="btn btn--sm btn--secondary" id="apply-rules-btn">Apply to Existing</button>
+                                </div>
+                            </div>
+                            <div class="card__body">
+                                <div id="rules-list-container" class="rules-list-container">
+                                    <div class="empty-state">
+                                        <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M9 11l3 3L22 4"></path>
+                                            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                                        </svg>
+                                        <p>No rules created yet</p>
+                                        <p class="empty-state-hint">Create your first rule to start automating your transactions</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="settings" class="tab-content" role="region" aria-labelledby="settings-tab-btn">
                 <div class="settings-container">
                     <div class="card">
@@ -1135,6 +1190,98 @@
     <div id="error-banner" class="warning-banner" style="display: none;">
         <span id="error-message"></span>
         <button onclick="document.getElementById('error-banner').style.display='none'">&times;</button>
+    </div>
+
+    <!-- Smart Rule Modal -->
+    <div id="rule-modal" class="modal" tabindex="-1" role="dialog" aria-labelledby="rule-modal-title">
+        <div class="modal-content modal-content--wide">
+            <div class="modal-header">
+                <h3 id="rule-modal-title">Create Smart Rule</h3>
+                <button class="close-btn" id="close-rule-modal" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="rule-form">
+                    <input type="hidden" id="rule-id">
+                    
+                    <div class="form-section">
+                        <h4>Rule Details</h4>
+                        <div class="form-group">
+                            <label class="form-label" for="rule-name">Rule Name</label>
+                            <input type="text" id="rule-name" class="form-control" required 
+                                   placeholder="e.g., Categorize Starbucks">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rule-description">Description (Optional)</label>
+                            <textarea id="rule-description" class="form-control" rows="2"
+                                      placeholder="What does this rule do?"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rule-priority">Priority</label>
+                            <input type="number" id="rule-priority" class="form-control" value="0" min="0" 
+                                   title="Higher priority rules run first">
+                            <small class="form-text">Higher priority rules run first (0 = lowest)</small>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Conditions</h4>
+                        <div class="condition-builder" id="condition-builder">
+                            <div class="condition-item" data-condition-id="0">
+                                <select class="form-control condition-field" required>
+                                    <option value="">Select Field</option>
+                                    <option value="description">Description</option>
+                                    <option value="amount">Amount</option>
+                                    <option value="category">Category</option>
+                                    <option value="type">Transaction Type</option>
+                                </select>
+                                <select class="form-control condition-operator" required>
+                                    <option value="">Select Operator</option>
+                                    <option value="contains">Contains</option>
+                                    <option value="equals">Equals</option>
+                                    <option value="starts_with">Starts With</option>
+                                    <option value="ends_with">Ends With</option>
+                                    <option value="greater_than">Greater Than</option>
+                                    <option value="less_than">Less Than</option>
+                                </select>
+                                <input type="text" class="form-control condition-value" required 
+                                       placeholder="Value">
+                            </div>
+                        </div>
+                        <div class="form-text mt-8">All conditions must match (AND logic)</div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Actions</h4>
+                        <div class="form-group">
+                            <label class="form-label" for="rule-action-type">Action Type</label>
+                            <select id="rule-action-type" class="form-control" required>
+                                <option value="">Select Action</option>
+                                <option value="set_category">Set Category</option>
+                                <option value="add_tag">Add Tag</option>
+                                <option value="add_note">Add Note</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="action-value-group">
+                            <label class="form-label" for="rule-action-value">Value</label>
+                            <input type="text" id="rule-action-value" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="switch">
+                            <input type="checkbox" id="rule-enabled" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <label for="rule-enabled" class="feature-label">Enable Rule</label>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn--secondary" id="cancel-rule-btn">Cancel</button>
+                        <button type="submit" class="btn btn--primary">Save Rule</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <div aria-live="polite" class="sr-only" id="screen-reader-announcer"></div>

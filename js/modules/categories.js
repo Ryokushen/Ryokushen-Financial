@@ -1,0 +1,37 @@
+// js/modules/categories.js
+// Transaction categories used throughout the application
+
+export const categories = [
+  'ATM/Cash',
+  'Bills',
+  'Business',
+  'Childcare',
+  'Debt',
+  'Dining',
+  'Education',
+  'Entertainment',
+  'Fees',
+  'Gifts',
+  'Groceries',
+  'Healthcare',
+  'Home Improvement',
+  'Housing',
+  'Income',
+  'Insurance',
+  'Interest',
+  'Investment',
+  'Misc',
+  'Payment',
+  'Personal Care',
+  'Pet Care',
+  'Professional Services',
+  'Savings',
+  'Shopping',
+  'Subscriptions',
+  'Taxes',
+  'Technology',
+  'Transfer',
+  'Transportation',
+  'Travel',
+  'Utilities'
+]

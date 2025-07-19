@@ -528,6 +528,55 @@ class FinancialDatabase {
             return true;
         } catch (error) { this.handleError('deleteSavingsGoal', error); }
     }
+
+    // Smart Rules operations
+    async getSmartRules(enabled = null) {
+        try {
+            let query = this.supabase.from('smart_rules').select('*')
+            if (enabled !== null) {
+                query = query.eq('enabled', enabled)
+            }
+            const { data, error } = await query.order('priority', { ascending: false })
+            if (error) throw error;
+            return data || [];
+        } catch (error) { this.handleError('getSmartRules', error); }
+    }
+
+    async createSmartRule(ruleData) {
+        try {
+            const { data, error } = await this.supabase
+                .from('smart_rules')
+                .insert(ruleData)
+                .select()
+                .single();
+            if (error) throw error;
+            return data;
+        } catch (error) { this.handleError('createSmartRule', error); }
+    }
+
+    async updateSmartRule(id, updates) {
+        try {
+            const { data, error } = await this.supabase
+                .from('smart_rules')
+                .update(updates)
+                .eq('id', id)
+                .select()
+                .single();
+            if (error) throw error;
+            return data;
+        } catch (error) { this.handleError('updateSmartRule', error); }
+    }
+
+    async deleteSmartRule(id) {
+        try {
+            const { error } = await this.supabase
+                .from('smart_rules')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+            return true;
+        } catch (error) { this.handleError('deleteSmartRule', error); }
+    }
 }
 
 const db = new FinancialDatabase();
