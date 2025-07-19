@@ -320,7 +320,7 @@ function updateChartData(chartName, appState) {
         case 'expenseCategoryChart':
             const expenseData = {};
             appData.transactions
-                .filter(t => (t.amount < 0 && t.category !== 'Transfer') || (t.amount > 0 && t.debt_account_id))
+                .filter(t => (t.amount < 0 && t.category !== 'Transfer') || (t.amount > 0 && t.debt_account_id && t.category !== 'Payment'))
                 .forEach(t => {
                     if (!expenseData[t.category]) expenseData[t.category] = 0;
                     expenseData[t.category] += Math.abs(t.amount);
@@ -421,8 +421,8 @@ function createExpenseCategoryChart({ appData, CHART_COLORS }) {
     const expenseData = {};
 
     appData.transactions
-        // CORRECTED: The '&& t.category !== 'Debt'' part was removed
-        .filter(t => (t.amount < 0 && t.category !== 'Transfer') || (t.amount > 0 && t.debt_account_id))
+        // Filter: negative amounts (expenses) excluding transfers, OR positive debt payments (but not Payment category to avoid double counting)
+        .filter(t => (t.amount < 0 && t.category !== 'Transfer') || (t.amount > 0 && t.debt_account_id && t.category !== 'Payment'))
         .forEach(t => {
             if (!expenseData[t.category]) {
                 expenseData[t.category] = 0;
