@@ -544,9 +544,13 @@ class FinancialDatabase {
 
     async createSmartRule(ruleData) {
         try {
+            const userId = await this.getCurrentUserId();
             const { data, error } = await this.supabase
                 .from('smart_rules')
-                .insert(ruleData)
+                .insert({
+                    ...ruleData,
+                    user_id: userId
+                })
                 .select()
                 .single();
             if (error) throw error;

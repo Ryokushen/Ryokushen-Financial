@@ -175,10 +175,7 @@ class SmartRules {
       }
       
       // Update in database
-      await database
-        .from('smart_rules')
-        .update({ stats: newStats })
-        .eq('id', ruleId)
+      await database.updateSmartRule(ruleId, { stats: newStats })
       
       // Update in local cache
       if (rule.stats) {
