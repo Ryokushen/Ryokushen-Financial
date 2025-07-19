@@ -2,7 +2,7 @@
 import { calendar } from './calendar.js'
 import { escapeHtml, formatCurrency } from './utils.js'
 import { debug } from './debug.js'
-import { privacy } from './privacy.js'
+import { isPrivacyMode } from './privacy.js'
 import { openModal, closeModal, showError } from './ui.js'
 
 export const calendarUI = {
@@ -155,7 +155,7 @@ export const calendarUI = {
                data-event-id="${event.id}"
                style="background-color: ${event.color}20; border-left: 3px solid ${event.color}">
             <span class="calendar-event-title">${escapeHtml(event.title)}</span>
-            <span class="calendar-event-amount ${privacy.isEnabled() ? 'privacy-blur' : ''}">
+            <span class="calendar-event-amount ${isPrivacyMode() ? 'privacy-blur' : ''}">
               ${formatCurrency(event.amount)}
             </span>
           </div>
@@ -169,7 +169,7 @@ export const calendarUI = {
 
   renderMonthSummary() {
     const summary = calendar.getMonthSummary()
-    const privacyClass = privacy.isEnabled() ? 'privacy-blur' : ''
+    const privacyClass = isPrivacyMode() ? 'privacy-blur' : ''
 
     return `
       <div class="calendar-summary">
@@ -245,7 +245,7 @@ export const calendarUI = {
                 <span class="calendar-detail-event-title" style="color: ${event.color}">
                   ${escapeHtml(event.title)}
                 </span>
-                <span class="calendar-detail-event-amount ${privacy.isEnabled() ? 'privacy-blur' : ''}">
+                <span class="calendar-detail-event-amount ${isPrivacyMode() ? 'privacy-blur' : ''}">
                   ${formatCurrency(event.amount)}
                 </span>
               </div>
@@ -262,7 +262,7 @@ export const calendarUI = {
         </div>
         <div class="calendar-day-detail-total">
           <span>Total:</span>
-          <span class="${privacy.isEnabled() ? 'privacy-blur' : ''}">
+          <span class="${isPrivacyMode() ? 'privacy-blur' : ''}">
             ${formatCurrency(events.reduce((sum, e) => sum + e.amount, 0))}
           </span>
         </div>
