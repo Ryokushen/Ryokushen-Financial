@@ -545,12 +545,29 @@ class FinancialDatabase {
     async createSmartRule(ruleData) {
         try {
             const userId = await this.getCurrentUserId();
+            
+            // Ensure we don't pass any undefined or null values
+            const insertData = {
+                user_id: userId,
+                name: ruleData.name,
+                description: ruleData.description || '',
+                enabled: ruleData.enabled !== undefined ? ruleData.enabled : true,
+                priority: ruleData.priority || 0,
+                conditions: ruleData.conditions || {},
+                actions: ruleData.actions || {},
+                stats: ruleData.stats || { matches: 0, last_matched: null }
+            };
+            
+            // Remove any undefined values
+            Object.keys(insertData).forEach(key => {
+                if (insertData[key] === undefined) {
+                    delete insertData[key];
+                }
+            });
+            
             const { data, error } = await this.supabase
                 .from('smart_rules')
-                .insert({
-                    ...ruleData,
-                    user_id: userId
-                })
+                .insert(insertData)
                 .select()
                 .single();
             if (error) throw error;
