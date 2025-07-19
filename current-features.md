@@ -1,11 +1,12 @@
 # Current Features - Ryokushen Financial Tracker
 
-> Last Updated: July 16, 2025
+> Last Updated: July 19, 2025
 
 This document provides a comprehensive overview of all currently implemented features in the Ryokushen Financial Tracker application.
 
 ## Table of Contents
 - [Core Financial Features](#core-financial-features)
+- [Smart Rules Engine](#smart-rules-engine)
 - [Time Budget System](#time-budget-system)
 - [User Interface & Experience](#user-interface--experience)
 - [Voice & Natural Language](#voice--natural-language)
