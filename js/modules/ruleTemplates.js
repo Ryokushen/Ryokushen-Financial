@@ -160,7 +160,7 @@ export const ruleTemplates = {
             ]
           },
           actions: [
-            { type: 'set_category', value: 'Other' },
+            { type: 'set_category', value: 'Misc' },
             { type: 'add_tag', value: 'tax-refund' }
           ]
         }
@@ -195,7 +195,7 @@ export const ruleTemplates = {
             ]
           },
           actions: [
-            { type: 'set_category', value: 'Food' },
+            { type: 'set_category', value: 'Dining' },
             { type: 'add_tag', value: 'fast-food' }
           ]
         }
@@ -220,7 +220,7 @@ export const ruleTemplates = {
             ]
           },
           actions: [
-            { type: 'set_category', value: 'Food' },
+            { type: 'set_category', value: 'Dining' },
             { type: 'add_tag', value: 'delivery' }
           ]
         }
@@ -244,7 +244,7 @@ export const ruleTemplates = {
             ]
           },
           actions: [
-            { type: 'set_category', value: 'Food' },
+            { type: 'set_category', value: 'Dining' },
             { type: 'add_tag', value: 'coffee' }
           ]
         }
@@ -361,7 +361,7 @@ export const ruleTemplates = {
             ]
           },
           actions: [
-            { type: 'set_category', value: 'Food' },
+            { type: 'set_category', value: 'Groceries' },
             { type: 'add_tag', value: 'groceries' }
           ]
         }
