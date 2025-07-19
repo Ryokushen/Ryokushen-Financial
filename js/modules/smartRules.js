@@ -17,10 +17,20 @@ class SmartRules {
       
       // Listen for events that might need rule re-evaluation
       window.addEventListener('transaction:added', (event) => {
-        if (event.detail) this.processTransaction(event.detail)
+        debug.log('SmartRules: Received transaction:added event', event.detail)
+        if (event.detail && event.detail.transaction) {
+          this.processTransaction(event.detail.transaction)
+        } else {
+          console.error('SmartRules: Invalid event detail structure for transaction:added', event.detail)
+        }
       })
       window.addEventListener('transaction:updated', (event) => {
-        if (event.detail) this.processTransaction(event.detail)
+        debug.log('SmartRules: Received transaction:updated event', event.detail)
+        if (event.detail && event.detail.transaction) {
+          this.processTransaction(event.detail.transaction)
+        } else {
+          console.error('SmartRules: Invalid event detail structure for transaction:updated', event.detail)
+        }
       })
       
       debug.log('SmartRules: Initialized successfully')
@@ -139,14 +149,22 @@ class SmartRules {
     }
   }
 
-  async processTransaction(transaction) {
+  async processTransaction(transaction, forceProcess = false) {
     if (!this.rulesLoaded || this.rules.length === 0) {
+      debug.log('SmartRules: No rules loaded, skipping processing')
       return null
     }
     
-    // Skip processing if transaction already has a category (unless it's Uncategorized)
-    if (transaction.category && transaction.category !== 'Uncategorized') {
-      debug.log('SmartRules: Skipping categorized transaction', transaction.id)
+    debug.log('SmartRules: Processing transaction', {
+      id: transaction.id,
+      description: transaction.description,
+      amount: transaction.amount,
+      category: transaction.category
+    })
+    
+    // Skip processing if transaction already has a category (unless it's Uncategorized or force processing)
+    if (!forceProcess && transaction.category && transaction.category !== 'Uncategorized') {
+      console.warn(`SmartRules: Skipping already categorized transaction (${transaction.category}):`, transaction.description)
       return null
     }
 
@@ -157,6 +175,8 @@ class SmartRules {
     const result = await ruleEngine.process(transaction, this.rules)
     
     if (result.matched) {
+      console.log(`SmartRules: Rule "${result.rule.name}" matched for transaction:`, transaction.description)
+      
       // Update rule statistics
       await this.updateRuleStats(result.ruleId)
       
@@ -165,6 +185,8 @@ class SmartRules {
         rule: result.rule,
         actions: result.actions
       }}))
+    } else {
+      debug.log('SmartRules: No rules matched for transaction', transaction.description)
     }
     
     return result
@@ -192,8 +214,10 @@ class SmartRules {
     }
   }
 
-  async applyRulesToExistingTransactions(transactionIds = null) {
+  async applyRulesToExistingTransactions(transactionIds = null, forceProcess = false) {
     try {
+      console.log(`SmartRules: Applying rules to existing transactions (forceProcess: ${forceProcess})`)
+      
       // Get transactions using the database method
       let transactions = await database.getTransactions()
       
@@ -202,27 +226,41 @@ class SmartRules {
         transactions = transactions.filter(t => transactionIds.includes(t.id))
       }
       
+      console.log(`SmartRules: Found ${transactions.length} transactions to process`)
+      
       let processed = 0
       let matched = 0
+      let skipped = 0
       
       for (const transaction of transactions) {
-        const result = await this.processTransaction(transaction)
+        // Check if we should skip this transaction
+        if (!forceProcess && transaction.category && transaction.category !== 'Uncategorized') {
+          skipped++
+          continue
+        }
+        
+        const result = await this.processTransaction(transaction, forceProcess)
         processed++
         if (result?.matched) {
           matched++
         }
       }
       
+      console.log(`SmartRules: Processing complete - Processed: ${processed}, Matched: ${matched}, Skipped: ${skipped}`)
+      
       return { 
         processed, 
-        matched, 
+        matched,
+        skipped,
         error: null 
       }
     } catch (error) {
       debug.error('SmartRules: Error applying rules to existing transactions', error)
+      console.error('SmartRules: Error applying rules to existing transactions', error)
       return { 
         processed: 0, 
-        matched: 0, 
+        matched: 0,
+        skipped: 0,
         error 
       }
     }

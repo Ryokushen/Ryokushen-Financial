@@ -28,6 +28,38 @@ export const rulesUI = {
     document.getElementById('add-rule-btn')?.addEventListener('click', () => {
       this.openRuleModal()
     })
+    
+    // Reprocess all transactions button
+    document.getElementById('reprocess-all-btn')?.addEventListener('click', async () => {
+      if (confirm('This will apply all active rules to ALL transactions, including already categorized ones. Continue?')) {
+        try {
+          showInfo('Processing all transactions...')
+          
+          // Get all transactions
+          const transactions = await database.getTransactions()
+          let processed = 0
+          let matched = 0
+          
+          // Process each transaction with force flag
+          for (const transaction of transactions) {
+            const result = await window.smartRules.processTransaction(transaction, true) // force = true
+            processed++
+            if (result?.matched) {
+              matched++
+            }
+          }
+          
+          showSuccess(`Processed ${processed} transactions. ${matched} matched rules.`)
+          
+          // Refresh the transaction list
+          window.dispatchEvent(new CustomEvent('transactions:refresh'))
+          
+        } catch (error) {
+          showError('Failed to reprocess transactions: ' + error.message)
+          debug.error('RulesUI: Error reprocessing transactions', error)
+        }
+      }
+    })
 
     // Modal controls
     document.getElementById('close-rule-modal')?.addEventListener('click', () => {
@@ -481,8 +513,27 @@ export const rulesUI = {
   },
 
   handleRuleMatch(data) {
-    // Could show a notification or update UI when a rule matches
+    // Show notification and update UI when a rule matches
     debug.log('Rule matched:', data.rule.name, 'on transaction:', data.transaction.description)
+    
+    // Update the transaction in the UI
+    if (data.actions && data.actions.length > 0) {
+      // Find the category update action
+      const categoryAction = data.actions.find(a => a.action === 'set_category' && a.success)
+      if (categoryAction) {
+        // Dispatch event to refresh transaction list
+        window.dispatchEvent(new CustomEvent('transaction:categorized', { 
+          detail: { 
+            transactionId: data.transaction.id,
+            newCategory: categoryAction.value,
+            ruleName: data.rule.name
+          }
+        }))
+        
+        // Show success message
+        showSuccess(`Rule "${data.rule.name}" applied: ${data.transaction.description} → ${categoryAction.value}`)
+      }
+    }
   },
 
   refresh() {

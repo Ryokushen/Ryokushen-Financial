@@ -183,6 +183,40 @@ export function setupEventListeners(appState, onUpdate) {
 
     // Voice input button
     setupVoiceInput();
+    
+    // Listen for transaction categorization from Smart Rules
+    window.addEventListener('transaction:categorized', (event) => {
+        if (event.detail && event.detail.transactionId) {
+            const { transactionId, newCategory } = event.detail;
+            
+            // Update the transaction in app state
+            const transaction = appState.appData.transactions.find(t => t.id === transactionId);
+            if (transaction) {
+                transaction.category = newCategory;
+                
+                // Refresh the transaction display
+                renderTransactions(appState, currentCategoryFilter);
+                
+                debug.log(`Transaction ${transactionId} categorized as ${newCategory}`);
+            }
+        }
+    });
+    
+    // Listen for request to refresh all transactions
+    window.addEventListener('transactions:refresh', async () => {
+        try {
+            // Reload transactions from database
+            const freshTransactions = await db.getTransactions();
+            appState.appData.transactions = freshTransactions;
+            
+            // Refresh the display
+            renderTransactions(appState, currentCategoryFilter);
+            
+            debug.log('Transactions refreshed from database');
+        } catch (error) {
+            debug.error('Failed to refresh transactions:', error);
+        }
+    });
 }
 
 async function setupVoiceInput() {

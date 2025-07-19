@@ -126,6 +126,9 @@ import { calendar } from './modules/calendar.js';
         const { smartRules } = await import('./modules/smartRules.js');
         await smartRules.init();
         
+        // Make smartRules globally accessible for UI components
+        window.smartRules = smartRules;
+        
         // Initialize smart rules UI
         initRulesUI();
         

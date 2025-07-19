@@ -2904,3 +2904,10 @@ body:focus {
   background-color: var(--color-warning, #ff9800);
   color: #fff;
 }
+
+/* Button Group */
+.button-group {
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+}

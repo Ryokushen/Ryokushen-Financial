@@ -73,12 +73,19 @@ class RuleEngine {
 
   // Process a transaction through all rules
   async process(transaction, rules) {
+    debug.log(`RuleEngine: Processing transaction through ${rules.length} rules`)
+    
     for (const rule of rules) {
-      if (!rule.enabled) continue
+      if (!rule.enabled) {
+        debug.log(`RuleEngine: Skipping disabled rule "${rule.name}"`)
+        continue
+      }
       
+      debug.log(`RuleEngine: Evaluating rule "${rule.name}"`)
       const matches = this.evaluateConditions(transaction, rule.conditions)
       
       if (matches) {
+        debug.log(`RuleEngine: Rule "${rule.name}" matched!`)
         // Apply actions
         const results = await this.applyActions(transaction, rule.actions)
         
@@ -88,9 +95,12 @@ class RuleEngine {
           ruleId: rule.id,
           actions: results
         }
+      } else {
+        debug.log(`RuleEngine: Rule "${rule.name}" did not match`)
       }
     }
     
+    debug.log('RuleEngine: No rules matched the transaction')
     return { matched: false }
   }
 
@@ -134,7 +144,10 @@ class RuleEngine {
     // Get the field value from the transaction
     let fieldValue = this.getFieldValue(transaction, field)
     
+    debug.log(`RuleEngine: Evaluating condition - field: ${field}, operator: ${operator}, value: ${value}, fieldValue: ${fieldValue}`)
+    
     if (fieldValue === undefined || fieldValue === null) {
+      debug.log(`RuleEngine: Field value is undefined/null for field: ${field}`)
       return false
     }
     
@@ -151,7 +164,9 @@ class RuleEngine {
     }
     
     // Apply the operator
-    return operatorFn(fieldValue, value)
+    const result = operatorFn(fieldValue, value)
+    debug.log(`RuleEngine: Condition result: ${result}`)
+    return result
   }
 
   // Get field value from transaction
