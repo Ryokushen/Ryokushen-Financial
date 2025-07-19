@@ -11,7 +11,7 @@ class SmartRules {
   }
 
   async init() {
-    debug('SmartRules: Initializing')
+    debug.log('SmartRules: Initializing')
     
     try {
       await this.loadRules()
@@ -20,7 +20,7 @@ class SmartRules {
       eventManager.on('transaction:added', (transaction) => this.processTransaction(transaction))
       eventManager.on('transaction:updated', (transaction) => this.processTransaction(transaction))
       
-      debug('SmartRules: Initialized successfully')
+      debug.log('SmartRules: Initialized successfully')
     } catch (error) {
       debug.error('SmartRules: Initialization failed', error)
     }
@@ -42,7 +42,7 @@ class SmartRules {
       this.rulesLoaded = true
       this.cache.clear() // Clear cache when rules are reloaded
       
-      debug(`SmartRules: Loaded ${this.rules.length} active rules`)
+      debug.log(`SmartRules: Loaded ${this.rules.length} active rules`)
       
       eventManager.emit('rules:loaded', this.rules)
     } catch (error) {
