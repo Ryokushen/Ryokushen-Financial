@@ -180,6 +180,33 @@ Income, Housing, Transportation, Food, Healthcare, Entertainment, Shopping, Util
   - Responsive design for mobile
   - Data persistence across navigation
 
+#### Pay Schedule Configuration
+- **Frequency Options**:
+  - Weekly (select day of week)
+  - Bi-weekly (every 2 weeks from start date)
+  - Semi-monthly (select two days of month)
+  - Monthly (select day of month)
+- **Pay Schedule Modal**:
+  - Clean form interface for adding schedules
+  - Dynamic field display based on frequency
+  - Multiple pay schedules support
+  - Net pay amount entry
+- **Schedule Management**:
+  - View all active pay schedules
+  - Delete individual schedules
+  - Real-time calendar updates
+  - Edit functionality (planned)
+- **Calendar Integration**:
+  - Pay events shown in green
+  - Income summary in month header
+  - Net cash flow calculation
+  - Pay events sorted by date
+- **Database Features**:
+  - Secure pay_schedules table
+  - Row Level Security policies
+  - Automatic timestamp updates
+  - User data isolation
+
 #### Payment Processing
 - One-click bill payment
 - Automatic transaction creation

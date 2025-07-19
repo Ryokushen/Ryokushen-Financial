@@ -608,6 +608,58 @@ class FinancialDatabase {
             return true;
         } catch (error) { this.handleError('deleteSmartRule', error); }
     }
+
+    // --- PAY SCHEDULES ---
+    async getPaySchedules(activeOnly = false) {
+        try {
+            let query = this.supabase.from('pay_schedules').select('*')
+            if (activeOnly) {
+                query = query.eq('is_active', true)
+            }
+            const { data, error } = await query.order('created_at', { ascending: false })
+            if (error) throw error;
+            return data || [];
+        } catch (error) { 
+            this.handleError('getPaySchedules', error);
+            return [];
+        }
+    }
+
+    async createPaySchedule(scheduleData) {
+        try {
+            const userId = await this.getCurrentUserId();
+            const { data, error } = await this.supabase.from('pay_schedules').insert({
+                ...scheduleData,
+                user_id: userId
+            }).select().single();
+            if (error) throw error;
+            return data;
+        } catch (error) { this.handleError('createPaySchedule', error); }
+    }
+
+    async updatePaySchedule(id, scheduleData) {
+        try {
+            const { data, error } = await this.supabase
+                .from('pay_schedules')
+                .update(scheduleData)
+                .eq('id', id)
+                .select()
+                .single();
+            if (error) throw error;
+            return data;
+        } catch (error) { this.handleError('updatePaySchedule', error); }
+    }
+
+    async deletePaySchedule(id) {
+        try {
+            const { error } = await this.supabase
+                .from('pay_schedules')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+            return true;
+        } catch (error) { this.handleError('deletePaySchedule', error); }
+    }
 }
 
 const db = new FinancialDatabase();

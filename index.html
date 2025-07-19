@@ -1308,6 +1308,93 @@
         </div>
     </div>
 
+    <!-- Pay Schedule Modal -->
+    <div id="pay-schedule-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configure Pay Schedule</h2>
+                <button class="modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="pay-schedule-form">
+                    <div class="form-group">
+                        <label for="pay-schedule-name">Schedule Name</label>
+                        <input type="text" id="pay-schedule-name" name="name" required 
+                               placeholder="e.g., Main Job, Side Gig">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pay-frequency">Pay Frequency</label>
+                        <select id="pay-frequency" name="frequency" required>
+                            <option value="">Select frequency</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="bi-weekly">Bi-weekly (every 2 weeks)</option>
+                            <option value="semi-monthly">Semi-monthly (twice a month)</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="start-date-group">
+                        <label for="pay-start-date">Start Date</label>
+                        <input type="date" id="pay-start-date" name="start_date" required>
+                        <small class="form-help">Date of your first or most recent paycheck</small>
+                    </div>
+
+                    <div class="form-group" id="weekly-options" style="display: none;">
+                        <label for="pay-day-of-week">Pay Day</label>
+                        <select id="pay-day-of-week" name="day_of_week">
+                            <option value="0">Sunday</option>
+                            <option value="1">Monday</option>
+                            <option value="2">Tuesday</option>
+                            <option value="3">Wednesday</option>
+                            <option value="4">Thursday</option>
+                            <option value="5" selected>Friday</option>
+                            <option value="6">Saturday</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="semi-monthly-options" style="display: none;">
+                        <label>Pay Days of Month</label>
+                        <div class="form-row">
+                            <div class="form-col">
+                                <label for="pay-day-1" class="form-label-sm">First Pay Day</label>
+                                <input type="number" id="pay-day-1" name="day_of_month_1" 
+                                       min="1" max="31" value="15" required>
+                            </div>
+                            <div class="form-col">
+                                <label for="pay-day-2" class="form-label-sm">Second Pay Day</label>
+                                <input type="number" id="pay-day-2" name="day_of_month_2" 
+                                       min="1" max="31" value="30" required>
+                            </div>
+                        </div>
+                        <small class="form-help">Days of the month you get paid (e.g., 1st and 15th)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pay-amount">Pay Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" id="pay-amount" name="amount" 
+                                   min="0" step="0.01" required placeholder="0.00">
+                        </div>
+                        <small class="form-help">Net amount (after taxes) per paycheck</small>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn--secondary" id="cancel-pay-schedule">Cancel</button>
+                        <button type="submit" class="btn btn--primary">Save Schedule</button>
+                    </div>
+                </form>
+
+                <!-- Existing Schedules -->
+                <div id="existing-schedules" class="existing-schedules-list" style="display: none;">
+                    <h3>Existing Pay Schedules</h3>
+                    <div id="pay-schedules-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div aria-live="polite" class="sr-only" id="screen-reader-announcer"></div>
 
     <script type="module" src="js/config.js"></script>

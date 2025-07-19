@@ -2,6 +2,7 @@
 import { debug } from './debug.js'
 import { formatDate, formatCurrency } from './utils.js'
 import { getNextDueDate } from './utils.js'
+import { paySchedule } from './paySchedule.js'
 
 export class Calendar {
   constructor() {
@@ -159,11 +160,51 @@ export class Calendar {
     return colors[category] || '#71717A'
   }
 
-  setEvents(bills = []) {
+  async setEvents(bills = []) {
     debug.log('Calendar: setEvents called with', bills.length, 'bills')
-    this.events = this.generateRecurringBillEvents(bills)
-    debug.log('Calendar: Generated', this.events.length, 'events')
+    
+    // Generate bill events
+    const billEvents = this.generateRecurringBillEvents(bills)
+    
+    // Generate pay events
+    const payEvents = await this.generatePayEvents()
+    
+    // Combine all events
+    this.events = [...billEvents, ...payEvents]
+    
+    debug.log('Calendar: Generated', this.events.length, 'events (', billEvents.length, 'bills,', payEvents.length, 'pay days)')
     this.notifyListeners('eventsUpdated', this.events)
+  }
+
+  async generatePayEvents() {
+    const events = []
+    
+    try {
+      // Ensure pay schedules are loaded
+      if (!paySchedule.loaded) {
+        await paySchedule.init()
+      }
+      
+      // Get pay events for current month
+      const payDates = paySchedule.getAllPayEventsForMonth(this.currentMonth, this.currentYear)
+      
+      payDates.forEach((payEvent, index) => {
+        events.push({
+          id: `pay_${payEvent.schedule.id}_${payEvent.date.getTime()}`,
+          type: 'pay',
+          date: payEvent.date,
+          title: payEvent.schedule.name || 'Payday',
+          amount: payEvent.amount,
+          category: 'Income',
+          schedule_id: payEvent.schedule.id,
+          color: '#10B981' // Green for income
+        })
+      })
+    } catch (error) {
+      debug.error('Calendar: Error generating pay events', error)
+    }
+    
+    return events
   }
 
   getEventsForDate(date) {

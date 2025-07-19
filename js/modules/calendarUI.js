@@ -4,6 +4,8 @@ import { escapeHtml, formatCurrency } from './utils.js'
 import { debug } from './debug.js'
 import { isPrivacyMode } from './privacy.js'
 import { openModal, closeModal, showError } from './ui.js'
+import { paySchedule } from './paySchedule.js'
+import { announceToScreenReader } from './ui.js'
 
 export const calendarUI = {
   container: null,
@@ -58,6 +60,10 @@ export const calendarUI = {
           calendar.goToToday()
           setTimeout(() => { isNavigating = false }, 300)
         }
+      } else if (e.target.closest('#configure-pay-schedule')) {
+        e.preventDefault()
+        e.stopPropagation()
+        this.openPayScheduleModal()
       } else if (e.target.closest('.calendar-event')) {
         // Handle event click before day click
         e.stopPropagation()
@@ -118,7 +124,15 @@ export const calendarUI = {
               </svg>
             </button>
           </div>
-          <button class="btn btn--sm btn--secondary calendar-today">Today</button>
+          <div class="calendar-actions">
+            <button class="btn btn--sm btn--secondary calendar-today">Today</button>
+            <button class="btn btn--sm btn--primary" id="configure-pay-schedule">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+              Pay Schedule
+            </button>
+          </div>
         </div>
         
         ${this.renderMonthSummary()}
@@ -181,16 +195,23 @@ export const calendarUI = {
 
     return `
       <div class="calendar-day-events">
-        ${visibleEvents.map(event => `
-          <div class="calendar-event calendar-event--${event.type}" 
-               data-event-id="${event.id}"
-               style="background-color: rgba(255, 107, 107, 0.15); border-left: 3px solid #FF6B6B">
-            <span class="calendar-event-title">${escapeHtml(event.title)}</span>
-            <span class="calendar-event-amount ${isPrivacyMode() ? 'privacy-blur' : ''}">
-              ${formatCurrency(event.amount)}
-            </span>
-          </div>
-        `).join('')}
+        ${visibleEvents.map(event => {
+          const isPayEvent = event.type === 'pay'
+          const bgColor = isPayEvent ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 107, 107, 0.15)'
+          const borderColor = isPayEvent ? '#10B981' : '#FF6B6B'
+          const amountPrefix = isPayEvent ? '+' : '-'
+          
+          return `
+            <div class="calendar-event calendar-event--${event.type}" 
+                 data-event-id="${event.id}"
+                 style="background-color: ${bgColor}; border-left: 3px solid ${borderColor}">
+              <span class="calendar-event-title">${escapeHtml(event.title)}</span>
+              <span class="calendar-event-amount ${isPrivacyMode() ? 'privacy-blur' : ''}">
+                ${amountPrefix}${formatCurrency(Math.abs(event.amount))}
+              </span>
+            </div>
+          `
+        }).join('')}
         ${moreCount > 0 ? `
           <div class="calendar-event-more">+${moreCount} more</div>
         ` : ''}
@@ -343,6 +364,181 @@ export const calendarUI = {
   updateData(bills) {
     this.currentBillsData = bills
     calendar.setEvents(bills)
+  },
+
+  async openPayScheduleModal() {
+    debug.log('CalendarUI: Opening pay schedule modal')
+    
+    const modal = document.getElementById('pay-schedule-modal')
+    if (!modal) {
+      debug.error('CalendarUI: Pay schedule modal not found')
+      return
+    }
+
+    // Load existing schedules
+    await this.loadExistingSchedules()
+    
+    // Setup form event listeners
+    this.setupPayScheduleForm()
+    
+    // Show modal
+    modal.style.display = 'block'
+    setTimeout(() => modal.classList.add('modal--open'), 10)
+    
+    // Focus on first input
+    document.getElementById('pay-schedule-name')?.focus()
+  },
+
+  async loadExistingSchedules() {
+    try {
+      const schedules = await paySchedule.getActiveSchedules()
+      const container = document.getElementById('existing-schedules')
+      const listContainer = document.getElementById('pay-schedules-list')
+      
+      if (!container || !listContainer) return
+      
+      if (schedules.length > 0) {
+        container.style.display = 'block'
+        listContainer.innerHTML = schedules.map(schedule => `
+          <div class="pay-schedule-item">
+            <div class="pay-schedule-info">
+              <strong>${escapeHtml(schedule.name)}</strong>
+              <span>${this.getFrequencyText(schedule.frequency)} - ${formatCurrency(schedule.amount)}</span>
+            </div>
+            <div class="pay-schedule-actions">
+              <button class="btn btn--sm btn--outline" onclick="calendarUI.editPaySchedule(${schedule.id})">Edit</button>
+              <button class="btn btn--sm btn--danger" onclick="calendarUI.deletePaySchedule(${schedule.id})">Delete</button>
+            </div>
+          </div>
+        `).join('')
+      } else {
+        container.style.display = 'none'
+      }
+    } catch (error) {
+      debug.error('CalendarUI: Error loading schedules', error)
+    }
+  },
+
+  getFrequencyText(frequency) {
+    const texts = {
+      'weekly': 'Weekly',
+      'bi-weekly': 'Bi-weekly',
+      'semi-monthly': 'Semi-monthly',
+      'monthly': 'Monthly'
+    }
+    return texts[frequency] || frequency
+  },
+
+  setupPayScheduleForm() {
+    const form = document.getElementById('pay-schedule-form')
+    const frequencySelect = document.getElementById('pay-frequency')
+    const weeklyOptions = document.getElementById('weekly-options')
+    const semiMonthlyOptions = document.getElementById('semi-monthly-options')
+    const cancelBtn = document.getElementById('cancel-pay-schedule')
+    const modal = document.getElementById('pay-schedule-modal')
+    
+    // Close button handler
+    modal.querySelector('.modal-close')?.addEventListener('click', () => {
+      this.closePayScheduleModal()
+    })
+    
+    // Cancel button handler
+    cancelBtn?.addEventListener('click', () => {
+      this.closePayScheduleModal()
+    })
+    
+    // Frequency change handler
+    frequencySelect?.addEventListener('change', (e) => {
+      const frequency = e.target.value
+      
+      // Hide all options first
+      weeklyOptions.style.display = 'none'
+      semiMonthlyOptions.style.display = 'none'
+      
+      // Show relevant options
+      if (frequency === 'weekly') {
+        weeklyOptions.style.display = 'block'
+      } else if (frequency === 'semi-monthly') {
+        semiMonthlyOptions.style.display = 'block'
+      }
+    })
+    
+    // Form submit handler
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      await this.savePaySchedule()
+    })
+  },
+
+  async savePaySchedule() {
+    const form = document.getElementById('pay-schedule-form')
+    const formData = new FormData(form)
+    
+    const scheduleData = {
+      name: formData.get('name'),
+      frequency: formData.get('frequency'),
+      start_date: formData.get('start_date'),
+      amount: parseFloat(formData.get('amount')),
+      is_active: true
+    }
+    
+    // Add frequency-specific fields
+    if (scheduleData.frequency === 'weekly') {
+      scheduleData.day_of_week = parseInt(formData.get('day_of_week'))
+    } else if (scheduleData.frequency === 'semi-monthly') {
+      scheduleData.day_of_month_1 = parseInt(formData.get('day_of_month_1'))
+      scheduleData.day_of_month_2 = parseInt(formData.get('day_of_month_2'))
+    }
+    
+    try {
+      await paySchedule.createSchedule(scheduleData)
+      
+      // Refresh calendar to show new pay events
+      await calendar.setEvents(this.currentBillsData)
+      
+      // Close modal
+      this.closePayScheduleModal()
+      
+      // Show success message
+      announceToScreenReader('Pay schedule created successfully')
+    } catch (error) {
+      debug.error('CalendarUI: Error saving pay schedule', error)
+      showError('Failed to save pay schedule')
+    }
+  },
+
+  closePayScheduleModal() {
+    const modal = document.getElementById('pay-schedule-modal')
+    if (modal) {
+      modal.classList.remove('modal--open')
+      setTimeout(() => {
+        modal.style.display = 'none'
+        // Reset form
+        document.getElementById('pay-schedule-form')?.reset()
+        // Reset frequency options
+        document.getElementById('weekly-options').style.display = 'none'
+        document.getElementById('semi-monthly-options').style.display = 'none'
+      }, 300)
+    }
+  },
+
+  async editPaySchedule(id) {
+    // TODO: Implement edit functionality
+    debug.log('CalendarUI: Edit pay schedule', id)
+  },
+
+  async deletePaySchedule(id) {
+    if (confirm('Are you sure you want to delete this pay schedule?')) {
+      try {
+        await paySchedule.deleteSchedule(id)
+        await this.loadExistingSchedules()
+        await calendar.setEvents(this.currentBillsData)
+        announceToScreenReader('Pay schedule deleted successfully')
+      } catch (error) {
+        debug.error('CalendarUI: Error deleting pay schedule', error)
+        showError('Failed to delete pay schedule')
+      }
+    }
   },
 
   destroy() {
