@@ -8,6 +8,7 @@ import { openModal, closeModal, showError } from './ui.js'
 export const calendarUI = {
   container: null,
   isInitialized: false,
+  currentBillsData: null,
 
   init() {
     debug.log('CalendarUI: Initializing')
@@ -27,24 +28,48 @@ export const calendarUI = {
   },
 
   setupEventListeners() {
+    // Prevent multiple rapid clicks
+    let isNavigating = false
+    
     // Navigation controls
     this.container.addEventListener('click', (e) => {
-      if (e.target.classList.contains('calendar-prev')) {
-        calendar.previousMonth()
-      } else if (e.target.classList.contains('calendar-next')) {
-        calendar.nextMonth()
+      // Handle navigation buttons
+      if (e.target.classList.contains('calendar-prev') || e.target.closest('.calendar-prev')) {
+        e.preventDefault()
+        e.stopPropagation()
+        if (!isNavigating) {
+          isNavigating = true
+          calendar.previousMonth()
+          setTimeout(() => { isNavigating = false }, 300)
+        }
+      } else if (e.target.classList.contains('calendar-next') || e.target.closest('.calendar-next')) {
+        e.preventDefault()
+        e.stopPropagation()
+        if (!isNavigating) {
+          isNavigating = true
+          calendar.nextMonth()
+          setTimeout(() => { isNavigating = false }, 300)
+        }
       } else if (e.target.classList.contains('calendar-today')) {
-        calendar.goToToday()
+        e.preventDefault()
+        e.stopPropagation()
+        if (!isNavigating) {
+          isNavigating = true
+          calendar.goToToday()
+          setTimeout(() => { isNavigating = false }, 300)
+        }
+      } else if (e.target.closest('.calendar-event')) {
+        // Handle event click before day click
+        e.stopPropagation()
+        const event = e.target.closest('.calendar-event')
+        const eventId = event.dataset.eventId
+        this.handleEventClick(eventId)
       } else if (e.target.closest('.calendar-day')) {
         const day = e.target.closest('.calendar-day')
         const date = parseInt(day.dataset.date)
         if (date) {
           this.handleDayClick(date)
         }
-      } else if (e.target.closest('.calendar-event')) {
-        const event = e.target.closest('.calendar-event')
-        const eventId = event.dataset.eventId
-        this.handleEventClick(eventId)
       }
     })
 
@@ -55,7 +80,13 @@ export const calendarUI = {
   },
 
   bindCalendarEvents() {
-    calendar.on('monthChanged', () => this.render())
+    calendar.on('monthChanged', () => {
+      this.render()
+      // Regenerate events for the new month
+      if (this.currentBillsData) {
+        calendar.setEvents(this.currentBillsData)
+      }
+    })
     calendar.on('eventsUpdated', () => this.render())
     calendar.on('refreshRequested', () => {
       // Request fresh data from the parent module
@@ -310,6 +341,7 @@ export const calendarUI = {
   },
 
   updateData(bills) {
+    this.currentBillsData = bills
     calendar.setEvents(bills)
   },
 
