@@ -30,15 +30,9 @@ class SmartRules {
 
   async loadRules() {
     try {
-      const { data, error } = await database
-        .from('smart_rules')
-        .select('*')
-        .eq('enabled', true)
-        .order('priority', { ascending: false })
+      const rules = await database.getSmartRules(true) // true = enabled only
       
-      if (error) throw error
-      
-      this.rules = data || []
+      this.rules = rules || []
       this.rulesLoaded = true
       this.cache.clear() // Clear cache when rules are reloaded
       
@@ -53,21 +47,17 @@ class SmartRules {
 
   async createRule(ruleData) {
     try {
-      const { data, error } = await database
-        .from('smart_rules')
-        .insert({
-          name: ruleData.name,
-          description: ruleData.description || '',
-          enabled: ruleData.enabled !== false,
-          priority: ruleData.priority || 0,
-          conditions: ruleData.conditions,
-          actions: ruleData.actions,
-          stats: { matches: 0, last_matched: null }
-        })
-        .select()
-        .single()
+      const ruleToCreate = {
+        name: ruleData.name,
+        description: ruleData.description || '',
+        enabled: ruleData.enabled !== false,
+        priority: ruleData.priority || 0,
+        conditions: ruleData.conditions,
+        actions: ruleData.actions,
+        stats: { matches: 0, last_matched: null }
+      }
       
-      if (error) throw error
+      const data = await database.createSmartRule(ruleToCreate)
       
       // Reload rules to maintain proper priority order
       await this.loadRules()
@@ -82,17 +72,12 @@ class SmartRules {
 
   async updateRule(ruleId, updates) {
     try {
-      const { data, error } = await database
-        .from('smart_rules')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', ruleId)
-        .select()
-        .single()
+      const updatesWithTimestamp = {
+        ...updates,
+        updated_at: new Date().toISOString()
+      }
       
-      if (error) throw error
+      const data = await database.updateSmartRule(ruleId, updatesWithTimestamp)
       
       // Reload rules to maintain proper priority order
       await this.loadRules()
@@ -107,12 +92,7 @@ class SmartRules {
 
   async deleteRule(ruleId) {
     try {
-      const { error } = await database
-        .from('smart_rules')
-        .delete()
-        .eq('id', ruleId)
-      
-      if (error) throw error
+      await database.deleteSmartRule(ruleId)
       
       // Remove from local array
       this.rules = this.rules.filter(rule => rule.id !== ruleId)
@@ -131,12 +111,7 @@ class SmartRules {
 
   async getAllRules() {
     try {
-      const { data, error } = await database
-        .from('smart_rules')
-        .select('*')
-        .order('priority', { ascending: false })
-      
-      if (error) throw error
+      const data = await database.getSmartRules() // null = get all rules (enabled and disabled)
       
       return { data: data || [], error: null }
     } catch (error) {
@@ -147,15 +122,17 @@ class SmartRules {
 
   async getRuleStatistics() {
     try {
-      const { data, error } = await database
-        .rpc('get_my_rule_statistics')
+      const allRules = await database.getSmartRules()
       
-      if (error) throw error
+      const stats = {
+        active_rules: allRules.filter(rule => rule.enabled).length,
+        total_matches: allRules.reduce((sum, rule) => sum + (rule.stats?.matches || 0), 0)
+      }
       
-      return { data: data?.[0] || {}, error: null }
+      return { data: stats, error: null }
     } catch (error) {
       debug.error('SmartRules: Error getting statistics', error)
-      return { data: {}, error }
+      return { data: { active_rules: 0, total_matches: 0 }, error }
     }
   }
 
@@ -211,15 +188,13 @@ class SmartRules {
 
   async applyRulesToExistingTransactions(transactionIds = null) {
     try {
-      let query = database.from('transactions').select('*')
+      // Get transactions using the database method
+      let transactions = await database.getTransactions()
       
+      // Filter by specific transaction IDs if provided
       if (transactionIds && transactionIds.length > 0) {
-        query = query.in('id', transactionIds)
+        transactions = transactions.filter(t => transactionIds.includes(t.id))
       }
-      
-      const { data: transactions, error } = await query
-      
-      if (error) throw error
       
       let processed = 0
       let matched = 0
