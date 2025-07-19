@@ -136,11 +136,30 @@ class SmartRules {
   async getRuleStatistics() {
     try {
       const allRules = await database.getSmartRules()
+      const transactions = await database.getTransactions()
+      
+      // Import rule engine once for efficiency
+      const { ruleEngine } = await import('./ruleEngine.js')
+      
+      // Calculate matches dynamically based on actual transactions
+      let totalMatches = 0
+      
+      // For each enabled rule, count how many transactions match
+      for (const rule of allRules.filter(r => r.enabled)) {
+        for (const transaction of transactions) {
+          // Check if transaction matches this rule
+          if (ruleEngine.evaluateConditions(transaction, rule.conditions)) {
+            totalMatches++
+          }
+        }
+      }
       
       const stats = {
         active_rules: allRules.filter(rule => rule.enabled).length,
-        total_matches: allRules.reduce((sum, rule) => sum + (rule.stats?.matches || 0), 0)
+        total_matches: totalMatches
       }
+      
+      debug.log(`SmartRules: Statistics calculated - ${stats.active_rules} active rules, ${totalMatches} total matches`)
       
       return { data: stats, error: null }
     } catch (error) {
@@ -177,8 +196,7 @@ class SmartRules {
     if (result.matched) {
       console.log(`SmartRules: Rule "${result.rule.name}" matched for transaction:`, transaction.description)
       
-      // Update rule statistics
-      await this.updateRuleStats(result.ruleId)
+      // No need to update statistics - they're calculated dynamically now
       
       window.dispatchEvent(new CustomEvent('rule:matched', { detail: {
         transaction,
@@ -192,27 +210,6 @@ class SmartRules {
     return result
   }
 
-  async updateRuleStats(ruleId) {
-    try {
-      const rule = this.rules.find(r => r.id === ruleId)
-      if (!rule) return
-      
-      const newStats = {
-        matches: (rule.stats?.matches || 0) + 1,
-        last_matched: new Date().toISOString()
-      }
-      
-      // Update in database
-      await database.updateSmartRule(ruleId, { stats: newStats })
-      
-      // Update in local cache
-      if (rule.stats) {
-        rule.stats = newStats
-      }
-    } catch (error) {
-      debug.error('SmartRules: Error updating rule stats', error)
-    }
-  }
 
   async applyRulesToExistingTransactions(transactionIds = null, forceProcess = false) {
     try {

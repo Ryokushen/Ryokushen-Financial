@@ -21,6 +21,14 @@ export const rulesUI = {
     window.addEventListener('rule:matched', (event) => {
       if (event.detail) this.handleRuleMatch(event.detail)
     })
+    
+    // Listen for transaction changes to update statistics
+    window.addEventListener('transaction:deleted', () => {
+      this.updateSummary() // Refresh statistics when transactions are deleted
+    })
+    window.addEventListener('transaction:categorized', () => {
+      this.updateSummary() // Refresh statistics when transactions are categorized
+    })
   },
 
   setupEventListeners() {

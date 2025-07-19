@@ -1280,6 +1280,12 @@ async function deleteTransaction(id, appState, onUpdate) {
                 }
 
                 onUpdate();
+                
+                // Dispatch event for Smart Rules to refresh statistics
+                window.dispatchEvent(new CustomEvent('transaction:deleted', {
+                    detail: { transactionId: id }
+                }));
+                
                 announceToScreenReader("Transaction deleted");
             } catch (stateError) {
                 // State update failed, try to restore the transaction
