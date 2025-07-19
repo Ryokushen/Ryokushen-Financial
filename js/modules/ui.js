@@ -43,6 +43,11 @@ export function showError(message) {
     }
 }
 
+export function showSuccess(message) {
+    debug.log(message);
+    announceToScreenReader(message);
+}
+
 // Listen for custom show-error events from formUtils
 window.addEventListener('show-error', (e) => {
     if (e.detail && e.detail.message) {
