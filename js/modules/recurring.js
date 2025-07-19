@@ -41,7 +41,7 @@ export function setupEventListeners(appState, onUpdate) {
     
     // View toggle for calendar/list view
     document.getElementById('calendar-view-toggle')?.addEventListener('change', (e) => {
-        toggleCalendarView(e.target.value);
+        toggleCalendarView(e.target.value, appState);
     });
 }
 
@@ -63,7 +63,7 @@ function setupCalendarEventListeners(appState, onUpdate) {
 }
 
 // Toggle between calendar and list views
-function toggleCalendarView(view) {
+function toggleCalendarView(view, appState) {
     const calendarContainer = document.getElementById('calendar-container');
     const listContainer = document.getElementById('upcoming-bills-list');
     
@@ -74,6 +74,11 @@ function toggleCalendarView(view) {
         // Initialize calendar if not already done
         if (!calendarUI.isInitialized) {
             calendarUI.init();
+        }
+        
+        // Update calendar data after initialization
+        if (appState && appState.appData.recurringBills) {
+            calendarUI.updateData(appState.appData.recurringBills);
         }
     } else {
         calendarContainer.style.display = 'none';
@@ -418,9 +423,17 @@ export function renderRecurringBills(appState) {
     renderUpcomingBills(appData);
     renderAllRecurringBills(appData);
     
-    // Initialize calendar with recurring bills data
-    if (appData.recurringBills && calendarUI.isInitialized) {
-        calendarUI.updateData(appData.recurringBills);
+    // Check if calendar view is selected
+    const viewToggle = document.getElementById('calendar-view-toggle');
+    if (viewToggle && viewToggle.value === 'month') {
+        // Initialize calendar if needed
+        if (!calendarUI.isInitialized) {
+            calendarUI.init();
+        }
+        // Update calendar with recurring bills data
+        if (appData.recurringBills) {
+            calendarUI.updateData(appData.recurringBills);
+        }
     }
 }
 

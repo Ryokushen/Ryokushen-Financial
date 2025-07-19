@@ -96,12 +96,16 @@ export class Calendar {
     const events = []
     const startOfMonth = new Date(this.currentYear, this.currentMonth, 1)
     const endOfMonth = new Date(this.currentYear, this.currentMonth + 1, 0)
+    
+    debug.log('Calendar: Generating events for', bills.length, 'bills')
+    debug.log('Calendar: Month range', startOfMonth, 'to', endOfMonth)
 
     bills.forEach(bill => {
-      if (!bill.active) return
+      if (!bill.active && bill.active !== undefined) return
 
       // Get the next due date
       let dueDate = new Date(bill.next_due || bill.nextDue)
+      debug.log('Calendar: Processing bill', bill.name, 'due date:', dueDate)
       
       // If the due date is before the current month, calculate the next occurrence
       while (dueDate < startOfMonth) {
@@ -156,7 +160,9 @@ export class Calendar {
   }
 
   setEvents(bills = []) {
+    debug.log('Calendar: setEvents called with', bills.length, 'bills')
     this.events = this.generateRecurringBillEvents(bills)
+    debug.log('Calendar: Generated', this.events.length, 'events')
     this.notifyListeners('eventsUpdated', this.events)
   }
 
