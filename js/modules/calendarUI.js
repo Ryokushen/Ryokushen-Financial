@@ -153,7 +153,7 @@ export const calendarUI = {
         ${visibleEvents.map(event => `
           <div class="calendar-event calendar-event--${event.type}" 
                data-event-id="${event.id}"
-               style="background-color: ${event.color}20; border-left: 3px solid ${event.color}">
+               style="background-color: rgba(255, 107, 107, 0.15); border-left: 3px solid #FF6B6B">
             <span class="calendar-event-title">${escapeHtml(event.title)}</span>
             <span class="calendar-event-amount ${isPrivacyMode() ? 'privacy-blur' : ''}">
               ${formatCurrency(event.amount)}
@@ -201,11 +201,11 @@ export const calendarUI = {
     return `
       <div class="calendar-legend">
         <div class="calendar-legend-item">
-          <span class="calendar-legend-dot" style="background-color: #3B82F6"></span>
+          <span class="calendar-legend-dot" style="background-color: #FF6B6B"></span>
           <span>Recurring Bill</span>
         </div>
         <div class="calendar-legend-item">
-          <span class="calendar-legend-dot" style="background-color: #10B981"></span>
+          <span class="calendar-legend-dot" style="background-color: #51CF66"></span>
           <span>Income (Coming Soon)</span>
         </div>
       </div>
