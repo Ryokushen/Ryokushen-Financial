@@ -4,6 +4,7 @@ import { formatDate, escapeHtml } from './utils.js'
 import { showError, showSuccess, openModal, closeModal, announceToScreenReader } from './ui.js'
 import { debug } from './debug.js'
 import { categories } from './categories.js'
+import database from '../database.js'
 
 export const rulesUI = {
   currentEditingRule: null,
@@ -118,7 +119,29 @@ export const rulesUI = {
       const { data: rules, error } = await smartRules.getAllRules()
       if (error) throw error
 
-      this.renderRulesList(rules)
+      // Calculate dynamic match counts for each rule
+      const transactions = await database.getTransactions()
+      const { ruleEngine } = await import('./ruleEngine.js')
+      
+      // Add dynamic match count to each rule
+      const rulesWithCounts = rules.map(rule => {
+        let matchCount = 0
+        
+        if (rule.enabled) {
+          for (const transaction of transactions) {
+            if (ruleEngine.evaluateConditions(transaction, rule.conditions)) {
+              matchCount++
+            }
+          }
+        }
+        
+        return {
+          ...rule,
+          dynamicMatches: matchCount
+        }
+      })
+      
+      this.renderRulesList(rulesWithCounts)
     } catch (error) {
       debug.error('RulesUI: Error loading rules', error)
       showError('Failed to load rules')
@@ -157,7 +180,7 @@ export const rulesUI = {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M9 11l3 3L22 4"></path>
                 </svg>
-                ${rule.stats?.matches || 0} matches
+                ${rule.dynamicMatches || 0} matches
               </span>
               ${rule.stats?.last_matched ? `
                 <span class="rule-stat">
