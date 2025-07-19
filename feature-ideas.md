@@ -65,7 +65,13 @@ This document contains potential feature enhancements organized by category. The
 - ✅ Apply rules to existing transactions
 - ✅ Rule statistics and management UI
 - ✅ **Uncategorized Default Enhancement** - New transactions default to "Uncategorized" with automatic rule processing
-- 🚧 **Phase 2:** Complex conditions (AND/OR logic), rule templates
+- ✅ **Phase 2:** Complex conditions (AND/OR logic), rule templates [July 19, 2025]
+  - ✅ Nested condition groups with mixed AND/OR/NOT logic
+  - ✅ Rule templates for common merchants and patterns
+  - ✅ 6 template categories: Subscriptions, Income, Dining, Transportation, Shopping, Utilities
+  - ✅ 30+ pre-built templates for popular services
+  - ✅ Template selector UI with preview
+  - ✅ Enhanced rule engine supporting complex conditions
 - 🚧 **Phase 3:** AI suggestions, analytics dashboard, import/export
 
 **Implementation Details:**

@@ -117,15 +117,36 @@ class RuleEngine {
     return matches
   }
 
-  // Evaluate rule conditions
+  // Evaluate rule conditions (supports nested groups)
   evaluateConditions(transaction, conditions) {
-    if (!conditions || !conditions.items || conditions.items.length === 0) {
+    if (!conditions) {
+      return false
+    }
+    
+    // Handle single condition (backward compatibility)
+    if (conditions.field && conditions.operator) {
+      return this.evaluateCondition(transaction, conditions)
+    }
+    
+    // Handle condition groups
+    if (!conditions.items || conditions.items.length === 0) {
       return false
     }
     
     const type = conditions.type || 'AND'
-    const results = conditions.items.map(condition => 
-      this.evaluateCondition(transaction, condition)
+    
+    // Special handling for NOT operator
+    if (type === 'NOT') {
+      // NOT should have exactly one child condition/group
+      const childResult = conditions.items.length > 0 
+        ? this.evaluateConditionOrGroup(transaction, conditions.items[0])
+        : false
+      return !childResult
+    }
+    
+    // Evaluate each item (which can be a condition or nested group)
+    const results = conditions.items.map(item => 
+      this.evaluateConditionOrGroup(transaction, item)
     )
     
     if (type === 'AND') {
@@ -135,6 +156,16 @@ class RuleEngine {
     }
     
     return false
+  }
+  
+  // Helper to evaluate either a single condition or a nested group
+  evaluateConditionOrGroup(transaction, item) {
+    // If it has a 'type' property with items, it's a nested group
+    if (item.type && item.items) {
+      return this.evaluateConditions(transaction, item)
+    }
+    // Otherwise it's a single condition
+    return this.evaluateCondition(transaction, item)
   }
 
   // Evaluate a single condition

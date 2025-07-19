@@ -102,6 +102,24 @@ Income, Housing, Transportation, Food, Healthcare, Entertainment, Shopping, Util
 - **Text Operators**: Contains, Equals, Starts With, Ends With, Matches Pattern (Regex)
 - **Numeric Operators**: Equals, Greater Than, Less Than, Greater/Less Than or Equal, Between
 
+#### Complex Conditions (Phase 2 - July 19, 2025)
+- **Nested Groups**: Support for complex (A AND B) OR (C AND D) logic
+- **Mixed Logic**: Combine AND, OR, and NOT operators
+- **Unlimited Nesting**: Create sophisticated rule conditions
+- **Visual Builder**: Planned for future update
+
+#### Rule Templates
+- **6 Categories**: Pre-built rules for common scenarios
+  - **Subscriptions**: Netflix, Spotify, Amazon Prime, Gym memberships
+  - **Income**: Salary/paycheck detection, tax refunds
+  - **Dining**: Fast food chains, food delivery, coffee shops
+  - **Transportation**: Gas stations, rideshare, parking
+  - **Shopping**: Grocery stores, online shopping
+  - **Utilities**: Phone bills, internet, electricity
+- **30+ Templates**: Ready-to-use rules for popular services
+- **Template UI**: Browse categories, preview rules, one-click creation
+- **Smart Suggestions**: Based on transaction patterns (planned)
+
 #### Supported Actions
 - **Set Category**: Automatically categorize transactions
 - **Add Tag**: Append hashtags to descriptions
