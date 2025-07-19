@@ -6,7 +6,7 @@ This document provides a comprehensive overview of all currently implemented fea
 
 ## Table of Contents
 - [Core Financial Features](#core-financial-features)
-- [Smart Rules Engine](#smart-rules-engine)
+- [Smart Rules Engine](#smart-rules-engine) 
 - [Time Budget System](#time-budget-system)
 - [User Interface & Experience](#user-interface--experience)
 - [Voice & Natural Language](#voice--natural-language)
@@ -14,6 +14,11 @@ This document provides a comprehensive overview of all currently implemented fea
 - [Authentication & User Management](#authentication--user-management)
 - [Privacy & Security](#privacy--security)
 - [Performance Optimizations](#performance-optimizations)
+
+## Recent Updates (July 2025)
+- 🆕 **Visual Bills Calendar** - Interactive monthly calendar view for recurring bills
+- 🆕 **Smart Rules Engine** - Automatic transaction categorization and processing
+- 🆕 **Time Budget System** - Convert expenses to hours of work
 
 ---
 
@@ -127,17 +132,45 @@ Income, Housing, Transportation, Food, Healthcare, Entertainment, Shopping, Util
   - 30-day upcoming bills forecast
   - Notes field
 
-#### Visual Calendar View (NEW)
+#### Visual Calendar View (NEW - July 19, 2025)
 - **Monthly Calendar Display**: Visual grid showing all bill due dates
+  - 7-day week view with weekday headers
+  - Distinct weekend cell coloring
+  - Empty day indicators for better visual clarity
+  - Support for multiple bills per day
 - **Color-Coded Categories**: Bills colored by spending category
+  - Each category has unique color assignment
+  - Visual indicators with colored borders
+  - Bills displayed as compact event cards
 - **Interactive Features**:
-  - Click days to view bill details
-  - Quick pay actions from calendar
-  - Month navigation controls
-  - Today button for quick navigation
-- **Summary Metrics**: Monthly bill totals and net flow
-- **View Toggle**: Switch between calendar and list views
-- **Privacy Mode**: Sensitive amounts blur on demand
+  - Click days to view all bills for that date
+  - Quick pay actions directly from calendar
+  - Smooth month navigation with Previous/Next buttons
+  - Today button for quick return to current date
+  - Hover effects for better interactivity
+  - Click event debouncing to prevent lag
+- **Summary Metrics**: 
+  - Monthly bill totals with count
+  - Income placeholders (Phase 2)
+  - Net flow calculation
+  - Real-time updates on bill changes
+- **View Toggle**: 
+  - Seamless switch between calendar and list views
+  - Persistent data across view changes
+  - View preference remembered in session
+- **Privacy Mode**: 
+  - Sensitive amounts blur on demand
+  - Works with global privacy settings
+  - Maintains functionality while hiding data
+- **Dark Theme Integration**:
+  - Custom dark color scheme
+  - High contrast for readability
+  - Today highlighted with accent border
+- **Technical Features**:
+  - Event regeneration on month change
+  - Efficient date calculations
+  - Responsive design for mobile
+  - Data persistence across navigation
 
 #### Payment Processing
 - One-click bill payment

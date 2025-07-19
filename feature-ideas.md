@@ -359,12 +359,14 @@ This document contains potential feature enhancements organized by category. The
 
 ### 🚧 In Progress / Partially Complete
 - Natural Language Queries (#31) - Missing complex queries
+- Visual Bills Calendar (#14) - Phase 1 complete, Phases 2-4 pending
 
 ### 📋 Next Priority Features
 Based on feasibility and impact:
-1. **Cash Flow Forecasting (#1)** - Natural extension of existing data
-2. **Subscription Audit (#19)** - High value, moderate effort
-3. **Smart Rules Engine (#9)** - Foundation for automation
+1. **Visual Bills Calendar Phase 2 (#14)** - Add pay schedule configuration
+2. **Cash Flow Forecasting (#1)** - Natural extension of existing data + calendar
+3. **Subscription Audit (#19)** - High value, moderate effort
+4. **Smart Rules Phase 2 (#9)** - Complex conditions and templates
 
 ## Implementation Considerations
 
