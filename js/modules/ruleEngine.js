@@ -1,7 +1,6 @@
 // js/modules/ruleEngine.js
 import { debug } from './debug.js'
 import database from '../database.js'
-import { eventManager } from './eventManager.js'
 
 class RuleEngine {
   constructor() {
@@ -278,7 +277,7 @@ class RuleEngine {
         }
         
         // Store alert in a queue or emit event
-        eventManager.emit('rule:alert', alertData)
+        window.dispatchEvent(new CustomEvent('rule:alert', { detail: alertData }))
         
         return { 
           success: true, 

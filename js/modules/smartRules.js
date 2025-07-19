@@ -1,6 +1,5 @@
 // js/modules/smartRules.js
 import database from '../database.js'
-import { eventManager } from './eventManager.js'
 import { debug } from './debug.js'
 
 class SmartRules {
@@ -17,8 +16,12 @@ class SmartRules {
       await this.loadRules()
       
       // Listen for events that might need rule re-evaluation
-      eventManager.on('transaction:added', (transaction) => this.processTransaction(transaction))
-      eventManager.on('transaction:updated', (transaction) => this.processTransaction(transaction))
+      window.addEventListener('transaction:added', (event) => {
+        if (event.detail) this.processTransaction(event.detail)
+      })
+      window.addEventListener('transaction:updated', (event) => {
+        if (event.detail) this.processTransaction(event.detail)
+      })
       
       debug.log('SmartRules: Initialized successfully')
     } catch (error) {
@@ -38,7 +41,7 @@ class SmartRules {
       
       debug.log(`SmartRules: Loaded ${this.rules.length} active rules`)
       
-      eventManager.emit('rules:loaded', this.rules)
+      window.dispatchEvent(new CustomEvent('rules:loaded', { detail: this.rules }))
     } catch (error) {
       debug.error('SmartRules: Error loading rules', error)
       this.rules = []
@@ -62,7 +65,7 @@ class SmartRules {
       // Reload rules to maintain proper priority order
       await this.loadRules()
       
-      eventManager.emit('rule:created', data)
+      window.dispatchEvent(new CustomEvent('rule:created', { detail: data }))
       return { data, error: null }
     } catch (error) {
       debug.error('SmartRules: Error creating rule', error)
@@ -82,7 +85,7 @@ class SmartRules {
       // Reload rules to maintain proper priority order
       await this.loadRules()
       
-      eventManager.emit('rule:updated', data)
+      window.dispatchEvent(new CustomEvent('rule:updated', { detail: data }))
       return { data, error: null }
     } catch (error) {
       debug.error('SmartRules: Error updating rule', error)
@@ -97,7 +100,7 @@ class SmartRules {
       // Remove from local array
       this.rules = this.rules.filter(rule => rule.id !== ruleId)
       
-      eventManager.emit('rule:deleted', ruleId)
+      window.dispatchEvent(new CustomEvent('rule:deleted', { detail: ruleId }))
       return { error: null }
     } catch (error) {
       debug.error('SmartRules: Error deleting rule', error)
@@ -151,11 +154,11 @@ class SmartRules {
       // Update rule statistics
       await this.updateRuleStats(result.ruleId)
       
-      eventManager.emit('rule:matched', {
+      window.dispatchEvent(new CustomEvent('rule:matched', { detail: {
         transaction,
         rule: result.rule,
         actions: result.actions
-      })
+      }}))
     }
     
     return result

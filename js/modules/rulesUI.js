@@ -3,7 +3,6 @@ import { smartRules } from './smartRules.js'
 import { formatDate, escapeHtml } from './utils.js'
 import { showError, showSuccess, openModal, closeModal, announceToScreenReader } from './ui.js'
 import { debug } from './debug.js'
-import { eventManager } from './eventManager.js'
 import { categories } from './categories.js'
 
 export const rulesUI = {
@@ -16,10 +15,12 @@ export const rulesUI = {
     this.updateSummary()
     
     // Listen for rule updates
-    eventManager.on('rule:created', () => this.refresh())
-    eventManager.on('rule:updated', () => this.refresh())
-    eventManager.on('rule:deleted', () => this.refresh())
-    eventManager.on('rule:matched', (data) => this.handleRuleMatch(data))
+    window.addEventListener('rule:created', () => this.refresh())
+    window.addEventListener('rule:updated', () => this.refresh())
+    window.addEventListener('rule:deleted', () => this.refresh())
+    window.addEventListener('rule:matched', (event) => {
+      if (event.detail) this.handleRuleMatch(event.detail)
+    })
   },
 
   setupEventListeners() {
@@ -456,7 +457,7 @@ export const rulesUI = {
       showSuccess(`Applied rules to ${result.processed} transactions. ${result.matched} matches found.`)
       
       // Refresh transactions view if visible
-      eventManager.emit('transactions:updated')
+      window.dispatchEvent(new CustomEvent('transactions:updated'))
       
     } catch (error) {
       debug.error('RulesUI: Error applying rules', error)
