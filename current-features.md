@@ -75,6 +75,47 @@ Income, Housing, Transportation, Food, Healthcare, Entertainment, Shopping, Util
 - Recent transactions display
 - Recurring payment linking
 
+---
+
+## Smart Rules Engine
+
+### 🤖 Automatic Transaction Processing
+
+#### Rule Components
+- **Rule Details**: Name, description, priority (0-999), enabled status
+- **Pattern Matching**: Field-based conditions with multiple operators
+- **Actions**: Automated modifications to matching transactions
+- **Statistics**: Match count and last matched tracking
+
+#### Condition Fields
+- **Description**: Transaction description text
+- **Amount**: Transaction amount (absolute value)
+- **Category**: Current transaction category
+- **Transaction Type**: Income or Expense
+
+#### Available Operators
+- **Text Operators**: Contains, Equals, Starts With, Ends With, Matches Pattern (Regex)
+- **Numeric Operators**: Equals, Greater Than, Less Than, Greater/Less Than or Equal, Between
+
+#### Supported Actions
+- **Set Category**: Automatically categorize transactions
+- **Add Tag**: Append hashtags to descriptions
+- **Add Note**: Append notes to descriptions
+
+#### Management Features
+- Create, edit, and delete rules
+- Enable/disable toggle per rule
+- Priority-based execution order
+- Apply rules to existing transactions
+- Rule match notifications
+
+#### Technical Implementation
+- Database schema with RLS policies
+- Event-driven architecture
+- Privacy mode compatible
+- Real-time processing on transaction creation
+- Batch processing for existing transactions
+
 ### 📅 Bills & Recurring Payments
 
 #### Bill Management
