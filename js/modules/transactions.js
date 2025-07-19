@@ -811,6 +811,12 @@ async function addNewTransaction(transactionData, appState, onUpdate) {
             if (accountLabel) accountLabel.textContent = "Account";
 
             onUpdate();
+            
+            // Dispatch event for Smart Rules processing
+            window.dispatchEvent(new CustomEvent('transaction:added', {
+                detail: { transaction: newTransaction }
+            }));
+            
             announceToScreenReader("Transaction added successfully");
         } catch (balanceError) {
             // Rollback balance changes
@@ -908,6 +914,12 @@ async function updateTransaction(id, newTransactionData, appState, onUpdate) {
             cancelEdit();
 
             onUpdate();
+            
+            // Dispatch event for Smart Rules processing
+            window.dispatchEvent(new CustomEvent('transaction:updated', {
+                detail: { transaction: updatedTransaction }
+            }));
+            
             announceToScreenReader("Transaction updated successfully");
         } catch (stateError) {
             // State update failed, rollback to original state
@@ -1157,7 +1169,7 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
         <tr ${rowClass}>
             <td>${formatDate(t.date)}</td>
             <td>${escapeHtml(accountName)}</td>
-            <td>${escapeHtml(t.category)}</td>
+            <td>${t.category === 'Uncategorized' ? '<span class="badge badge--warning">Uncategorized</span>' : escapeHtml(t.category)}</td>
             <td>${description}</td>
             <td class="${amountClass}" data-sensitive="true">
                 <div class="transaction-amount-container">
@@ -1471,7 +1483,7 @@ function createTransactionRow(t, appData) {
     row.innerHTML = `
         <td>${formatDate(t.date)}</td>
         <td>${escapeHtml(accountName)}</td>
-        <td>${escapeHtml(t.category)}</td>
+        <td>${t.category === 'Uncategorized' ? '<span class="badge badge--warning">Uncategorized</span>' : escapeHtml(t.category)}</td>
         <td>${description}</td>
         <td class="${amountClass}" data-sensitive="true">
             <div class="transaction-amount-container">

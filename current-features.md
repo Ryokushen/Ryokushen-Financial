@@ -71,7 +71,7 @@ This document provides a comprehensive overview of all currently implemented fea
   - Debt payment processing
 
 #### Categories
-Income, Housing, Transportation, Food, Healthcare, Entertainment, Shopping, Utilities, Insurance, Debt, Savings, Education, Personal Care, Gifts, Taxes, Fees, Travel, Transfer, Other
+Income, Housing, Transportation, Food, Healthcare, Entertainment, Shopping, Utilities, Insurance, Debt, Savings, Education, Personal Care, Gifts, Taxes, Fees, Travel, Transfer, Other, Uncategorized (default for new transactions)
 
 #### Management Features
 - Edit transactions with automatic recalculation
@@ -114,12 +114,20 @@ Income, Housing, Transportation, Food, Healthcare, Entertainment, Shopping, Util
 - Apply rules to existing transactions
 - Rule match notifications
 
+#### Uncategorized Transaction Enhancement (July 19, 2025)
+- **Default Category**: New transactions now default to "Uncategorized" instead of requiring immediate categorization
+- **Automatic Processing**: Smart Rules automatically process uncategorized transactions when created
+- **Visual Indicators**: Warning badge (⚠️) displays count of uncategorized transactions in the Rules tab
+- **Quick Identification**: Users can easily find transactions that need manual categorization
+- **Improved Workflow**: Allows bulk transaction entry followed by rule-based or manual categorization
+
 #### Technical Implementation
 - Database schema with RLS policies
 - Event-driven architecture
 - Privacy mode compatible
 - Real-time processing on transaction creation
 - Batch processing for existing transactions
+- Automatic rule application on uncategorized transactions
 
 ### 📅 Bills & Recurring Payments
 

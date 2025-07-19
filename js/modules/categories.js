@@ -2,6 +2,7 @@
 // Transaction categories used throughout the application
 
 export const categories = [
+  'Uncategorized',
   'ATM/Cash',
   'Bills',
   'Business',

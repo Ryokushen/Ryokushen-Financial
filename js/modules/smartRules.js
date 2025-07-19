@@ -143,6 +143,12 @@ class SmartRules {
     if (!this.rulesLoaded || this.rules.length === 0) {
       return null
     }
+    
+    // Skip processing if transaction already has a category (unless it's Uncategorized)
+    if (transaction.category && transaction.category !== 'Uncategorized') {
+      debug.log('SmartRules: Skipping categorized transaction', transaction.id)
+      return null
+    }
 
     // Import rule engine for processing
     const { ruleEngine } = await import('./ruleEngine.js')

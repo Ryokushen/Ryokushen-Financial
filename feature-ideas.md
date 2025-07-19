@@ -64,6 +64,7 @@ This document contains potential feature enhancements organized by category. The
 - ✅ Rule priority system
 - ✅ Apply rules to existing transactions
 - ✅ Rule statistics and management UI
+- ✅ **Uncategorized Default Enhancement** - New transactions default to "Uncategorized" with automatic rule processing
 - 🚧 **Phase 2:** Complex conditions (AND/OR logic), rule templates
 - 🚧 **Phase 3:** AI suggestions, analytics dashboard, import/export
 
@@ -72,6 +73,8 @@ This document contains potential feature enhancements organized by category. The
 - Pattern matching engine with 12+ operators
 - Event-driven architecture for real-time processing
 - Privacy mode compatible
+- Uncategorized transactions automatically processed by rules
+- Visual indicators (warning badge) for uncategorized transaction count
 - See SMART_RULES_GUIDE.md for complete usage instructions
 
 ### 10. Receipt Management 🌐
