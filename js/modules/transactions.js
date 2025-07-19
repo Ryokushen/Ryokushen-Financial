@@ -19,6 +19,50 @@ let appStateReference = null;
 // Store event listener references for cleanup
 const eventListeners = new Map();
 
+// Function to populate the transfer-to-account dropdown
+function populateTransferToAccount(type, excludeAccount = null) {
+    const transferToSelect = document.getElementById("transfer-to-account");
+    if (!transferToSelect) return;
+    
+    // Clear existing options
+    transferToSelect.innerHTML = '<option value="">— Select destination account —</option>';
+    
+    if (!appStateReference || !appStateReference.appData) return;
+    
+    const { cashAccounts, debtAccounts } = appStateReference.appData;
+    
+    if (type === 'payment') {
+        // For payments, show only credit card (debt) accounts
+        const creditCards = debtAccounts.filter(a => a.type === 'Credit Card');
+        creditCards.forEach(account => {
+            const option = document.createElement('option');
+            option.value = `cc_${account.id}`;
+            option.textContent = account.name;
+            transferToSelect.appendChild(option);
+        });
+        
+        if (creditCards.length === 0) {
+            transferToSelect.innerHTML = '<option value="">No credit cards available</option>';
+        }
+    } else if (type === 'transfer') {
+        // For transfers, show cash accounts excluding the selected from account
+        const activeAccounts = cashAccounts.filter(a => 
+            a.isActive && `cash_${a.id}` !== excludeAccount
+        );
+        
+        activeAccounts.forEach(account => {
+            const option = document.createElement('option');
+            option.value = `cash_${account.id}`;
+            option.textContent = account.name;
+            transferToSelect.appendChild(option);
+        });
+        
+        if (activeAccounts.length === 0) {
+            transferToSelect.innerHTML = '<option value="">No other cash accounts available</option>';
+        }
+    }
+}
+
 export function setupEventListeners(appState, onUpdate) {
     // Clean up any existing listeners first
     cleanupEventListeners();
@@ -39,19 +83,61 @@ export function setupEventListeners(appState, onUpdate) {
     const transactionSubmitHandler = (e) => handleTransactionSubmit(e, appState, onUpdate);
     addEventListener("transaction-form", "submit", transactionSubmitHandler);
     
-    // Add account change listener to warn about Debt category
+    // Add account change listener
     document.getElementById("transaction-account")?.addEventListener("change", function () {
         const categoryValue = document.getElementById("transaction-category")?.value;
+        
+        // Warn about Debt category with credit cards
         if (categoryValue === "Debt" && this.value && this.value.startsWith('cc_')) {
             showError("For credit card transactions, please use a regular category instead of 'Debt'. The 'Debt' category is for non-account debt payments.");
             document.getElementById("transaction-category").value = ""; // Reset the category
+        }
+        
+        // For transfers, update the to-account dropdown to exclude the selected from account
+        if (categoryValue === "Transfer") {
+            populateTransferToAccount('transfer', this.value);
+        }
+        
+        // For payments, only allow cash accounts in the from dropdown
+        if (categoryValue === "Payment" && this.value && this.value.startsWith('cc_')) {
+            showError("For payments, please select a cash account as the source. Credit card accounts cannot be used to pay other debts.");
+            this.value = ""; // Reset the selection
         }
     });
 
     document.getElementById("transaction-category")?.addEventListener("change", function () {
         const debtGroup = document.getElementById("debt-account-group");
-        if (debtGroup) {
-            debtGroup.style.display = this.value === "Debt" ? "block" : "none";
+        const transferGroup = document.getElementById("transfer-account-group");
+        const accountLabel = document.querySelector('label[for="transaction-account"]');
+        const transferToAccount = document.getElementById("transfer-to-account");
+        
+        // Hide all special groups by default
+        if (debtGroup) debtGroup.style.display = "none";
+        if (transferGroup) transferGroup.style.display = "none";
+        
+        // Reset account label
+        if (accountLabel) accountLabel.textContent = "Account";
+        
+        // Handle special categories
+        if (this.value === "Debt") {
+            if (debtGroup) debtGroup.style.display = "block";
+        } else if (this.value === "Payment" || this.value === "Transfer") {
+            // Show transfer account group
+            if (transferGroup) transferGroup.style.display = "block";
+            
+            // Update labels based on category
+            if (this.value === "Payment") {
+                if (accountLabel) accountLabel.textContent = "From Account (Cash)";
+                // Populate transfer-to-account with debt accounts for payments
+                populateTransferToAccount('payment');
+            } else if (this.value === "Transfer") {
+                if (accountLabel) accountLabel.textContent = "From Account";
+                // Populate transfer-to-account with cash accounts for transfers
+                populateTransferToAccount('transfer');
+            }
+            
+            // Clear the to-account selection
+            if (transferToAccount) transferToAccount.value = "";
         }
         
         // Warn users about using Debt category with credit card accounts
@@ -323,6 +409,16 @@ function cancelEdit() {
     if (debtGroup) {
         debtGroup.style.display = "none";
     }
+    const transferGroup = document.getElementById("transfer-account-group");
+    if (transferGroup) {
+        transferGroup.style.display = "none";
+    }
+    
+    // Reset account label
+    const accountLabel = document.querySelector('label[for="transaction-account"]');
+    if (accountLabel) {
+        accountLabel.textContent = "Account";
+    }
 
     // Re-render transactions to remove the highlighted row
     if (appStateReference) {
@@ -421,8 +517,8 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
             return;
         }
 
-        // Handle credit card transactions
-        if (isCredit) {
+        // Handle credit card transactions (but not for Payment/Transfer categories)
+        if (isCredit && transactionData.category !== "Payment" && transactionData.category !== "Transfer") {
             // Credit Card Transaction Sign Convention:
             // - UI Input: User enters purchases as positive (e.g., $50 for a purchase)
             // - UI Input: User enters payments as negative (e.g., -$100 for a payment)
@@ -480,11 +576,22 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
             }
         }
 
-        if (editingTransactionId) {
+        // Check if this is a Payment or Transfer transaction that needs linked entries
+        if ((transactionData.category === "Payment" || transactionData.category === "Transfer") && !editingTransactionId) {
+            // Get the transfer-to account
+            const transferToValue = document.getElementById("transfer-to-account")?.value;
+            if (!transferToValue) {
+                showError(`Please select a destination account for the ${transactionData.category.toLowerCase()}.`);
+                return;
+            }
+            
+            // Add linked transaction (Payment or Transfer)
+            await addLinkedTransaction(transactionData, transferToValue, appState, onUpdate);
+        } else if (editingTransactionId) {
             // Update existing transaction
             await updateTransaction(editingTransactionId, transactionData, appState, onUpdate);
         } else {
-            // Add new transaction
+            // Add new single transaction
             await addNewTransaction(transactionData, appState, onUpdate);
         }
 
@@ -492,6 +599,167 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
         debug.error("Error handling transaction:", error);
         showError("Failed to save transaction. " + error.message);
     }
+}
+
+async function addLinkedTransaction(fromTransactionData, toAccountValue, appState, onUpdate) {
+    try {
+        // Parse the to-account type and ID
+        let toAccountId = null;
+        let toDebtAccountId = null;
+        
+        if (toAccountValue && toAccountValue.includes('_')) {
+            const parts = toAccountValue.split('_');
+            if (parts.length === 2) {
+                const [accountType, id] = parts;
+                const parsedId = parseInt(id);
+                
+                if (!isNaN(parsedId)) {
+                    if (accountType === 'cash') {
+                        toAccountId = parsedId;
+                    } else if (accountType === 'cc') {
+                        toDebtAccountId = parsedId;
+                    }
+                }
+            }
+        }
+        
+        // Create linked description
+        const baseDescription = fromTransactionData.description;
+        const fromAccountName = getAccountName(fromTransactionData.account_id, fromTransactionData.debt_account_id, appState);
+        const toAccountName = getAccountName(toAccountId, toDebtAccountId, appState);
+        
+        // Create the two linked transactions
+        const transaction1 = { ...fromTransactionData };
+        const transaction2 = {
+            date: fromTransactionData.date,
+            account_id: toAccountId,
+            debt_account_id: toDebtAccountId,
+            category: fromTransactionData.category,
+            description: baseDescription,
+            cleared: fromTransactionData.cleared
+        };
+        
+        if (fromTransactionData.category === "Payment") {
+            // Payment: money goes from cash account to debt account
+            // Transaction 1: Negative amount in cash account (money out)
+            transaction1.amount = -Math.abs(fromTransactionData.amount);
+            transaction1.description = `${baseDescription} → ${toAccountName}`;
+            
+            // Transaction 2: Positive amount in debt account (payment reduces debt)
+            transaction2.amount = Math.abs(fromTransactionData.amount);
+            transaction2.description = `${baseDescription} ← ${fromAccountName}`;
+        } else if (fromTransactionData.category === "Transfer") {
+            // Transfer: money goes from one cash account to another
+            // Transaction 1: Negative amount in from account
+            transaction1.amount = -Math.abs(fromTransactionData.amount);
+            transaction1.description = `${baseDescription} → ${toAccountName}`;
+            
+            // Transaction 2: Positive amount in to account
+            transaction2.amount = Math.abs(fromTransactionData.amount);
+            transaction2.description = `${baseDescription} ← ${fromAccountName}`;
+        }
+        
+        // Save both transactions
+        const savedTransactions = [];
+        const balanceChanges = [];
+        
+        try {
+            // Save first transaction
+            const saved1 = await db.addTransaction(transaction1);
+            savedTransactions.push(saved1);
+            
+            // Save second transaction
+            const saved2 = await db.addTransaction(transaction2);
+            savedTransactions.push(saved2);
+            
+            // Update balances for both transactions
+            // Transaction 1 balance update
+            if (transaction1.account_id) {
+                await updateCashAccountBalance(transaction1.account_id, transaction1.amount, appState);
+                balanceChanges.push({ type: 'cash', id: transaction1.account_id, amount: transaction1.amount });
+            } else if (transaction1.debt_account_id) {
+                await updateDebtAccountBalance(transaction1.debt_account_id, transaction1.amount, appState);
+                balanceChanges.push({ type: 'debt', id: transaction1.debt_account_id, amount: transaction1.amount });
+            }
+            
+            // Transaction 2 balance update
+            if (transaction2.account_id) {
+                await updateCashAccountBalance(transaction2.account_id, transaction2.amount, appState);
+                balanceChanges.push({ type: 'cash', id: transaction2.account_id, amount: transaction2.amount });
+            } else if (transaction2.debt_account_id) {
+                await updateDebtAccountBalance(transaction2.debt_account_id, transaction2.amount, appState);
+                balanceChanges.push({ type: 'debt', id: transaction2.debt_account_id, amount: transaction2.amount });
+            }
+            
+            // Add both transactions to app state
+            savedTransactions.forEach(t => {
+                appState.appData.transactions.unshift({
+                    ...t,
+                    amount: parseFloat(t.amount)
+                });
+            });
+            
+            // Reset form
+            const form = document.getElementById("transaction-form");
+            if (form) form.reset();
+            const dateInput = document.getElementById("transaction-date");
+            if (dateInput) dateInput.value = new Date().toISOString().split("T")[0];
+            const transferGroup = document.getElementById("transfer-account-group");
+            if (transferGroup) transferGroup.style.display = "none";
+            
+            // Reset account label
+            const accountLabel = document.querySelector('label[for="transaction-account"]');
+            if (accountLabel) accountLabel.textContent = "Account";
+            
+            onUpdate();
+            announceToScreenReader(`${fromTransactionData.category} completed successfully`);
+            
+        } catch (error) {
+            // Rollback on failure
+            debug.error('Failed to create linked transactions, rolling back:', error);
+            
+            // Delete any saved transactions
+            for (const saved of savedTransactions) {
+                try {
+                    await db.deleteTransaction(saved.id);
+                } catch (deleteError) {
+                    debug.error('Failed to rollback transaction:', deleteError);
+                }
+            }
+            
+            // Reverse any balance changes
+            for (const change of balanceChanges) {
+                try {
+                    if (change.type === 'cash') {
+                        await updateCashAccountBalance(change.id, -change.amount, appState);
+                    } else if (change.type === 'debt') {
+                        await updateDebtAccountBalance(change.id, -change.amount, appState);
+                    }
+                } catch (balanceError) {
+                    debug.error('Failed to rollback balance change:', balanceError);
+                }
+            }
+            
+            throw error;
+        }
+        
+    } catch (error) {
+        debug.error('Failed to add linked transaction:', error);
+        showError(`Failed to add ${fromTransactionData.category.toLowerCase()}. Please try again.`);
+        throw error;
+    }
+}
+
+// Helper function to get account name
+function getAccountName(accountId, debtAccountId, appState) {
+    if (accountId) {
+        const account = appState.appData.cashAccounts.find(a => a.id === accountId);
+        return account ? account.name : 'Unknown Account';
+    } else if (debtAccountId) {
+        const debtAccount = appState.appData.debtAccounts.find(d => d.id === debtAccountId);
+        return debtAccount ? debtAccount.name : 'Unknown Account';
+    }
+    return 'Unknown Account';
 }
 
 async function addNewTransaction(transactionData, appState, onUpdate) {
@@ -535,6 +803,12 @@ async function addNewTransaction(transactionData, appState, onUpdate) {
             if (dateInput) dateInput.value = new Date().toISOString().split("T")[0];
             const debtGroup = document.getElementById("debt-account-group");
             if (debtGroup) debtGroup.style.display = "none";
+            const transferGroup = document.getElementById("transfer-account-group");
+            if (transferGroup) transferGroup.style.display = "none";
+            
+            // Reset account label
+            const accountLabel = document.querySelector('label[for="transaction-account"]');
+            if (accountLabel) accountLabel.textContent = "Account";
 
             onUpdate();
             announceToScreenReader("Transaction added successfully");
