@@ -406,8 +406,8 @@ export const calendarUI = {
               <span>${this.getFrequencyText(schedule.frequency)} - ${formatCurrency(schedule.amount)}</span>
             </div>
             <div class="pay-schedule-actions">
-              <button class="btn btn--sm btn--outline" onclick="calendarUI.editPaySchedule(${schedule.id})">Edit</button>
-              <button class="btn btn--sm btn--danger" onclick="calendarUI.deletePaySchedule(${schedule.id})">Delete</button>
+              <button class="btn btn--sm btn--outline" onclick="calendarUI.editPaySchedule('${schedule.id}')">Edit</button>
+              <button class="btn btn--sm btn--danger" onclick="calendarUI.deletePaySchedule('${schedule.id}')">Delete</button>
             </div>
           </div>
         `).join('')
@@ -437,18 +437,31 @@ export const calendarUI = {
     const cancelBtn = document.getElementById('cancel-pay-schedule')
     const modal = document.getElementById('pay-schedule-modal')
     
+    // Remove existing event listeners to prevent duplicates
+    if (this._payScheduleListeners) {
+      this._payScheduleListeners.forEach(({ element, event, handler }) => {
+        element.removeEventListener(event, handler)
+      })
+    }
+    this._payScheduleListeners = []
+    
     // Close button handler
-    modal.querySelector('.modal-close')?.addEventListener('click', () => {
-      this.closePayScheduleModal()
-    })
+    const closeBtn = modal.querySelector('.modal-close')
+    const closeHandler = () => this.closePayScheduleModal()
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeHandler)
+      this._payScheduleListeners.push({ element: closeBtn, event: 'click', handler: closeHandler })
+    }
     
     // Cancel button handler
-    cancelBtn?.addEventListener('click', () => {
-      this.closePayScheduleModal()
-    })
+    const cancelHandler = () => this.closePayScheduleModal()
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', cancelHandler)
+      this._payScheduleListeners.push({ element: cancelBtn, event: 'click', handler: cancelHandler })
+    }
     
     // Frequency change handler
-    frequencySelect?.addEventListener('change', (e) => {
+    const frequencyHandler = (e) => {
       const frequency = e.target.value
       
       // Hide all options first
@@ -461,37 +474,59 @@ export const calendarUI = {
       } else if (frequency === 'semi-monthly') {
         semiMonthlyOptions.style.display = 'block'
       }
-    })
+    }
+    if (frequencySelect) {
+      frequencySelect.addEventListener('change', frequencyHandler)
+      this._payScheduleListeners.push({ element: frequencySelect, event: 'change', handler: frequencyHandler })
+    }
     
     // Form submit handler
-    form?.addEventListener('submit', async (e) => {
+    const submitHandler = async (e) => {
       e.preventDefault()
       await this.savePaySchedule()
-    })
+    }
+    if (form) {
+      form.addEventListener('submit', submitHandler)
+      this._payScheduleListeners.push({ element: form, event: 'submit', handler: submitHandler })
+    }
   },
 
   async savePaySchedule() {
     const form = document.getElementById('pay-schedule-form')
-    const formData = new FormData(form)
+    const submitButton = form.querySelector('button[type="submit"]')
     
-    const scheduleData = {
-      name: formData.get('name'),
-      frequency: formData.get('frequency'),
-      start_date: formData.get('start_date'),
-      amount: parseFloat(formData.get('amount')),
-      is_active: true
+    // Prevent duplicate submissions
+    if (submitButton.disabled) {
+      return
     }
     
-    // Add frequency-specific fields
-    if (scheduleData.frequency === 'weekly') {
-      scheduleData.day_of_week = parseInt(formData.get('day_of_week'))
-    } else if (scheduleData.frequency === 'semi-monthly') {
-      scheduleData.day_of_month_1 = parseInt(formData.get('day_of_month_1'))
-      scheduleData.day_of_month_2 = parseInt(formData.get('day_of_month_2'))
-    }
+    // Disable submit button
+    submitButton.disabled = true
+    submitButton.textContent = 'Saving...'
     
     try {
+      const formData = new FormData(form)
+      
+      const scheduleData = {
+        name: formData.get('name'),
+        frequency: formData.get('frequency'),
+        start_date: formData.get('start_date'),
+        amount: parseFloat(formData.get('amount')),
+        is_active: true
+      }
+      
+      // Add frequency-specific fields
+      if (scheduleData.frequency === 'weekly') {
+        scheduleData.day_of_week = parseInt(formData.get('day_of_week'))
+      } else if (scheduleData.frequency === 'semi-monthly') {
+        scheduleData.day_of_month_1 = parseInt(formData.get('day_of_month_1'))
+        scheduleData.day_of_month_2 = parseInt(formData.get('day_of_month_2'))
+      }
+      
       await paySchedule.createSchedule(scheduleData)
+      
+      // Refresh the schedules list
+      await paySchedule.loadSchedules()
       
       // Refresh calendar to show new pay events
       await calendar.setEvents(this.currentBillsData)
@@ -504,6 +539,10 @@ export const calendarUI = {
     } catch (error) {
       debug.error('CalendarUI: Error saving pay schedule', error)
       showError('Failed to save pay schedule')
+      
+      // Re-enable submit button on error
+      submitButton.disabled = false
+      submitButton.textContent = 'Save Schedule'
     }
   },
 
@@ -514,7 +553,16 @@ export const calendarUI = {
       setTimeout(() => {
         modal.style.display = 'none'
         // Reset form
-        document.getElementById('pay-schedule-form')?.reset()
+        const form = document.getElementById('pay-schedule-form')
+        if (form) {
+          form.reset()
+          // Reset submit button
+          const submitButton = form.querySelector('button[type="submit"]')
+          if (submitButton) {
+            submitButton.disabled = false
+            submitButton.textContent = 'Save Schedule'
+          }
+        }
         // Reset frequency options
         document.getElementById('weekly-options').style.display = 'none'
         document.getElementById('semi-monthly-options').style.display = 'none'
