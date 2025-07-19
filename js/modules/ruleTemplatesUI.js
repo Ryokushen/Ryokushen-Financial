@@ -271,13 +271,29 @@ export const ruleTemplatesUI = {
         return
       }
       
-      // Close template modal
-      this.closeTemplateModal()
+      // Option 1: Directly create the rule (recommended for complex conditions)
+      const confirmCreate = confirm(`Create rule "${rule.name}"?\n\nThis will add the rule to your Smart Rules list.`)
       
-      // Populate the rule form with template data
-      this.populateRuleForm(rule)
-      
-      announceToScreenReader('Template loaded successfully')
+      if (confirmCreate) {
+        // Directly create the rule using smartRules
+        const result = await smartRules.createRule(rule)
+        
+        if (result.error) {
+          showError('Failed to create rule: ' + result.error.message)
+          return
+        }
+        
+        // Close template modal
+        this.closeTemplateModal()
+        
+        // Refresh the rules list
+        const { rulesUI } = await import('./rulesUI.js')
+        if (rulesUI && rulesUI.loadRulesList) {
+          await rulesUI.loadRulesList()
+        }
+        
+        announceToScreenReader('Rule created successfully from template')
+      }
     } catch (error) {
       debug.error('RuleTemplatesUI: Error using template', error)
       showError('Failed to use template')

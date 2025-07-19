@@ -207,18 +207,58 @@ export const rulesUI = {
     `).join('')
   },
 
-  renderConditions(conditions) {
-    if (!conditions || !conditions.items) return ''
+  renderConditions(conditions, depth = 0) {
+    if (!conditions) return ''
+    
+    // Handle single condition
+    if (conditions.field) {
+      return `
+        <div class="rule-conditions">
+          <span class="condition-label">If:</span>
+          ${this.formatCondition(conditions)}
+        </div>
+      `
+    }
+    
+    // Handle condition group
+    if (!conditions.items || conditions.items.length === 0) return ''
 
-    return `
-      <div class="rule-conditions">
-        <span class="condition-label">If:</span>
-        ${conditions.items.map((condition, index) => `
-          ${index > 0 ? ` ${conditions.type} ` : ''}
-          ${this.formatCondition(condition)}
-        `).join('')}
-      </div>
-    `
+    const renderedItems = conditions.items.map((item, index) => {
+      const itemStr = this.renderConditionItem(item, depth + 1)
+      return index > 0 ? ` ${conditions.type} ${itemStr}` : itemStr
+    }).join('')
+
+    if (depth === 0) {
+      return `
+        <div class="rule-conditions">
+          <span class="condition-label">If:</span>
+          ${renderedItems}
+        </div>
+      `
+    } else {
+      // Add parentheses for nested groups
+      return conditions.items.length > 1 ? `(${renderedItems})` : renderedItems
+    }
+  },
+
+  renderConditionItem(item, depth) {
+    // If it's a nested group
+    if (item.type && item.items) {
+      const groupItems = item.items.map((subItem, index) => {
+        const subStr = this.renderConditionItem(subItem, depth + 1)
+        return index > 0 ? ` ${item.type} ${subStr}` : subStr
+      }).join('')
+      
+      // Special handling for NOT
+      if (item.type === 'NOT') {
+        return `NOT (${groupItems})`
+      }
+      
+      return depth > 1 && item.items.length > 1 ? `(${groupItems})` : groupItems
+    }
+    
+    // Otherwise it's a simple condition
+    return this.formatCondition(item)
   },
 
   formatCondition(condition) {
