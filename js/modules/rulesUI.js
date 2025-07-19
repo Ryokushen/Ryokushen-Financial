@@ -33,7 +33,7 @@ export const rulesUI = {
     document.getElementById('reprocess-all-btn')?.addEventListener('click', async () => {
       if (confirm('This will apply all active rules to ALL transactions, including already categorized ones. Continue?')) {
         try {
-          showInfo('Processing all transactions...')
+          announceToScreenReader('Processing all transactions...')
           
           // Get all transactions
           const transactions = await database.getTransactions()

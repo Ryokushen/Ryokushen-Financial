@@ -16,18 +16,18 @@ class SmartRules {
       await this.loadRules()
       
       // Listen for events that might need rule re-evaluation
-      window.addEventListener('transaction:added', (event) => {
+      window.addEventListener('transaction:added', async (event) => {
         debug.log('SmartRules: Received transaction:added event', event.detail)
         if (event.detail && event.detail.transaction) {
-          this.processTransaction(event.detail.transaction)
+          await this.processTransaction(event.detail.transaction)
         } else {
           console.error('SmartRules: Invalid event detail structure for transaction:added', event.detail)
         }
       })
-      window.addEventListener('transaction:updated', (event) => {
+      window.addEventListener('transaction:updated', async (event) => {
         debug.log('SmartRules: Received transaction:updated event', event.detail)
         if (event.detail && event.detail.transaction) {
-          this.processTransaction(event.detail.transaction)
+          await this.processTransaction(event.detail.transaction)
         } else {
           console.error('SmartRules: Invalid event detail structure for transaction:updated', event.detail)
         }

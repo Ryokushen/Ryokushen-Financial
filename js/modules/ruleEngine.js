@@ -221,21 +221,20 @@ class RuleEngine {
   async applyAction(transaction, action) {
     switch (action.type) {
       case 'set_category':
-        // Update the transaction category
-        const { error } = await database
-          .from('transactions')
-          .update({ 
-            category: action.value,
-            updated_at: new Date().toISOString()
+        // Update the transaction category using the wrapper method
+        try {
+          const updatedTransaction = await database.updateTransaction(transaction.id, {
+            ...transaction,
+            category: action.value
           })
-          .eq('id', transaction.id)
-        
-        if (error) throw error
-        
-        return { 
-          success: true, 
-          action: 'set_category', 
-          value: action.value 
+          
+          return { 
+            success: true, 
+            action: 'set_category', 
+            value: action.value 
+          }
+        } catch (error) {
+          throw new Error(`Failed to update category: ${error.message}`)
         }
       
       case 'add_tag':
@@ -245,20 +244,19 @@ class RuleEngine {
           ? `${transaction.description} #${action.value}`
           : `#${action.value}`
         
-        const { error: tagError } = await database
-          .from('transactions')
-          .update({ 
-            description: newDescription,
-            updated_at: new Date().toISOString()
+        try {
+          const updatedTransaction = await database.updateTransaction(transaction.id, {
+            ...transaction,
+            description: newDescription
           })
-          .eq('id', transaction.id)
-        
-        if (tagError) throw tagError
-        
-        return { 
-          success: true, 
-          action: 'add_tag', 
-          value: action.value 
+          
+          return { 
+            success: true, 
+            action: 'add_tag', 
+            value: action.value 
+          }
+        } catch (error) {
+          throw new Error(`Failed to add tag: ${error.message}`)
         }
       
       case 'add_note':
@@ -267,20 +265,19 @@ class RuleEngine {
           ? `${transaction.description} | ${action.value}`
           : action.value
         
-        const { error: noteError } = await database
-          .from('transactions')
-          .update({ 
-            description: noteDescription,
-            updated_at: new Date().toISOString()
+        try {
+          const updatedTransaction = await database.updateTransaction(transaction.id, {
+            ...transaction,
+            description: noteDescription
           })
-          .eq('id', transaction.id)
-        
-        if (noteError) throw noteError
-        
-        return { 
-          success: true, 
-          action: 'add_note', 
-          value: action.value 
+          
+          return { 
+            success: true, 
+            action: 'add_note', 
+            value: action.value 
+          }
+        } catch (error) {
+          throw new Error(`Failed to add note: ${error.message}`)
         }
       
       case 'alert':
