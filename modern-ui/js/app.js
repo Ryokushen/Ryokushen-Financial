@@ -193,7 +193,7 @@ async function showPage(pageName) {
         break
         
       case 'rules':
-        const { renderRules } = await import('./modules/smartRules.js')
+        const { renderRules } = await import('./modules/rules.js')
         await renderRules(appState)
         break
         
