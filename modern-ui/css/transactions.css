@@ -25,6 +25,27 @@
   gap: var(--spacing-4);
 }
 
+/* Filter Actions */
+.filter-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--spacing-3);
+  padding-top: var(--spacing-3);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.filter-count {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* Small Button */
+.btn-sm {
+  padding: var(--spacing-2) var(--spacing-3);
+  font-size: var(--text-sm);
+}
+
 /* Transactions List */
 .transactions-list {
   margin-top: var(--spacing-6);
