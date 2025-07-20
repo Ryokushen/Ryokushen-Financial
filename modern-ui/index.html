@@ -17,6 +17,9 @@
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/dashboard-updates.css">
+    <link rel="stylesheet" href="css/sidebar-redesign.css">
+    <link rel="stylesheet" href="css/dashboard-effects.css">
 </head>
 <body>
     <!-- Background Effects -->
@@ -30,60 +33,151 @@
     <div class="app-container">
         <!-- Sidebar Navigation -->
         <nav class="sidebar" id="sidebar">
+            <!-- Header/Brand Section -->
             <div class="sidebar-header">
-                <div class="logo">
-                    <span class="logo-icon">💎</span>
-                    <span class="logo-text">Ryokushen</span>
+                <div class="brand-container">
+                    <div class="brand-icon">
+                        <span>⚡</span>
+                    </div>
+                    <div class="brand-info">
+                        <h2 class="brand-name">Ryokushen</h2>
+                        <p class="brand-tagline">Financial Tracker</p>
+                    </div>
                 </div>
-                <button class="sidebar-toggle" id="sidebar-toggle">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+            </div>
+            
+            <!-- Navigation Menu -->
+            <div class="nav-container">
+                <button class="nav-item active" data-page="dashboard">
+                    <div class="nav-item-content">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-text">Dashboard</span>
+                    </div>
+                    <div class="nav-item-badges">
+                        <div class="active-indicator"></div>
+                    </div>
+                </button>
+                
+                <button class="nav-item" data-page="accounts">
+                    <div class="nav-item-content">
+                        <span class="nav-icon">💰</span>
+                        <span class="nav-text">Accounts</span>
+                    </div>
+                </button>
+                
+                <button class="nav-item" data-page="transactions">
+                    <div class="nav-item-content">
+                        <span class="nav-icon">💸</span>
+                        <span class="nav-text">Transactions</span>
+                    </div>
+                    <div class="nav-item-badges">
+                        <span class="badge">12</span>
+                    </div>
+                </button>
+                
+                <button class="nav-item" data-page="investments">
+                    <div class="nav-item-content">
+                        <span class="nav-icon">📈</span>
+                        <span class="nav-text">Investments</span>
+                    </div>
+                </button>
+                
+                <button class="nav-item" data-page="debt">
+                    <div class="nav-item-content">
+                        <span class="nav-icon">💳</span>
+                        <span class="nav-text">Debt</span>
+                    </div>
+                    <div class="nav-item-badges">
+                        <span class="badge">3</span>
+                    </div>
+                </button>
+                
+                <button class="nav-item" data-page="bills">
+                    <div class="nav-item-content">
+                        <span class="nav-icon">📅</span>
+                        <span class="nav-text">Bills</span>
+                    </div>
+                </button>
+                
+                <button class="nav-item" data-page="rules">
+                    <div class="nav-item-content">
+                        <span class="nav-icon">🎯</span>
+                        <span class="nav-text">Rules</span>
+                    </div>
+                </button>
+                
+                <button class="nav-item" data-page="settings">
+                    <div class="nav-item-content">
+                        <span class="nav-icon">⚙️</span>
+                        <span class="nav-text">Settings</span>
+                    </div>
+                </button>
+                
+                <!-- Divider -->
+                <div class="nav-divider"></div>
+                
+                <!-- Additional Menu Items -->
+                <button class="nav-item">
+                    <div class="nav-item-content">
+                        <span class="nav-icon">❓</span>
+                        <span class="nav-text">Help & Support</span>
+                    </div>
+                </button>
+                
+                <button class="nav-item">
+                    <div class="nav-item-content">
+                        <span class="nav-icon">🔔</span>
+                        <span class="nav-text">Notifications</span>
+                    </div>
+                    <div class="nav-item-badges">
+                        <span class="badge">3</span>
+                    </div>
                 </button>
             </div>
             
-            <ul class="nav-menu">
-                <li class="nav-item active" data-page="dashboard">
-                    <span class="nav-icon">📊</span>
-                    <span class="nav-text">Dashboard</span>
-                </li>
-                <li class="nav-item" data-page="accounts">
-                    <span class="nav-icon">💰</span>
-                    <span class="nav-text">Accounts</span>
-                </li>
-                <li class="nav-item" data-page="transactions">
-                    <span class="nav-icon">📈</span>
-                    <span class="nav-text">Transactions</span>
-                </li>
-                <li class="nav-item" data-page="bills">
-                    <span class="nav-icon">📅</span>
-                    <span class="nav-text">Bills</span>
-                </li>
-                <li class="nav-item" data-page="investments">
-                    <span class="nav-icon">💹</span>
-                    <span class="nav-text">Investments</span>
-                </li>
-                <li class="nav-item" data-page="rules">
-                    <span class="nav-icon">⚡</span>
-                    <span class="nav-text">Smart Rules</span>
-                </li>
-                <li class="nav-item" data-page="settings">
-                    <span class="nav-icon">⚙️</span>
-                    <span class="nav-text">Settings</span>
-                </li>
-            </ul>
-            
-            <div class="sidebar-footer">
-                <div class="user-info">
-                    <div class="user-avatar">👤</div>
-                    <div class="user-details">
-                        <div class="user-name" id="user-name">Loading...</div>
-                        <div class="user-email" id="user-email">...</div>
+            <!-- Premium Upgrade Section -->
+            <div class="premium-section">
+                <div class="premium-card">
+                    <div class="premium-header">
+                        <div class="premium-icon">
+                            <span>🛡️</span>
+                        </div>
+                        <div class="premium-info">
+                            <span class="premium-title">Premium Plan</span>
+                            <p class="premium-subtitle">Advanced Features</p>
+                        </div>
+                    </div>
+                    
+                    <p class="premium-description">
+                        Unlock advanced analytics, automation, and unlimited transaction history
+                    </p>
+                    
+                    <button class="premium-button">
+                        Upgrade Now
+                    </button>
+                    
+                    <div class="premium-dots">
+                        <span class="dot dot-1"></span>
+                        <span class="dot dot-2"></span>
+                        <span class="dot dot-3"></span>
                     </div>
                 </div>
-                <button class="logout-btn" id="logout-btn">
-                    <span class="logout-icon">🚪</span>
-                </button>
+            </div>
+            
+            <!-- User Profile Section -->
+            <div class="user-section">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <span>👤</span>
+                    </div>
+                    <div class="user-info">
+                        <p class="user-email" id="user-email">Loading...</p>
+                        <p class="user-status">Premium Member</p>
+                    </div>
+                    <button class="logout-btn" id="logout-btn">
+                        <span>🚪</span>
+                    </button>
+                </div>
             </div>
         </nav>
         

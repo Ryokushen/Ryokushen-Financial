@@ -1,7 +1,7 @@
 // Dashboard Module
 
 import { formatCurrency, maskCurrency, createSkeleton } from './ui.js'
-import config from '../config.js'
+import { FEATURES, COLORS, HEALTH_THRESHOLDS } from '../config.js'
 
 // Initialize dashboard
 export async function initDashboard(appState) {
@@ -9,7 +9,7 @@ export async function initDashboard(appState) {
   calculateMetrics(appState)
   
   // Set up real-time updates if available
-  if (config.FEATURES.REAL_TIME_UPDATES) {
+  if (FEATURES.REAL_TIME_UPDATES) {
     setupRealtimeUpdates(appState)
   }
 }
@@ -277,6 +277,12 @@ function renderFinancialHealth(metrics) {
       <div class="health-score-visual">
         <div class="health-score-circle">
           <svg viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#34d399;stop-opacity:1" />
+              </linearGradient>
+            </defs>
             <circle cx="60" cy="60" r="48" class="health-circle-bg" />
             <circle 
               cx="60" cy="60" r="48" 
@@ -414,7 +420,7 @@ function getGradeLabel(grade) {
 }
 
 function getHealthStatus(value, metric) {
-  const thresholds = config.HEALTH_THRESHOLDS[metric]
+  const thresholds = HEALTH_THRESHOLDS[metric]
   if (!thresholds) return 'warning'
   
   if (metric === 'debtRatio') {
