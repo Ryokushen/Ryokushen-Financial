@@ -1,7 +1,7 @@
 // Account Forms Module - Form configurations for account management
 
 import formBuilder from './formBuilder.js'
-import { createCashAccount, updateCashAccount } from './database.js'
+import { createCashAccount, updateCashAccount, createTransaction, getSupabase } from './database.js'
 import modalManager from './modal.js'
 import { appState } from '../app.js'
 
@@ -54,36 +54,29 @@ export function createCashAccountForm(accountData = null) {
       value: accountData?.name || ''
     },
     {
-      name: 'account_type',
+      name: 'type',
       label: 'Account Type',
       type: 'select',
       options: ACCOUNT_TYPES.CASH,
       required: true,
-      value: accountData?.account_type || 'checking'
+      value: accountData?.type || 'checking'
     },
     {
-      name: 'bank_name',
+      name: 'institution',
       label: 'Bank Name',
       type: 'text',
       placeholder: 'e.g., Chase Bank',
-      value: accountData?.bank_name || ''
+      value: accountData?.institution || ''
     },
     {
-      name: 'account_number',
-      label: 'Account Number (Last 4 digits)',
-      type: 'text',
-      placeholder: 'XXXX',
-      maxLength: 4,
-      helpText: 'For your reference only - stored securely',
-      value: accountData?.account_number || ''
-    },
-    {
-      name: 'balance',
-      label: 'Current Balance',
+      name: 'initial_balance',
+      label: 'Initial Balance',
       type: 'amount',
       placeholder: '0.00',
       required: true,
-      value: accountData?.balance || ''
+      value: accountData?.initial_balance || '',
+      helpText: 'Starting balance for this account',
+      disabled: isEdit // Can't change initial balance when editing
     },
     {
       name: 'currency',
@@ -115,11 +108,38 @@ export function createCashAccountForm(accountData = null) {
     submitText: isEdit ? 'Update Account' : 'Create Account',
     onSubmit: async (data) => {
       try {
+        // Get current user
+        const supabase = getSupabase()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('User not authenticated')
+        
         if (isEdit) {
-          await updateCashAccount(accountData.id, data)
+          // Remove fields that shouldn't be updated
+          const { initial_balance, ...updateData } = data
+          await updateCashAccount(accountData.id, updateData)
           await modalManager.showSuccess('Account updated successfully!')
         } else {
-          await createCashAccount(data)
+          // Create account
+          const { initial_balance, ...accountData } = data
+          const newAccount = await createCashAccount({
+            ...accountData,
+            user_id: user.id
+          })
+          
+          // Create initial balance transaction if needed
+          if (initial_balance && initial_balance !== 0) {
+            await createTransaction({
+              user_id: user.id,
+              account_id: newAccount.id,
+              amount: initial_balance,
+              description: 'Initial Balance',
+              category: 'Income',
+              date: new Date().toISOString().split('T')[0],
+              cleared: true,
+              notes: 'Opening balance for account'
+            })
+          }
+          
           await modalManager.showSuccess('Account created successfully!')
         }
         
@@ -143,14 +163,9 @@ export function createCashAccountForm(accountData = null) {
     onValidate: (data) => {
       const errors = {}
       
-      // Validate account number if provided
-      if (data.account_number && !/^\d{0,4}$/.test(data.account_number)) {
-        errors.account_number = 'Please enter up to 4 digits only'
-      }
-      
-      // Validate balance
-      if (data.balance < 0) {
-        errors.balance = 'Balance cannot be negative for cash accounts'
+      // Validate initial balance for new accounts
+      if (!isEdit && data.initial_balance < 0) {
+        errors.initial_balance = 'Initial balance cannot be negative'
       }
       
       return Object.keys(errors).length > 0 ? errors : null

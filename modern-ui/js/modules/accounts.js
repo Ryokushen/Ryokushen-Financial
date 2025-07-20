@@ -7,11 +7,18 @@ import { modalManager } from '../app.js'
 // Load all accounts from database
 export async function loadAccounts() {
   try {
+    console.log('Loading accounts from database...')
     const [cashAccounts, investmentAccounts, debtAccounts] = await Promise.all([
       getCashAccounts(),
       getInvestmentAccounts(),
       getDebtAccounts()
     ])
+    
+    console.log('Accounts loaded:', {
+      cash: cashAccounts?.length || 0,
+      investment: investmentAccounts?.length || 0,
+      debt: debtAccounts?.length || 0
+    })
     
     return {
       cashAccounts: cashAccounts || [],
@@ -86,10 +93,10 @@ function renderCashAccounts(accounts, privacyMode) {
         <div class="account-item" data-account-id="${account.id}">
           <div class="account-info">
             <h4>${account.name}</h4>
-            <p>${account.account_type || 'Checking'}</p>
+            <p>${account.type || 'Checking'}</p>
           </div>
           <div class="account-right">
-            <div class="account-balance">${maskCurrency(account.balance, privacyMode)}</div>
+            <div class="account-balance">${maskCurrency(account.balance || 0, privacyMode)}</div>
             <div class="text-actions">
               <button class="text-btn edit" data-account-id="${account.id}" data-account-name="${account.name}">Edit</button>
               <button class="text-btn delete" data-account-id="${account.id}" data-account-name="${account.name}">Delete</button>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Schema Inspector</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a24;
+            color: #fff;
+            padding: 40px;
+            line-height: 1.6;
+        }
+        .test-section {
+            background: #242430;
+            border: 1px solid #2a2a3a;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .success { color: #4ade80; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        pre {
+            background: #16161f;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-right: 12px;
+            margin-bottom: 12px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+        th, td {
+            border: 1px solid #3a3a4a;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: #16161f;
+        }
+    </style>
+</head>
+<body>
+    <h1>Database Schema Inspector</h1>
+    
+    <div class="test-section">
+        <h2>Table Schemas</h2>
+        <button onclick="inspectCashAccounts()">Inspect cash_accounts</button>
+        <button onclick="inspectTransactions()">Inspect transactions</button>
+        <button onclick="inspectAllTables()">Inspect All Tables</button>
+        <div id="schema-results"></div>
+    </div>
+
+    <script type="module">
+        // Import configuration
+        import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/config.js'
+        
+        // Initialize Supabase
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        
+        // Helper to get table schema
+        async function getTableSchema(tableName) {
+            try {
+                // First, try to get a single row to see the structure
+                const { data, error } = await supabase
+                    .from(tableName)
+                    .select('*')
+                    .limit(1)
+                
+                if (error && error.code !== 'PGRST116') {
+                    throw error
+                }
+                
+                // Get column names from the data
+                if (data && data.length > 0) {
+                    const columns = Object.keys(data[0])
+                    const sample = data[0]
+                    
+                    return {
+                        columns: columns,
+                        sample: sample,
+                        error: null
+                    }
+                } else {
+                    // No data, but table exists
+                    return {
+                        columns: [],
+                        sample: null,
+                        error: 'Table exists but has no data'
+                    }
+                }
+            } catch (error) {
+                return {
+                    columns: [],
+                    sample: null,
+                    error: error.message
+                }
+            }
+        }
+        
+        // Inspect cash_accounts
+        window.inspectCashAccounts = async function() {
+            const resultsEl = document.getElementById('schema-results')
+            resultsEl.innerHTML = '<span class="info">Inspecting cash_accounts table...</span>'
+            
+            const schema = await getTableSchema('cash_accounts')
+            
+            if (schema.error && schema.error !== 'Table exists but has no data') {
+                resultsEl.innerHTML = `<span class="error">✗ Error: ${schema.error}</span>`
+                return
+            }
+            
+            let html = '<h3>cash_accounts Table Schema</h3>'
+            
+            if (schema.columns.length > 0) {
+                html += '<h4>Columns:</h4>'
+                html += '<table>'
+                html += '<tr><th>Column Name</th><th>Sample Value</th><th>Type</th></tr>'
+                
+                schema.columns.forEach(col => {
+                    const value = schema.sample[col]
+                    const type = value === null ? 'null' : typeof value
+                    html += `<tr><td>${col}</td><td>${value}</td><td>${type}</td></tr>`
+                })
+                
+                html += '</table>'
+                
+                html += '<h4>Sample Row (JSON):</h4>'
+                html += `<pre>${JSON.stringify(schema.sample, null, 2)}</pre>`
+            } else {
+                html += '<p>Table exists but has no data. Here\'s what we expect:</p>'
+                html += '<pre>Expected columns:\n- id (UUID)\n- user_id (UUID)\n- name (string)\n- account_type (string)\n- balance (number)\n- institution (string)\n- account_number (string) - This might be missing!\n- is_active (boolean)</pre>'
+            }
+            
+            resultsEl.innerHTML = html
+        }
+        
+        // Inspect transactions
+        window.inspectTransactions = async function() {
+            const resultsEl = document.getElementById('schema-results')
+            resultsEl.innerHTML = '<span class="info">Inspecting transactions table...</span>'
+            
+            const schema = await getTableSchema('transactions')
+            
+            if (schema.error && schema.error !== 'Table exists but has no data') {
+                resultsEl.innerHTML = `<span class="error">✗ Error: ${schema.error}</span>`
+                return
+            }
+            
+            let html = '<h3>transactions Table Schema</h3>'
+            
+            if (schema.columns.length > 0) {
+                html += '<h4>Columns:</h4>'
+                html += '<table>'
+                html += '<tr><th>Column Name</th><th>Sample Value</th><th>Type</th></tr>'
+                
+                schema.columns.forEach(col => {
+                    const value = schema.sample[col]
+                    const type = value === null ? 'null' : typeof value
+                    html += `<tr><td>${col}</td><td>${value}</td><td>${type}</td></tr>`
+                })
+                
+                html += '</table>'
+                
+                html += '<h4>Sample Row (JSON):</h4>'
+                html += `<pre>${JSON.stringify(schema.sample, null, 2)}</pre>`
+            } else {
+                html += '<p>Table exists but has no data. Here\'s what we expect:</p>'
+                html += '<pre>Expected columns:\n- id (UUID)\n- user_id (UUID)\n- account_id (UUID)\n- amount (number)\n- description (string)\n- category (string)\n- date (date)\n- transaction_type (string) - This might be missing!\n- created_at (timestamp)\n- updated_at (timestamp)</pre>'
+            }
+            
+            resultsEl.innerHTML = html
+        }
+        
+        // Inspect all tables
+        window.inspectAllTables = async function() {
+            const resultsEl = document.getElementById('schema-results')
+            resultsEl.innerHTML = '<span class="info">Inspecting all tables...</span>'
+            
+            const tables = [
+                'cash_accounts',
+                'investment_accounts',
+                'debt_accounts',
+                'transactions',
+                'recurring_bills',
+                'smart_rules',
+                'categories'
+            ]
+            
+            let html = '<h3>All Table Schemas</h3>'
+            
+            for (const table of tables) {
+                const schema = await getTableSchema(table)
+                
+                html += `<h4>${table}</h4>`
+                
+                if (schema.error && schema.error !== 'Table exists but has no data') {
+                    html += `<p class="error">✗ Error: ${schema.error}</p>`
+                } else if (schema.columns.length > 0) {
+                    html += `<p class="success">✓ Columns: ${schema.columns.join(', ')}</p>`
+                } else {
+                    html += `<p class="info">ℹ Table exists but has no data</p>`
+                }
+            }
+            
+            resultsEl.innerHTML = html
+        }
+        
+        // Check auth status on load
+        async function checkAuth() {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                document.body.insertAdjacentHTML('afterbegin', `<div class="test-section"><span class="success">✓ Authenticated as: ${user.email}</span></div>`)
+            } else {
+                document.body.insertAdjacentHTML('afterbegin', `<div class="test-section"><span class="error">✗ Not authenticated - <a href="test-database.html" style="color: #3b82f6;">Go to test database page to sign in</a></span></div>`)
+            }
+        }
+        
+        checkAuth()
+    </script>
+</body>
+</html>

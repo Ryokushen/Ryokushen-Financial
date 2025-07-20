@@ -6,7 +6,9 @@ import getSupabaseClient from '../supabase-client.js'
 
 // Initialize Supabase client
 export async function initSupabase() {
-  return getSupabaseClient()
+  const client = getSupabaseClient()
+  console.log('Supabase client initialized:', !!client)
+  return client
 }
 
 // Get Supabase client
@@ -119,12 +121,61 @@ export async function deleteTransaction(id) {
 // Account operations
 export async function getCashAccounts() {
   const supabase = getSupabase()
-  return executeQuery(() =>
+  const accounts = await executeQuery(() =>
     supabase
       .from('cash_accounts')
       .select('*')
       .order('name')
   )
+  
+  // Calculate balance for each account
+  const accountsWithBalances = await Promise.all(
+    accounts.map(async (account) => {
+      const balance = await calculateAccountBalance(account.id)
+      return { ...account, balance }
+    })
+  )
+  
+  return accountsWithBalances
+}
+
+export async function getCashAccountById(id) {
+  const supabase = getSupabase()
+  const account = await executeQuery(() =>
+    supabase
+      .from('cash_accounts')
+      .select('*')
+      .eq('id', id)
+      .single()
+  )
+  
+  // Calculate balance
+  const balance = await calculateAccountBalance(id)
+  return { ...account, balance }
+}
+
+// Calculate account balance from transactions
+export async function calculateAccountBalance(accountId) {
+  const supabase = getSupabase()
+  
+  try {
+    const { data: transactions, error } = await supabase
+      .from('transactions')
+      .select('amount')
+      .eq('account_id', accountId)
+    
+    if (error) throw error
+    
+    // Sum all transaction amounts
+    const balance = transactions.reduce((sum, transaction) => {
+      return sum + (transaction.amount || 0)
+    }, 0)
+    
+    return balance
+  } catch (error) {
+    console.error('Failed to calculate balance:', error)
+    return 0
+  }
 }
 
 export async function createCashAccount(account) {
@@ -419,6 +470,50 @@ export async function unsubscribe(subscription) {
   return subscription.unsubscribe()
 }
 
+// Category operations
+export async function getCategories() {
+  const supabase = getSupabase()
+  return executeQuery(() =>
+    supabase
+      .from('categories')
+      .select('*')
+      .order('name')
+  )
+}
+
+export async function createCategory(category) {
+  const supabase = getSupabase()
+  return executeQuery(() =>
+    supabase
+      .from('categories')
+      .insert(category)
+      .select()
+      .single()
+  )
+}
+
+export async function updateCategory(id, updates) {
+  const supabase = getSupabase()
+  return executeQuery(() =>
+    supabase
+      .from('categories')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+  )
+}
+
+export async function deleteCategory(id) {
+  const supabase = getSupabase()
+  return executeQuery(() =>
+    supabase
+      .from('categories')
+      .delete()
+      .eq('id', id)
+  )
+}
+
 // Analytics queries
 export async function getSpendingByCategory(startDate, endDate) {
   const supabase = getSupabase()
@@ -471,9 +566,11 @@ export default {
   batchUpdateTransactions,
   // Cash Accounts
   getCashAccounts,
+  getCashAccountById,
   createCashAccount,
   updateCashAccount,
   deleteCashAccount,
+  calculateAccountBalance,
   // Investment Accounts
   getInvestmentAccounts,
   createInvestmentAccount,
@@ -502,4 +599,9 @@ export default {
   getSpendingByCategory,
   getMonthlyTrends,
   getNetWorthHistory,
+  // Categories
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
 }

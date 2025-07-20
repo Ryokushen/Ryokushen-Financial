@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Real Data Loading</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a24;
+            color: #fff;
+            padding: 40px;
+            line-height: 1.6;
+        }
+        .test-section {
+            background: #242430;
+            border: 1px solid #2a2a3a;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .success { color: #4ade80; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        pre {
+            background: #16161f;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-right: 12px;
+            margin-bottom: 12px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Real Data Loading</h1>
+    
+    <div class="test-section">
+        <h2>Auth Status</h2>
+        <div id="auth-status">Checking...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Load Real Data</h2>
+        <button onclick="loadCashAccounts()">Load Cash Accounts</button>
+        <button onclick="loadTransactions()">Load Transactions</button>
+        <button onclick="testBalanceCalculation()">Test Balance Calculation</button>
+        <div id="data-results"></div>
+    </div>
+
+    <script type="module">
+        // Import modules
+        import { initSupabase, getCashAccounts, getTransactions, calculateAccountBalance } from './js/modules/database.js'
+        
+        // Initialize
+        async function init() {
+            const statusEl = document.getElementById('auth-status')
+            
+            try {
+                // Init Supabase
+                const supabase = await initSupabase()
+                
+                // Check auth
+                const { data: { user } } = await supabase.auth.getUser()
+                if (user) {
+                    statusEl.innerHTML = `<span class="success">✓ Authenticated as: ${user.email}</span>`
+                } else {
+                    statusEl.innerHTML = '<span class="error">✗ Not authenticated - <a href="test-database.html" style="color: #3b82f6;">Sign in here</a></span>'
+                }
+            } catch (error) {
+                statusEl.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`
+            }
+        }
+        
+        // Load cash accounts
+        window.loadCashAccounts = async function() {
+            const resultsEl = document.getElementById('data-results')
+            resultsEl.innerHTML = '<span class="info">Loading cash accounts...</span>'
+            
+            try {
+                const accounts = await getCashAccounts()
+                
+                resultsEl.innerHTML = `
+                    <h3>Cash Accounts (${accounts.length}):</h3>
+                    ${accounts.length > 0 ? `
+                        <pre>${JSON.stringify(accounts, null, 2)}</pre>
+                    ` : `
+                        <p class="info">No cash accounts found. Create some using the test-database.html page.</p>
+                    `}
+                `
+            } catch (error) {
+                resultsEl.innerHTML = `<span class="error">✗ Failed to load accounts: ${error.message}</span>`
+            }
+        }
+        
+        // Load transactions
+        window.loadTransactions = async function() {
+            const resultsEl = document.getElementById('data-results')
+            resultsEl.innerHTML = '<span class="info">Loading transactions...</span>'
+            
+            try {
+                const transactions = await getTransactions({ limit: 10 })
+                
+                resultsEl.innerHTML = `
+                    <h3>Recent Transactions (${transactions.length}):</h3>
+                    ${transactions.length > 0 ? `
+                        <pre>${JSON.stringify(transactions, null, 2)}</pre>
+                    ` : `
+                        <p class="info">No transactions found. Create some using the test-database.html page.</p>
+                    `}
+                `
+            } catch (error) {
+                resultsEl.innerHTML = `<span class="error">✗ Failed to load transactions: ${error.message}</span>`
+            }
+        }
+        
+        // Test balance calculation
+        window.testBalanceCalculation = async function() {
+            const resultsEl = document.getElementById('data-results')
+            resultsEl.innerHTML = '<span class="info">Testing balance calculation...</span>'
+            
+            try {
+                // Get first cash account
+                const accounts = await getCashAccounts()
+                
+                if (accounts.length === 0) {
+                    resultsEl.innerHTML = '<p class="error">No accounts found. Create an account first.</p>'
+                    return
+                }
+                
+                const firstAccount = accounts[0]
+                
+                // Get transactions for this account
+                const transactions = await getTransactions({ accountId: firstAccount.id })
+                
+                // Calculate balance manually
+                const manualBalance = transactions.reduce((sum, t) => sum + (t.amount || 0), 0)
+                
+                resultsEl.innerHTML = `
+                    <h3>Balance Calculation Test:</h3>
+                    <div>Account: ${firstAccount.name}</div>
+                    <div>Account ID: ${firstAccount.id}</div>
+                    <div>Number of transactions: ${transactions.length}</div>
+                    <div>Calculated balance from module: $${firstAccount.balance?.toFixed(2) || '0.00'}</div>
+                    <div>Manual calculation: $${manualBalance.toFixed(2)}</div>
+                    <div class="${firstAccount.balance === manualBalance ? 'success' : 'error'}">
+                        ${firstAccount.balance === manualBalance ? '✓ Balances match!' : '✗ Balance mismatch!'}
+                    </div>
+                    <h4>Transaction Details:</h4>
+                    <pre>${JSON.stringify(transactions.slice(0, 5), null, 2)}${transactions.length > 5 ? '\n... and ' + (transactions.length - 5) + ' more' : ''}</pre>
+                `
+            } catch (error) {
+                resultsEl.innerHTML = `<span class="error">✗ Failed to test balance: ${error.message}</span>`
+            }
+        }
+        
+        // Initialize on load
+        init()
+    </script>
+</body>
+</html>

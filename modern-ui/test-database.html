@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Connection Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a24;
+            color: #fff;
+            padding: 40px;
+            line-height: 1.6;
+        }
+        .test-section {
+            background: #242430;
+            border: 1px solid #2a2a3a;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .success { color: #4ade80; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        pre {
+            background: #16161f;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-right: 12px;
+            margin-bottom: 12px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Database Connection Test</h1>
+    
+    <div class="test-section">
+        <h2>Connection Status</h2>
+        <div id="connection-status">Testing connection...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Authentication</h2>
+        <button onclick="testAuth()">Test Authentication</button>
+        <button onclick="signOut()">Sign Out</button>
+        <div style="margin-top: 16px;">
+            <h3>Sign In with Your Credentials</h3>
+            <input type="email" id="email" placeholder="Email" style="padding: 8px; margin: 4px; background: #16161f; border: 1px solid #3a3a4a; color: white; border-radius: 4px;">
+            <input type="password" id="password" placeholder="Password" style="padding: 8px; margin: 4px; background: #16161f; border: 1px solid #3a3a4a; color: white; border-radius: 4px;">
+            <button onclick="signInCustom()">Sign In</button>
+            <button onclick="signUpCustom()">Create New Account</button>
+        </div>
+        <div id="auth-status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Database Tables</h2>
+        <button onclick="testTables()">Test All Tables</button>
+        <button onclick="testCashAccounts()">Test Cash Accounts</button>
+        <button onclick="testTransactions()">Test Transactions</button>
+        <div id="table-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Create Test Data</h2>
+        <button onclick="createTestAccount()">Create Test Cash Account</button>
+        <button onclick="createTestTransaction()">Create Test Transaction</button>
+        <button onclick="createDefaultCategories()">Create Default Categories</button>
+        <div id="create-results"></div>
+    </div>
+
+    <script type="module">
+        // Import configuration
+        import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/config.js'
+        
+        // Initialize Supabase
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        
+        // Test connection
+        async function testConnection() {
+            const statusEl = document.getElementById('connection-status')
+            try {
+                const { data, error } = await supabase.from('cash_accounts').select('count')
+                if (error && error.code !== 'PGRST116') { // PGRST116 means table exists but no rows
+                    throw error
+                }
+                statusEl.innerHTML = '<span class="success">✓ Connected to Supabase successfully!</span>'
+            } catch (error) {
+                statusEl.innerHTML = `<span class="error">✗ Connection failed: ${error.message}</span>`
+            }
+        }
+        
+        // Test authentication
+        window.testAuth = async function() {
+            const statusEl = document.getElementById('auth-status')
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (user) {
+                    statusEl.innerHTML = `<span class="success">✓ Authenticated as: ${user.email}</span>`
+                } else {
+                    statusEl.innerHTML = '<span class="info">ℹ Not authenticated</span>'
+                }
+            } catch (error) {
+                statusEl.innerHTML = `<span class="error">✗ Auth check failed: ${error.message}</span>`
+            }
+        }
+        
+        // Sign in with custom credentials
+        window.signInCustom = async function() {
+            const statusEl = document.getElementById('auth-status')
+            const email = document.getElementById('email').value
+            const password = document.getElementById('password').value
+            
+            if (!email || !password) {
+                statusEl.innerHTML = '<span class="error">✗ Please enter email and password</span>'
+                return
+            }
+            
+            try {
+                statusEl.innerHTML = '<span class="info">Signing in...</span>'
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                })
+                if (error) throw error
+                statusEl.innerHTML = '<span class="success">✓ Signed in successfully!</span>'
+                setTimeout(() => window.location.reload(), 1000)
+            } catch (error) {
+                statusEl.innerHTML = `<span class="error">✗ Sign in failed: ${error.message}</span>`
+            }
+        }
+        
+        // Sign up new user
+        window.signUpCustom = async function() {
+            const statusEl = document.getElementById('auth-status')
+            const email = document.getElementById('email').value
+            const password = document.getElementById('password').value
+            
+            if (!email || !password) {
+                statusEl.innerHTML = '<span class="error">✗ Please enter email and password</span>'
+                return
+            }
+            
+            if (password.length < 6) {
+                statusEl.innerHTML = '<span class="error">✗ Password must be at least 6 characters</span>'
+                return
+            }
+            
+            try {
+                statusEl.innerHTML = '<span class="info">Creating account...</span>'
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password
+                })
+                if (error) throw error
+                
+                if (data.user && data.user.identities && data.user.identities.length === 0) {
+                    statusEl.innerHTML = '<span class="error">✗ An account with this email already exists</span>'
+                    return
+                }
+                
+                statusEl.innerHTML = '<span class="success">✓ Account created! Check your email to verify, then sign in.</span>'
+            } catch (error) {
+                statusEl.innerHTML = `<span class="error">✗ Sign up failed: ${error.message}</span>`
+            }
+        }
+        
+        // Sign out
+        window.signOut = async function() {
+            const statusEl = document.getElementById('auth-status')
+            try {
+                const { error } = await supabase.auth.signOut()
+                if (error) throw error
+                statusEl.innerHTML = '<span class="success">✓ Signed out successfully!</span>'
+                setTimeout(() => window.location.reload(), 1000)
+            } catch (error) {
+                statusEl.innerHTML = `<span class="error">✗ Sign out failed: ${error.message}</span>`
+            }
+        }
+        
+        // Test all tables
+        window.testTables = async function() {
+            const resultsEl = document.getElementById('table-results')
+            resultsEl.innerHTML = '<span class="info">Testing tables...</span>'
+            
+            const tables = [
+                'cash_accounts',
+                'investment_accounts',
+                'debt_accounts',
+                'transactions',
+                'recurring_bills',
+                'smart_rules',
+                'categories'
+            ]
+            
+            let results = '<h3>Table Test Results:</h3>'
+            
+            for (const table of tables) {
+                try {
+                    const { data, error, count } = await supabase
+                        .from(table)
+                        .select('*', { count: 'exact' })
+                        .limit(1)
+                    
+                    if (error && error.code !== 'PGRST116') {
+                        results += `<div class="error">✗ ${table}: ${error.message}</div>`
+                    } else {
+                        const rowCount = count || 0
+                        results += `<div class="success">✓ ${table}: ${rowCount} rows</div>`
+                    }
+                } catch (error) {
+                    results += `<div class="error">✗ ${table}: ${error.message}</div>`
+                }
+            }
+            
+            resultsEl.innerHTML = results
+        }
+        
+        // Test cash accounts
+        window.testCashAccounts = async function() {
+            const resultsEl = document.getElementById('table-results')
+            try {
+                resultsEl.innerHTML = '<span class="info">Loading cash accounts...</span>'
+                const { data, error } = await supabase
+                    .from('cash_accounts')
+                    .select('*')
+                    .order('name')
+                
+                if (error) throw error
+                
+                resultsEl.innerHTML = `
+                    <h3>Cash Accounts (${data.length}):</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `
+            } catch (error) {
+                resultsEl.innerHTML = `<span class="error">✗ Failed to load cash accounts: ${error.message}</span>`
+            }
+        }
+        
+        // Test transactions
+        window.testTransactions = async function() {
+            const resultsEl = document.getElementById('table-results')
+            try {
+                resultsEl.innerHTML = '<span class="info">Loading transactions...</span>'
+                const { data, error } = await supabase
+                    .from('transactions')
+                    .select('*')
+                    .order('date', { ascending: false })
+                    .limit(10)
+                
+                if (error) throw error
+                
+                resultsEl.innerHTML = `
+                    <h3>Recent Transactions (${data.length}):</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `
+            } catch (error) {
+                resultsEl.innerHTML = `<span class="error">✗ Failed to load transactions: ${error.message}</span>`
+            }
+        }
+        
+        // Create test cash account
+        window.createTestAccount = async function() {
+            const resultsEl = document.getElementById('create-results')
+            try {
+                resultsEl.innerHTML = '<span class="info">Creating test account...</span>'
+                
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) {
+                    resultsEl.innerHTML = '<span class="error">✗ You must be signed in to create data</span>'
+                    return
+                }
+                
+                const testAccount = {
+                    user_id: user.id,
+                    name: 'Test Checking Account',
+                    type: 'Checking',
+                    institution: 'Test Bank',
+                    notes: 'Test account created from test page',
+                    is_active: true
+                }
+                
+                const { data, error } = await supabase
+                    .from('cash_accounts')
+                    .insert(testAccount)
+                    .select()
+                    .single()
+                
+                if (error) throw error
+                
+                resultsEl.innerHTML = `
+                    <span class="success">✓ Created test account!</span>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `
+            } catch (error) {
+                resultsEl.innerHTML = `<span class="error">✗ Failed to create account: ${error.message}</span>`
+            }
+        }
+        
+        // Create test transaction
+        window.createTestTransaction = async function() {
+            const resultsEl = document.getElementById('create-results')
+            try {
+                resultsEl.innerHTML = '<span class="info">Creating test transaction...</span>'
+                
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) {
+                    resultsEl.innerHTML = '<span class="error">✗ You must be signed in to create data</span>'
+                    return
+                }
+                
+                // Get first cash account
+                const { data: accounts } = await supabase
+                    .from('cash_accounts')
+                    .select('id')
+                    .limit(1)
+                    .single()
+                
+                if (!accounts) {
+                    resultsEl.innerHTML = '<span class="error">✗ Create a cash account first</span>'
+                    return
+                }
+                
+                const testTransaction = {
+                    user_id: user.id,
+                    account_id: accounts.id,
+                    amount: -25.50,
+                    description: 'Test Transaction',
+                    category: 'Dining',
+                    date: new Date().toISOString().split('T')[0],
+                    cleared: false,
+                    notes: 'Test transaction from test page'
+                }
+                
+                const { data, error } = await supabase
+                    .from('transactions')
+                    .insert(testTransaction)
+                    .select()
+                    .single()
+                
+                if (error) throw error
+                
+                resultsEl.innerHTML = `
+                    <span class="success">✓ Created test transaction!</span>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `
+            } catch (error) {
+                resultsEl.innerHTML = `<span class="error">✗ Failed to create transaction: ${error.message}</span>`
+            }
+        }
+        
+        // Create default categories
+        window.createDefaultCategories = async function() {
+            const resultsEl = document.getElementById('create-results')
+            try {
+                resultsEl.innerHTML = '<span class="info">Creating default categories...</span>'
+                
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) {
+                    resultsEl.innerHTML = '<span class="error">✗ You must be signed in to create data</span>'
+                    return
+                }
+                
+                const defaultCategories = [
+                    { user_id: user.id, name: 'Income', icon: '💰', color: '#10b981' },
+                    { user_id: user.id, name: 'Housing', icon: '🏠', color: '#3b82f6' },
+                    { user_id: user.id, name: 'Transportation', icon: '🚗', color: '#8b5cf6' },
+                    { user_id: user.id, name: 'Food', icon: '🍔', color: '#f59e0b' },
+                    { user_id: user.id, name: 'Utilities', icon: '💡', color: '#06b6d4' },
+                    { user_id: user.id, name: 'Healthcare', icon: '🏥', color: '#ef4444' },
+                    { user_id: user.id, name: 'Entertainment', icon: '🎬', color: '#ec4899' },
+                    { user_id: user.id, name: 'Shopping', icon: '🛍️', color: '#f97316' },
+                    { user_id: user.id, name: 'Education', icon: '📚', color: '#6366f1' },
+                    { user_id: user.id, name: 'Travel', icon: '✈️', color: '#14b8a6' },
+                    { user_id: user.id, name: 'Insurance', icon: '🛡️', color: '#84cc16' },
+                    { user_id: user.id, name: 'Savings', icon: '🏦', color: '#22c55e' },
+                    { user_id: user.id, name: 'Investment', icon: '📈', color: '#0ea5e9' },
+                    { user_id: user.id, name: 'Debt Payment', icon: '💳', color: '#dc2626' },
+                    { user_id: user.id, name: 'Other', icon: '📌', color: '#64748b' }
+                ]
+                
+                const { data, error } = await supabase
+                    .from('categories')
+                    .insert(defaultCategories)
+                    .select()
+                
+                if (error) throw error
+                
+                resultsEl.innerHTML = `
+                    <span class="success">✓ Created ${data.length} default categories!</span>
+                    <pre>${JSON.stringify(data.slice(0, 3), null, 2)}... and ${data.length - 3} more</pre>
+                `
+            } catch (error) {
+                resultsEl.innerHTML = `<span class="error">✗ Failed to create categories: ${error.message}</span>`
+            }
+        }
+        
+        // Run initial tests
+        testConnection()
+        testAuth()
+    </script>
+</body>
+</html>
