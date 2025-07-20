@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Auth Flow</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a24;
+            color: #fff;
+            padding: 40px;
+            line-height: 1.6;
+        }
+        .test-section {
+            background: #242430;
+            border: 1px solid #2a2a3a;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .success { color: #4ade80; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-right: 12px;
+            margin-bottom: 12px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button.danger {
+            background: #ef4444;
+        }
+        button.danger:hover {
+            background: #dc2626;
+        }
+        pre {
+            background: #16161f;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid #2a2a3a;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Authentication Flow</h1>
+    
+    <div class="test-section">
+        <h2>Current Auth Status</h2>
+        <div id="auth-status">Checking...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Auth Functions</h2>
+        <button onclick="testInitAuth()">Test Init Auth</button>
+        <button onclick="testAuthStateChange()">Test Auth State Changes</button>
+        <button onclick="testSessionPersistence()">Test Session Persistence</button>
+        <button onclick="testSignOut()" class="danger">Test Sign Out</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+        <div id="test-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Auth Event Log</h2>
+        <div id="event-log">
+            <div class="log-entry info">Waiting for auth events...</div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Go to App</h2>
+        <button onclick="goToApp()">Open Modern UI App</button>
+        <button onclick="goToMainTest()">Open Database Test</button>
+    </div>
+
+    <script type="module">
+        import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/config.js'
+        
+        // Initialize Supabase
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        
+        // Log function
+        function log(message, type = 'info') {
+            const logEl = document.getElementById('event-log')
+            const entry = document.createElement('div')
+            entry.className = `log-entry ${type}`
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`
+            logEl.appendChild(entry)
+            logEl.scrollTop = logEl.scrollHeight
+        }
+        
+        // Check initial auth status
+        async function checkAuthStatus() {
+            const statusEl = document.getElementById('auth-status')
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                const { data: { session } } = await supabase.auth.getSession()
+                
+                if (user) {
+                    statusEl.innerHTML = `
+                        <div class="success">✓ Authenticated</div>
+                        <div>Email: ${user.email}</div>
+                        <div>User ID: ${user.id}</div>
+                        <div>Session: ${session ? 'Active' : 'None'}</div>
+                        <div>Created: ${new Date(user.created_at).toLocaleDateString()}</div>
+                    `
+                    log('User authenticated: ' + user.email, 'success')
+                } else {
+                    statusEl.innerHTML = '<div class="error">✗ Not authenticated</div>'
+                    log('No authenticated user', 'error')
+                }
+            } catch (error) {
+                statusEl.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`
+                log('Auth check error: ' + error.message, 'error')
+            }
+        }
+        
+        // Test init auth
+        window.testInitAuth = function() {
+            const resultsEl = document.getElementById('test-results')
+            resultsEl.innerHTML = '<div class="info">Setting up auth listeners...</div>'
+            
+            // Set up auth state change listener
+            const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+                log(`Auth event: ${event}`, event === 'SIGNED_IN' ? 'success' : 'info')
+                
+                if (session) {
+                    log(`Session user: ${session.user.email}`)
+                }
+                
+                // Update status
+                checkAuthStatus()
+            })
+            
+            resultsEl.innerHTML = '<div class="success">✓ Auth listeners initialized</div>'
+            log('Auth listeners set up successfully', 'success')
+        }
+        
+        // Test auth state changes
+        window.testAuthStateChange = async function() {
+            const resultsEl = document.getElementById('test-results')
+            resultsEl.innerHTML = '<div class="info">Testing auth state changes...</div>'
+            
+            try {
+                // Get current session
+                const { data: { session } } = await supabase.auth.getSession()
+                
+                resultsEl.innerHTML = `
+                    <h4>Current Session:</h4>
+                    <pre>${JSON.stringify(session ? {
+                        user: session.user.email,
+                        expires_at: new Date(session.expires_at * 1000).toLocaleString()
+                    } : null, null, 2)}</pre>
+                `
+                
+                log('Auth state test completed', 'success')
+            } catch (error) {
+                resultsEl.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`
+                log('Auth state test error: ' + error.message, 'error')
+            }
+        }
+        
+        // Test session persistence
+        window.testSessionPersistence = async function() {
+            const resultsEl = document.getElementById('test-results')
+            resultsEl.innerHTML = '<div class="info">Testing session persistence...</div>'
+            
+            try {
+                // Try to refresh session
+                const { data: { session }, error } = await supabase.auth.refreshSession()
+                
+                if (error) throw error
+                
+                if (session) {
+                    resultsEl.innerHTML = `
+                        <div class="success">✓ Session refreshed successfully</div>
+                        <div>Expires: ${new Date(session.expires_at * 1000).toLocaleString()}</div>
+                    `
+                    log('Session refreshed successfully', 'success')
+                } else {
+                    resultsEl.innerHTML = '<div class="info">No session to refresh</div>'
+                    log('No active session', 'info')
+                }
+            } catch (error) {
+                resultsEl.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`
+                log('Session refresh error: ' + error.message, 'error')
+            }
+        }
+        
+        // Test sign out
+        window.testSignOut = async function() {
+            const resultsEl = document.getElementById('test-results')
+            
+            if (!confirm('Are you sure you want to sign out?')) return
+            
+            resultsEl.innerHTML = '<div class="info">Signing out...</div>'
+            
+            try {
+                const { error } = await supabase.auth.signOut()
+                if (error) throw error
+                
+                resultsEl.innerHTML = '<div class="success">✓ Signed out successfully</div>'
+                log('User signed out', 'success')
+                
+                // Update status
+                setTimeout(checkAuthStatus, 500)
+            } catch (error) {
+                resultsEl.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`
+                log('Sign out error: ' + error.message, 'error')
+            }
+        }
+        
+        // Clear logs
+        window.clearLogs = function() {
+            const logEl = document.getElementById('event-log')
+            logEl.innerHTML = '<div class="log-entry info">Logs cleared</div>'
+        }
+        
+        // Navigation
+        window.goToApp = function() {
+            window.open('/modern-ui/', '_blank')
+        }
+        
+        window.goToMainTest = function() {
+            window.open('/modern-ui/test-database.html', '_blank')
+        }
+        
+        // Initialize on load
+        checkAuthStatus()
+        
+        // Auto-initialize auth listeners
+        testInitAuth()
+    </script>
+</body>
+</html>

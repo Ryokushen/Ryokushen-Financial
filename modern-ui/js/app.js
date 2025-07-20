@@ -42,6 +42,9 @@ async function initApp() {
     // Initialize Supabase
     await initSupabase()
     
+    // Initialize auth listeners first
+    initAuth()
+    
     // Check authentication status
     const user = await checkAuthStatus()
     
@@ -400,6 +403,42 @@ async function logout() {
   }
 }
 
+// Continue initialization after authentication
+export async function continueWithUser(user) {
+  try {
+    showLoading('Loading your financial data...')
+    
+    // User is authenticated
+    appState.user = user
+    
+    // Initialize theme
+    initTheme(appState)
+    
+    // Initialize navigation
+    initNavigation(appState)
+    
+    // Load initial data
+    await loadInitialData()
+    
+    // Initialize dashboard
+    await initDashboard(appState)
+    
+    // Setup event listeners
+    setupEventListeners()
+    
+    // Hide loading
+    hideLoading()
+    
+    // Show initial page
+    showPage('dashboard')
+    
+  } catch (error) {
+    console.error('Failed to continue initialization:', error)
+    hideLoading()
+    showError('Failed to load application. Please refresh and try again.')
+  }
+}
+
 // Global error handler
 window.addEventListener('unhandledrejection', event => {
   console.error('Unhandled promise rejection:', event.reason)
@@ -419,4 +458,8 @@ export {
   showPage,
   loadInitialData,
   modalManager,
+  continueWithUser,
 }
+
+// Export default for auth module
+export default { continueWithUser }

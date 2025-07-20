@@ -23,6 +23,14 @@ export function getSupabase() {
 // Generic query builder with error handling
 async function executeQuery(queryFn) {
   try {
+    // Check if user is authenticated
+    const supabase = getSupabase()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+    
     const result = await queryFn()
     if (result.error) {
       throw result.error
@@ -30,7 +38,13 @@ async function executeQuery(queryFn) {
     return result.data
   } catch (error) {
     console.error('Database query failed:', error)
-    showError('Database operation failed. Please try again.')
+    
+    if (error.message === 'User not authenticated') {
+      showError('Please sign in to continue.')
+    } else {
+      showError('Database operation failed. Please try again.')
+    }
+    
     throw error
   }
 }
@@ -514,6 +528,57 @@ export async function deleteCategory(id) {
   )
 }
 
+// Create default categories for a new user
+export async function createDefaultCategoriesForUser(userId) {
+  const defaultCategories = [
+    { user_id: userId, name: 'Income', icon: '💰', color: '#10b981' },
+    { user_id: userId, name: 'Housing', icon: '🏠', color: '#3b82f6' },
+    { user_id: userId, name: 'Transportation', icon: '🚗', color: '#8b5cf6' },
+    { user_id: userId, name: 'Food', icon: '🍔', color: '#f59e0b' },
+    { user_id: userId, name: 'Utilities', icon: '💡', color: '#06b6d4' },
+    { user_id: userId, name: 'Healthcare', icon: '🏥', color: '#ef4444' },
+    { user_id: userId, name: 'Entertainment', icon: '🎬', color: '#ec4899' },
+    { user_id: userId, name: 'Shopping', icon: '🛍️', color: '#f97316' },
+    { user_id: userId, name: 'Education', icon: '📚', color: '#6366f1' },
+    { user_id: userId, name: 'Travel', icon: '✈️', color: '#14b8a6' },
+    { user_id: userId, name: 'Insurance', icon: '🛡️', color: '#84cc16' },
+    { user_id: userId, name: 'Savings', icon: '🏦', color: '#22c55e' },
+    { user_id: userId, name: 'Investment', icon: '📈', color: '#0ea5e9' },
+    { user_id: userId, name: 'Debt Payment', icon: '💳', color: '#dc2626' },
+    { user_id: userId, name: 'Other', icon: '📌', color: '#64748b' }
+  ]
+  
+  const supabase = getSupabase()
+  
+  try {
+    // Check if user already has categories
+    const { data: existing } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1)
+    
+    if (existing && existing.length > 0) {
+      console.log('User already has categories')
+      return existing
+    }
+    
+    // Create categories
+    const { data, error } = await supabase
+      .from('categories')
+      .insert(defaultCategories)
+      .select()
+    
+    if (error) throw error
+    
+    console.log(`Created ${data.length} default categories for user`)
+    return data
+  } catch (error) {
+    console.error('Failed to create default categories:', error)
+    throw error
+  }
+}
+
 // Analytics queries
 export async function getSpendingByCategory(startDate, endDate) {
   const supabase = getSupabase()
@@ -604,4 +669,5 @@ export default {
   createCategory,
   updateCategory,
   deleteCategory,
+  createDefaultCategoriesForUser,
 }

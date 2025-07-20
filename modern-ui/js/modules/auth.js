@@ -104,6 +104,18 @@ function showLoginForm() {
     e.preventDefault()
     showForgotPasswordForm()
   })
+  
+  // Set remembered email if available
+  if (window.rememberedEmail) {
+    const emailInput = document.getElementById('login-email')
+    const rememberCheckbox = document.getElementById('remember-me')
+    if (emailInput) {
+      emailInput.value = window.rememberedEmail
+    }
+    if (rememberCheckbox) {
+      rememberCheckbox.checked = true
+    }
+  }
 }
 
 // Show signup form
@@ -246,10 +258,7 @@ async function handleLogin(e) {
     hideLoading()
     showSuccess('Login successful!')
     
-    // Reload to initialize app with authenticated user
-    setTimeout(() => {
-      window.location.reload()
-    }, 500)
+    // Auth state change listener will handle the transition
     
   } catch (error) {
     hideLoading()
@@ -296,6 +305,16 @@ async function handleSignup(e) {
     }
     
     showSuccess('Account created! Please check your email to verify your account.')
+    
+    // Create default categories for new user
+    if (data.user) {
+      try {
+        const { createDefaultCategoriesForUser } = await import('./database.js')
+        await createDefaultCategoriesForUser(data.user.id)
+      } catch (error) {
+        console.error('Failed to create default categories:', error)
+      }
+    }
     
     // Show login form
     setTimeout(() => {
@@ -474,27 +493,74 @@ export function initAuth() {
   const supabase = initSupabase()
   
   // Listen for auth state changes
-  supabase.auth.onAuthStateChange((event, session) => {
-    console.log('Auth state changed:', event)
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log('Auth state changed:', event, session?.user?.email)
     
-    if (event === 'SIGNED_IN') {
-      // User signed in
-      window.location.reload()
+    if (event === 'SIGNED_IN' && session) {
+      // User signed in - update app state instead of reloading
+      if (window.appState) {
+        window.appState.user = session.user
+        
+        // Hide auth modal
+        const authModal = document.getElementById('auth-modal')
+        if (authModal) {
+          authModal.style.display = 'none'
+        }
+        
+        // Re-initialize app with authenticated user
+        const { default: initializeApp } = await import('../app.js')
+        if (initializeApp.continueWithUser) {
+          await initializeApp.continueWithUser(session.user)
+        } else {
+          // Fallback to reload if function not available
+          window.location.reload()
+        }
+      } else {
+        window.location.reload()
+      }
     } else if (event === 'SIGNED_OUT') {
-      // User signed out
-      window.location.reload()
+      // User signed out - show auth screen
+      if (window.appState) {
+        window.appState.user = null
+        window.appState.data = {
+          transactions: [],
+          cashAccounts: [],
+          investmentAccounts: [],
+          debtAccounts: [],
+          recurringBills: [],
+          savingsGoals: [],
+          smartRules: [],
+        }
+      }
+      
+      // Clear local storage
+      localStorage.removeItem(STORAGE_KEYS.theme)
+      localStorage.removeItem(STORAGE_KEYS.privacyMode)
+      localStorage.removeItem(STORAGE_KEYS.preferences)
+      
+      // Show auth screen
+      const authModal = document.getElementById('auth-modal')
+      if (authModal) {
+        authModal.style.display = 'flex'
+        showLoginForm()
+      } else {
+        window.location.reload()
+      }
     } else if (event === 'TOKEN_REFRESHED') {
       // Token refreshed
-      console.log('Token refreshed')
+      console.log('Token refreshed successfully')
+    } else if (event === 'USER_UPDATED') {
+      // User data updated
+      if (session && window.appState) {
+        window.appState.user = session.user
+      }
     }
   })
   
   // Check for remembered email
   const rememberedEmail = localStorage.getItem('ryokushen_remember_email')
   if (rememberedEmail) {
-    const emailInput = document.getElementById('login-email')
-    if (emailInput) {
-      emailInput.value = rememberedEmail
-    }
+    // Will be set when login form is shown
+    window.rememberedEmail = rememberedEmail
   }
 }
