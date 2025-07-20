@@ -27,61 +27,35 @@ export async function loadAccounts() {
   }
 }
 
-// Render accounts page
+// Render accounts page (cash accounts only)
 export async function renderAccounts(appState) {
   const container = document.getElementById('page-content')
   if (!container) return
   
   const totalCash = calculateTotalCash(appState.data.cashAccounts)
-  const totalInvestments = calculateTotalInvestments(appState.data.investmentAccounts)
-  const totalDebt = calculateTotalDebt(appState.data.debtAccounts)
   
   container.innerHTML = `
     <div class="accounts-page">
       <div class="page-header mb-6">
-        <h2>Accounts Overview</h2>
-        <button class="btn btn-primary">Add Account</button>
+        <h2>Cash Accounts</h2>
+        <button class="btn btn-primary">Add Cash Account</button>
       </div>
       
-      <div class="grid grid-cols-3 gap-4 mb-6">
-        <div class="metric-card glass-card--cash">
+      <div class="mb-6">
+        <div class="metric-card glass-card--cash" style="max-width: 300px;">
           <div class="metric-card-header">
             <span class="metric-icon">💰</span>
             <span class="metric-change">+5.2%</span>
           </div>
           <div>
-            <p class="metric-title">Total Cash</p>
+            <p class="metric-title">Total Cash Balance</p>
             <p class="metric-value">${maskCurrency(totalCash, appState.privacyMode)}</p>
-          </div>
-        </div>
-        
-        <div class="metric-card glass-card--investment">
-          <div class="metric-card-header">
-            <span class="metric-icon">📈</span>
-            <span class="metric-change">+12.8%</span>
-          </div>
-          <div>
-            <p class="metric-title">Total Investments</p>
-            <p class="metric-value">${maskCurrency(totalInvestments, appState.privacyMode)}</p>
-          </div>
-        </div>
-        
-        <div class="metric-card glass-card--debt">
-          <div class="metric-card-header">
-            <span class="metric-icon">💳</span>
-            <span class="metric-change">-2.1%</span>
-          </div>
-          <div>
-            <p class="metric-title">Total Debt</p>
-            <p class="metric-value">${maskCurrency(totalDebt, appState.privacyMode)}</p>
           </div>
         </div>
       </div>
       
       <div class="accounts-sections">
         ${renderCashAccounts(appState.data.cashAccounts, appState.privacyMode)}
-        ${renderInvestmentAccounts(appState.data.investmentAccounts, appState.privacyMode)}
-        ${renderDebtAccounts(appState.data.debtAccounts, appState.privacyMode)}
       </div>
     </div>
   `
@@ -104,7 +78,6 @@ function calculateTotalDebt(accounts) {
 function renderCashAccounts(accounts, privacyMode) {
   return `
     <div class="account-section glass-panel mb-6">
-      <h3 class="mb-4">Cash Accounts</h3>
       <div class="account-list">
         ${accounts.map(account => `
           <div class="account-item">
@@ -117,7 +90,7 @@ function renderCashAccounts(accounts, privacyMode) {
             </div>
           </div>
         `).join('')}
-        ${accounts.length === 0 ? '<p class="empty-state">No cash accounts</p>' : ''}
+        ${accounts.length === 0 ? '<p class="empty-state">No cash accounts yet. Click "Add Cash Account" to get started.</p>' : ''}
       </div>
     </div>
   `

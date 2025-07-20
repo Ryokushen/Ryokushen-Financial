@@ -1,0 +1,176 @@
+/* Transactions Page Styles */
+
+/* Page Header */
+.transactions-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-6);
+}
+
+.transactions-page .page-header h2 {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Transactions Filters */
+.transactions-filters {
+  margin-bottom: var(--spacing-6);
+}
+
+.transactions-filters .form-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: var(--spacing-4);
+}
+
+/* Transactions List */
+.transactions-list {
+  margin-top: var(--spacing-6);
+}
+
+/* Table Glass Effect */
+.table-glass {
+  background: rgba(15, 22, 35, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.table-glass table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-glass thead {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.table-glass th {
+  padding: var(--spacing-4);
+  text-align: left;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table-glass td {
+  padding: var(--spacing-4);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.table-glass tbody tr {
+  transition: all 0.3s ease;
+}
+
+.table-glass tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.table-glass tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Text Alignment */
+.text-right {
+  text-align: right;
+}
+
+/* Amount Colors */
+.text-positive {
+  color: var(--color-success);
+}
+
+.text-negative {
+  color: var(--color-error);
+}
+
+/* Buttons */
+.btn {
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(99, 102, 241, 0.8));
+  color: white;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 1), rgba(99, 102, 241, 1));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: var(--spacing-8);
+  font-size: var(--text-base);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .transactions-filters .form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .transactions-page .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-3);
+  }
+  
+  .transactions-filters .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Mobile Table */
+  .table-glass {
+    border-radius: var(--radius-lg);
+  }
+  
+  .table-glass table {
+    font-size: var(--text-sm);
+  }
+  
+  .table-glass th,
+  .table-glass td {
+    padding: var(--spacing-3);
+  }
+  
+  /* Hide some columns on mobile */
+  .table-glass th:nth-child(4),
+  .table-glass td:nth-child(4) {
+    display: none;
+  }
+}
