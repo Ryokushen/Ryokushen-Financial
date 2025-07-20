@@ -1,0 +1,64 @@
+/* Dashboard Layout Reorganization */
+
+/* Dashboard Bottom Section */
+.dashboard-bottom {
+  margin-top: 12px; /* Same 12px gap as between other elements */
+  width: 100%;
+}
+
+.bottom-main {
+  width: 100%;
+}
+
+/* Ensure charts grid appears after account cards */
+.charts-grid {
+  margin-top: var(--spacing-6);
+  margin-bottom: 0;
+}
+
+/* Gap between financial health and recent activity in sidebar */
+.dashboard-sidebar .health-card {
+  margin-bottom: 12px;
+}
+
+/* Recent activity card styling */
+.dashboard-sidebar .activity-card {
+  margin-top: 12px;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .dashboard-bottom {
+    margin-top: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-bottom {
+    margin-top: var(--spacing-4);
+  }
+}
+
+/* Animation delays for sections */
+.dashboard-bottom .budget-card {
+  animation: fadeInUp 0.6s ease-out;
+  animation-delay: 0.5s;
+  animation-fill-mode: both;
+}
+
+.dashboard-sidebar .activity-card {
+  animation: fadeInUp 0.6s ease-out;
+  animation-delay: 0.4s;
+  animation-fill-mode: both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

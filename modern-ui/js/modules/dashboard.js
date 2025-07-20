@@ -2,6 +2,7 @@
 
 import { formatCurrency, maskCurrency, createSkeleton } from './ui.js'
 import { FEATURES, COLORS, HEALTH_THRESHOLDS } from '../config.js'
+import { initializeDashboardCharts, refreshCharts as refreshChartsModule } from './charts.js'
 
 // Initialize dashboard
 export async function initDashboard(appState) {
@@ -29,7 +30,6 @@ export async function renderDashboard(appState) {
       <div class="dashboard-layout">
         <div class="dashboard-main">
           ${renderAccountCards(metrics, appState.privacyMode)}
-          ${renderMonthlyBudget(appState)}
         </div>
         
         <div class="dashboard-sidebar">
@@ -37,12 +37,18 @@ export async function renderDashboard(appState) {
           ${renderRecentActivity(appState)}
         </div>
       </div>
+      
+      <div class="dashboard-bottom">
+        <div class="bottom-main">
+          ${renderMonthlyBudget(appState)}
+        </div>
+      </div>
     </div>
   `
   
   // Initialize charts after DOM is ready
   setTimeout(() => {
-    initializeCharts(appState)
+    initializeDashboardCharts(appState)
   }, 100)
 }
 
@@ -472,12 +478,6 @@ function getRelativeTime(date) {
   return d.toLocaleDateString()
 }
 
-// Initialize charts
-function initializeCharts(appState) {
-  // TODO: Implement Chart.js visualizations
-  console.log('Charts initialization pending...')
-}
-
 // Set up real-time updates
 function setupRealtimeUpdates(appState) {
   // TODO: Implement real-time subscriptions
@@ -486,6 +486,5 @@ function setupRealtimeUpdates(appState) {
 
 // Refresh charts
 export function refreshCharts(appState) {
-  // TODO: Implement chart refresh
-  console.log('Chart refresh pending...')
+  refreshChartsModule(appState)
 }

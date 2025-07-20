@@ -1,0 +1,166 @@
+/* Chart Styles for Modern UI */
+
+/* Main Chart Grid - 2x2 layout */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px; /* Same gap as account cards */
+  margin-top: var(--spacing-6);
+}
+
+/* Chart Card Base */
+.chart-card {
+  background: rgba(15, 22, 35, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-6);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Chart Header */
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-4);
+}
+
+.chart-title {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.chart-title span {
+  font-size: 1.25rem;
+}
+
+/* Chart Container - Uniform height for all charts */
+.chart-container {
+  position: relative;
+  height: 260px; /* Slightly smaller than before for better proportion */
+  width: 100%;
+}
+
+/* Chart Canvas Styles */
+.chart-container canvas {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Chart Loading State */
+.chart-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+/* Chart Error State */
+.chart-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+/* Chart Hover Effects */
+.chart-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+/* Chart Background Pattern */
+.chart-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle at 30% 70%,
+    rgba(59, 130, 246, 0.05) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-6);
+  }
+  
+  .chart-container {
+    height: 240px;
+  }
+}
+
+@media (max-width: 768px) {
+  .charts-grid {
+    gap: var(--spacing-4);
+    margin-top: var(--spacing-4);
+  }
+  
+  .chart-card {
+    padding: var(--spacing-4);
+  }
+  
+  .chart-container {
+    height: 200px;
+  }
+}
+
+/* Dark Theme Optimizations */
+@media (prefers-color-scheme: dark) {
+  .chart-card {
+    background: rgba(10, 14, 26, 0.8);
+  }
+}
+
+/* Animation for Chart Appearance */
+@keyframes chartFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.chart-card {
+  animation: chartFadeIn 0.5s ease-out;
+}
+
+/* Stagger animation for multiple charts */
+.charts-grid .chart-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.charts-grid .chart-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.charts-grid .chart-card:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.charts-grid .chart-card:nth-child(4) {
+  animation-delay: 0.4s;
+}

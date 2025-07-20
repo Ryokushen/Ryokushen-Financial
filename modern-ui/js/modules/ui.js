@@ -205,14 +205,38 @@ export function showConfirm(title, message, onConfirm, onCancel) {
 
 // Format currency
 export function formatCurrency(amount, options = {}) {
+  // Handle boolean shorthand for compact
+  if (typeof options === 'boolean') {
+    options = { compact: options }
+  }
+  
   const {
     currency = 'USD',
     locale = 'en-US',
     hideSymbol = false,
-    showPlus = false
+    showPlus = false,
+    compact = false
   } = options
   
   if (isNaN(amount)) return '$0.00'
+  
+  // For compact format
+  if (compact && Math.abs(amount) >= 1000) {
+    const absAmount = Math.abs(amount)
+    let value, suffix
+    
+    if (absAmount >= 1000000) {
+      value = absAmount / 1000000
+      suffix = 'M'
+    } else {
+      value = absAmount / 1000
+      suffix = 'K'
+    }
+    
+    const sign = amount < 0 ? '-' : (showPlus && amount > 0 ? '+' : '')
+    const formatted = value.toFixed(value < 10 ? 1 : 0)
+    return hideSymbol ? `${sign}${formatted}${suffix}` : `${sign}$${formatted}${suffix}`
+  }
   
   const formatted = new Intl.NumberFormat(locale, {
     style: 'currency',
