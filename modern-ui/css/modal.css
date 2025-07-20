@@ -249,3 +249,71 @@
     max-width: calc(100% - 2 * var(--spacing-4));
   }
 }
+
+/* Notification Toast Styles */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  min-width: 300px;
+  max-width: 500px;
+  padding: 16px 24px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 2000;
+  transform: translateX(calc(100% + 20px));
+  transition: transform 0.3s ease-out;
+}
+
+.notification-show {
+  transform: translateX(0);
+}
+
+.notification-hide {
+  transform: translateX(calc(100% + 20px));
+}
+
+.notification-success {
+  background-color: #22c55e;
+  color: #ffffff;
+}
+
+.notification-error {
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+.notification-info {
+  background-color: #3b82f6;
+  color: #ffffff;
+}
+
+.notification-warning {
+  background-color: #f59e0b;
+  color: #ffffff;
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.notification-message {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* Stack multiple notifications */
+.notification:nth-of-type(2) {
+  top: 80px;
+}
+
+.notification:nth-of-type(3) {
+  top: 140px;
+}
+
+.notification:nth-of-type(4) {
+  top: 200px;
+}

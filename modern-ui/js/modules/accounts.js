@@ -83,13 +83,17 @@ function renderCashAccounts(accounts, privacyMode) {
   return `
     <div class="account-list">
       ${accounts.map(account => `
-        <div class="account-item">
+        <div class="account-item" data-account-id="${account.id}">
           <div class="account-info">
             <h4>${account.name}</h4>
             <p>${account.account_type || 'Checking'}</p>
           </div>
-          <div class="account-balance">
-            <p>${maskCurrency(account.balance, privacyMode)}</p>
+          <div class="account-right">
+            <div class="account-balance">${maskCurrency(account.balance, privacyMode)}</div>
+            <div class="text-actions">
+              <button class="text-btn edit" data-account-id="${account.id}" data-account-name="${account.name}">Edit</button>
+              <button class="text-btn delete" data-account-id="${account.id}" data-account-name="${account.name}">Delete</button>
+            </div>
           </div>
         </div>
       `).join('')}
@@ -163,4 +167,60 @@ function setupAccountsEventHandlers() {
       await showCashAccountModal()
     })
   }
+  
+  // Edit buttons
+  const editBtns = document.querySelectorAll('.text-btn.edit')
+  editBtns.forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const accountId = btn.dataset.accountId
+      const accountName = btn.dataset.accountName
+      
+      // Get the account data
+      const { getCashAccountById } = await import('./database.js')
+      const accountData = await getCashAccountById(accountId)
+      
+      if (accountData) {
+        const { showCashAccountModal } = await import('./accountForms.js')
+        await showCashAccountModal(accountData)
+      }
+    })
+  })
+  
+  // Delete buttons
+  const deleteBtns = document.querySelectorAll('.text-btn.delete')
+  deleteBtns.forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const accountId = btn.dataset.accountId
+      const accountName = btn.dataset.accountName
+      
+      // Show delete confirmation modal
+      const confirmed = await modalManager.confirm({
+        title: 'Delete Account?',
+        message: `Are you sure you want to delete "${accountName}"? This action cannot be undone.`,
+        confirmText: 'Delete Account',
+        confirmClass: 'btn-danger',
+        cancelText: 'Cancel'
+      })
+      
+      if (confirmed) {
+        try {
+          const { deleteCashAccount, getCashAccounts } = await import('./database.js')
+          await deleteCashAccount(accountId)
+          
+          // Refresh the page
+          const appState = window.appState || {}
+          appState.data.cashAccounts = await getCashAccounts()
+          await renderAccounts(appState)
+          
+          // Show success message
+          modalManager.showNotification('Account deleted successfully', 'success')
+        } catch (error) {
+          console.error('Failed to delete account:', error)
+          modalManager.showNotification('Failed to delete account', 'error')
+        }
+      }
+    })
+  })
 }

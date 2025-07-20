@@ -345,6 +345,37 @@ class ModalManager {
     const modal = this.modalStack.find(m => m.id === modalId)
     return modal ? modal.options.data : null
   }
+  
+  // Show notification toast
+  showNotification(message, type = 'info', duration = 3000) {
+    const notificationId = `notification-${Date.now()}`
+    const notificationEl = document.createElement('div')
+    notificationEl.id = notificationId
+    notificationEl.className = `notification notification-${type}`
+    notificationEl.innerHTML = `
+      <div class="notification-content">
+        <span class="notification-message">${message}</span>
+      </div>
+    `
+    
+    // Add to body
+    document.body.appendChild(notificationEl)
+    
+    // Trigger animation
+    requestAnimationFrame(() => {
+      notificationEl.classList.add('notification-show')
+    })
+    
+    // Auto remove after duration
+    setTimeout(() => {
+      notificationEl.classList.add('notification-hide')
+      setTimeout(() => {
+        notificationEl.remove()
+      }, 300)
+    }, duration)
+    
+    return notificationId
+  }
 }
 
 // Create and export singleton instance

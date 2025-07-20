@@ -86,13 +86,11 @@
   border: 1px solid #2a2a3a;
   border-radius: 10px;
   transition: all 0.2s ease;
-  cursor: pointer;
 }
 
 .account-item:hover {
   background: #2a2a38;
   border-color: #3a3a4a;
-  transform: translateX(4px);
 }
 
 /* Account Info */
@@ -115,15 +113,57 @@
   margin: 0;
 }
 
-/* Account Balance */
-.account-balance {
-  text-align: right;
+/* Account Right Section */
+.account-right {
+  display: flex;
+  align-items: center;
+  gap: 24px;
 }
 
-.account-balance p {
+/* Account Balance */
+.account-balance {
   font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
+  min-width: 100px;
+  text-align: right;
+}
+
+/* Text Button Actions */
+.text-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.text-btn {
+  padding: 8px 16px;
+  border: 1px solid #2a2a3a;
+  background-color: transparent;
+  border-radius: 8px;
+  color: #8b8b9a;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.text-btn:hover {
+  border-color: #3a3a4a;
+  background-color: #2a2a38;
+  color: #ffffff;
+}
+
+.text-btn.edit:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.text-btn.delete:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 /* Empty State */
@@ -166,13 +206,32 @@
   
   .account-item {
     padding: var(--spacing-4) var(--spacing-5);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
   
   .account-info h4 {
     font-size: var(--text-base);
   }
   
-  .account-balance p {
+  .account-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .account-balance {
     font-size: var(--text-base);
+    min-width: auto;
+    text-align: left;
+  }
+  
+  .text-actions {
+    flex-shrink: 0;
+  }
+  
+  .text-btn {
+    padding: 6px 12px;
+    font-size: 13px;
   }
 }
