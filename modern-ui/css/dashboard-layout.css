@@ -62,3 +62,26 @@
     transform: translateY(0);
   }
 }
+
+/* Quick Actions */
+.quick-actions {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-4);
+}
+
+.quick-actions .btn-sm {
+  padding: var(--spacing-2) var(--spacing-4);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .quick-actions {
+    flex-direction: column;
+  }
+  
+  .quick-actions .btn-sm {
+    width: 100%;
+  }
+}

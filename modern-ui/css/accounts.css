@@ -5,30 +5,75 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-6);
+  margin-bottom: 32px;
 }
 
 .accounts-page .page-header h2 {
-  font-size: var(--text-2xl);
+  font-size: 32px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
+/* Cash Balance Card */
+.cash-balance-card {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+  border-radius: 12px;
+  padding: 32px;
+  margin-bottom: 32px;
+  box-shadow: 0 8px 24px rgba(74, 222, 128, 0.2);
+}
+
+.balance-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #064e3b;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.balance-amount {
+  font-size: 42px;
+  font-weight: 700;
+  color: #064e3b;
+}
+
+.balance-change {
+  font-size: 14px;
+  color: #064e3b;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Section Title */
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+}
+
 /* Account Section */
 .account-section {
-  background: rgba(15, 22, 35, 0.6);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-6);
+  background: transparent;
+  padding: 0;
+}
+
+.account-section h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 20px;
 }
 
 /* Account List */
 .account-list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-3);
+  gap: 12px;
 }
 
 /* Account Item */
@@ -36,31 +81,38 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-4);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-lg);
-  transition: all 0.3s ease;
+  padding: 20px 24px;
+  background: #242430;
+  border: 1px solid #2a2a3a;
+  border-radius: 10px;
+  transition: all 0.2s ease;
   cursor: pointer;
 }
 
 .account-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-1px);
+  background: #2a2a38;
+  border-color: #3a3a4a;
+  transform: translateX(4px);
 }
 
 /* Account Info */
+.account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .account-info h4 {
-  font-size: var(--text-base);
+  font-size: 16px;
   font-weight: 500;
   color: var(--text-primary);
-  margin-bottom: var(--spacing-1);
+  margin: 0;
 }
 
 .account-info p {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
+  font-size: 13px;
+  color: #8b8b9a;
+  margin: 0;
 }
 
 /* Account Balance */
@@ -69,7 +121,7 @@
 }
 
 .account-balance p {
-  font-size: var(--text-lg);
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -84,19 +136,22 @@
 
 /* Add Account Button */
 .accounts-page .btn-primary {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(99, 102, 241, 0.8));
+  background: #3b82f6;
   color: white;
-  padding: var(--spacing-3) var(--spacing-4);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 15px;
   font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: none;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .accounts-page .btn-primary:hover {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 1), rgba(99, 102, 241, 1));
+  background: #2563eb;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
@@ -110,7 +165,7 @@
   }
   
   .account-item {
-    padding: var(--spacing-3);
+    padding: var(--spacing-4) var(--spacing-5);
   }
   
   .account-info h4 {

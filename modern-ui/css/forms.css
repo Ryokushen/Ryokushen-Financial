@@ -380,3 +380,245 @@ input[type="datetime-local"].form-control {
     padding: var(--spacing-4);
   }
 }
+
+/* Additional Form Styles for FormBuilder */
+
+/* Form Field Container */
+.form-field {
+  margin-bottom: var(--spacing-4);
+}
+
+.form-field--half {
+  display: inline-block;
+  width: calc(50% - var(--spacing-2));
+  margin-right: var(--spacing-4);
+}
+
+.form-field--half:nth-child(even) {
+  margin-right: 0;
+}
+
+.form-field--full {
+  width: 100%;
+}
+
+/* Form Error Display */
+.form-error {
+  color: var(--color-error);
+  font-size: var(--text-sm);
+  margin-top: var(--spacing-1);
+  display: none;
+}
+
+.form-error-general {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--color-error);
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-4);
+  display: none;
+}
+
+/* Form Help Text */
+.form-help {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  margin-top: var(--spacing-1);
+}
+
+/* Required Field Indicator */
+.required {
+  color: var(--color-error);
+  margin-left: 2px;
+}
+
+/* Toggle Switch for FormBuilder */
+.form-toggle {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-toggle input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+}
+
+.toggle-slider {
+  width: 44px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  position: relative;
+  transition: all 0.3s ease;
+  margin-right: var(--spacing-3);
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.form-toggle input[type="checkbox"]:checked ~ .toggle-slider {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(99, 102, 241, 0.8));
+}
+
+.form-toggle input[type="checkbox"]:checked ~ .toggle-slider::after {
+  left: 22px;
+}
+
+.toggle-label {
+  color: var(--text-primary);
+  font-size: var(--text-base);
+}
+
+/* Form Checkbox */
+.form-checkbox {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-checkbox input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+}
+
+.checkbox-mark {
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sm);
+  margin-right: var(--spacing-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.checkbox-mark::after {
+  content: '✓';
+  color: white;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.form-checkbox input[type="checkbox"]:checked ~ .checkbox-mark {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(99, 102, 241, 0.8));
+  border-color: transparent;
+}
+
+.form-checkbox input[type="checkbox"]:checked ~ .checkbox-mark::after {
+  opacity: 1;
+}
+
+.checkbox-label {
+  color: var(--text-primary);
+  font-size: var(--text-base);
+}
+
+/* Form Radio */
+.form-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.form-radio {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-radio input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+}
+
+.radio-mark {
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  margin-right: var(--spacing-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.radio-mark::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: white;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.form-radio input[type="radio"]:checked ~ .radio-mark {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(99, 102, 241, 0.8));
+  border-color: transparent;
+}
+
+.form-radio input[type="radio"]:checked ~ .radio-mark::after {
+  opacity: 1;
+}
+
+.radio-label {
+  color: var(--text-primary);
+  font-size: var(--text-base);
+}
+
+/* File Upload for FormBuilder */
+.form-file {
+  position: relative;
+  display: block;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.form-file-input {
+  position: absolute;
+  left: -9999px;
+}
+
+.form-file-label {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-3) var(--spacing-4);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  transition: all 0.3s ease;
+}
+
+.form-file-label:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.file-icon {
+  font-size: 24px;
+  margin-right: var(--spacing-3);
+}
+
+.file-text {
+  color: var(--text-secondary);
+}

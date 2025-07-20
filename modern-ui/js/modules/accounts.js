@@ -2,6 +2,7 @@
 
 import { getCashAccounts, getInvestmentAccounts, getDebtAccounts } from './database.js'
 import { formatCurrency, maskCurrency } from './ui.js'
+import { modalManager } from '../app.js'
 
 // Load all accounts from database
 export async function loadAccounts() {
@@ -36,29 +37,32 @@ export async function renderAccounts(appState) {
   
   container.innerHTML = `
     <div class="accounts-page">
-      <div class="page-header mb-6">
-        <h2>Cash Accounts</h2>
-        <button class="btn btn-primary">Add Cash Account</button>
+      <div class="page-header">
+        <h2>Accounts</h2>
+        <button class="btn btn-primary" id="add-cash-account-btn">
+          <span>+</span>
+          <span>Add Cash Account</span>
+        </button>
       </div>
       
-      <div class="mb-6">
-        <div class="metric-card glass-card--cash" style="max-width: 300px;">
-          <div class="metric-card-header">
-            <span class="metric-icon">💰</span>
-            <span class="metric-change">+5.2%</span>
-          </div>
-          <div>
-            <p class="metric-title">Total Cash Balance</p>
-            <p class="metric-value">${maskCurrency(totalCash, appState.privacyMode)}</p>
-          </div>
+      <div class="cash-balance-card">
+        <div class="balance-label">Total Cash Balance</div>
+        <div class="balance-amount">${maskCurrency(totalCash, appState.privacyMode)}</div>
+        <div class="balance-change">
+          <span>↑</span>
+          <span>+5.2%</span>
         </div>
       </div>
       
-      <div class="accounts-sections">
+      <section>
+        <h3 class="section-title">Cash Accounts</h3>
         ${renderCashAccounts(appState.data.cashAccounts, appState.privacyMode)}
-      </div>
+      </section>
     </div>
   `
+  
+  // Setup event handlers
+  setupAccountsEventHandlers()
 }
 
 // Calculate totals
@@ -77,21 +81,19 @@ function calculateTotalDebt(accounts) {
 // Render cash accounts section
 function renderCashAccounts(accounts, privacyMode) {
   return `
-    <div class="account-section glass-panel mb-6">
-      <div class="account-list">
-        ${accounts.map(account => `
-          <div class="account-item">
-            <div class="account-info">
-              <h4>${account.name}</h4>
-              <p class="text-sm text-secondary">${account.account_type || 'Checking'}</p>
-            </div>
-            <div class="account-balance">
-              <p class="text-lg font-semibold">${maskCurrency(account.balance, privacyMode)}</p>
-            </div>
+    <div class="account-list">
+      ${accounts.map(account => `
+        <div class="account-item">
+          <div class="account-info">
+            <h4>${account.name}</h4>
+            <p>${account.account_type || 'Checking'}</p>
           </div>
-        `).join('')}
-        ${accounts.length === 0 ? '<p class="empty-state">No cash accounts yet. Click "Add Cash Account" to get started.</p>' : ''}
-      </div>
+          <div class="account-balance">
+            <p>${maskCurrency(account.balance, privacyMode)}</p>
+          </div>
+        </div>
+      `).join('')}
+      ${accounts.length === 0 ? '<p class="empty-state">No cash accounts yet. Click "Add Cash Account" to get started.</p>' : ''}
     </div>
   `
 }
@@ -149,4 +151,16 @@ function renderDebtAccounts(accounts, privacyMode) {
       </div>
     </div>
   `
+}
+
+// Setup event handlers for accounts page
+function setupAccountsEventHandlers() {
+  // Add Cash Account button
+  const addCashBtn = document.getElementById('add-cash-account-btn')
+  if (addCashBtn) {
+    addCashBtn.addEventListener('click', async () => {
+      const { showCashAccountModal } = await import('./accountForms.js')
+      await showCashAccountModal()
+    })
+  }
 }

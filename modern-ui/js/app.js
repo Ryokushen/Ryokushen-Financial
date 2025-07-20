@@ -7,6 +7,7 @@ import { initTheme } from './modules/theme.js'
 import { initNavigation } from './modules/navigation.js'
 import { showLoading, hideLoading, showError } from './modules/ui.js'
 import { initSupabase } from './modules/database.js'
+import modalManager from './modules/modal.js'
 
 // Application State
 const appState = {
@@ -417,4 +418,5 @@ export {
   appState,
   showPage,
   loadInitialData,
+  modalManager,
 }

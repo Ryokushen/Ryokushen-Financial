@@ -15,7 +15,16 @@
   align-items: center;
   justify-content: center;
   padding: var(--spacing-4);
-  animation: modalFadeIn 0.3s ease-out;
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+
+.modal.modal-active {
+  opacity: 1;
+}
+
+.modal.modal-closing {
+  opacity: 0;
 }
 
 /* Modal Content */
@@ -25,7 +34,36 @@
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
-  animation: modalSlideIn 0.3s ease-out;
+  transform: translateY(-20px);
+  transition: transform 0.3s ease-out;
+}
+
+.modal-active .modal-content {
+  transform: translateY(0);
+}
+
+.modal-closing .modal-content {
+  transform: translateY(-20px);
+}
+
+/* Modal Sizes */
+.modal-small {
+  max-width: 400px;
+}
+
+.modal-medium {
+  max-width: 600px;
+}
+
+.modal-large {
+  max-width: 900px;
+}
+
+.modal-fullscreen {
+  max-width: calc(100% - 2 * var(--spacing-4));
+  max-height: calc(100% - 2 * var(--spacing-4));
+  width: 100%;
+  height: 100%;
 }
 
 /* Modal Header */
@@ -104,6 +142,84 @@
   }
 }
 
+/* Modal States */
+.modal-error .modal-header {
+  border-bottom-color: rgba(239, 68, 68, 0.3);
+}
+
+.modal-success .modal-header {
+  border-bottom-color: rgba(16, 185, 129, 0.3);
+}
+
+/* Loading Modal */
+.modal-loading-container .modal-content {
+  background: rgba(15, 22, 35, 0.95);
+}
+
+.modal-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-8);
+  gap: var(--spacing-4);
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.modal-loading p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Multiple Modal Support */
+.modal:nth-of-type(2) {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.modal:nth-of-type(3) {
+  background: rgba(0, 0, 0, 0.95);
+}
+
+/* Text Utilities */
+.text-error {
+  color: var(--color-error);
+}
+
+.text-success {
+  color: var(--color-success);
+}
+
+/* Scrollbar Styling */
+.modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .modal-content {
@@ -116,5 +232,11 @@
   
   .modal-footer .btn {
     width: 100%;
+  }
+  
+  .modal-small,
+  .modal-medium,
+  .modal-large {
+    max-width: calc(100% - 2 * var(--spacing-4));
   }
 }

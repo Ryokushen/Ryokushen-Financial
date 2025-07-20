@@ -50,6 +50,9 @@ export async function renderDashboard(appState) {
   setTimeout(() => {
     initializeDashboardCharts(appState)
   }, 100)
+  
+  // Setup event handlers
+  setupDashboardEventHandlers()
 }
 
 // Calculate dashboard metrics
@@ -158,6 +161,11 @@ function renderNetWorthHero(metrics, privacyMode) {
             <p class="stat-value">${maskCurrency(metrics.monthlyExpenses, privacyMode)}</p>
             <span class="stat-change negative">+1.5%</span>
           </div>
+        </div>
+        
+        <div class="quick-actions">
+          <button class="btn btn-primary btn-sm" id="quick-expense-btn">+ Quick Expense</button>
+          <button class="btn btn-secondary btn-sm" id="quick-income-btn">+ Quick Income</button>
         </div>
       </div>
     </div>
@@ -487,4 +495,25 @@ function setupRealtimeUpdates(appState) {
 // Refresh charts
 export function refreshCharts(appState) {
   refreshChartsModule(appState)
+}
+
+// Setup dashboard event handlers
+function setupDashboardEventHandlers() {
+  // Quick Expense button
+  const quickExpenseBtn = document.getElementById('quick-expense-btn')
+  if (quickExpenseBtn) {
+    quickExpenseBtn.addEventListener('click', async () => {
+      const { showQuickExpenseModal } = await import('./transactionForms.js')
+      await showQuickExpenseModal()
+    })
+  }
+  
+  // Quick Income button (reuse transaction form with income preset)
+  const quickIncomeBtn = document.getElementById('quick-income-btn')
+  if (quickIncomeBtn) {
+    quickIncomeBtn.addEventListener('click', async () => {
+      const { showTransactionModal } = await import('./transactionForms.js')
+      await showTransactionModal({ type: 'income' })
+    })
+  }
 }
