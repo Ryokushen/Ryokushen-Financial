@@ -29,7 +29,7 @@ const appState = {
 }
 
 // Make appState globally accessible for debugging
-if (process.env.NODE_ENV === 'development') {
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
   window.appState = appState
 }
 
