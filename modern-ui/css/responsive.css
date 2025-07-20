@@ -1,0 +1,395 @@
+/* Responsive Design - Mobile First Approach */
+
+/* Base mobile styles are in other CSS files */
+/* These are progressive enhancements for larger screens */
+
+/* Tablet - 768px and up */
+@media (min-width: 768px) {
+  /* Grid adjustments */
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .md\:grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .md\:grid-cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .md\:col-span-2 { grid-column: span 2 / span 2; }
+  .md\:col-span-3 { grid-column: span 3 / span 3; }
+  .md\:col-span-4 { grid-column: span 4 / span 4; }
+  .md\:col-span-6 { grid-column: span 6 / span 6; }
+  .md\:col-span-8 { grid-column: span 8 / span 8; }
+  
+  /* Show/hide utilities */
+  .md\:block { display: block; }
+  .md\:hidden { display: none; }
+  .md\:flex { display: flex; }
+  
+  /* Spacing adjustments */
+  .md\:p-6 { padding: var(--spacing-2xl); }
+  .md\:gap-6 { gap: var(--spacing-2xl); }
+}
+
+/* Desktop - 1024px and up */
+@media (min-width: 1024px) {
+  /* Grid adjustments */
+  .lg\:grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .lg\:grid-cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .lg\:grid-cols-12 {
+    grid-template-columns: repeat(12, 1fr);
+  }
+  
+  .lg\:col-span-3 { grid-column: span 3 / span 3; }
+  .lg\:col-span-4 { grid-column: span 4 / span 4; }
+  .lg\:col-span-8 { grid-column: span 8 / span 8; }
+  
+  /* Show/hide utilities */
+  .lg\:block { display: block; }
+  .lg\:hidden { display: none; }
+  .lg\:flex { display: flex; }
+}
+
+/* Wide Desktop - 1440px and up */
+@media (min-width: 1440px) {
+  .xl\:grid-cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .xl\:max-w-7xl {
+    max-width: 80rem;
+  }
+}
+
+/* Mobile Specific Styles */
+@media (max-width: 767px) {
+  /* Hide desktop sidebar */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-out;
+  }
+  
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+  
+  /* Adjust main content */
+  .main-content {
+    margin-left: 0;
+  }
+  
+  /* Mobile navigation */
+  .mobile-menu-toggle {
+    display: flex;
+  }
+  
+  /* Stack cards vertically */
+  .card-grid-4,
+  .card-grid-3,
+  .card-grid-2 {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Full width buttons on mobile */
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  /* Adjust metric cards */
+  .metric-card {
+    padding: 16px;
+  }
+  
+  .metric-value {
+    font-size: 1.125rem;
+  }
+  
+  /* Simplify dashboard grid */
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .dashboard-main,
+  .dashboard-sidebar {
+    grid-column: span 1;
+  }
+  
+  /* Adjust quick stats */
+  .quick-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  /* Smaller net worth display */
+  .net-worth-value {
+    font-size: 2rem;
+  }
+  
+  /* Stack budget items */
+  .budget-item {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .budget-category {
+    width: 100%;
+  }
+  
+  /* Adjust activity items */
+  .activity-item {
+    padding: 8px;
+  }
+  
+  .activity-icon {
+    width: 28px;
+    height: 28px;
+  }
+  
+  /* Mobile modal adjustments */
+  .modal-content {
+    margin: 16px;
+    max-height: calc(100vh - 32px);
+  }
+  
+  /* Reduce padding on mobile */
+  .page-content {
+    padding: 16px;
+  }
+  
+  .glass-panel {
+    padding: 16px;
+  }
+  
+  /* Adjust font sizes */
+  h1 {
+    font-size: 1.75rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+  
+  /* Mobile top bar */
+  .topbar {
+    padding: 0 16px;
+  }
+  
+  .user-info {
+    display: none;
+  }
+  
+  /* Bottom mobile navigation */
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: rgba(15, 22, 35, 0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: var(--z-fixed);
+  }
+  
+  .mobile-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px;
+    color: var(--text-secondary);
+    transition: color 0.2s ease;
+  }
+  
+  .mobile-nav-item.active {
+    color: var(--color-primary);
+  }
+  
+  .mobile-nav-icon {
+    font-size: 20px;
+  }
+  
+  .mobile-nav-label {
+    font-size: 0.625rem;
+  }
+  
+  /* Adjust for bottom nav */
+  .main-content {
+    padding-bottom: 76px;
+  }
+}
+
+/* Tablet Portrait Specific */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Narrower sidebar */
+  .sidebar {
+    width: 240px;
+  }
+  
+  .main-content {
+    margin-left: 240px;
+  }
+  
+  /* 2-column grid for cards */
+  .card-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  /* Adjust dashboard layout */
+  .dashboard-layout {
+    grid-template-columns: repeat(8, 1fr);
+  }
+  
+  .dashboard-main {
+    grid-column: span 5 / span 5;
+  }
+  
+  .dashboard-sidebar {
+    grid-column: span 3 / span 3;
+  }
+}
+
+/* Touch Device Adjustments */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets */
+  button,
+  a,
+  .clickable {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Remove hover effects on touch */
+  .hover-lift:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  
+  /* Add active states instead */
+  .hover-lift:active {
+    transform: scale(0.98);
+  }
+  
+  /* Increase spacing between interactive elements */
+  .nav-item + .nav-item {
+    margin-top: 8px;
+  }
+  
+  /* Larger form inputs */
+  input,
+  select,
+  textarea {
+    min-height: 48px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+}
+
+/* High DPI Screens */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Use higher resolution images if needed */
+  .logo {
+    background-image: url('../images/logo@2x.png');
+    background-size: contain;
+  }
+}
+
+/* Print Styles */
+@media print {
+  /* Hide non-essential elements */
+  .sidebar,
+  .topbar,
+  .mobile-bottom-nav,
+  .privacy-toggle,
+  .btn,
+  button {
+    display: none !important;
+  }
+  
+  /* Adjust layout for print */
+  .main-content {
+    margin: 0;
+  }
+  
+  .page-content {
+    padding: 0;
+  }
+  
+  /* Use print-friendly colors */
+  * {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  
+  /* Ensure charts are visible */
+  .chart-container {
+    break-inside: avoid;
+  }
+}
+
+/* Accessibility - Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .gradient-orb {
+    animation: none;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  /* Default to dark theme automatically */
+  :root {
+    color-scheme: dark;
+  }
+}
+
+/* Landscape Mobile */
+@media (max-width: 767px) and (orientation: landscape) {
+  /* Reduce vertical spacing */
+  .topbar {
+    height: 48px;
+  }
+  
+  .page-content {
+    padding: 12px;
+  }
+  
+  /* Hide less important elements */
+  .user-info,
+  .page-title {
+    display: none;
+  }
+  
+  /* Compact cards */
+  .metric-card {
+    padding: 12px;
+  }
+  
+  .net-worth-hero {
+    padding: 16px;
+  }
+}
