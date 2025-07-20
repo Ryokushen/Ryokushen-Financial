@@ -1,6 +1,6 @@
 // Modern UI - Main Application Orchestrator
 
-import config from './config.js'
+import { APP_CONFIG, FEATURES, STORAGE_KEYS } from './config.js'
 import { initAuth, checkAuthStatus } from './modules/auth.js'
 import { initDashboard } from './modules/dashboard.js'
 import { initTheme } from './modules/theme.js'
@@ -125,7 +125,7 @@ async function loadInitialData() {
     }
     
     // Process smart rules on loaded transactions
-    if (config.FEATURES.SMART_RULES && smartRules.length > 0) {
+    if (FEATURES.SMART_RULES && smartRules.length > 0) {
       const { processTransactions } = await import('./modules/smartRules.js')
       await processTransactions(transactions, smartRules)
     }
@@ -320,7 +320,7 @@ function togglePrivacyMode() {
   }
   
   // Save preference
-  localStorage.setItem(config.STORAGE_KEYS.privacyMode, appState.privacyMode)
+  localStorage.setItem(STORAGE_KEYS.privacyMode, appState.privacyMode)
   
   // Refresh current page to apply privacy mode
   showPage(appState.currentPage)
@@ -344,7 +344,7 @@ function toggleTheme() {
   }
   
   // Save preference
-  localStorage.setItem(config.STORAGE_KEYS.theme, newTheme)
+  localStorage.setItem(STORAGE_KEYS.theme, newTheme)
 }
 
 // Handle Window Resize
@@ -361,8 +361,11 @@ function handleResize() {
   
   // Refresh charts if on dashboard
   if (appState.currentPage === 'dashboard') {
-    const { refreshCharts } = import('./modules/dashboard.js')
-    refreshCharts(appState)
+    import('./modules/dashboard.js').then(({ refreshCharts }) => {
+      if (refreshCharts) {
+        refreshCharts(appState)
+      }
+    })
   }
 }
 

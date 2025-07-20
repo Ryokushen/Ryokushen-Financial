@@ -302,10 +302,7 @@
 /* High DPI Screens */
 @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
   /* Use higher resolution images if needed */
-  .logo {
-    background-image: url('../images/logo@2x.png');
-    background-size: contain;
-  }
+  /* Logo uses emoji icon, no image needed */
 }
 
 /* Print Styles */

@@ -1,19 +1,12 @@
 // Authentication Module
 
-import config from '../config.js'
+import { STORAGE_KEYS } from '../config.js'
 import { showLoading, hideLoading, showError, showSuccess } from './ui.js'
-
-let supabase = null
+import getSupabaseClient from '../supabase-client.js'
 
 // Initialize Supabase client
 export function initSupabase() {
-  if (!supabase && window.supabase) {
-    supabase = window.supabase.createClient(
-      config.SUPABASE_URL,
-      config.SUPABASE_ANON_KEY
-    )
-  }
-  return supabase
+  return getSupabaseClient()
 }
 
 // Check authentication status
@@ -354,9 +347,9 @@ export async function signOut() {
     if (error) throw error
     
     // Clear local storage
-    localStorage.removeItem(config.STORAGE_KEYS.theme)
-    localStorage.removeItem(config.STORAGE_KEYS.privacyMode)
-    localStorage.removeItem(config.STORAGE_KEYS.preferences)
+    localStorage.removeItem(STORAGE_KEYS.theme)
+    localStorage.removeItem(STORAGE_KEYS.privacyMode)
+    localStorage.removeItem(STORAGE_KEYS.preferences)
     
     return true
   } catch (error) {

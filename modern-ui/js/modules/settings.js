@@ -1,6 +1,6 @@
 // Settings Module
 
-import config from '../config.js'
+import { APP_CONFIG } from '../config.js'
 
 // Render settings page
 export async function renderSettings(appState) {
@@ -39,7 +39,7 @@ export async function renderSettings(appState) {
         
         <div class="settings-section glass-panel">
           <h3 class="mb-4">About</h3>
-          <p class="text-secondary">Ryokushen Financial v${config.APP_CONFIG.version}</p>
+          <p class="text-secondary">Ryokushen Financial v${APP_CONFIG.version}</p>
           <p class="text-sm text-tertiary mt-2">A privacy-focused personal finance manager</p>
         </div>
       </div>

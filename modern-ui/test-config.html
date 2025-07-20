@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Config Exports</title>
+</head>
+<body>
+    <h1>Testing Config.js Exports</h1>
+    <div id="results"></div>
+    
+    <script type="module">
+        import * as config from './js/config.js';
+        
+        const results = document.getElementById('results');
+        
+        // List all exports
+        const exports = Object.keys(config);
+        
+        results.innerHTML = `
+            <h2>Available Exports:</h2>
+            <ul>
+                ${exports.map(exp => `<li>${exp}</li>`).join('')}
+            </ul>
+            <h3>STORAGE_KEYS content:</h3>
+            <pre>${JSON.stringify(config.STORAGE_KEYS, null, 2)}</pre>
+        `;
+    </script>
+</body>
+</html>

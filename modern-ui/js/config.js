@@ -1,8 +1,8 @@
 // Configuration for Modern UI
 
 // Supabase Configuration
-export const SUPABASE_URL = 'https://wnmrzagbonxybazwllyo.supabase.co'
-export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndubXJ6YWdib254eWJhendsbHlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ3NzQzMDAsImV4cCI6MjA1MDM1MDMwMH0.0bhqrUud9Lk4M3ElL2OFkPMZFwrsfvC4_5yDmLyLsYE'
+export const SUPABASE_URL = 'https://rplbjnknqxdyjgsuavcp.supabase.co'
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJwbGJqbmtucXhkeWpnc3VhdmNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4NjY2OTIsImV4cCI6MjA2NzQ0MjY5Mn0.09RYF_oOrH8mmPjLo7fulai7ofwW5k94Y3_CIJbn6rI'
 
 // Application Configuration
 export const APP_CONFIG = {

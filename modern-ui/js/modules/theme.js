@@ -1,11 +1,11 @@
 // Theme Module
 
-import config from '../config.js'
+import { STORAGE_KEYS, APP_CONFIG } from '../config.js'
 
 // Initialize theme
 export function initTheme(appState) {
   // Load saved theme or use default
-  const savedTheme = localStorage.getItem(config.STORAGE_KEYS.theme) || config.APP_CONFIG.theme
+  const savedTheme = localStorage.getItem(STORAGE_KEYS.theme) || APP_CONFIG.theme
   
   // Apply theme
   setTheme(savedTheme)
@@ -33,7 +33,7 @@ export function setTheme(theme) {
   updateThemeIcon(theme)
   
   // Save preference
-  localStorage.setItem(config.STORAGE_KEYS.theme, theme)
+  localStorage.setItem(STORAGE_KEYS.theme, theme)
 }
 
 // Update theme icon

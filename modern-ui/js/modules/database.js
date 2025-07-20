@@ -1,33 +1,21 @@
 // Database Module - Supabase Integration
 
-import config from '../config.js'
+import { API_ENDPOINTS } from '../config.js'
 import { showError } from './ui.js'
-
-let supabase = null
+import getSupabaseClient from '../supabase-client.js'
 
 // Initialize Supabase client
 export async function initSupabase() {
-  if (!supabase && window.supabase) {
-    supabase = window.supabase.createClient(
-      config.SUPABASE_URL,
-      config.SUPABASE_ANON_KEY,
-      {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-        }
-      }
-    )
-  }
-  return supabase
+  return getSupabaseClient()
 }
 
 // Get Supabase client
 export function getSupabase() {
-  if (!supabase) {
-    throw new Error('Supabase not initialized. Call initSupabase() first.')
+  const client = getSupabaseClient()
+  if (!client) {
+    throw new Error('Supabase not initialized.')
   }
-  return supabase
+  return client
 }
 
 // Generic query builder with error handling
