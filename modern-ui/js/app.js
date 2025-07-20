@@ -188,7 +188,7 @@ async function showPage(pageName) {
         break
         
       case 'bills':
-        const { renderBills } = await import('./modules/recurringBills.js')
+        const { renderBills } = await import('./modules/bills.js')
         await renderBills(appState)
         break
         
