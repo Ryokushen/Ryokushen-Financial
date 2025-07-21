@@ -619,18 +619,18 @@ export async function getDebtAccounts() {
         if (error) return { error, data: null }
         
         // Calculate balances for debt accounts
-        // For debt accounts, the logic is inverted:
-        // - Purchases/expenses (positive in transaction) increase debt (add to balance)
-        // - Payments (negative in transaction) decrease debt (subtract from balance)
+        // For debt accounts (credit cards), the standard convention is:
+        // - Negative transactions (charges) increase debt
+        // - Positive transactions (payments) decrease debt
         const balanceMap = {}
         accountIds.forEach(id => balanceMap[id] = 0)
         
         data.forEach(transaction => {
           if (transaction.account_id && transaction.amount) {
-            // For debt accounts, positive transactions (purchases) increase debt
-            // Negative transactions (payments) decrease debt
-            // This is opposite of cash accounts
-            balanceMap[transaction.account_id] += Math.abs(transaction.amount) * (transaction.amount > 0 ? 1 : -1)
+            // Simply invert the transaction amount for debt calculation
+            // Negative amount (charge) becomes positive debt
+            // Positive amount (payment) becomes negative debt
+            balanceMap[transaction.account_id] += -transaction.amount
           }
         })
         
@@ -723,12 +723,13 @@ export async function calculateDebtBalance(accountId) {
     
     if (error) throw error
     
-    // For debt accounts:
-    // - Positive amounts (purchases) increase debt
-    // - Negative amounts (payments) decrease debt
+    // For debt accounts with standard convention:
+    // - Negative amounts (charges) increase debt
+    // - Positive amounts (payments) decrease debt
     const balance = transactions.reduce((sum, transaction) => {
       const amount = transaction.amount || 0
-      return sum + Math.abs(amount) * (amount > 0 ? 1 : -1)
+      // Simply invert the amount
+      return sum + (-amount)
     }, 0)
     
     return balance
