@@ -297,7 +297,7 @@ async function showPage(pageName) {
         break
         
       case 'debt':
-        const { renderDebt } = await import('./modules/debt.js')
+        const { renderDebt } = await import('./modules/debt.js?t=' + Date.now())
         await renderDebt(appState)
         break
         

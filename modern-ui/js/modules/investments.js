@@ -372,7 +372,7 @@ async function showAddInvestmentAccountModal(appState) {
         <input type="text" id="institution" name="institution" placeholder="e.g., Fidelity, TD Ameritrade">
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="window.modalManager.close()">Cancel</button>
+        <button type="button" class="btn-secondary" onclick="window.modalManager.closeAll()">Cancel</button>
         <button type="submit" class="btn-primary">Add Account</button>
       </div>
     </form>
@@ -380,7 +380,8 @@ async function showAddInvestmentAccountModal(appState) {
   
   modalManager.show({
     title: 'Add Investment Account',
-    content: modalContent
+    content: modalContent,
+    showFooter: false  // Don't show modal footer since we have form buttons
   })
   
   // Handle form submission - wait for modal to be rendered
@@ -455,7 +456,7 @@ async function showEditInvestmentAccountModal(accountId, accountName, appState) 
         </select>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="window.modalManager.close()">Cancel</button>
+        <button type="button" class="btn-secondary" onclick="window.modalManager.closeAll()">Cancel</button>
         <button type="submit" class="btn-primary">Save Changes</button>
       </div>
     </form>
@@ -463,7 +464,8 @@ async function showEditInvestmentAccountModal(accountId, accountName, appState) 
   
   modalManager.show({
     title: 'Edit Investment Account',
-    content: modalContent
+    content: modalContent,
+    showFooter: false  // Don't show modal footer since we have form buttons
   })
   
   // Handle form submission - wait for modal to be rendered
@@ -555,7 +557,7 @@ async function showAddHoldingModal(accountId, appState) {
         <input type="number" id="price" name="price" step="0.01" required placeholder="e.g., 150.25">
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="window.modalManager.close()">Cancel</button>
+        <button type="button" class="btn-secondary" onclick="window.modalManager.closeAll()">Cancel</button>
         <button type="submit" class="btn-primary">Add Holding</button>
       </div>
     </form>
@@ -563,7 +565,8 @@ async function showAddHoldingModal(accountId, appState) {
   
   modalManager.show({
     title: 'Add Holding',
-    content: modalContent
+    content: modalContent,
+    showFooter: false  // Don't show modal footer since we have form buttons
   })
   
   // Handle form submission
@@ -632,7 +635,7 @@ async function showEditHoldingModal(holdingId, symbol, appState) {
         <input type="number" id="price" name="price" step="0.01" value="150.25" required>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="window.modalManager.close()">Cancel</button>
+        <button type="button" class="btn-secondary" onclick="window.modalManager.closeAll()">Cancel</button>
         <button type="submit" class="btn-primary">Save Changes</button>
       </div>
     </form>
@@ -640,7 +643,8 @@ async function showEditHoldingModal(holdingId, symbol, appState) {
   
   modalManager.show({
     title: 'Edit Holding',
-    content: modalContent
+    content: modalContent,
+    showFooter: false  // Don't show modal footer since we have form buttons
   })
   
   // Handle form submission - wait for modal to be rendered

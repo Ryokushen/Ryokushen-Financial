@@ -1,8 +1,14 @@
 // Debt Module - Modern Design
 
 import { formatCurrency, maskCurrency } from './ui.js'
+import { 
+  getDebtAccounts as fetchDebtAccounts,
+  createDebtAccount,
+  updateDebtAccount,
+  deleteDebtAccount
+} from './database.js'
 
-// Mock data for development
+// Mock data for development (fallback only)
 const mockDebtAccounts = [
   {
     id: '1',
@@ -86,14 +92,16 @@ function calculateDebtSummary(accounts) {
   let earliestDueDate = null
   
   accounts.forEach(account => {
-    summary.totalDebt += account.balance
-    summary.monthlyPayments += account.minPayment
-    totalWeightedAPR += account.balance * account.interestRate
+    summary.totalDebt += account.balance || 0
+    summary.monthlyPayments += account.minimum_payment || 0
+    totalWeightedAPR += (account.balance || 0) * (account.interest_rate || 0)
     
-    const dueDate = new Date(account.dueDate)
-    if (!earliestDueDate || dueDate < earliestDueDate) {
-      earliestDueDate = dueDate
-      summary.nextPaymentDate = account.dueDate
+    if (account.due_date) {
+      const dueDate = new Date(account.due_date)
+      if (!earliestDueDate || dueDate < earliestDueDate) {
+        earliestDueDate = dueDate
+        summary.nextPaymentDate = account.due_date
+      }
     }
   })
   
@@ -151,8 +159,20 @@ export async function renderDebt(appState) {
   const container = document.getElementById('page-content')
   if (!container) return
   
-  // Use mock data for now
-  const debtAccounts = mockDebtAccounts
+  // Use real debt accounts from appState or fetch directly
+  let debtAccounts = appState.data.debtAccounts || []
+  
+  // If no accounts in appState, try to load directly
+  if (debtAccounts.length === 0) {
+    try {
+      debtAccounts = await fetchDebtAccounts()
+      appState.data.debtAccounts = debtAccounts
+    } catch (error) {
+      console.error('Failed to load debt accounts:', error)
+      debtAccounts = [] // Use empty array on error
+    }
+  }
+  
   const summary = calculateDebtSummary(debtAccounts)
   const breakdown = calculateDebtBreakdown(debtAccounts)
   
@@ -217,16 +237,16 @@ export async function renderDebt(appState) {
               <div class="debt-details">
                 <div class="detail-item">
                   <span class="detail-label">Interest Rate</span>
-                  <span class="detail-value">${account.interestRate}%</span>
+                  <span class="detail-value">${account.interest_rate || 0}%</span>
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">Min. Payment</span>
-                  <span class="detail-value">${maskCurrency(account.minPayment, appState.privacyMode)}</span>
+                  <span class="detail-value">${maskCurrency(account.minimum_payment || 0, appState.privacyMode)}</span>
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">Due Date</span>
-                  <span class="detail-value ${getDaysUntilDue(account.dueDate) <= 3 ? 'due-soon' : ''} ${getDaysUntilDue(account.dueDate) < 0 ? 'overdue' : ''}">
-                    ${formatDueDate(account.dueDate)}
+                  <span class="detail-value ${account.due_date && getDaysUntilDue(account.due_date) <= 3 ? 'due-soon' : ''} ${account.due_date && getDaysUntilDue(account.due_date) < 0 ? 'overdue' : ''}">
+                    ${account.due_date ? formatDueDate(account.due_date) : 'Not set'}
                   </span>
                 </div>
               </div>
@@ -386,132 +406,216 @@ async function showAddDebtModal(appState) {
         </div>
         <div class="form-group">
           <label for="debt-interest">Interest Rate (%)</label>
-          <input type="number" id="debt-interest" name="interestRate" step="0.01" required placeholder="0.00">
+          <input type="number" id="debt-interest" name="interest_rate" step="0.01" required placeholder="0.00">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label for="debt-min-payment">Minimum Payment</label>
-          <input type="number" id="debt-min-payment" name="minPayment" step="0.01" required placeholder="0.00">
+          <input type="number" id="debt-min-payment" name="minimum_payment" step="0.01" required placeholder="0.00">
         </div>
         <div class="form-group">
           <label for="debt-due-date">Due Date</label>
-          <input type="date" id="debt-due-date" name="dueDate" required>
+          <input type="date" id="debt-due-date" name="due_date" required>
         </div>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="window.modalManager.close()">Cancel</button>
+        <button type="button" class="btn-secondary" onclick="window.modalManager.closeAll()">Cancel</button>
         <button type="submit" class="btn-primary">Add Account</button>
       </div>
     </form>
   `
   
-  modalManager.show(modalContent)
+  // Make modalManager available globally
+  window.modalManager = modalManager
   
-  // Handle form submission
-  document.getElementById('add-debt-form').addEventListener('submit', async (e) => {
-    e.preventDefault()
-    const formData = new FormData(e.target)
-    
-    // TODO: Save to database
-    console.log('Adding debt account:', Object.fromEntries(formData))
-    
-    modalManager.close()
-    modalManager.showNotification('Debt account added successfully', 'success')
-    
-    // Refresh the page
-    await renderDebt(appState)
+  modalManager.show({
+    title: 'Add Debt Account',
+    content: modalContent,
+    showFooter: false
   })
+  
+  // Handle form submission - wait for modal to be rendered
+  setTimeout(() => {
+    const form = document.getElementById('add-debt-form')
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const formData = new FormData(e.target)
+        
+        try {
+          // Get current user from Supabase
+          const { getSupabase } = await import('./database.js')
+          const supabase = getSupabase()
+          const { data: { user } } = await supabase.auth.getUser()
+          
+          if (!user) {
+            throw new Error('User not authenticated')
+          }
+          
+          // Create debt account object with correct column names
+          const newDebt = {
+            name: formData.get('name'),
+            type: formData.get('type'),
+            institution: formData.get('institution'),
+            balance: parseFloat(formData.get('balance')) || 0,
+            interest_rate: parseFloat(formData.get('interest_rate')) || 0,
+            minimum_payment: parseFloat(formData.get('minimum_payment')) || 0,
+            due_date: formData.get('due_date') || null,
+            user_id: user.id
+          }
+          
+          await createDebtAccount(newDebt)
+          
+          window.modalManager.closeAll()
+          window.modalManager.showNotification('Debt account added successfully', 'success')
+          
+          // Reload debt accounts
+          appState.data.debtAccounts = await fetchDebtAccounts()
+          
+          // Refresh the page
+          await renderDebt(appState)
+        } catch (error) {
+          console.error('Failed to add debt account:', error)
+          window.modalManager.showNotification('Failed to add debt account', 'error')
+        }
+      })
+    }
+  }, 100)
 }
 
 // Show edit debt modal
 async function showEditDebtModal(debtId, debtName, appState) {
   const { modalManager } = await import('../app.js')
   
-  // TODO: Load actual debt data
+  // Make modalManager available globally
+  window.modalManager = modalManager
+  
+  // Find the actual debt account data
+  const debtAccount = appState.data.debtAccounts.find(acc => acc.id.toString() === debtId.toString())
+  if (!debtAccount) {
+    modalManager.showNotification('Debt account not found', 'error')
+    return
+  }
+  
   const modalContent = `
     <h2>Edit Debt Account</h2>
     <form id="edit-debt-form">
       <div class="form-group">
         <label for="debt-name">Account Name</label>
-        <input type="text" id="debt-name" name="name" value="${debtName}" required>
+        <input type="text" id="debt-name" name="name" value="${debtAccount.name}" required>
       </div>
       <div class="form-group">
         <label for="debt-type">Account Type</label>
         <select id="debt-type" name="type" required>
-          <option value="Credit Card" selected>Credit Card</option>
-          <option value="Student Loan">Student Loan</option>
-          <option value="Auto Loan">Auto Loan</option>
-          <option value="Mortgage">Mortgage</option>
-          <option value="Personal Loan">Personal Loan</option>
+          <option value="Credit Card" ${debtAccount.type === 'Credit Card' ? 'selected' : ''}>Credit Card</option>
+          <option value="Student Loan" ${debtAccount.type === 'Student Loan' ? 'selected' : ''}>Student Loan</option>
+          <option value="Auto Loan" ${debtAccount.type === 'Auto Loan' ? 'selected' : ''}>Auto Loan</option>
+          <option value="Mortgage" ${debtAccount.type === 'Mortgage' ? 'selected' : ''}>Mortgage</option>
+          <option value="Personal Loan" ${debtAccount.type === 'Personal Loan' ? 'selected' : ''}>Personal Loan</option>
         </select>
       </div>
       <div class="form-group">
         <label for="debt-institution">Institution</label>
-        <input type="text" id="debt-institution" name="institution" value="Bank" required>
+        <input type="text" id="debt-institution" name="institution" value="${debtAccount.institution || ''}" required>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label for="debt-balance">Current Balance</label>
-          <input type="number" id="debt-balance" name="balance" step="0.01" value="1000.00" required>
+          <input type="number" id="debt-balance" name="balance" step="0.01" value="${debtAccount.balance || 0}" required>
         </div>
         <div class="form-group">
           <label for="debt-interest">Interest Rate (%)</label>
-          <input type="number" id="debt-interest" name="interestRate" step="0.01" value="19.99" required>
+          <input type="number" id="debt-interest" name="interest_rate" step="0.01" value="${debtAccount.interest_rate || 0}" required>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label for="debt-min-payment">Minimum Payment</label>
-          <input type="number" id="debt-min-payment" name="minPayment" step="0.01" value="35.00" required>
+          <input type="number" id="debt-min-payment" name="minimum_payment" step="0.01" value="${debtAccount.minimum_payment || 0}" required>
         </div>
         <div class="form-group">
           <label for="debt-due-date">Due Date</label>
-          <input type="date" id="debt-due-date" name="dueDate" value="2025-07-28" required>
+          <input type="date" id="debt-due-date" name="due_date" value="${debtAccount.due_date ? debtAccount.due_date.split('T')[0] : ''}" required>
         </div>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="window.modalManager.close()">Cancel</button>
+        <button type="button" class="btn-secondary" onclick="window.modalManager.closeAll()">Cancel</button>
         <button type="submit" class="btn-primary">Save Changes</button>
       </div>
     </form>
   `
   
-  modalManager.show(modalContent)
-  
-  // Handle form submission
-  document.getElementById('edit-debt-form').addEventListener('submit', async (e) => {
-    e.preventDefault()
-    
-    // TODO: Update in database
-    modalManager.close()
-    modalManager.showNotification('Debt account updated successfully', 'success')
-    
-    // Refresh the page
-    await renderDebt(appState)
+  modalManager.show({
+    title: 'Edit Debt Account',
+    content: modalContent,
+    showFooter: false
   })
+  
+  // Handle form submission - wait for modal to be rendered
+  setTimeout(() => {
+    const form = document.getElementById('edit-debt-form')
+    console.log('Edit debt form element:', form)
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const formData = new FormData(e.target)
+        
+        try {
+          // Update debt account with correct column names
+          const updates = {
+            name: formData.get('name'),
+            type: formData.get('type'),
+            institution: formData.get('institution'),
+            balance: parseFloat(formData.get('balance')) || 0,
+            interest_rate: parseFloat(formData.get('interest_rate')) || 0,
+            minimum_payment: parseFloat(formData.get('minimum_payment')) || 0,
+            due_date: formData.get('due_date') || null
+          }
+          
+          await updateDebtAccount(debtId, updates)
+          
+          modalManager.closeAll()
+          modalManager.showNotification('Debt account updated successfully', 'success')
+          
+          // Reload debt accounts
+          appState.data.debtAccounts = await fetchDebtAccounts()
+          
+          // Refresh the page
+          await renderDebt(appState)
+        } catch (error) {
+          console.error('Failed to update debt account:', error)
+          modalManager.showNotification('Failed to update debt account', 'error')
+        }
+      })
+    }
+  }, 100)
 }
 
 // Handle delete debt
 async function handleDeleteDebt(debtId, debtName, appState) {
   const { modalManager } = await import('../app.js')
   
-  const confirmed = await modalManager.confirm({
-    title: 'Delete Debt Account?',
-    message: `Are you sure you want to delete "${debtName}"? This action cannot be undone.`,
-    confirmText: 'Delete Account',
-    confirmClass: 'btn-danger',
-    cancelText: 'Cancel'
-  })
+  const confirmed = await modalManager.confirm(
+    `Are you sure you want to delete "${debtName}"? This action cannot be undone.`,
+    'Delete Debt Account?'
+  )
   
   if (confirmed) {
-    // TODO: Delete from database
-    console.log('Deleting debt account:', debtId)
-    
-    modalManager.showNotification('Debt account deleted successfully', 'success')
-    
-    // Refresh the page
-    await renderDebt(appState)
+    try {
+      await deleteDebtAccount(debtId)
+      
+      modalManager.showNotification('Debt account deleted successfully', 'success')
+      
+      // Reload debt accounts
+      appState.data.debtAccounts = await fetchDebtAccounts()
+      
+      // Refresh the page
+      await renderDebt(appState)
+    } catch (error) {
+      console.error('Failed to delete debt account:', error)
+      modalManager.showNotification('Failed to delete debt account', 'error')
+    }
   }
 }
 

@@ -61,7 +61,7 @@ function calculateMetrics(appState) {
   
   // Calculate totals
   const totalCash = cashAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0)
-  const totalInvestments = investmentAccounts.reduce((sum, acc) => sum + (acc.current_value || 0), 0)
+  const totalInvestments = investmentAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0)
   const totalDebt = debtAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0)
   
   // Calculate net worth
