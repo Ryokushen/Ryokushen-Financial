@@ -467,3 +467,40 @@
   - No more timeout errors during initial load
   - Real data loads from database when available
   - Graceful degradation to mock data on timeout
+
+### Investment & Debt CRUD Integration (2025-07-21):
+- **Investment Module Database Integration (Part 5)**:
+  - Fixed database schema mismatch (current_value → balance)
+  - Added proper authentication with user_id field
+  - Fixed holdings foreign key (account_id → investment_account_id)
+  - Updated modal API usage to use correct format
+  - Fixed delete confirmation dialogs
+  - All CRUD operations now working with real database
+  - Modal closing issues resolved with closeAll()
+
+- **Debt Module Database Integration (Part 6)**:
+  - Updated all column names to match database schema:
+    - interestRate → interest_rate
+    - minPayment → minimum_payment
+    - dueDate → due_date
+  - Connected to real database with fetchDebtAccounts()
+  - Implemented all CRUD operations with proper authentication
+  - Fixed edit modal to load actual account data (not hardcoded)
+  - Added dynamic import timestamp to fix browser caching
+  - All form fields now populate with current values
+  - Fixed duplicate cancel buttons in modals
+
+- **Technical Improvements**:
+  - Dashboard now calculates investment totals correctly
+  - Modal system properly handles showFooter: false
+  - Cancel buttons use window.modalManager.closeAll()
+  - Edit forms load data from appState instead of hardcoded values
+  - Proper date formatting for ISO dates in forms
+  - Comprehensive error handling with user notifications
+
+- **Summary (Part 7)**:
+  - ✅ Investment module: 100% functional CRUD with real database
+  - ✅ Debt module: 100% functional CRUD with real database
+  - ✅ All authentication and column mapping issues resolved
+  - ✅ Modal system working correctly across all operations
+  - ✅ Data persistence and real-time UI updates confirmed
