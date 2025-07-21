@@ -140,10 +140,10 @@ export function createCashAccountForm(accountData = null) {
         }
         
         // Reload accounts data - add delay to ensure database is updated
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise(resolve => setTimeout(resolve, 1000))
         
         if (window.loadInitialData) {
-          await window.loadInitialData()
+          await window.loadInitialData(true) // Force refresh
         }
         
         // Refresh current page
