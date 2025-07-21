@@ -128,8 +128,8 @@ export function createCashAccountForm(accountData = null) {
               description: 'Initial Balance',
               category: 'Income',
               date: new Date().toISOString().split('T')[0],
-              cleared: true,
-              notes: 'Opening balance for account'
+              cleared: true
+              // Removed 'notes' field as it doesn't exist in transactions table
             })
           }
           
