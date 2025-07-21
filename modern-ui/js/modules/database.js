@@ -445,10 +445,13 @@ export async function deleteCashAccount(id) {
 // Investment account operations
 export async function getInvestmentAccounts() {
   const supabase = getSupabase()
-  return executeQuery(
+  
+  console.log('Querying investment_accounts table with nested holdings...')
+  
+  const result = await executeQuery(
     () => supabase
       .from('investment_accounts')
-      .select('*')
+      .select('*, holdings (*)')
       .order('name'),
     {
       queryName: 'Get investment accounts',
@@ -457,6 +460,14 @@ export async function getInvestmentAccounts() {
       trustContext: true // Trust cached auth during initial load
     }
   )
+  
+  console.log('Investment accounts query result:', result)
+  console.log('Number of investment accounts found:', result?.length || 0)
+  if (result?.length > 0) {
+    console.log('First account holdings:', result[0].holdings)
+  }
+  
+  return result
 }
 
 export async function createInvestmentAccount(account) {
@@ -665,6 +676,62 @@ export async function batchUpdateTransactions(updates) {
   return Promise.all(promises)
 }
 
+// Holdings operations
+export async function getHoldings(accountId = null) {
+  const supabase = getSupabase()
+  let query = supabase
+    .from('holdings')
+    .select('*')
+    .order('symbol')
+  
+  if (accountId) {
+    query = query.eq('account_id', accountId)
+  }
+  
+  return executeQuery(
+    () => query,
+    {
+      queryName: 'Get holdings',
+      timeout: QUERY_TIMEOUT,
+      fallbackData: [],
+      trustContext: true
+    }
+  )
+}
+
+export async function createHolding(holding) {
+  const supabase = getSupabase()
+  return executeQuery(() =>
+    supabase
+      .from('holdings')
+      .insert(holding)
+      .select()
+      .single()
+  )
+}
+
+export async function updateHolding(id, updates) {
+  const supabase = getSupabase()
+  return executeQuery(() =>
+    supabase
+      .from('holdings')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+  )
+}
+
+export async function deleteHolding(id) {
+  const supabase = getSupabase()
+  return executeQuery(() =>
+    supabase
+      .from('holdings')
+      .delete()
+      .eq('id', id)
+  )
+}
+
 // Real-time subscriptions
 export function subscribeToTransactions(callback) {
   const supabase = getSupabase()
@@ -856,6 +923,34 @@ export async function getNetWorthHistory() {
   return data
 }
 
+// Test investment accounts directly (for debugging)
+export async function testInvestmentAccountsConnection() {
+  console.log('Testing investment accounts connection...')
+  try {
+    const supabase = getSupabase()
+    const start = Date.now()
+    
+    // Query investment accounts directly
+    const { data, error } = await supabase
+      .from('investment_accounts')
+      .select('*')
+    
+    const elapsed = Date.now() - start
+    
+    if (error) {
+      console.error('Investment accounts test failed:', error)
+      return { success: false, error: error.message, elapsed }
+    }
+    
+    console.log(`Investment accounts test successful in ${elapsed}ms:`, data)
+    console.log(`Found ${data?.length || 0} investment accounts`)
+    return { success: true, data, elapsed }
+  } catch (e) {
+    console.error('Investment accounts test error:', e)
+    return { success: false, error: e.message }
+  }
+}
+
 // Test database connection directly (for debugging)
 export async function testDatabaseConnection() {
   console.log('Testing direct database connection...')
@@ -926,6 +1021,11 @@ export default {
   createSmartRule,
   updateSmartRule,
   deleteSmartRule,
+  // Holdings
+  getHoldings,
+  createHolding,
+  updateHolding,
+  deleteHolding,
   // Real-time
   subscribeToTransactions,
   subscribeToAccounts,

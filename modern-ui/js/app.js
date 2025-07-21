@@ -34,9 +34,10 @@ const appState = {
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
   window.appState = appState
   
-  // Add database test function for debugging
-  import('./modules/database.js').then(({ testDatabaseConnection }) => {
+  // Add database test functions for debugging
+  import('./modules/database.js').then(({ testDatabaseConnection, testInvestmentAccountsConnection }) => {
     window.testDB = testDatabaseConnection
+    window.testInvestments = testInvestmentAccountsConnection
   })
 }
 

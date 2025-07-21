@@ -1,47 +1,83 @@
 // Investments Module - Modern Design
 
 import { formatCurrency, maskCurrency } from './ui.js'
+import { 
+  getInvestmentAccounts as fetchInvestmentAccounts,
+  createInvestmentAccount as createAccount,
+  updateInvestmentAccount as updateAccount,
+  deleteInvestmentAccount as deleteAccount,
+  getHoldings as fetchHoldings,
+  createHolding,
+  updateHolding,
+  deleteHolding
+} from './database.js'
 
-// Mock data for development - replace with database calls
-const mockInvestmentAccounts = [
-  {
-    id: '1',
-    name: 'Webull',
-    type: 'Taxable Brokerage',
-    institution: 'Apex Clearing',
-    totalValue: 3234.23,
-    dayChange: 124.23,
-    dayChangePercent: 3.99,
-    holdings: [
-      { id: '1', symbol: 'NVDA', shares: 2.000, price: 164.92, value: 329.84 },
-      { id: '2', symbol: 'AMD', shares: 2.000, price: 146.42, value: 292.84 },
-      { id: '3', symbol: 'VST', shares: 0.870, price: 196.58, value: 171.02 },
-      { id: '4', symbol: 'MSFT', shares: 0.170, price: 503.32, value: 85.56 },
-      { id: '5', symbol: 'AMZN', shares: 5.160, price: 225.02, value: 1161.10 },
-      { id: '6', symbol: 'PANW', shares: 0.840, price: 187.39, value: 157.41 },
-      { id: '7', symbol: 'CRWD', shares: 0.210, price: 478.45, value: 100.47 },
-      { id: '8', symbol: 'GOOGL', shares: 1.140, price: 180.19, value: 205.42 },
-      { id: '9', symbol: 'NVO', shares: 4.050, price: 68.93, value: 279.17 },
-      { id: '10', symbol: 'TSLA', shares: 0.180, price: 313.51, value: 56.43 },
-      { id: '11', symbol: 'TEM', shares: 2.120, price: 56.88, value: 120.59 },
-      { id: '12', symbol: 'AVGO', shares: 1.000, price: 274.38, value: 274.38 }
-    ]
+// Mock holdings data until we implement holdings table functions
+const mockHoldings = {
+  '1': [
+    { id: '1', symbol: 'NVDA', shares: 2.000, price: 164.92, value: 329.84 },
+    { id: '2', symbol: 'AMD', shares: 2.000, price: 146.42, value: 292.84 },
+    { id: '3', symbol: 'VST', shares: 0.870, price: 196.58, value: 171.02 },
+    { id: '4', symbol: 'MSFT', shares: 0.170, price: 503.32, value: 85.56 },
+    { id: '5', symbol: 'AMZN', shares: 5.160, price: 225.02, value: 1161.10 },
+    { id: '6', symbol: 'PANW', shares: 0.840, price: 187.39, value: 157.41 },
+    { id: '7', symbol: 'CRWD', shares: 0.210, price: 478.45, value: 100.47 },
+    { id: '8', symbol: 'GOOGL', shares: 1.140, price: 180.19, value: 205.42 },
+    { id: '9', symbol: 'NVO', shares: 4.050, price: 68.93, value: 279.17 },
+    { id: '10', symbol: 'TSLA', shares: 0.180, price: 313.51, value: 56.43 },
+    { id: '11', symbol: 'TEM', shares: 2.120, price: 56.88, value: 120.59 },
+    { id: '12', symbol: 'AVGO', shares: 1.000, price: 274.38, value: 274.38 }
+  ]
+}
+
+// Load investment accounts from database
+export async function loadInvestmentAccounts() {
+  try {
+    console.log('Loading investment accounts from database...')
+    const accounts = await fetchInvestmentAccounts()
+    console.log(`Loaded ${accounts.length} investment accounts`)
+    return accounts
+  } catch (error) {
+    console.error('Failed to load investment accounts:', error)
+    return []
   }
-]
+}
+
+// Holdings are now nested in account objects, no separate loading needed
+// This function is kept for backward compatibility but simplified
+export async function loadAllHoldings(accounts) {
+  // Holdings are already included in the accounts from the nested query
+  console.log('Holdings are nested in accounts, no separate loading needed')
+  return {} // Return empty map since we don't need it anymore
+}
 
 // Calculate portfolio summary
 function calculatePortfolioSummary(accounts) {
   const summary = {
     totalValue: 0,
     dayChange: 0,
-    totalGain: 456.78, // Mock value for now
+    totalGain: 0, // Will be calculated when we have cost basis
     totalHoldings: 0
   }
   
   accounts.forEach(account => {
-    summary.totalValue += account.totalValue
-    summary.dayChange += account.dayChange
-    summary.totalHoldings += account.holdings.length
+    // Use current_value from database schema
+    summary.totalValue += account.current_value || 0
+    
+    // For now, estimate day change as 0 until we implement price tracking
+    summary.dayChange += account.day_change || 0
+    
+    // Count holdings from nested holdings array
+    const holdings = account.holdings || []
+    summary.totalHoldings += holdings.length
+    
+    // Calculate value from holdings if current_value isn't set
+    if (!account.current_value && holdings.length > 0) {
+      const holdingsValue = holdings.reduce((sum, holding) => {
+        return sum + (holding.value || (holding.shares * (holding.current_price || holding.price)) || 0)
+      }, 0)
+      summary.totalValue += holdingsValue
+    }
   })
   
   return summary
@@ -50,7 +86,8 @@ function calculatePortfolioSummary(accounts) {
 // Get all holdings from all accounts
 function getAllHoldings(accounts) {
   return accounts.reduce((allHoldings, account) => {
-    return allHoldings.concat(account.holdings)
+    const holdings = account.holdings || []
+    return allHoldings.concat(holdings)
   }, [])
 }
 
@@ -59,8 +96,22 @@ export async function renderInvestments(appState) {
   const container = document.getElementById('page-content')
   if (!container) return
   
-  // For now, use mock data
-  const investmentAccounts = mockInvestmentAccounts
+  // Use real investment accounts from appState
+  const investmentAccounts = appState.data.investmentAccounts || []
+  
+  console.log('Investment accounts in appState:', investmentAccounts)
+  console.log('Number of investment accounts:', investmentAccounts.length)
+  
+  // Also try to load directly from database for debugging
+  try {
+    const directAccountsLoad = await fetchInvestmentAccounts()
+    console.log('Direct database load result:', directAccountsLoad)
+    console.log('Direct load count:', directAccountsLoad?.length || 0)
+  } catch (error) {
+    console.error('Direct load failed:', error)
+  }
+  
+  // No need to load holdings separately - they're nested in accounts
   const summary = calculatePortfolioSummary(investmentAccounts)
   
   container.innerHTML = `
@@ -176,7 +227,7 @@ export async function renderInvestments(appState) {
                       </div>
                     </td>
                     <td class="shares-cell">${holding.shares.toFixed(3)}</td>
-                    <td class="price-cell">${maskCurrency(holding.price, appState.privacyMode)}</td>
+                    <td class="price-cell">${maskCurrency(holding.current_price || holding.price, appState.privacyMode)}</td>
                     <td class="value-cell">${maskCurrency(holding.value, appState.privacyMode)}</td>
                     <td class="action-cell">
                       <div class="table-actions">
@@ -283,6 +334,10 @@ async function showAddInvestmentAccountModal(appState) {
           <option value="Other">Other</option>
         </select>
       </div>
+      <div class="form-group">
+        <label for="institution">Institution (Optional)</label>
+        <input type="text" id="institution" name="institution" placeholder="e.g., Fidelity, TD Ameritrade">
+      </div>
       <div class="form-actions">
         <button type="button" class="btn-secondary" onclick="window.modalManager.close()">Cancel</button>
         <button type="submit" class="btn-primary">Add Account</button>
@@ -297,14 +352,29 @@ async function showAddInvestmentAccountModal(appState) {
     e.preventDefault()
     const formData = new FormData(e.target)
     
-    // TODO: Save to database
-    console.log('Adding investment account:', Object.fromEntries(formData))
-    
-    modalManager.close()
-    modalManager.showNotification('Investment account added successfully', 'success')
-    
-    // Refresh the page
-    await renderInvestments(appState)
+    try {
+      // Save to database
+      const newAccount = {
+        name: formData.get('name'),
+        type: formData.get('type'),
+        institution: formData.get('institution') || null,
+        current_value: 0 // Start with 0 value
+      }
+      
+      await createAccount(newAccount)
+      
+      modalManager.close()
+      modalManager.showNotification('Investment account added successfully', 'success')
+      
+      // Reload investment accounts
+      appState.data.investmentAccounts = await fetchInvestmentAccounts()
+      
+      // Refresh the page
+      await renderInvestments(appState)
+    } catch (error) {
+      console.error('Failed to add investment account:', error)
+      modalManager.showNotification('Failed to add investment account', 'error')
+    }
   })
 }
 
@@ -341,13 +411,29 @@ async function showEditInvestmentAccountModal(accountId, accountName, appState) 
   // Handle form submission
   document.getElementById('edit-investment-account-form').addEventListener('submit', async (e) => {
     e.preventDefault()
+    const formData = new FormData(e.target)
     
-    // TODO: Update in database
-    modalManager.close()
-    modalManager.showNotification('Investment account updated successfully', 'success')
-    
-    // Refresh the page
-    await renderInvestments(appState)
+    try {
+      // Update in database
+      const updates = {
+        name: formData.get('name'),
+        type: formData.get('type')
+      }
+      
+      await updateAccount(accountId, updates)
+      
+      modalManager.close()
+      modalManager.showNotification('Investment account updated successfully', 'success')
+      
+      // Reload investment accounts
+      appState.data.investmentAccounts = await fetchInvestmentAccounts()
+      
+      // Refresh the page
+      await renderInvestments(appState)
+    } catch (error) {
+      console.error('Failed to update investment account:', error)
+      modalManager.showNotification('Failed to update investment account', 'error')
+    }
   })
 }
 
@@ -364,13 +450,21 @@ async function handleDeleteInvestmentAccount(accountId, accountName, appState) {
   })
   
   if (confirmed) {
-    // TODO: Delete from database
-    console.log('Deleting investment account:', accountId)
-    
-    modalManager.showNotification('Investment account deleted successfully', 'success')
-    
-    // Refresh the page
-    await renderInvestments(appState)
+    try {
+      // Delete from database
+      await deleteAccount(accountId)
+      
+      modalManager.showNotification('Investment account deleted successfully', 'success')
+      
+      // Reload investment accounts
+      appState.data.investmentAccounts = await fetchInvestmentAccounts()
+      
+      // Refresh the page
+      await renderInvestments(appState)
+    } catch (error) {
+      console.error('Failed to delete investment account:', error)
+      modalManager.showNotification('Failed to delete investment account', 'error')
+    }
   }
 }
 
@@ -407,14 +501,30 @@ async function showAddHoldingModal(accountId, appState) {
     e.preventDefault()
     const formData = new FormData(e.target)
     
-    // TODO: Save to database
-    console.log('Adding holding to account:', accountId, Object.fromEntries(formData))
-    
-    modalManager.close()
-    modalManager.showNotification('Holding added successfully', 'success')
-    
-    // Refresh the page
-    await renderInvestments(appState)
+    try {
+      // Save to database
+      const shares = parseFloat(formData.get('shares'))
+      const price = parseFloat(formData.get('price'))
+      
+      const newHolding = {
+        account_id: accountId,
+        symbol: formData.get('symbol').toUpperCase(),
+        shares: shares,
+        current_price: price,
+        value: shares * price
+      }
+      
+      await createHolding(newHolding)
+      
+      modalManager.close()
+      modalManager.showNotification('Holding added successfully', 'success')
+      
+      // Refresh the page
+      await renderInvestments(appState)
+    } catch (error) {
+      console.error('Failed to add holding:', error)
+      modalManager.showNotification('Failed to add holding', 'error')
+    }
   })
 }
 
@@ -450,13 +560,31 @@ async function showEditHoldingModal(holdingId, symbol, appState) {
   // Handle form submission
   document.getElementById('edit-holding-form').addEventListener('submit', async (e) => {
     e.preventDefault()
+    const formData = new FormData(e.target)
     
-    // TODO: Update in database
-    modalManager.close()
-    modalManager.showNotification('Holding updated successfully', 'success')
-    
-    // Refresh the page
-    await renderInvestments(appState)
+    try {
+      // Update in database
+      const shares = parseFloat(formData.get('shares'))
+      const price = parseFloat(formData.get('price'))
+      
+      const updates = {
+        symbol: formData.get('symbol').toUpperCase(),
+        shares: shares,
+        current_price: price,
+        value: shares * price
+      }
+      
+      await updateHolding(holdingId, updates)
+      
+      modalManager.close()
+      modalManager.showNotification('Holding updated successfully', 'success')
+      
+      // Refresh the page
+      await renderInvestments(appState)
+    } catch (error) {
+      console.error('Failed to update holding:', error)
+      modalManager.showNotification('Failed to update holding', 'error')
+    }
   })
 }
 
@@ -473,13 +601,18 @@ async function handleDeleteHolding(holdingId, symbol, appState) {
   })
   
   if (confirmed) {
-    // TODO: Delete from database
-    console.log('Deleting holding:', holdingId)
-    
-    modalManager.showNotification('Holding deleted successfully', 'success')
-    
-    // Refresh the page
-    await renderInvestments(appState)
+    try {
+      // Delete from database
+      await deleteHolding(holdingId)
+      
+      modalManager.showNotification('Holding deleted successfully', 'success')
+      
+      // Refresh the page
+      await renderInvestments(appState)
+    } catch (error) {
+      console.error('Failed to delete holding:', error)
+      modalManager.showNotification('Failed to delete holding', 'error')
+    }
   }
 }
 
