@@ -79,13 +79,6 @@ export function createCashAccountForm(accountData = null) {
       disabled: isEdit // Can't change initial balance when editing
     },
     {
-      name: 'currency',
-      label: 'Currency',
-      type: 'select',
-      options: CURRENCIES,
-      value: accountData?.currency || 'USD'
-    },
-    {
       name: 'notes',
       label: 'Notes',
       type: 'textarea',
