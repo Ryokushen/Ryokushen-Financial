@@ -1,130 +1,391 @@
-// js/modules/ui.js
-// REMOVED: import { updateAllDisplays } from '../app.js';
-import * as Accounts from './accounts.js';
-import * as Transactions from './transactions.js';
-import * as Investments from './investments.js';
-import * as Debt from './debt.js';
-import * as Recurring from './recurring.js';
-import * as Savings from './savings.js';
-// We need these two to properly render the dashboard tab specifically
-import { createCharts } from './charts.js';
-import { updateDashboard } from './dashboard.js'; // Import from dashboard module
-import { modalManager } from './modalManager.js';
-import { debug } from './debug.js';
-import { reapplyPrivacy } from './privacy.js';
+// UI Utilities Module
 
-
-export function announceToScreenReader(message) {
-    const announcer = document.getElementById("screen-reader-announcer");
-    if (announcer) {
-        announcer.textContent = message;
-        setTimeout(() => {
-            announcer.textContent = "";
-        }, 1000);
+// Show loading overlay
+export function showLoading(message = 'Loading...') {
+  let overlay = document.getElementById('loading-overlay')
+  
+  if (!overlay) {
+    overlay = document.createElement('div')
+    overlay.id = 'loading-overlay'
+    overlay.className = 'loading-overlay'
+    overlay.innerHTML = `
+      <div class="loading-spinner"></div>
+      <div class="loading-text">${message}</div>
+    `
+    document.body.appendChild(overlay)
+  } else {
+    const loadingText = overlay.querySelector('.loading-text')
+    if (loadingText) {
+      loadingText.textContent = message
     }
+  }
+  
+  overlay.style.display = 'flex'
+  overlay.classList.add('animate-fadeIn')
 }
 
-export function showError(message) {
-    debug.error(message);
-    announceToScreenReader("Error: " + message);
-
-    const errorBanner = document.getElementById("error-banner");
-    const errorMessage = document.getElementById("error-message");
-
-    if (errorBanner && errorMessage) {
-        errorMessage.textContent = message;
-        errorBanner.style.display = 'flex';
-
-        setTimeout(() => {
-            if (errorBanner.style.display === 'flex') {
-                errorBanner.style.display = 'none';
-            }
-        }, 5000);
-    }
-}
-
-export function showSuccess(message) {
-    debug.log(message);
-    announceToScreenReader(message);
-}
-
-// Listen for custom show-error events from formUtils
-window.addEventListener('show-error', (e) => {
-    if (e.detail && e.detail.message) {
-        showError(e.detail.message);
-    }
-});
-
-export function switchTab(tabName, appState) {
-    // Force scroll to top when switching tabs
-    window.scrollTo(0, 0);
-    
-    // Prevent any focus that might cause scrolling
-    if (document.activeElement && document.activeElement !== document.body) {
-        document.activeElement.blur();
-    }
-
-    const tabContents = document.querySelectorAll(".tab-content");
-    tabContents.forEach(content => {
-        content.classList.remove("active");
-    });
-
-    const tabButtons = document.querySelectorAll(".tab-btn");
-    tabButtons.forEach(button => {
-        button.classList.remove("active");
-    });
-
-    const selectedTab = document.getElementById(tabName);
-    if (selectedTab) {
-        selectedTab.classList.add("active");
-    }
-
-    const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
-    if (activeButton) {
-        activeButton.classList.add("active");
-    }
-
-    tabButtons.forEach(button => {
-        button.classList.remove("active");
-        button.setAttribute('aria-selected', 'false');  // Add
-    });
-    if (activeButton) {
-        activeButton.classList.add("active");
-        activeButton.setAttribute('aria-selected', 'true');  // Add
-    }
-
-    announceToScreenReader(`Switched to ${tabName} tab`);
-
-    // CORRECTED LOGIC: Call specific renderers for each tab
-    if (tabName === "dashboard") {
-        // Call only what's needed for the dashboard
-        updateDashboard(appState);
-        createCharts(appState);
-    } else if (tabName === "accounts") {
-        Accounts.renderCashAccounts(appState);
-    } else if (tabName === "transactions") {
-        Transactions.renderTransactions(appState);
-    } else if (tabName === "investments") {
-        Investments.renderInvestmentAccountsEnhanced(appState);
-        Savings.renderSavingsGoals(appState);
-    } else if (tabName === "debt") {
-        Debt.renderDebtAccounts(appState);
-        // Create debt-specific charts when switching to debt tab
-        if (window.updateDebtCharts) {
-            window.updateDebtCharts(appState);
-        }
-    } else if (tabName === "recurring") {
-        Recurring.renderRecurringBills(appState);
-    }
-    
-    // Reapply privacy mode after rendering new content
+// Hide loading overlay
+export function hideLoading() {
+  const overlay = document.getElementById('loading-overlay')
+  if (overlay) {
+    overlay.classList.add('animate-fadeOut')
     setTimeout(() => {
-        reapplyPrivacy();
-    }, 100);
+      overlay.style.display = 'none'
+      overlay.classList.remove('animate-fadeOut')
+    }, 300)
+  }
 }
 
-// Use modalManager for all modal operations
-export const openModal = modalManager.open.bind(modalManager);
-export const closeModal = modalManager.close.bind(modalManager);
+// Show error message
+export function showError(message, duration = 5000) {
+  showToast(message, 'error', duration)
+}
 
-// Escape key handler is already managed by modalManager
+// Show success message
+export function showSuccess(message, duration = 3000) {
+  showToast(message, 'success', duration)
+}
+
+// Show info message
+export function showInfo(message, duration = 3000) {
+  showToast(message, 'info', duration)
+}
+
+// Show toast notification
+export function showToast(message, type = 'info', duration = 3000) {
+  // Create toast container if it doesn't exist
+  let toastContainer = document.getElementById('toast-container')
+  if (!toastContainer) {
+    toastContainer = document.createElement('div')
+    toastContainer.id = 'toast-container'
+    toastContainer.style.cssText = `
+      position: fixed;
+      top: 80px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      pointer-events: none;
+    `
+    document.body.appendChild(toastContainer)
+  }
+  
+  // Create toast element
+  const toast = document.createElement('div')
+  toast.className = `toast toast-${type} glass-panel animate-slideInRight`
+  toast.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 24px;
+    min-width: 300px;
+    max-width: 500px;
+    pointer-events: auto;
+    cursor: pointer;
+  `
+  
+  // Icons for different types
+  const icons = {
+    success: '✅',
+    error: '❌',
+    info: 'ℹ️',
+    warning: '⚠️'
+  }
+  
+  // Colors for different types
+  const colors = {
+    success: 'rgba(16, 185, 129, 0.2)',
+    error: 'rgba(239, 68, 68, 0.2)',
+    info: 'rgba(59, 130, 246, 0.2)',
+    warning: 'rgba(245, 158, 11, 0.2)'
+  }
+  
+  toast.style.backgroundColor = colors[type] || colors.info
+  
+  toast.innerHTML = `
+    <span class="toast-icon" style="font-size: 20px;">${icons[type] || icons.info}</span>
+    <span class="toast-message" style="flex: 1; color: var(--text-primary);">${message}</span>
+    <button class="toast-close" style="
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 4px;
+      font-size: 18px;
+    ">×</button>
+  `
+  
+  // Add to container
+  toastContainer.appendChild(toast)
+  
+  // Auto remove after duration
+  const removeToast = () => {
+    toast.classList.add('animate-slideOutRight')
+    setTimeout(() => {
+      toast.remove()
+      // Remove container if empty
+      if (toastContainer.children.length === 0) {
+        toastContainer.remove()
+      }
+    }, 300)
+  }
+  
+  const timeoutId = setTimeout(removeToast, duration)
+  
+  // Click to dismiss
+  toast.addEventListener('click', () => {
+    clearTimeout(timeoutId)
+    removeToast()
+  })
+}
+
+// Show confirmation dialog
+export function showConfirm(title, message, onConfirm, onCancel) {
+  return new Promise((resolve) => {
+    // Create modal backdrop
+    const backdrop = document.createElement('div')
+    backdrop.className = 'modal-backdrop modal-backdrop-glass animate-fadeIn'
+    
+    // Create modal content
+    const modal = document.createElement('div')
+    modal.className = 'modal-content glass-panel animate-scaleIn'
+    modal.style.maxWidth = '400px'
+    
+    modal.innerHTML = `
+      <div class="modal-header" style="margin-bottom: 24px;">
+        <h3 style="margin: 0; font-size: 1.25rem;">${title}</h3>
+      </div>
+      <div class="modal-body" style="margin-bottom: 32px;">
+        <p style="margin: 0; color: var(--text-secondary);">${message}</p>
+      </div>
+      <div class="modal-footer" style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button class="btn btn-glass" id="modal-cancel">Cancel</button>
+        <button class="btn btn-primary" id="modal-confirm">Confirm</button>
+      </div>
+    `
+    
+    backdrop.appendChild(modal)
+    document.body.appendChild(backdrop)
+    
+    // Handle buttons
+    const confirmBtn = modal.querySelector('#modal-confirm')
+    const cancelBtn = modal.querySelector('#modal-cancel')
+    
+    const closeModal = () => {
+      backdrop.classList.add('animate-fadeOut')
+      modal.classList.add('animate-scaleOut')
+      setTimeout(() => {
+        backdrop.remove()
+      }, 300)
+    }
+    
+    confirmBtn.addEventListener('click', () => {
+      closeModal()
+      if (onConfirm) onConfirm()
+      resolve(true)
+    })
+    
+    cancelBtn.addEventListener('click', () => {
+      closeModal()
+      if (onCancel) onCancel()
+      resolve(false)
+    })
+    
+    // Close on backdrop click
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) {
+        closeModal()
+        if (onCancel) onCancel()
+        resolve(false)
+      }
+    })
+  })
+}
+
+// Format currency
+export function formatCurrency(amount, options = {}) {
+  // Handle boolean shorthand for compact
+  if (typeof options === 'boolean') {
+    options = { compact: options }
+  }
+  
+  const {
+    currency = 'USD',
+    locale = 'en-US',
+    hideSymbol = false,
+    showPlus = false,
+    compact = false
+  } = options
+  
+  if (isNaN(amount)) return '$0.00'
+  
+  // For compact format
+  if (compact && Math.abs(amount) >= 1000) {
+    const absAmount = Math.abs(amount)
+    let value, suffix
+    
+    if (absAmount >= 1000000) {
+      value = absAmount / 1000000
+      suffix = 'M'
+    } else {
+      value = absAmount / 1000
+      suffix = 'K'
+    }
+    
+    const sign = amount < 0 ? '-' : (showPlus && amount > 0 ? '+' : '')
+    const formatted = value.toFixed(value < 10 ? 1 : 0)
+    return hideSymbol ? `${sign}${formatted}${suffix}` : `${sign}$${formatted}${suffix}`
+  }
+  
+  const formatted = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Math.abs(amount))
+  
+  let result = formatted
+  
+  if (hideSymbol) {
+    result = result.replace(/[^0-9.,\s-]/g, '').trim()
+  }
+  
+  if (amount < 0) {
+    result = `-${result}`
+  } else if (amount > 0 && showPlus) {
+    result = `+${result}`
+  }
+  
+  return result
+}
+
+// Format date
+export function formatDate(date, format = 'short') {
+  if (!date) return ''
+  
+  const d = new Date(date)
+  
+  switch (format) {
+    case 'short':
+      return d.toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric'
+      })
+    case 'medium':
+      return d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      })
+    case 'long':
+      return d.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      })
+    case 'relative':
+      return getRelativeTime(d)
+    default:
+      return d.toLocaleDateString()
+  }
+}
+
+// Get relative time
+export function getRelativeTime(date) {
+  const now = new Date()
+  const d = new Date(date)
+  const diff = now - d
+  
+  const seconds = Math.floor(diff / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+  
+  if (seconds < 60) return 'just now'
+  if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
+  if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`
+  if (days < 30) return `${Math.floor(days / 7)} week${Math.floor(days / 7) > 1 ? 's' : ''} ago`
+  if (days < 365) return `${Math.floor(days / 30)} month${Math.floor(days / 30) > 1 ? 's' : ''} ago`
+  
+  return d.toLocaleDateString()
+}
+
+// Create skeleton loader
+export function createSkeleton(type = 'text', options = {}) {
+  const skeleton = document.createElement('div')
+  skeleton.className = 'skeleton'
+  
+  switch (type) {
+    case 'text':
+      skeleton.className += ' skeleton-text'
+      skeleton.style.width = options.width || '100%'
+      break
+    case 'value':
+      skeleton.className += ' skeleton-value'
+      skeleton.style.width = options.width || '120px'
+      break
+    case 'card':
+      skeleton.style.height = options.height || '200px'
+      skeleton.style.borderRadius = 'var(--radius-lg)'
+      break
+    case 'circle':
+      skeleton.style.width = options.size || '40px'
+      skeleton.style.height = options.size || '40px'
+      skeleton.style.borderRadius = '50%'
+      break
+  }
+  
+  return skeleton
+}
+
+// Debounce function
+export function debounce(func, wait) {
+  let timeout
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout)
+      func(...args)
+    }
+    clearTimeout(timeout)
+    timeout = setTimeout(later, wait)
+  }
+}
+
+// Throttle function
+export function throttle(func, limit) {
+  let inThrottle
+  return function(...args) {
+    if (!inThrottle) {
+      func.apply(this, args)
+      inThrottle = true
+      setTimeout(() => inThrottle = false, limit)
+    }
+  }
+}
+
+// Copy to clipboard
+export async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text)
+    showSuccess('Copied to clipboard')
+    return true
+  } catch (err) {
+    console.error('Failed to copy:', err)
+    showError('Failed to copy to clipboard')
+    return false
+  }
+}
+
+// Privacy mode utilities
+export function maskValue(value, privacyMode = false) {
+  if (!privacyMode) return value
+  return '••••••'
+}
+
+export function maskCurrency(amount, privacyMode = false, options = {}) {
+  if (!privacyMode) return formatCurrency(amount, options)
+  return '••••••'
+}

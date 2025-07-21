@@ -1,786 +1,589 @@
-// js/app.js - Main Application Orchestrator
-import { supabaseAuth } from './modules/supabaseAuth.js';
-import db from './database.js';
-import { CHART_COLORS } from './modules/utils.js';
-import { showError, switchTab, announceToScreenReader } from './modules/ui.js';
-import { createCharts } from './modules/charts.js';
-import * as Accounts from './modules/accounts.js';
-import * as Transactions from './modules/transactions.js';
-import * as Investments from './modules/investments.js';
-import * as Debt from './modules/debt.js';
-import * as Recurring from './modules/recurring.js';
-import * as Savings from './modules/savings.js';
-import * as KPIs from './modules/kpis.js';
-import { renderBillsTimeline } from './modules/timeline.js';
-import { updateDashboard } from './modules/dashboard.js';
-import { debug } from './modules/debug.js';
-import { addMoney } from './modules/financialMath.js';
-import { privacyManager, togglePrivacyMode, enablePanicMode, reapplyPrivacy, isPrivacyMode } from './modules/privacy.js';
-import { GlobalVoiceInterface } from './modules/voice/globalVoiceInterface.js';
-import { dataIndex } from './modules/dataIndex.js';
-import { timeBudgets } from './modules/timeBudgets.js';
-import { initializeTimeSettings } from './modules/timeSettings.js';
-import { initializeTransactionTimePreview } from './modules/transactionTimePreview.js';
-import { initializePrivacySettings } from './modules/privacySettings.js';
-import { initRulesUI } from './modules/rulesUI.js';
-import { calendar } from './modules/calendar.js';
+// Modern UI - Main Application Orchestrator
 
-// Initialize app after auth is ready
-(async function initApp() {
-    // Wait for authentication to initialize
-    await supabaseAuth.waitForInit();
+import { APP_CONFIG, FEATURES, STORAGE_KEYS } from './config.js'
+import { initAuth, checkAuthStatus } from './modules/auth.js'
+import { initDashboard } from './modules/dashboard.js'
+import { initTheme } from './modules/theme.js'
+import { initNavigation } from './modules/navigation.js'
+import { showLoading, hideLoading, showError } from './modules/ui.js'
+import { initSupabase, setCachedAuthUser, setSkipAuthChecks, setInitialLoad } from './modules/database.js'
+import modalManager from './modules/modal.js'
+
+// Application State
+const appState = {
+  user: null,
+  theme: 'dark',
+  privacyMode: false,
+  currentPage: 'dashboard',
+  data: {
+    transactions: [],
+    cashAccounts: [],
+    investmentAccounts: [],
+    debtAccounts: [],
+    recurringBills: [],
+    savingsGoals: [],
+    smartRules: [],
+  },
+  cache: new Map(),
+  isLoading: false,
+  error: null,
+  initialized: false, // Prevent multiple initializations
+}
+
+// Make appState globally accessible for debugging
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+  window.appState = appState
+  
+  // Add database test functions for debugging
+  import('./modules/database.js').then(({ testDatabaseConnection, testInvestmentAccountsConnection }) => {
+    window.testDB = testDatabaseConnection
+    window.testInvestments = testInvestmentAccountsConnection
+  })
+}
+
+// Initialize Application
+async function initApp() {
+  // Prevent duplicate initialization
+  if (appState.initialized) {
+    console.log('App already initialized, skipping')
+    return
+  }
+  
+  try {
+    showLoading('Initializing Ryokushen...')
     
-    // Check for password reset token first
-    const hash = window.location.hash.substring(1);
-    const isPasswordReset = hash.includes('recovery');
-
-    if (isPasswordReset) {
-        // Handle password reset flow - already handled in initializeAuth
-        return;
-    } else if (!supabaseAuth.isAuthenticated()) {
-        // Show login screen only if not in password reset flow
-        supabaseAuth.showAuthScreen();
-        return;
+    // Initialize Supabase
+    await initSupabase()
+    
+    // Initialize auth listeners first
+    initAuth()
+    
+    // Check authentication status
+    const user = await checkAuthStatus()
+    
+    if (!user) {
+      // Show auth screen
+      hideLoading()
+      const { showAuthScreen } = await import('./modules/auth.js')
+      showAuthScreen()
+      return
     }
     
-    // User is authenticated, proceed with app initialization
+    // Mark as initialized
+    appState.initialized = true
     
-    // Configure Chart.js global defaults for better mobile responsiveness
-    if (typeof Chart !== 'undefined') {
-        Chart.defaults.responsive = true;
-        Chart.defaults.maintainAspectRatio = false;
-        Chart.defaults.plugins.legend.display = true;
-        Chart.defaults.plugins.legend.position = 'bottom';
-        Chart.defaults.plugins.legend.labels.boxWidth = 12;
-        Chart.defaults.plugins.legend.labels.padding = 10;
-        Chart.defaults.plugins.legend.labels.font = {
-            size: 11
-        };
+    // User is authenticated
+    appState.user = user
+    
+    // Cache the authenticated user for database queries
+    setCachedAuthUser(user)
+    
+    // Initialize theme
+    initTheme(appState)
+    
+    // Initialize navigation
+    initNavigation(appState)
+    
+    // Load initial data
+    await loadInitialData()
+    
+    // Initialize dashboard
+    await initDashboard(appState)
+    
+    // Hide auth modal if visible
+    const authModal = document.getElementById('auth-modal')
+    if (authModal) {
+      authModal.style.display = 'none'
     }
+    
+    // Setup event listeners
+    setupEventListeners()
+    
+    // Hide loading
+    hideLoading()
+    
+    // Show initial page
+    showPage('dashboard')
+    
+  } catch (error) {
+    console.error('Failed to initialize app:', error)
+    hideLoading()
+    showError('Failed to initialize application. Please refresh and try again.')
+    // Reset initialized flag on error
+    appState.initialized = false
+  }
+}
 
-    const appState = {
-        appData: {
-            transactions: [],
-            cashAccounts: [],
-            investmentAccounts: [],
-            debtAccounts: [],
-            recurringBills: [],
-            savingsGoals: []
-        },
-        CHART_COLORS: CHART_COLORS,
-        balanceCache: new Map()
-    };
+// Progressive data loading state
+const loadingState = {
+  accounts: 'pending',
+  transactions: 'pending',
+  bills: 'pending',
+  rules: 'pending',
+  progress: 0,
+  total: 4
+}
 
-    // Global voice interface instance
-    let globalVoiceInterface = null;
+// Update loading progress
+function updateLoadingProgress(module, status) {
+  loadingState[module] = status
+  if (status === 'loaded' || status === 'failed') {
+    loadingState.progress++
+  }
+  
+  const percentage = Math.round((loadingState.progress / loadingState.total) * 100)
+  showLoading(`Loading your financial data... ${percentage}%`)
+}
 
-    // Global error handlers
-    window.addEventListener('unhandledrejection', event => {
-        debug.error('Unhandled promise rejection:', event.reason);
-        showError('An unexpected error occurred. Please refresh the page if issues persist.');
-        event.preventDefault();
-    });
+// Load Initial Data Progressively
+async function loadInitialData() {
+  try {
+    showLoading('Loading your financial data... 0%')
+    
+    // Skip auth checks during initial load since we know user is authenticated
+    setSkipAuthChecks(true)
+    
+    // Mark as initial load for longer timeouts
+    setInitialLoad(true)
+    
+    // Import data modules
+    const modules = {
+      accounts: await import('./modules/accounts.js'),
+      transactions: await import('./modules/transactions.js'),
+      bills: await import('./modules/recurringBills.js'),
+      rules: await import('./modules/smartRules.js')
+    }
+    
+    // Load critical data first (accounts needed for dashboard)
+    try {
+      updateLoadingProgress('accounts', 'loading')
+      const accountData = await modules.accounts.loadAccounts()
+      appState.data = {
+        ...appState.data,
+        cashAccounts: accountData.cashAccounts || [],
+        investmentAccounts: accountData.investmentAccounts || [],
+        debtAccounts: accountData.debtAccounts || []
+      }
+      updateLoadingProgress('accounts', 'loaded')
+    } catch (error) {
+      console.error('Failed to load accounts:', error)
+      updateLoadingProgress('accounts', 'failed')
+      // Continue with empty accounts
+      appState.data.cashAccounts = []
+      appState.data.investmentAccounts = []
+      appState.data.debtAccounts = []
+    }
+    
+    // Load transactions (limited to recent ones for dashboard)
+    try {
+      updateLoadingProgress('transactions', 'loading')
+      const transactions = await modules.transactions.loadTransactions()
+      appState.data.transactions = transactions || []
+      updateLoadingProgress('transactions', 'loaded')
+    } catch (error) {
+      console.error('Failed to load transactions:', error)
+      updateLoadingProgress('transactions', 'failed')
+      appState.data.transactions = []
+    }
+    
+    // Load bills and rules in background (not critical for dashboard)
+    const backgroundPromises = []
+    
+    // Load bills
+    backgroundPromises.push(
+      modules.bills.loadRecurringBills()
+        .then(bills => {
+          appState.data.recurringBills = bills || []
+          updateLoadingProgress('bills', 'loaded')
+        })
+        .catch(error => {
+          console.error('Failed to load bills:', error)
+          appState.data.recurringBills = []
+          updateLoadingProgress('bills', 'failed')
+        })
+    )
+    
+    // Load smart rules
+    backgroundPromises.push(
+      modules.rules.loadSmartRules()
+        .then(rules => {
+          appState.data.smartRules = rules || []
+          updateLoadingProgress('rules', 'loaded')
+          
+          // Process rules if enabled
+          if (FEATURES.SMART_RULES && rules.length > 0 && appState.data.transactions.length > 0) {
+            return modules.rules.processTransactions(appState.data.transactions, rules)
+          }
+        })
+        .catch(error => {
+          console.error('Failed to load rules:', error)
+          appState.data.smartRules = []
+          updateLoadingProgress('rules', 'failed')
+        })
+    )
+    
+    // Wait for background tasks with timeout
+    await Promise.race([
+      Promise.all(backgroundPromises),
+      new Promise(resolve => setTimeout(resolve, 10000)) // 10s timeout for background tasks
+    ])
+    
+  } catch (error) {
+    console.error('Failed to load data:', error)
+    showError('Failed to load some data. Some features may be limited.')
+  } finally {
+    // Re-enable auth checks after initial load
+    setSkipAuthChecks(false)
+    
+    // Reset initial load flag
+    setInitialLoad(false)
+  }
+}
 
-    window.addEventListener('error', event => {
-        debug.error('Global error:', event.error);
-        showError('An unexpected error occurred. Please refresh the page if issues persist.');
-        event.preventDefault();
-    });
-
-    // Network status handlers
-    window.addEventListener('online', () => {
-        const banner = document.getElementById('offline-banner');
-        if (banner) banner.style.display = 'none';
-        announceToScreenReader('Connection restored');
-    });
-
-    window.addEventListener('offline', () => {
-        showError('No internet connection. Some features may not work.');
-    });
-
-    document.addEventListener("DOMContentLoaded", async () => {
+// Show Page
+async function showPage(pageName) {
+  try {
+    // Update current page
+    appState.currentPage = pageName
+    
+    // Update navigation
+    updateNavigation(pageName)
+    
+    // Update page title
+    const pageTitle = document.getElementById('page-title')
+    if (pageTitle) {
+      pageTitle.textContent = pageName.charAt(0).toUpperCase() + pageName.slice(1)
+    }
+    
+    // Load page content
+    const pageContent = document.getElementById('page-content')
+    if (!pageContent) return
+    
+    // Clear current content
+    pageContent.innerHTML = ''
+    pageContent.className = 'page-content animate-fadeIn'
+    
+    // Load page module and render
+    switch (pageName) {
+      case 'dashboard':
+        const { renderDashboard } = await import('./modules/dashboard.js')
+        await renderDashboard(appState)
+        break
+        
+      case 'accounts':
+        const { renderAccounts } = await import('./modules/accounts.js')
+        await renderAccounts(appState)
+        break
+        
+      case 'transactions':
+        const { renderTransactions } = await import('./modules/transactions.js')
+        await renderTransactions(appState)
+        break
+        
+      case 'investments':
+        console.log('=== ROUTING TO INVESTMENTS PAGE ===')
         try {
-            // Add user info and logout button to header
-            addUserInfoToHeader();
-    checkEmailVerification();
-            
-            await initializeApp();
-            setupEventListeners();
+          console.log('Importing investments module...')
+          const investmentsModule = await import(`./modules/investments.js?t=${Date.now()}`)
+          console.log('Investments module imported:', investmentsModule)
+          console.log('renderInvestments function:', investmentsModule.renderInvestments)
+          
+          console.log('Calling renderInvestments...')
+          await investmentsModule.renderInvestments(appState)
+          console.log('renderInvestments completed')
         } catch (error) {
-            showError("Fatal: Could not initialize the application. " + error.message);
-            debug.error("Initialization Error:", error);
+          console.error('Error in investments routing:', error)
         }
-    });
-
-    async function initializeApp() {
-        // Setup modal manager
-        const { setupCommonModals } = await import('./modules/modalManager.js');
-        setupCommonModals();
+        break
         
-        // Initialize privacy manager now that DOM is ready
-        privacyManager.init();
+      case 'debt':
+        const { renderDebt } = await import('./modules/debt.js?t=' + Date.now())
+        await renderDebt(appState)
+        break
         
-        await loadAllData();
+      case 'bills':
+        const { renderBills } = await import('./modules/bills.js')
+        await renderBills(appState)
+        break
         
-        // Initialize smart rules after data is loaded
-        const { smartRules } = await import('./modules/smartRules.js');
-        await smartRules.init();
+      case 'rules':
+        const { renderRules } = await import('./modules/rules.js')
+        await renderRules(appState)
+        break
         
-        // Make smartRules globally accessible for UI components
-        window.smartRules = smartRules;
+      case 'settings':
+        const { renderSettings } = await import('./modules/settings.js')
+        await renderSettings(appState)
+        break
         
-        // Initialize rule templates UI
-        const { ruleTemplatesUI } = await import('./modules/ruleTemplatesUI.js');
-        ruleTemplatesUI.init();
-        
-        // Initialize smart rules UI
-        initRulesUI();
-        
-        // Initialize calendar
-        calendar.init();
-
-        calculateAccountBalances();
-
-        await updateAllDisplays(appState); // Initial render
-        const transactionDate = document.getElementById("transaction-date");
-        if (transactionDate) {
-            transactionDate.value = new Date().toISOString().split("T")[0];
-        }
-
-        // Initialize global voice interface after all data is loaded
-        try {
-            globalVoiceInterface = new GlobalVoiceInterface(appState);
-            debug.log('Global voice interface initialized');
-        } catch (error) {
-            debug.error('Failed to initialize voice interface:', error);
-        }
-    }
-
-    async function loadAllData() {
-        try {
-            const dataTypes = ['transactions', 'investmentAccounts', 'cashAccounts', 'debtAccounts', 'recurringBills', 'savingsGoals'];
-            const results = await Promise.allSettled([
-                db.getTransactions(),
-                db.getInvestmentAccounts(),
-                db.getCashAccounts(),
-                db.getDebtAccounts(),
-                db.getRecurringBills(),
-                db.getSavingsGoals()
-            ]);
-            
-            // Process results and handle partial failures
-            const [transactionsResult, investmentAccountsResult, cashAccountsResult, debtAccountsResult, recurringBillsResult, savingsGoalsResult] = results;
-            
-            // Set default empty arrays for failed loads
-            const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
-            const investmentAccounts = investmentAccountsResult.status === 'fulfilled' ? investmentAccountsResult.value : [];
-            const cashAccounts = cashAccountsResult.status === 'fulfilled' ? cashAccountsResult.value : [];
-            const debtAccounts = debtAccountsResult.status === 'fulfilled' ? debtAccountsResult.value : [];
-            const recurringBills = recurringBillsResult.status === 'fulfilled' ? recurringBillsResult.value : [];
-            const savingsGoals = savingsGoalsResult.status === 'fulfilled' ? savingsGoalsResult.value : [];
-            
-            // Log any failures
-            results.forEach((result, index) => {
-                if (result.status === 'rejected') {
-                    debug.error(`Failed to load ${dataTypes[index]}:`, result.reason);
-                    showError(`Warning: Failed to load ${dataTypes[index]}. Some features may be limited.`);
-                }
-            });
-
-            // Map data with proper null checks and safe parsing
-            appState.appData.transactions = transactions.map(t => ({ 
-                ...t, 
-                amount: t.amount != null ? parseFloat(t.amount) : 0 
-            }));
-            
-            appState.appData.cashAccounts = cashAccounts.map(c => ({ 
-                ...c, 
-                isActive: c.is_active,
-                balance: c.balance != null ? parseFloat(c.balance) : 0
-            }));
-            
-            appState.appData.investmentAccounts = investmentAccounts.map(Investments.mapInvestmentAccount);
-            
-            appState.appData.debtAccounts = debtAccounts.map(d => ({
-                ...d,
-                balance: d.balance != null ? parseFloat(d.balance) : 0,
-                interestRate: d.interest_rate != null ? parseFloat(d.interest_rate) : 0,
-                minimumPayment: d.minimum_payment != null ? parseFloat(d.minimum_payment) : 0,
-                creditLimit: d.credit_limit != null ? parseFloat(d.credit_limit) : null,
-                dueDate: d.due_date
-            }));
-
-            // UPDATED: Handle new payment method fields for recurring bills
-            appState.appData.recurringBills = recurringBills.map(b => ({
-                ...b,
-                amount: b.amount != null ? parseFloat(b.amount) : 0,
-                nextDue: b.next_due,
-                active: b.active !== undefined ? b.active : true,
-                paymentMethod: b.payment_method || 'cash', // Default to cash for backward compatibility
-                debtAccountId: b.debt_account_id // Add debt account ID field
-            }));
-
-            appState.appData.savingsGoals = savingsGoals.map(g => ({
-                ...g,
-                targetAmount: g.target_amount != null ? parseFloat(g.target_amount) : 0,
-                currentAmount: g.current_amount != null ? parseFloat(g.current_amount) : 0,
-                linkedAccountId: g.linked_account_id,
-                targetDate: g.target_date,
-                createdDate: g.created_date,
-                completedDate: g.completed_date
-            }));
-
-            await migrateDebtTransactions(appState.appData.transactions, appState.appData.debtAccounts);
-            
-            // Run credit card sign migration
-            await migrateCreditCardTransactionSigns(appState.appData.transactions);
-            
-            // Build data indexes for fast lookups
-            dataIndex.rebuildIndexes(appState.appData);
-        } catch (error) {
-            debug.error("Data Loading Error:", error);
-            showError("Could not load financial data from the database. Please refresh the page.");
-            // Prevent app from proceeding with empty state
-            appState.appData = {
-                transactions: [],
-                cashAccounts: [],
-                investmentAccounts: [],
-                debtAccounts: [],
-                recurringBills: [],
-                savingsGoals: []
-            };
-        }
-    }
-
-    // Function to check email verification status
-    function checkEmailVerification() {
-        if (!supabaseAuth.isAuthenticated()) return;
-        
-        if (!supabaseAuth.isEmailVerified()) {
-            // Create verification banner
-            const banner = document.createElement('div');
-            banner.id = 'email-verification-banner';
-            banner.className = 'verification-banner';
-            banner.innerHTML = `
-                <div class="verification-content">
-                    <span class="verification-icon">⚠️</span>
-                    <span class="verification-text">Please verify your email address. Check your inbox for a verification link.</span>
-                    <button id="resend-verification" class="btn btn--small">Resend Email</button>
-                </div>
-            `;
-            
-            // Add styles
-            const style = document.createElement('style');
-            style.textContent = `
-                .verification-banner {
-                    background: var(--color-warning, #FFA500);
-                    color: white;
-                    padding: 12px 20px;
-                    text-align: center;
-                    position: sticky;
-                    top: 0;
-                    z-index: 1000;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }
-                
-                .verification-content {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 12px;
-                    max-width: 800px;
-                    margin: 0 auto;
-                }
-                
-                .verification-icon {
-                    font-size: 20px;
-                }
-                
-                .verification-text {
-                    flex: 1;
-                    font-size: 14px;
-                }
-                
-                #resend-verification {
-                    background: white;
-                    color: var(--color-warning, #FFA500);
-                    border: none;
-                    padding: 6px 16px;
-                    font-size: 13px;
-                    font-weight: 500;
-                }
-                
-                #resend-verification:hover {
-                    background: rgba(255, 255, 255, 0.9);
-                }
-                
-                @media (max-width: 768px) {
-                    .verification-content {
-                        flex-wrap: wrap;
-                        text-align: center;
-                    }
-                    
-                    .verification-text {
-                        width: 100%;
-                        margin-bottom: 8px;
-                    }
-                }
-            `;
-            document.head.appendChild(style);
-            
-            // Insert banner at the top of the body
-            document.body.insertBefore(banner, document.body.firstChild);
-            
-            // Add resend handler
-            document.getElementById('resend-verification').addEventListener('click', async () => {
-                const btn = document.getElementById('resend-verification');
-                const originalText = btn.textContent;
-                btn.disabled = true;
-                btn.textContent = 'Sending...';
-                
-                try {
-                    const user = supabaseAuth.getUser();
-                    const { error } = await supabaseAuth.supabase.auth.resend({
-                        type: 'signup',
-                        email: user.email,
-                    });
-                    
-                    if (error) throw error;
-                    
-                    btn.textContent = 'Email Sent!';
-                    setTimeout(() => {
-                        btn.textContent = originalText;
-                        btn.disabled = false;
-                    }, 3000);
-                } catch (error) {
-                    console.error('Failed to resend verification email:', error);
-                    btn.textContent = 'Failed';
-                    setTimeout(() => {
-                        btn.textContent = originalText;
-                        btn.disabled = false;
-                    }, 3000);
-                }
-            });
-        }
-    }
-
-    // Function to add user info and logout button to header
-    function addUserInfoToHeader() {
-        const header = document.querySelector('.header');
-        if (!header) return;
-        
-        const user = supabaseAuth.getUser();
-        if (!user) return;
-        
-        // Create a wrapper for the header content
-        const headerContent = document.createElement('div');
-        headerContent.className = 'header-content';
-        
-        // Move existing header children to the wrapper
-        const h1 = header.querySelector('h1');
-        const tabNav = header.querySelector('.tab-nav');
-        
-        if (h1) headerContent.appendChild(h1);
-        
-        // Create user info container
-        const userInfoContainer = document.createElement('div');
-        userInfoContainer.className = 'user-info-container';
-        userInfoContainer.innerHTML = `
-            <span class="user-email">${user.email}</span>
-            <button id="logout-btn" class="btn btn--small btn--secondary">Logout</button>
-        `;
-        
-        headerContent.appendChild(userInfoContainer);
-        if (tabNav) headerContent.appendChild(tabNav);
-        
-        // Clear header and add the new structure
-        header.innerHTML = '';
-        header.appendChild(headerContent);
-        
-        // Add styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .header-content {
-                display: flex;
-                flex-direction: column;
-                width: 100%;
-            }
-            
-            .header h1 {
-                margin-bottom: 0;
-            }
-            
-            .user-info-container {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                align-self: flex-end;
-                margin-top: -30px;
-                margin-right: 20px;
-                margin-bottom: 10px;
-            }
-            
-            .user-email {
-                color: var(--color-text-secondary);
-                font-size: 13px;
-            }
-            
-            #logout-btn {
-                padding: 5px 12px;
-                font-size: 13px;
-                background: var(--color-surface);
-                border: 1px solid var(--color-border);
-                color: var(--color-text);
-                transition: all 0.2s ease;
-            }
-            
-            #logout-btn:hover {
-                background: var(--color-error);
-                color: white;
-                border-color: var(--color-error);
-            }
-            
-            @media (max-width: 768px) {
-                .user-info-container {
-                    margin-top: 0;
-                    margin-bottom: 15px;
-                    align-self: center;
-                }
-                
-                .user-email {
-                    display: none;
-                }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        // Re-add the voice button if it exists
-        const voiceBtn = document.getElementById('global-voice-btn');
-        if (voiceBtn && voiceBtn.parentElement !== header) {
-            header.appendChild(voiceBtn);
-        }
-        
-        // Add logout handler
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            if (confirm('Are you sure you want to logout?')) {
-                supabaseAuth.logout();
-            }
-        });
-    }
-
-    // Optimized account balance calculation with better data structures
-    function calculateAccountBalances() {
-        appState.balanceCache.clear();
-
-        // Create a map for O(1) balance updates
-        const balanceMap = new Map();
-        
-        // Initialize all accounts with 0 balance
-        appState.appData.cashAccounts.forEach(account => {
-            balanceMap.set(account.id, 0);
-        });
-
-        // Single pass through transactions to calculate balances
-        appState.appData.transactions.forEach(transaction => {
-            if (transaction.account_id && balanceMap.has(transaction.account_id)) {
-                const currentBalance = balanceMap.get(transaction.account_id);
-                balanceMap.set(transaction.account_id, currentBalance + transaction.amount);
-            }
-        });
-
-        // Update accounts and cache
-        appState.appData.cashAccounts.forEach(account => {
-            const balance = balanceMap.get(account.id) || 0;
-            account.balance = balance;
-            appState.balanceCache.set(account.id, balance);
-        });
-    }
-
-    function updateAccountBalance(accountId, amountChange) {
-        const account = appState.appData.cashAccounts.find(a => a.id === accountId);
-        if (account) {
-            account.balance = addMoney(account.balance || 0, amountChange);
-            appState.balanceCache.set(accountId, account.balance);
-        }
-    }
-
-    function setupEventListeners() {
-        const onUpdate = () => {
-            // Rebuild data indexes for fast lookups
-            dataIndex.rebuildIndexes(appState.appData);
-            
-            // Clear KPI cache when data is updated
-            import('./modules/kpis.js')
-                .then(kpis => kpis.clearKPICache())
-                .catch(error => debug.error('Failed to clear KPI cache:', error));
-            updateAllDisplays(appState);
-            
-            // Update voice interface with new app state
-            if (globalVoiceInterface) {
-                globalVoiceInterface.updateAppState(appState);
-            }
-        };
-
-        // Prevent unwanted scrolling on body clicks
-        document.addEventListener('click', (e) => {
-            // If clicking on body or non-interactive elements
-            if (e.target === document.body || 
-                (!e.target.closest('button, a, input, select, textarea, [role="button"], .clickable, label'))) {
-                e.preventDefault();
-                // Keep focus on current element or blur
-                if (document.activeElement && document.activeElement !== document.body) {
-                    document.activeElement.blur();
-                }
-            }
-        }, true);
-
-        document.querySelectorAll(".tab-btn").forEach(button => {
-            button.addEventListener("click", function () { switchTab(this.getAttribute("data-tab"), appState); });
-        });
-        
-        // Initialize time settings UI
-        initializeTimeSettings();
-        
-        // Initialize transaction time preview
-        initializeTransactionTimePreview();
-        
-        // Initialize privacy settings when settings tab is clicked
-        document.getElementById('settings-tab-btn')?.addEventListener('click', () => {
-            setTimeout(() => initializePrivacySettings(), 100);
-        });
-        
-        // Expose timeBudgets globally for debugging (only in development)
-        if (window.location.hostname === 'localhost' || window.location.protocol === 'file:') {
-            window.timeBudgets = timeBudgets;
-            debug.log('TimeBudgets exposed globally for debugging');
-        }
-
-        // Pass the balance update function to modules that need it
-        const enhancedAppState = {
-            ...appState,
-            updateAccountBalance
-        };
-
-        Accounts.setupEventListeners(enhancedAppState, onUpdate);
-        Transactions.setupEventListeners(enhancedAppState, onUpdate);
-        Investments.setupEventListeners(enhancedAppState, onUpdate);
-        Debt.setupEventListeners(enhancedAppState, onUpdate);
-        Recurring.setupEventListeners(enhancedAppState, onUpdate);
-        Savings.setupEventListeners(enhancedAppState, onUpdate);
-        
-        // Setup privacy mode event listeners
-        const privacyToggleBtn = document.getElementById('privacy-toggle-btn');
-        if (privacyToggleBtn) {
-            privacyToggleBtn.addEventListener('click', async () => {
-                await togglePrivacyMode();
-            });
-        }
-        
-        const panicButton = document.getElementById('panic-button');
-        if (panicButton) {
-            panicButton.addEventListener('click', () => {
-                enablePanicMode();
-            });
-        }
-        
-        // Add privacy listener to reapply on data updates
-        privacyManager.addListener(() => {
-            // First, reapply privacy mode to blur/unblur elements
-            reapplyPrivacy();
-            
-            // Then refresh charts with a single delay to ensure privacy state is propagated
-            setTimeout(() => {
-                const currentPrivacyMode = isPrivacyMode();
-                
-                // Get the current active tab
-                const activeTab = document.querySelector('.tab-content.active');
-                const activeTabId = activeTab ? activeTab.id : 'dashboard';
-                
-                // Refresh charts based on active tab
-                if (activeTabId === 'dashboard') {
-                    createCharts(appState);
-                } else if (activeTabId === 'debt' && window.updateDebtCharts) {
-                    window.updateDebtCharts(appState);
-                } else if (activeTabId === 'investments' && window.lastInvestmentData && window.lastInvestmentChartType) {
-                    window.updateInvestmentCharts(window.lastInvestmentData, window.lastInvestmentChartType);
-                }
-            }, 250); // Chart refresh delay - kept at 250ms for stability
-        });
-    }
-
-    // This function just re-renders the components with the current state.
-    // Optimized to only update visible content
-    async function updateAllDisplays(state, options = {}) {
-        const { forceAll = false, specificUpdate = null } = options;
-        
-        // Track what needs updating
-        const updates = {
-            dashboard: false,
-            dropdowns: false,
-            activeTab: true
-        };
-        
-        // If specific update requested, only do that
-        if (specificUpdate) {
-            switch (specificUpdate) {
-                case 'dashboard':
-                    updateDashboard(state);
-                    return;
-                case 'accounts':
-                    Accounts.renderCashAccounts(state);
-                    Accounts.populateAccountDropdowns(state.appData);
-                    return;
-                case 'transactions':
-                    Transactions.renderTransactions(state);
-                    return;
-                case 'charts':
-                    createCharts(state);
-                    return;
-            }
-        }
-        
-        // Always update dashboard metrics and dropdowns as they're lightweight
-        updateDashboard(state);
-        Accounts.populateAccountDropdowns(state.appData);
-        Debt.populateDebtAccountDropdown(state.appData);
-        
-        // Get the current active tab
-        const activeTab = document.querySelector('.tab-content.active');
-        const activeTabId = activeTab ? activeTab.id : 'dashboard';
-        
-        // If forcing all updates or no active tab, update everything
-        if (forceAll || !activeTab) {
-            const cashList = document.getElementById("cash-accounts-list");
-            if (cashList) Accounts.renderCashAccounts(state);
-
-            const transactionsBody = document.getElementById("transactions-table-body");
-            if (transactionsBody) Transactions.renderTransactions(state);
-
-            const investmentsList = document.getElementById("investment-accounts-list");
-            if (investmentsList) Investments.renderInvestmentAccountsEnhanced(state);
-
-            const savingsList = document.getElementById("savings-goals-list");
-            if (savingsList) Savings.renderSavingsGoals(state);
-
-            const debtList = document.getElementById("debt-accounts-list");
-            if (debtList) Debt.renderDebtAccounts(state);
-
-            const recurringList = document.getElementById("all-recurring-bills-list");
-            if (recurringList) Recurring.renderRecurringBills(state);
-
-            createCharts(state);
-        } else {
-            // Only update content for the active tab
-            switch (activeTabId) {
-                case 'dashboard':
-                    createCharts(state);
-                    break;
-                case 'accounts':
-                    const cashList = document.getElementById("cash-accounts-list");
-                    if (cashList) Accounts.renderCashAccounts(state);
-                    break;
-                case 'transactions':
-                    Transactions.renderTransactions(state);
-                    break;
-                case 'investments':
-                    const investmentsList = document.getElementById("investment-accounts-list");
-                    if (investmentsList) Investments.renderInvestmentAccountsEnhanced(state);
-                    const savingsList = document.getElementById("savings-goals-list");
-                    if (savingsList) Savings.renderSavingsGoals(state);
-                    break;
-                case 'debt':
-                    const debtList = document.getElementById("debt-accounts-list");
-                    if (debtList) Debt.renderDebtAccounts(state);
-                    if (window.updateDebtCharts) {
-                        window.updateDebtCharts(state);
-                    }
-                    break;
-                case 'recurring':
-                    const recurringList = document.getElementById("all-recurring-bills-list");
-                    if (recurringList) Recurring.renderRecurringBills(state);
-                    break;
-                case 'rules':
-                    // Rules UI manages its own rendering
-                    break;
-            }
-            
-            // Handle specific updates if requested
-            if (specificUpdate) {
-                switch (specificUpdate) {
-                    case 'transactions':
-                        Transactions.renderTransactions(state);
-                        break;
-                    case 'accounts':
-                        const cashList = document.getElementById("cash-accounts-list");
-                        if (cashList) Accounts.renderCashAccounts(state);
-                        break;
-                    // Add more specific update cases as needed
-                }
-            }
-        }
-        
-        // Reapply privacy mode after all updates
-        reapplyPrivacy();
-    }
-
-    // Dashboard functionality moved to dashboard.js module
-
-    async function migrateDebtTransactions(transactions, debtAccounts) {
-        // Make migration idempotent: only migrate if debt_account exists and debt_account_id is null
-        const db = (await import('./database.js')).default;
-        for (const t of transactions.filter(t => t.category === 'Debt' && t.debt_account && !t.debt_account_id)) {
-            const debtAccount = debtAccounts.find(d => d.name === t.debt_account);
-            if (debtAccount) {
-                t.debt_account_id = debtAccount.id;
-                await db.updateTransaction(t.id, { debt_account_id: t.debt_account_id });
-                delete t.debt_account;  // Clean up old field
-            } else {
-                debug.warn(`Migration: No matching debt account for transaction ${t.id}`);
-            }
-        }
+      default:
+        pageContent.innerHTML = '<p>Page not found</p>'
     }
     
-    async function migrateCreditCardTransactionSigns(transactions) {
-        // One-time migration to fix credit card transaction signs
-        // This ensures all expenses are negative and all payments are positive
-        const db = (await import('./database.js')).default;
-        const migrationKey = 'creditCardSignMigration_v1';
-        
-        // Check if migration has already been run
-        if (localStorage.getItem(migrationKey) === 'completed') {
-            return;
-        }
-        
-        debug.log('Running credit card transaction sign migration...');
-        
-        // Find all credit card transactions that need sign adjustment
-        const ccTransactions = transactions.filter(t => t.debt_account_id && !t.account_id);
-        let migratedCount = 0;
-        
-        for (const t of ccTransactions) {
-            let needsUpdate = false;
-            let newAmount = t.amount;
-            
-            // If it's a positive amount (old system: debt increase), make it negative (expense)
-            if (t.amount > 0) {
-                newAmount = -Math.abs(t.amount);
-                needsUpdate = true;
-            }
-            // If it's a negative amount (old system: payment), make it positive
-            else if (t.amount < 0) {
-                newAmount = Math.abs(t.amount);
-                needsUpdate = true;
-            }
-            
-            if (needsUpdate) {
-                t.amount = newAmount;
-                await db.updateTransaction(t.id, { amount: newAmount });
-                migratedCount++;
-            }
-        }
-        
-        // Mark migration as completed
-        localStorage.setItem(migrationKey, 'completed');
-        debug.log(`Credit card sign migration completed. Updated ${migratedCount} transactions.`);
+  } catch (error) {
+    console.error(`Failed to load page ${pageName}:`, error)
+    showError(`Failed to load ${pageName} page`)
+  }
+}
+
+// Update Navigation
+function updateNavigation(activePage) {
+  // Update sidebar navigation
+  document.querySelectorAll('.nav-item').forEach(item => {
+    if (item.dataset.page === activePage) {
+      item.classList.add('active')
+    } else {
+      item.classList.remove('active')
     }
-})(); // Close the async IIFE
+  })
+  
+  // Update mobile navigation if exists
+  document.querySelectorAll('.mobile-nav-item').forEach(item => {
+    if (item.dataset.page === activePage) {
+      item.classList.add('active')
+    } else {
+      item.classList.remove('active')
+    }
+  })
+}
+
+// Setup Event Listeners
+function setupEventListeners() {
+  // Navigation clicks
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const page = item.dataset.page
+      if (page && page !== appState.currentPage) {
+        showPage(page)
+      }
+    })
+  })
+  
+  // Privacy toggle
+  const privacyToggle = document.getElementById('privacy-toggle')
+  if (privacyToggle) {
+    privacyToggle.addEventListener('click', () => {
+      togglePrivacyMode()
+    })
+  }
+  
+  // Theme toggle
+  const themeToggle = document.getElementById('theme-toggle')
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      toggleTheme()
+    })
+  }
+  
+  // Logout button
+  const logoutBtn = document.getElementById('logout-btn')
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      if (confirm('Are you sure you want to logout?')) {
+        await logout()
+      }
+    })
+  }
+  
+  // Mobile menu toggle
+  const mobileMenuToggle = document.getElementById('mobile-menu-toggle')
+  const sidebar = document.getElementById('sidebar')
+  if (mobileMenuToggle && sidebar) {
+    mobileMenuToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('mobile-open')
+    })
+  }
+  
+  // Close sidebar on mobile when clicking outside
+  document.addEventListener('click', (e) => {
+    if (window.innerWidth < 768) {
+      const sidebar = document.getElementById('sidebar')
+      const mobileMenuToggle = document.getElementById('mobile-menu-toggle')
+      if (sidebar && 
+          sidebar.classList.contains('mobile-open') && 
+          !sidebar.contains(e.target) && 
+          e.target !== mobileMenuToggle) {
+        sidebar.classList.remove('mobile-open')
+      }
+    }
+  })
+  
+  // Handle resize events
+  let resizeTimer
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(() => {
+      handleResize()
+    }, 250)
+  })
+}
+
+// Toggle Privacy Mode
+function togglePrivacyMode() {
+  appState.privacyMode = !appState.privacyMode
+  
+  // Update UI
+  document.body.classList.toggle('privacy-mode', appState.privacyMode)
+  
+  // Update icon
+  const privacyToggle = document.getElementById('privacy-toggle')
+  if (privacyToggle) {
+    const icon = privacyToggle.querySelector('.theme-icon')
+    if (icon) {
+      icon.textContent = appState.privacyMode ? '👁️' : '👁️‍🗨️'
+    }
+  }
+  
+  // Save preference
+  localStorage.setItem(STORAGE_KEYS.privacyMode, appState.privacyMode)
+  
+  // Refresh current page to apply privacy mode
+  showPage(appState.currentPage)
+}
+
+// Toggle Theme
+function toggleTheme() {
+  const newTheme = appState.theme === 'dark' ? 'light' : 'dark'
+  appState.theme = newTheme
+  
+  // Update DOM
+  document.documentElement.setAttribute('data-theme', newTheme)
+  
+  // Update icon
+  const themeToggle = document.getElementById('theme-toggle')
+  if (themeToggle) {
+    const icon = themeToggle.querySelector('.theme-icon')
+    if (icon) {
+      icon.textContent = newTheme === 'dark' ? '🌙' : '☀️'
+    }
+  }
+  
+  // Save preference
+  localStorage.setItem(STORAGE_KEYS.theme, newTheme)
+}
+
+// Handle Window Resize
+function handleResize() {
+  const width = window.innerWidth
+  
+  // Close mobile sidebar on desktop
+  if (width >= 768) {
+    const sidebar = document.getElementById('sidebar')
+    if (sidebar) {
+      sidebar.classList.remove('mobile-open')
+    }
+  }
+  
+  // Refresh charts if on dashboard
+  if (appState.currentPage === 'dashboard') {
+    import('./modules/dashboard.js').then(({ refreshCharts }) => {
+      if (refreshCharts) {
+        refreshCharts(appState)
+      }
+    })
+  }
+}
+
+// Logout
+async function logout() {
+  try {
+    showLoading('Logging out...')
+    
+    const { signOut } = await import('./modules/auth.js')
+    await signOut()
+    
+    // Clear app state
+    appState.user = null
+    appState.data = {
+      transactions: [],
+      cashAccounts: [],
+      investmentAccounts: [],
+      debtAccounts: [],
+      recurringBills: [],
+      savingsGoals: [],
+      smartRules: [],
+    }
+    
+    // Redirect to auth
+    window.location.reload()
+    
+  } catch (error) {
+    console.error('Logout failed:', error)
+    hideLoading()
+    showError('Failed to logout. Please try again.')
+  }
+}
+
+// Continue initialization after authentication
+export async function continueWithUser(user) {
+  // Prevent duplicate initialization
+  if (appState.initialized) {
+    console.log('App already initialized, skipping continueWithUser')
+    return
+  }
+  
+  try {
+    showLoading('Loading your financial data...')
+    
+    // Mark as initialized early to prevent race conditions
+    appState.initialized = true
+    
+    // User is authenticated
+    appState.user = user
+    
+    // Cache the authenticated user for database queries
+    setCachedAuthUser(user)
+    
+    // Initialize theme
+    initTheme(appState)
+    
+    // Initialize navigation
+    initNavigation(appState)
+    
+    // Load initial data
+    await loadInitialData()
+    
+    // Initialize dashboard
+    await initDashboard(appState)
+    
+    // Setup event listeners
+    setupEventListeners()
+    
+    // Hide loading
+    hideLoading()
+    
+    // Show initial page
+    showPage('dashboard')
+    
+  } catch (error) {
+    console.error('Failed to continue initialization:', error)
+    hideLoading()
+    showError('Failed to load application. Please refresh and try again.')
+    // Reset initialized flag on error
+    appState.initialized = false
+  }
+}
+
+// Global error handler
+window.addEventListener('unhandledrejection', event => {
+  console.error('Unhandled promise rejection:', event.reason)
+  showError('An unexpected error occurred. Please refresh if issues persist.')
+})
+
+// Initialize app when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp)
+} else {
+  initApp()
+}
+
+// Export functions for modules
+export {
+  appState,
+  showPage,
+  loadInitialData,
+  modalManager,
+}
+
+// Export default for auth module
+export default { continueWithUser }

@@ -1,1562 +1,394 @@
-// js/modules/transactions.js
-import db from '../database.js';
-import { safeParseFloat, escapeHtml, formatDate, formatCurrency, getNextDueDate } from './utils.js';
-import { showError, announceToScreenReader } from './ui.js';
-import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, ValidationRules } from './validation.js';
-import { handleSavingsGoalTransactionDeletion } from './savings.js';
-import { debug } from './debug.js';
-import { addMoney, subtractMoney } from './financialMath.js';
-import { dataIndex } from './dataIndex.js';
-import { debounce } from './performanceUtils.js';
-import { populateFormFromData, extractFormData } from './formUtils.js';
-import { timeBudgets } from './timeBudgets.js';
+// Transactions Module - Improved Design
 
-let currentCategoryFilter = "";
-let editingTransactionId = null;
-let originalTransaction = null;
-let appStateReference = null;
+import { getTransactions as fetchTransactions } from './database.js'
+import { formatCurrency, formatDate, maskCurrency, debounce } from './ui.js'
 
-// Store event listener references for cleanup
-const eventListeners = new Map();
-
-// Function to populate the transfer-to-account dropdown
-function populateTransferToAccount(type, excludeAccount = null) {
-    const transferToSelect = document.getElementById("transfer-to-account");
-    if (!transferToSelect) return;
-    
-    // Clear existing options
-    transferToSelect.innerHTML = '<option value="">— Select destination account —</option>';
-    
-    if (!appStateReference || !appStateReference.appData) return;
-    
-    const { cashAccounts, debtAccounts } = appStateReference.appData;
-    
-    if (type === 'payment') {
-        // For payments, show only credit card (debt) accounts
-        const creditCards = debtAccounts.filter(a => a.type === 'Credit Card');
-        creditCards.forEach(account => {
-            const option = document.createElement('option');
-            option.value = `cc_${account.id}`;
-            option.textContent = account.name;
-            transferToSelect.appendChild(option);
-        });
-        
-        if (creditCards.length === 0) {
-            transferToSelect.innerHTML = '<option value="">No credit cards available</option>';
-        }
-    } else if (type === 'transfer') {
-        // For transfers, show cash accounts excluding the selected from account
-        const activeAccounts = cashAccounts.filter(a => 
-            a.isActive && `cash_${a.id}` !== excludeAccount
-        );
-        
-        activeAccounts.forEach(account => {
-            const option = document.createElement('option');
-            option.value = `cash_${account.id}`;
-            option.textContent = account.name;
-            transferToSelect.appendChild(option);
-        });
-        
-        if (activeAccounts.length === 0) {
-            transferToSelect.innerHTML = '<option value="">No other cash accounts available</option>';
-        }
-    }
+// Filter state
+let filterState = {
+  searchQuery: '',
+  category: '',
+  selectedDate: null
 }
 
-export function setupEventListeners(appState, onUpdate) {
-    // Clean up any existing listeners first
-    cleanupEventListeners();
-    
-    // Store reference to appState for use in other functions
-    appStateReference = appState;
-    
-    // Helper to add and track event listeners
-    const addEventListener = (elementId, event, handler) => {
-        const element = document.getElementById(elementId);
-        if (element) {
-            element.addEventListener(event, handler);
-            eventListeners.set(`${elementId}_${event}`, { element, event, handler });
-        }
-    };
-    
-    // Transaction form submit
-    const transactionSubmitHandler = (e) => handleTransactionSubmit(e, appState, onUpdate);
-    addEventListener("transaction-form", "submit", transactionSubmitHandler);
-    
-    // Add account change listener
-    document.getElementById("transaction-account")?.addEventListener("change", function () {
-        const categoryValue = document.getElementById("transaction-category")?.value;
-        
-        // Warn about Debt category with credit cards
-        if (categoryValue === "Debt" && this.value && this.value.startsWith('cc_')) {
-            showError("For credit card transactions, please use a regular category instead of 'Debt'. The 'Debt' category is for non-account debt payments.");
-            document.getElementById("transaction-category").value = ""; // Reset the category
-        }
-        
-        // For transfers, update the to-account dropdown to exclude the selected from account
-        if (categoryValue === "Transfer") {
-            populateTransferToAccount('transfer', this.value);
-        }
-        
-        // For payments, only allow cash accounts in the from dropdown
-        if (categoryValue === "Payment" && this.value && this.value.startsWith('cc_')) {
-            showError("For payments, please select a cash account as the source. Credit card accounts cannot be used to pay other debts.");
-            this.value = ""; // Reset the selection
-        }
-    });
+// Store original transactions
+let allTransactions = []
 
-    document.getElementById("transaction-category")?.addEventListener("change", function () {
-        const debtGroup = document.getElementById("debt-account-group");
-        const transferGroup = document.getElementById("transfer-account-group");
-        const accountLabel = document.querySelector('label[for="transaction-account"]');
-        const transferToAccount = document.getElementById("transfer-to-account");
-        
-        // Hide all special groups by default
-        if (debtGroup) debtGroup.style.display = "none";
-        if (transferGroup) transferGroup.style.display = "none";
-        
-        // Reset account label
-        if (accountLabel) accountLabel.textContent = "Account";
-        
-        // Handle special categories
-        if (this.value === "Debt") {
-            if (debtGroup) debtGroup.style.display = "block";
-        } else if (this.value === "Payment" || this.value === "Transfer") {
-            // Show transfer account group
-            if (transferGroup) transferGroup.style.display = "block";
-            
-            // Update labels based on category
-            if (this.value === "Payment") {
-                if (accountLabel) accountLabel.textContent = "From Account (Cash)";
-                // Populate transfer-to-account with debt accounts for payments
-                populateTransferToAccount('payment');
-            } else if (this.value === "Transfer") {
-                if (accountLabel) accountLabel.textContent = "From Account";
-                // Populate transfer-to-account with cash accounts for transfers
-                populateTransferToAccount('transfer');
-            }
-            
-            // Clear the to-account selection
-            if (transferToAccount) transferToAccount.value = "";
-        }
-        
-        // Warn users about using Debt category with credit card accounts
-        const accountValue = document.getElementById("transaction-account")?.value;
-        if (this.value === "Debt" && accountValue && accountValue.startsWith('cc_')) {
-            showError("For credit card transactions, please use a regular category instead of 'Debt'. For payments, use the 'Payment' category. The 'Debt' category is for non-account debt payments.");
-            this.value = ""; // Reset the category
-        }
-    });
+// Mock data as fallback
+const mockTransactions = [
+  { id: 1, description: 'Grocery Store', amount: -125.50, date: '2025-01-20', category: 'Food', account_id: 1 },
+  { id: 2, description: 'Salary Deposit', amount: 3500.00, date: '2025-01-15', category: 'Income', account_id: 1 },
+  { id: 3, description: 'Electric Bill', amount: -89.75, date: '2025-01-18', category: 'Utilities', account_id: 1 }
+]
 
-    // Debounced filter handler for better performance
-    const debouncedFilter = debounce((e) => {
-        currentCategoryFilter = e.target.value;
-        renderTransactions(appState, currentCategoryFilter);
-    }, 300);
+// Load transactions from database
+export async function loadTransactions() {
+  try {
+    console.log('Loading transactions from database...')
+    // Load only recent transactions for initial performance (last 100)
+    const transactions = await fetchTransactions({ 
+      limit: 100,
+      startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // Last 90 days
+    })
     
-    document.getElementById("filter-category")?.addEventListener("change", debouncedFilter);
-
-    document.getElementById("transactions-table-body")?.addEventListener('click', (event) => {
-        const dataId = event.target.getAttribute('data-id');
-        if (!dataId) return; // Skip if no data-id attribute
-        
-        const transactionId = parseInt(dataId);
-        if (isNaN(transactionId)) {
-            debug.error('Invalid transaction ID:', dataId);
-            return;
-        }
-
-        if (event.target.classList.contains('btn-delete-transaction')) {
-            event.stopPropagation();
-            deleteTransaction(transactionId, appState, onUpdate);
-        } else if (event.target.classList.contains('btn-edit-transaction')) {
-            event.stopPropagation();
-            editTransaction(transactionId, appState);
-        }
-    });
-
-    // Cancel edit button
-    document.getElementById("cancel-edit-btn")?.addEventListener('click', () => {
-        console.log('Cancel edit button clicked');
-        cancelEdit();
-    });
-
-    // Voice input button
-    setupVoiceInput();
-    
-    // Listen for transaction categorization from Smart Rules
-    window.addEventListener('transaction:categorized', (event) => {
-        if (event.detail && event.detail.transactionId) {
-            const { transactionId, newCategory } = event.detail;
-            
-            // Update the transaction in app state
-            const transaction = appState.appData.transactions.find(t => t.id === transactionId);
-            if (transaction) {
-                transaction.category = newCategory;
-                
-                // Refresh the transaction display
-                renderTransactions(appState, currentCategoryFilter);
-                
-                debug.log(`Transaction ${transactionId} categorized as ${newCategory}`);
-            }
-        }
-    });
-    
-    // Listen for request to refresh all transactions
-    window.addEventListener('transactions:refresh', async () => {
-        try {
-            // Reload transactions from database
-            const freshTransactions = await db.getTransactions();
-            appState.appData.transactions = freshTransactions;
-            
-            // Refresh the display
-            renderTransactions(appState, currentCategoryFilter);
-            
-            debug.log('Transactions refreshed from database');
-        } catch (error) {
-            debug.error('Failed to refresh transactions:', error);
-        }
-    });
+    console.log(`Loaded ${transactions.length} transactions from database`)
+    allTransactions = transactions
+    return allTransactions
+  } catch (error) {
+    console.error('Failed to load transactions:', error)
+    // Use mock data as fallback
+    console.log('Using mock transaction data as fallback')
+    allTransactions = mockTransactions
+    return allTransactions
+  }
 }
 
-async function setupVoiceInput() {
-    const voiceButton = document.getElementById('voice-input-btn');
-    const descriptionInput = document.getElementById('transaction-description');
-    
-    if (!voiceButton || !descriptionInput) return;
-
-    // Lazy load voice module only when needed
-    let voiceInput = null;
-    
-    voiceButton.addEventListener('click', async () => {
-        try {
-            // Load voice module on first use
-            if (!voiceInput) {
-                const { voiceInput: VoiceInput } = await import('./voice/voiceInput.js');
-                voiceInput = VoiceInput;
-                
-                // Check browser support
-                if (!voiceInput.isSupported) {
-                    document.body.classList.add('no-voice-support');
-                    voiceButton.disabled = true;
-                    showError('Voice input is not supported in your browser. Please use Chrome or Safari.');
-                    return;
-                }
-            }
-
-            // Toggle voice input
-            if (voiceInput.listening) {
-                voiceInput.stopListening();
-                voiceButton.classList.remove('recording');
-            } else {
-                const started = await voiceInput.startListening(descriptionInput, {
-                    onResult: (result) => {
-                        if (result.isFinal) {
-                            voiceButton.classList.remove('recording');
-                            announceToScreenReader('Voice input complete');
-                        }
-                    },
-                    onSmartParsed: (smartResult) => {
-                        // Handle smart parsing results
-                        const { extractedData, validation, fillResult } = smartResult;
-                        
-                        if (validation.warnings.length > 0) {
-                            debug.warn('Voice parsing warnings:', validation.warnings);
-                        }
-                        
-                        if (fillResult.success) {
-                            announceToScreenReader(`Smart voice input filled ${fillResult.fieldsChanged.length} fields`);
-                        }
-                    },
-                    onError: (error) => {
-                        voiceButton.classList.remove('recording');
-                        showError(`Voice input error: ${error}`);
-                    },
-                    onEnd: () => {
-                        voiceButton.classList.remove('recording');
-                    }
-                });
-
-                if (started) {
-                    voiceButton.classList.add('recording');
-                    announceToScreenReader('Voice input started. Speak now.');
-                }
-            }
-        } catch (error) {
-            debug.error('Failed to setup voice input:', error);
-            showError('Voice input is not available.');
-            voiceButton.disabled = true;
-        }
-    });
+// Calculate summary statistics
+function calculateSummary(transactions) {
+  const summary = {
+    totalIncome: 0,
+    totalExpenses: 0,
+    netBalance: 0
+  }
+  
+  transactions.forEach(t => {
+    if (t.amount > 0) {
+      summary.totalIncome += t.amount
+    } else {
+      summary.totalExpenses += Math.abs(t.amount)
+    }
+  })
+  
+  summary.netBalance = summary.totalIncome - summary.totalExpenses
+  return summary
 }
 
-function editTransaction(id, appState) {
-    debug.log('editTransaction called with id:', id);
-    const transaction = appState.appData.transactions.find(t => t.id === id);
-    if (!transaction) {
-        showError("Transaction not found.");
-        return;
-    }
-    debug.log('Found transaction:', transaction);
-
-    // Store the original transaction for reverting changes (deep clone)
-    originalTransaction = JSON.parse(JSON.stringify(transaction));
-    editingTransactionId = id;
-
-    // Update form title and button text
-    const formTitle = document.querySelector('.card__header h3');
-    debug.log('Form title element:', formTitle);
-    if (formTitle) {
-        formTitle.textContent = 'Edit Transaction';
-    }
-
-    const submitBtn = document.querySelector('#transaction-form button[type="submit"]');
-    debug.log('Submit button element:', submitBtn);
-    if (submitBtn) {
-        submitBtn.textContent = 'Update Transaction';
-    }
-
-    // Show cancel button
-    showCancelButton();
-
-    // Populate form with transaction data using formUtils
-    const formData = {
-        date: transaction.date,
-        account: '', // Will be set below with proper format
-        category: transaction.category,
-        description: transaction.description,
-        amount: transaction.amount,
-        cleared: transaction.cleared || false
-    };
-    
-    // Set the account value in the correct format
-    if (transaction.debt_account_id && !transaction.account_id) {
-        // This is a credit card transaction
-        formData.account = `cc_${transaction.debt_account_id}`;
-        
-        // Reverse the sign convention for user-friendly editing
-        // Credit Card Sign Convention for Edit Mode:
-        // - Stored purchases (negative) → Display as positive for editing
-        // - Stored payments (positive) → Display as negative for editing
-        // This maintains consistency with how users initially enter amounts
-        
-        if (transaction.amount < 0) {
-            // Stored purchase (negative) -> show as positive
-            formData.amount = Math.abs(transaction.amount);
-            debug.log('Edit mode - Credit card purchase:', transaction.amount, 'displayed as:', formData.amount);
-        } else if (transaction.amount > 0) {
-            // Stored payment (positive) -> show as negative
-            formData.amount = -Math.abs(transaction.amount);
-            debug.log('Edit mode - Credit card payment:', transaction.amount, 'displayed as:', formData.amount);
-        }
-    } else if (transaction.account_id) {
-        // This is a cash account transaction
-        formData.account = `cash_${transaction.account_id}`;
-    }
-    
-    // Add debt account if applicable (for old debt category transactions)
-    if (transaction.category === "Debt" && transaction.debt_account_id) {
-        const debtAccount = appState.appData.debtAccounts.find(d => d.id === transaction.debt_account_id);
-        if (debtAccount) {
-            formData['debt-account-select'] = debtAccount.name;
-        }
-    }
-    
-    // Debug log to check form data
-    debug.log('Editing transaction with formData:', formData);
-    
-    // Check if form fields exist before populating
-    const dateField = document.getElementById('transaction-date');
-    const accountField = document.getElementById('transaction-account');
-    const categoryField = document.getElementById('transaction-category');
-    const descriptionField = document.getElementById('transaction-description');
-    const amountField = document.getElementById('transaction-amount');
-    const clearedField = document.getElementById('transaction-cleared');
-    
-    debug.log('Form fields found:', {
-        date: !!dateField,
-        account: !!accountField,
-        category: !!categoryField,
-        description: !!descriptionField,
-        amount: !!amountField,
-        cleared: !!clearedField
-    });
-    
-    // Populate fields manually if they exist
-    if (dateField) dateField.value = formData.date;
-    if (accountField) accountField.value = formData.account;
-    if (categoryField) categoryField.value = formData.category;
-    if (descriptionField) descriptionField.value = formData.description;
-    if (amountField) amountField.value = formData.amount;
-    if (clearedField) clearedField.checked = formData.cleared;
-
-    // Handle debt account visibility
-    const debtGroup = document.getElementById("debt-account-group");
-    if (debtGroup) {
-        debtGroup.style.display = transaction.category === "Debt" ? "block" : "none";
-    }
-
-    // Scroll to form
-    const form = document.getElementById("transaction-form");
-    if (form) {
-        form.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    announceToScreenReader("Transaction loaded for editing");
+// Format category name for CSS class
+function getCategoryClass(category) {
+  if (!category) return 'other'
+  return category.toLowerCase().replace(/\s+/g, '-')
 }
 
-function cancelEdit() {
-    console.log('cancelEdit called');
-    editingTransactionId = null;
-    originalTransaction = null;
-
-    // Reset form title and button text
-    const formTitle = document.querySelector('.card__header h3');
-    if (formTitle) {
-        formTitle.textContent = 'Add New Transaction';
-    }
-
-    const submitBtn = document.querySelector('#transaction-form button[type="submit"]');
-    if (submitBtn) {
-        submitBtn.textContent = 'Add Transaction';
-    }
-
-    // Hide cancel button
-    hideCancelButton();
-
-    // Reset form
-    const form = document.getElementById("transaction-form");
-    if (form) {
-        form.reset();
-        
-        // Reset the account dropdown to default
-        const accountSelect = document.getElementById("transaction-account");
-        if (accountSelect) {
-            accountSelect.value = "";
-        }
-    }
-    const dateInput = document.getElementById("transaction-date");
-    if (dateInput) {
-        dateInput.value = new Date().toISOString().split("T")[0];
-    }
-    const debtGroup = document.getElementById("debt-account-group");
-    if (debtGroup) {
-        debtGroup.style.display = "none";
-    }
-    const transferGroup = document.getElementById("transfer-account-group");
-    if (transferGroup) {
-        transferGroup.style.display = "none";
-    }
-    
-    // Reset account label
-    const accountLabel = document.querySelector('label[for="transaction-account"]');
-    if (accountLabel) {
-        accountLabel.textContent = "Account";
-    }
-
-    // Re-render transactions to remove the highlighted row
-    if (appStateReference) {
-        renderTransactions(appStateReference);
-    }
-
-    announceToScreenReader("Edit cancelled");
+// Render transactions page
+export async function renderTransactions(appState) {
+  const container = document.getElementById('page-content')
+  if (!container) return
+  
+  // Store transactions globally
+  allTransactions = appState.data.transactions
+  
+  // Get filtered transactions and calculate summary
+  const filteredTransactions = getFilteredTransactions()
+  const summary = calculateSummary(filteredTransactions)
+  
+  // Get current date for default filter
+  const today = new Date().toISOString().split('T')[0]
+  
+  container.innerHTML = `
+    <div class="transactions-page">
+      <!-- Page Header -->
+      <div class="page-header">
+        <h1 class="page-title">Transactions</h1>
+        <button class="add-transaction-btn" id="add-transaction-btn">
+          <span>+</span>
+          <span>Add Transaction</span>
+        </button>
+      </div>
+      
+      <!-- Summary Cards -->
+      <div class="summary-cards">
+        <div class="summary-card">
+          <div class="summary-label">Total Income</div>
+          <div class="summary-value summary-income">
+            ${maskCurrency(summary.totalIncome, appState.privacyMode, { showPlus: true })}
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Total Expenses</div>
+          <div class="summary-value summary-expense">
+            ${maskCurrency(-summary.totalExpenses, appState.privacyMode)}
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Net Balance</div>
+          <div class="summary-value summary-balance">
+            ${maskCurrency(summary.netBalance, appState.privacyMode, { showPlus: true })}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Filters Section -->
+      <div class="filters-section">
+        <div class="search-container">
+          <span class="search-icon">🔍</span>
+          <input 
+            type="text" 
+            class="search-input" 
+            id="search-input"
+            placeholder="Search transactions..." 
+            value="${filterState.searchQuery}"
+          >
+        </div>
+        <select class="filter-select" id="category-filter">
+          <option value="">All Categories</option>
+          <option value="Income" ${filterState.category === 'Income' ? 'selected' : ''}>Income</option>
+          <option value="Healthcare" ${filterState.category === 'Healthcare' ? 'selected' : ''}>Healthcare</option>
+          <option value="Dining" ${filterState.category === 'Dining' ? 'selected' : ''}>Dining</option>
+          <option value="Food" ${filterState.category === 'Food' ? 'selected' : ''}>Food</option>
+          <option value="Transfer" ${filterState.category === 'Transfer' ? 'selected' : ''}>Transfer</option>
+          <option value="Payment" ${filterState.category === 'Payment' ? 'selected' : ''}>Payment</option>
+          <option value="Investment" ${filterState.category === 'Investment' ? 'selected' : ''}>Investment</option>
+          <option value="Entertainment" ${filterState.category === 'Entertainment' ? 'selected' : ''}>Entertainment</option>
+          <option value="Shopping" ${filterState.category === 'Shopping' ? 'selected' : ''}>Shopping</option>
+          <option value="Transportation" ${filterState.category === 'Transportation' ? 'selected' : ''}>Transportation</option>
+          <option value="Housing" ${filterState.category === 'Housing' ? 'selected' : ''}>Housing</option>
+          <option value="Utilities" ${filterState.category === 'Utilities' ? 'selected' : ''}>Utilities</option>
+          <option value="Other" ${filterState.category === 'Other' ? 'selected' : ''}>Other</option>
+        </select>
+        <input 
+          type="date" 
+          class="date-input" 
+          id="date-filter"
+          value="${filterState.selectedDate || ''}"
+        >
+      </div>
+      
+      <!-- Transactions Table -->
+      <div class="transactions-table-container">
+        ${renderTransactionsTable(filteredTransactions, appState.privacyMode)}
+      </div>
+    </div>
+  `
+  
+  // Set up filter event listeners
+  setupFilterListeners(appState)
+  
+  // Set up add transaction button
+  setupTransactionEventHandlers()
 }
 
-function showCancelButton() {
-    let cancelBtn = document.getElementById("cancel-edit-btn");
-    if (!cancelBtn) {
-        // Create cancel button if it doesn't exist
-        const submitBtn = document.querySelector('#transaction-form button[type="submit"]');
-        if (!submitBtn || !submitBtn.parentNode) return;
-        cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.id = 'cancel-edit-btn';
-        cancelBtn.className = 'btn btn--secondary';
-        cancelBtn.textContent = 'Cancel Edit';
-        cancelBtn.style.marginLeft = '10px';
-        submitBtn.parentNode.insertBefore(cancelBtn, submitBtn.nextSibling);
-        
-        // Add event listener to the newly created button
-        cancelBtn.addEventListener('click', () => {
-            console.log('Cancel edit button clicked (from dynamic creation)');
-            cancelEdit();
-        });
-    }
-    cancelBtn.style.display = 'inline-block';
-}
-
-function hideCancelButton() {
-    const cancelBtn = document.getElementById("cancel-edit-btn");
-    if (cancelBtn) {
-        cancelBtn.style.display = 'none';
-    }
-}
-
-async function handleTransactionSubmit(event, appState, onUpdate) {
-    event.preventDefault();
-    
-    // Clear previous errors
-    clearFormErrors('transaction-form');
-
-    try {
-        // Get the selected account value (format: "cash_123" or "cc_123")
-        const accountValue = document.getElementById("transaction-account")?.value;
-        let accountId = null;
-        let debtAccountId = null;
-        let isCredit = false;
-        
-        // Parse the account type and ID
-        if (accountValue && accountValue.includes('_')) {
-            const parts = accountValue.split('_');
-            if (parts.length === 2) {
-                const [accountType, id] = parts;
-                const parsedId = parseInt(id);
-                
-                if (!isNaN(parsedId)) {
-                    if (accountType === 'cash') {
-                        accountId = parsedId;
-                    } else if (accountType === 'cc') {
-                        debtAccountId = parsedId;
-                        isCredit = true;
-                    }
-                } else {
-                    showError("Invalid account selection.");
-                    return;
-                }
-            } else {
-                showError("Invalid account format.");
-                return;
-            }
-        }
-        
-        const transactionData = {
-            date: document.getElementById("transaction-date")?.value,
-            account_id: accountId,
-            category: document.getElementById("transaction-category")?.value,
-            description: document.getElementById("transaction-description")?.value,
-            amount: safeParseFloat(document.getElementById("transaction-amount")?.value),
-            cleared: document.getElementById("transaction-cleared")?.checked,
-            debt_account_id: debtAccountId
-        };
-
-        // Validate using validation schema
-        const { errors, hasErrors } = validateForm(transactionData, ValidationSchemas.transaction);
-        
-        if (hasErrors) {
-            // Show field-level errors
-            Object.entries(errors).forEach(([field, error]) => {
-                showFieldError(`transaction-${field}`, error);
-            });
-            showError("Please correct the errors in the form.");
-            return;
-        }
-
-        // Handle credit card transactions (but not for Payment/Transfer categories)
-        if (isCredit && transactionData.category !== "Payment" && transactionData.category !== "Transfer") {
-            // Credit Card Transaction Sign Convention:
-            // - UI Input: User enters purchases as positive (e.g., $50 for a purchase)
-            // - UI Input: User enters payments as negative (e.g., -$100 for a payment)
-            // - Storage: Purchases stored as negative (expenses reduce cash/increase debt)
-            // - Storage: Payments stored as positive (payments increase cash/reduce debt)
-            // - Display: Negative amounts shown in red (expenses), positive in green (payments)
-            
-            // Validate amount
-            if (isNaN(transactionData.amount) || transactionData.amount === 0) {
-                showError("Please enter a valid amount.");
-                return;
-            }
-            
-            // Apply sign convention based on transaction type
-            const userAmount = transactionData.amount;
-            
-            if (userAmount > 0) {
-                // User entered positive amount = purchase/charge
-                // Store as negative (expense)
-                transactionData.amount = -Math.abs(userAmount);
-                debug.log('Credit card purchase:', userAmount, 'stored as:', transactionData.amount);
-            } else if (userAmount < 0) {
-                // User entered negative amount = payment
-                // Store as positive (income/payment)  
-                transactionData.amount = Math.abs(userAmount);
-                debug.log('Credit card payment:', userAmount, 'stored as:', transactionData.amount);
-            }
-            
-            // IMPORTANT: Don't process as "Debt" category if it's a credit card transaction
-            // The old "Debt" category logic below is for legacy compatibility only
-        } else if (transactionData.category === "Debt" && !isCredit) {
-            // Old debt category logic for backwards compatibility
-            const debtAccountName = document.getElementById("debt-account-select")?.value;
-            if (!debtAccountName) {
-                showError("Please select a debt account for this payment.");
-                return;
-            }
-
-            const debtAccount = appState.appData.debtAccounts.find(d => d.name === debtAccountName);
-            if (debtAccount) {
-                transactionData.debt_account_id = debtAccount.id;
-            }
-
-            // Enforce sign consistency for debt: positive = charge (increase debt), negative = payment (decrease debt)
-            if (transactionData.amount > 0 && !confirm("Positive amount for Debt will increase the debt balance (e.g., a charge). Proceed?")) {
-                return;
-            } else if (transactionData.amount < 0 && !confirm("Negative amount for Debt will decrease the debt balance (e.g., a payment). Proceed?")) {
-                return;
-            }
-        } else {
-            // Cash transactions need an account
-            if (!transactionData.account_id || isNaN(transactionData.account_id)) {
-                showError("Please select a valid account.");
-                return;
-            }
-        }
-
-        // Check if this is a Payment or Transfer transaction that needs linked entries
-        if ((transactionData.category === "Payment" || transactionData.category === "Transfer") && !editingTransactionId) {
-            // Get the transfer-to account
-            const transferToValue = document.getElementById("transfer-to-account")?.value;
-            if (!transferToValue) {
-                showError(`Please select a destination account for the ${transactionData.category.toLowerCase()}.`);
-                return;
-            }
-            
-            // Add linked transaction (Payment or Transfer)
-            await addLinkedTransaction(transactionData, transferToValue, appState, onUpdate);
-        } else if (editingTransactionId) {
-            // Update existing transaction
-            await updateTransaction(editingTransactionId, transactionData, appState, onUpdate);
-        } else {
-            // Add new single transaction
-            await addNewTransaction(transactionData, appState, onUpdate);
-        }
-
-    } catch (error) {
-        debug.error("Error handling transaction:", error);
-        showError("Failed to save transaction. " + error.message);
-    }
-}
-
-async function addLinkedTransaction(fromTransactionData, toAccountValue, appState, onUpdate) {
-    try {
-        // Parse the to-account type and ID
-        let toAccountId = null;
-        let toDebtAccountId = null;
-        
-        if (toAccountValue && toAccountValue.includes('_')) {
-            const parts = toAccountValue.split('_');
-            if (parts.length === 2) {
-                const [accountType, id] = parts;
-                const parsedId = parseInt(id);
-                
-                if (!isNaN(parsedId)) {
-                    if (accountType === 'cash') {
-                        toAccountId = parsedId;
-                    } else if (accountType === 'cc') {
-                        toDebtAccountId = parsedId;
-                    }
-                }
-            }
-        }
-        
-        // Create linked description
-        const baseDescription = fromTransactionData.description;
-        const fromAccountName = getAccountName(fromTransactionData.account_id, fromTransactionData.debt_account_id, appState);
-        const toAccountName = getAccountName(toAccountId, toDebtAccountId, appState);
-        
-        // Create the two linked transactions
-        const transaction1 = { ...fromTransactionData };
-        const transaction2 = {
-            date: fromTransactionData.date,
-            account_id: toAccountId,
-            debt_account_id: toDebtAccountId,
-            category: fromTransactionData.category,
-            description: baseDescription,
-            cleared: fromTransactionData.cleared
-        };
-        
-        if (fromTransactionData.category === "Payment") {
-            // Payment: money goes from cash account to debt account
-            // Transaction 1: Negative amount in cash account (money out)
-            transaction1.amount = -Math.abs(fromTransactionData.amount);
-            transaction1.description = `${baseDescription} → ${toAccountName}`;
-            
-            // Transaction 2: Positive amount in debt account (payment reduces debt)
-            transaction2.amount = Math.abs(fromTransactionData.amount);
-            transaction2.description = `${baseDescription} ← ${fromAccountName}`;
-        } else if (fromTransactionData.category === "Transfer") {
-            // Transfer: money goes from one cash account to another
-            // Transaction 1: Negative amount in from account
-            transaction1.amount = -Math.abs(fromTransactionData.amount);
-            transaction1.description = `${baseDescription} → ${toAccountName}`;
-            
-            // Transaction 2: Positive amount in to account
-            transaction2.amount = Math.abs(fromTransactionData.amount);
-            transaction2.description = `${baseDescription} ← ${fromAccountName}`;
-        }
-        
-        // Save both transactions
-        const savedTransactions = [];
-        const balanceChanges = [];
-        
-        try {
-            // Save first transaction
-            const saved1 = await db.addTransaction(transaction1);
-            savedTransactions.push(saved1);
-            
-            // Save second transaction
-            const saved2 = await db.addTransaction(transaction2);
-            savedTransactions.push(saved2);
-            
-            // Update balances for both transactions
-            // Transaction 1 balance update
-            if (transaction1.account_id) {
-                await updateCashAccountBalance(transaction1.account_id, transaction1.amount, appState);
-                balanceChanges.push({ type: 'cash', id: transaction1.account_id, amount: transaction1.amount });
-            } else if (transaction1.debt_account_id) {
-                await updateDebtAccountBalance(transaction1.debt_account_id, transaction1.amount, appState);
-                balanceChanges.push({ type: 'debt', id: transaction1.debt_account_id, amount: transaction1.amount });
-            }
-            
-            // Transaction 2 balance update
-            if (transaction2.account_id) {
-                await updateCashAccountBalance(transaction2.account_id, transaction2.amount, appState);
-                balanceChanges.push({ type: 'cash', id: transaction2.account_id, amount: transaction2.amount });
-            } else if (transaction2.debt_account_id) {
-                await updateDebtAccountBalance(transaction2.debt_account_id, transaction2.amount, appState);
-                balanceChanges.push({ type: 'debt', id: transaction2.debt_account_id, amount: transaction2.amount });
-            }
-            
-            // Add both transactions to app state
-            savedTransactions.forEach(t => {
-                appState.appData.transactions.unshift({
-                    ...t,
-                    amount: parseFloat(t.amount)
-                });
-            });
-            
-            // Reset form
-            const form = document.getElementById("transaction-form");
-            if (form) form.reset();
-            const dateInput = document.getElementById("transaction-date");
-            if (dateInput) dateInput.value = new Date().toISOString().split("T")[0];
-            const transferGroup = document.getElementById("transfer-account-group");
-            if (transferGroup) transferGroup.style.display = "none";
-            
-            // Reset account label
-            const accountLabel = document.querySelector('label[for="transaction-account"]');
-            if (accountLabel) accountLabel.textContent = "Account";
-            
-            onUpdate();
-            announceToScreenReader(`${fromTransactionData.category} completed successfully`);
-            
-        } catch (error) {
-            // Rollback on failure
-            debug.error('Failed to create linked transactions, rolling back:', error);
-            
-            // Delete any saved transactions
-            for (const saved of savedTransactions) {
-                try {
-                    await db.deleteTransaction(saved.id);
-                } catch (deleteError) {
-                    debug.error('Failed to rollback transaction:', deleteError);
-                }
-            }
-            
-            // Reverse any balance changes
-            for (const change of balanceChanges) {
-                try {
-                    if (change.type === 'cash') {
-                        await updateCashAccountBalance(change.id, -change.amount, appState);
-                    } else if (change.type === 'debt') {
-                        await updateDebtAccountBalance(change.id, -change.amount, appState);
-                    }
-                } catch (balanceError) {
-                    debug.error('Failed to rollback balance change:', balanceError);
-                }
-            }
-            
-            throw error;
-        }
-        
-    } catch (error) {
-        debug.error('Failed to add linked transaction:', error);
-        showError(`Failed to add ${fromTransactionData.category.toLowerCase()}. Please try again.`);
-        throw error;
-    }
-}
-
-// Helper function to get account name
-function getAccountName(accountId, debtAccountId, appState) {
-    if (accountId) {
-        const account = appState.appData.cashAccounts.find(a => a.id === accountId);
-        return account ? account.name : 'Unknown Account';
-    } else if (debtAccountId) {
-        const debtAccount = appState.appData.debtAccounts.find(d => d.id === debtAccountId);
-        return debtAccount ? debtAccount.name : 'Unknown Account';
-    }
-    return 'Unknown Account';
-}
-
-async function addNewTransaction(transactionData, appState, onUpdate) {
-    try {
-        // First, save to database
-        const savedTransaction = await db.addTransaction(transactionData);
-        const newTransaction = {
-            ...savedTransaction,
-            amount: parseFloat(savedTransaction.amount),
-        };
-
-        // Store original state for rollback
-        const originalBalances = new Map();
-        
-        try {
-            // Update balances first, tracking changes for potential rollback
-            if (newTransaction.account_id) {
-                const account = appState.appData.cashAccounts.find(a => a.id === newTransaction.account_id);
-                if (account) {
-                    originalBalances.set(`cash_${newTransaction.account_id}`, account.balance);
-                }
-                await updateCashAccountBalance(newTransaction.account_id, newTransaction.amount, appState);
-            }
-
-            // Update credit card balance if it's a credit card transaction
-            if (newTransaction.debt_account_id) {
-                const debtAccount = appState.appData.debtAccounts.find(d => d.id === newTransaction.debt_account_id);
-                if (debtAccount) {
-                    originalBalances.set(`debt_${newTransaction.debt_account_id}`, debtAccount.balance);
-                }
-                await updateDebtAccountBalance(newTransaction.debt_account_id, newTransaction.amount, appState);
-            }
-
-            // Only update app state after all balance updates succeed
-            appState.appData.transactions.unshift(newTransaction);
-
-            // Reset form
-            const form = document.getElementById("transaction-form");
-            if (form) form.reset();
-            const dateInput = document.getElementById("transaction-date");
-            if (dateInput) dateInput.value = new Date().toISOString().split("T")[0];
-            const debtGroup = document.getElementById("debt-account-group");
-            if (debtGroup) debtGroup.style.display = "none";
-            const transferGroup = document.getElementById("transfer-account-group");
-            if (transferGroup) transferGroup.style.display = "none";
-            
-            // Reset account label
-            const accountLabel = document.querySelector('label[for="transaction-account"]');
-            if (accountLabel) accountLabel.textContent = "Account";
-
-            onUpdate();
-            
-            // Dispatch event for Smart Rules processing
-            window.dispatchEvent(new CustomEvent('transaction:added', {
-                detail: { transaction: newTransaction }
-            }));
-            
-            announceToScreenReader("Transaction added successfully");
-        } catch (balanceError) {
-            // Rollback balance changes
-            debug.error('Failed to update balances, rolling back:', balanceError);
-            
-            for (const [key, originalBalance] of originalBalances) {
-                const [type, id] = key.split('_');
-                if (type === 'cash') {
-                    const account = appState.appData.cashAccounts.find(a => a.id === parseInt(id));
-                    if (account) account.balance = originalBalance;
-                } else if (type === 'debt') {
-                    const debtAccount = appState.appData.debtAccounts.find(d => d.id === parseInt(id));
-                    if (debtAccount) debtAccount.balance = originalBalance;
-                }
-            }
-            
-            // Delete the transaction from database since balance updates failed
-            try {
-                await db.deleteTransaction(savedTransaction.id);
-            } catch (deleteError) {
-                debug.error('Failed to rollback transaction from database:', deleteError);
-            }
-            
-            throw balanceError;
-        }
-    } catch (error) {
-        debug.error('Failed to add transaction:', error);
-        showError('Failed to add transaction. Please try again.');
-        throw error;
-    }
-}
-
-async function updateTransaction(id, newTransactionData, appState, onUpdate) {
-    if (!originalTransaction) {
-        showError("Original transaction data not found.");
-        return;
-    }
-
-    // Store current state for rollback
-    const stateBackup = {
-        transaction: { ...originalTransaction },
-        balances: new Map()
-    };
-
-    try {
-        // Backup current balances
-        if (originalTransaction.account_id) {
-            const account = appState.appData.cashAccounts.find(a => a.id === originalTransaction.account_id);
-            if (account) {
-                stateBackup.balances.set(`cash_${originalTransaction.account_id}`, account.balance);
-            }
-        }
-        if (originalTransaction.debt_account_id) {
-            const debtAccount = appState.appData.debtAccounts.find(d => d.id === originalTransaction.debt_account_id);
-            if (debtAccount) {
-                stateBackup.balances.set(`debt_${originalTransaction.debt_account_id}`, debtAccount.balance);
-            }
-        }
-
-        // Also backup new account balances if different
-        if (newTransactionData.account_id && newTransactionData.account_id !== originalTransaction.account_id) {
-            const account = appState.appData.cashAccounts.find(a => a.id === newTransactionData.account_id);
-            if (account) {
-                stateBackup.balances.set(`cash_${newTransactionData.account_id}`, account.balance);
-            }
-        }
-        if (newTransactionData.debt_account_id && newTransactionData.debt_account_id !== originalTransaction.debt_account_id) {
-            const debtAccount = appState.appData.debtAccounts.find(d => d.id === newTransactionData.debt_account_id);
-            if (debtAccount) {
-                stateBackup.balances.set(`debt_${newTransactionData.debt_account_id}`, debtAccount.balance);
-            }
-        }
-
-        // First, try to update in the database
-        const updatedTransaction = await db.updateTransaction(id, newTransactionData);
-
-        // If database update succeeds, then update the state
-        try {
-            // Reverse the effects of the original transaction
-            await reverseTransactionEffects(originalTransaction, appState);
-
-            // Update in app state
-            const index = appState.appData.transactions.findIndex(t => t.id === id);
-            if (index > -1) {
-                appState.appData.transactions[index] = {
-                    ...updatedTransaction,
-                    amount: parseFloat(updatedTransaction.amount)
-                };
-            }
-
-            // Apply the effects of the new transaction
-            await applyTransactionEffects(updatedTransaction, appState);
-
-            // Clean up edit state
-            cancelEdit();
-
-            onUpdate();
-            
-            // Dispatch event for Smart Rules processing
-            window.dispatchEvent(new CustomEvent('transaction:updated', {
-                detail: { transaction: updatedTransaction }
-            }));
-            
-            announceToScreenReader("Transaction updated successfully");
-        } catch (stateError) {
-            // State update failed, rollback to original state
-            debug.error('Failed to update state, rolling back:', stateError);
-            
-            // Restore original balances
-            for (const [key, originalBalance] of stateBackup.balances) {
-                const [type, id] = key.split('_');
-                if (type === 'cash') {
-                    const account = appState.appData.cashAccounts.find(a => a.id === parseInt(id));
-                    if (account) account.balance = originalBalance;
-                } else if (type === 'debt') {
-                    const debtAccount = appState.appData.debtAccounts.find(d => d.id === parseInt(id));
-                    if (debtAccount) debtAccount.balance = originalBalance;
-                }
-            }
-
-            // Try to revert the database change
-            try {
-                await db.updateTransaction(id, stateBackup.transaction);
-            } catch (revertError) {
-                debug.error('Failed to revert database transaction:', revertError);
-                showError('Critical error: Database and application state may be out of sync. Please refresh the page.');
-            }
-
-            throw stateError;
-        }
-    } catch (error) {
-        debug.error('Failed to update transaction:', error);
-        showError('Failed to update transaction. Please try again.');
-        throw error;
-    }
-}
-
-async function reverseTransactionEffects(transaction, appState) {
-    // Reverse cash account balance changes
-    if (transaction.account_id) {
-        await updateCashAccountBalance(transaction.account_id, -transaction.amount, appState);
-    }
-
-    // Reverse debt account balance changes (note: sign is reversed correctly as -amount undoes the original effect)
-    if (transaction.debt_account_id) {
-        await updateDebtAccountBalance(transaction.debt_account_id, -transaction.amount, appState);
-    }
-
-    // Handle legacy debt transactions
-    if (transaction.category === 'Debt') {
-        let debtAccount;
-        if (transaction.debt_account_id) {
-            debtAccount = appState.appData.debtAccounts.find(d => d.id === transaction.debt_account_id);
-        } else if (transaction.debt_account) {
-            debtAccount = appState.appData.debtAccounts.find(d => d.name === transaction.debt_account);
-            if (!debtAccount) {
-                showError("Could not reverse debt payment: Account not found.");
-                return;
-            }
-        }
-
-        if (debtAccount) {
-            const newBalance = subtractMoney(debtAccount.balance, transaction.amount);
-            await db.updateDebtBalance(debtAccount.id, newBalance);
-            debtAccount.balance = newBalance;
-        }
-    }
-}
-
-async function applyTransactionEffects(transaction, appState) {
-    const amount = parseFloat(transaction.amount);
-
-    // Apply cash account balance changes
-    if (transaction.account_id) {
-        await updateCashAccountBalance(transaction.account_id, amount, appState);
-    }
-
-    // Apply debt account balance changes
-    if (transaction.debt_account_id) {
-        await updateDebtAccountBalance(transaction.debt_account_id, amount, appState);
-    }
-}
-
-async function updateCashAccountBalance(accountId, amount, appState) {
-    if (!accountId || isNaN(amount)) {
-        debug.error('Invalid parameters for updateCashAccountBalance:', { accountId, amount });
-        throw new Error('Invalid parameters for balance update');
-    }
-
-    try {
-        if (appState.updateAccountBalance) {
-            // Use the provided update function if available
-            await Promise.resolve(appState.updateAccountBalance(accountId, amount));
-        } else {
-            // Direct state update with validation
-            const account = appState.appData.cashAccounts.find(a => a.id === accountId);
-            if (!account) {
-                debug.error('Cash account not found:', accountId);
-                throw new Error(`Cash account ${accountId} not found`);
-            }
-            
-            const oldBalance = account.balance || 0;
-            const newBalance = addMoney(oldBalance, amount);
-            
-            // Validate new balance
-            if (isNaN(newBalance) || !isFinite(newBalance)) {
-                debug.error('Invalid balance calculation:', { oldBalance, amount, newBalance });
-                throw new Error('Invalid balance calculation');
-            }
-            
-            debug.log('Updating cash balance:', {
-                accountId,
-                oldBalance,
-                amount,
-                newBalance
-            });
-            
-            account.balance = newBalance;
-        }
-    } catch (error) {
-        debug.error('Failed to update cash account balance:', error);
-        throw error;
-    }
-}
-
-async function updateDebtAccountBalance(debtAccountId, amount, appState) {
-    const debtAccount = appState.appData.debtAccounts.find(d => d.id === debtAccountId);
-    if (!debtAccount) {
-        debug.error('Debt account not found:', debtAccountId);
-        throw new Error(`Debt account ${debtAccountId} not found`);
-    }
-    
-    try {
-        // Credit Card Balance Update Logic:
-        // - Stored purchases (negative) → Increase debt balance (negate to positive)
-        // - Stored payments (positive) → Decrease debt balance (negate to negative)
-        // This maintains the accounting principle: debt increases are positive, decreases are negative
-        
-        const balanceChange = -amount;
-        const oldBalance = debtAccount.balance || 0;
-        const newBalance = addMoney(oldBalance, balanceChange);
-        
-        // Enhanced debugging to track the issue
-        console.log('Credit Card Balance Update Debug:', {
-            accountId: debtAccountId,
-            accountName: debtAccount.name,
-            transactionAmount: amount,
-            balanceChange: balanceChange,
-            oldBalance: oldBalance,
-            newBalance: newBalance,
-            isPayment: amount > 0,
-            isPurchase: amount < 0
-        });
-        
-        debug.log('Updating debt balance:', {
-            accountId: debtAccountId,
-            transactionAmount: amount,
-            balanceChange: balanceChange,
-            oldBalance: oldBalance,
-            newBalance: newBalance
-        });
-        
-        await db.updateDebtBalance(debtAccount.id, newBalance);
-        debtAccount.balance = newBalance;
-    } catch (error) {
-        debug.error('Failed to update debt account balance:', error);
-        throw error;
-    }
-}
-
-// Virtual scrolling configuration
-const VISIBLE_ROWS = 50; // Number of rows to render at once
-const BUFFER_ROWS = 10; // Extra rows to render for smooth scrolling
-let visibleStartIndex = 0;
-
-export function renderTransactions(appState, categoryFilter = currentCategoryFilter) {
-    const { appData } = appState;
-    const tbody = document.getElementById("transactions-table-body");
-    if (!tbody) return;
-
-    const filterSelect = document.getElementById("filter-category");
-    if (filterSelect && categoryFilter) {
-        filterSelect.value = categoryFilter;
-    }
-
-    // Use dataIndex for faster category filtering
-    let transactions = categoryFilter ?
-        dataIndex.getTransactionsByCategory(categoryFilter) :
-        [...appData.transactions];
-
-    transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    if (transactions.length === 0) {
-        tbody.innerHTML = "<tr><td colspan=\"7\" class=\"no-transactions\">No transactions found</td></tr>";
-        return;
-    }
-
-    // For very large transaction lists, use virtual scrolling
-    if (transactions.length > 100) {
-        renderTransactionsVirtual(tbody, transactions, appState);
-        return;
-    }
-
-    // For smaller lists, render all at once
-    tbody.innerHTML = transactions.map(t => {
-        // Handle both cash account transactions and credit card transactions
-        let accountName = 'Credit Card Transaction';
-
-        if (t.account_id) {
-            // Regular cash account transaction - use index for O(1) lookup
-            const account = (dataIndex?.indexes?.cashAccountsById?.get(t.account_id)) || 
-                           appData.cashAccounts.find(a => a.id === t.account_id);
-            accountName = account ? escapeHtml(account.name) : 'Unknown Account';
-        } else if (t.debt_account_id) {
-            // Credit card transaction - show the credit card name - use index for O(1) lookup
-            const debtAccount = (dataIndex?.indexes?.debtAccountsById?.get(t.debt_account_id)) ||
-                               appData.debtAccounts.find(d => d.id === t.debt_account_id);
-            accountName = debtAccount ? `${escapeHtml(debtAccount.name)} (Credit Card)` : 'Unknown Credit Card';
-        }
-
-        let description = escapeHtml(t.description);
-
-        // Add backward compatibility for old and new data
-        if (t.category === "Debt") {
-            let debtAccountName = '';
-            if (t.debt_account_id) {
-                const debtAccount = appData.debtAccounts.find(d => d.id === t.debt_account_id);
-                if (debtAccount) {
-                    debtAccountName = debtAccount.name;
-                }
-            } else if (t.debt_account) {
-                debtAccountName = t.debt_account;
-            }
-
-            if (debtAccountName) {
-                description += ` (${escapeHtml(debtAccountName)})`;
-            }
-        }
-
-        // Consistent color logic for all transactions:
-        // Positive = income/payment (green), Negative = expense (red)
-        const amountClass = t.amount >= 0 ? 'text-success' : 'text-error';
-        const displayAmount = formatCurrency(t.amount);
-
-        // Highlight transaction being edited
-        const isEditing = editingTransactionId === t.id;
-        const rowClass = isEditing ? 'style="background-color: var(--color-secondary);"' : '';
-
-        return `
-        <tr ${rowClass}>
-            <td>${formatDate(t.date)}</td>
-            <td>${escapeHtml(accountName)}</td>
-            <td>${t.category === 'Uncategorized' ? '<span class="badge badge--warning">Uncategorized</span>' : escapeHtml(t.category)}</td>
-            <td>${description}</td>
-            <td class="${amountClass}" data-sensitive="true">
-                <div class="transaction-amount-container">
-                    <span class="monetary-amount">${displayAmount}</span>
-                    ${timeBudgets.isEnabled() && t.amount < 0 ? timeBudgets.createTimeDisplay(Math.abs(t.amount), { className: 'time-cost-badge', showIcon: true }) : ''}
-                </div>
-            </td>
-            <td class="${t.cleared ? 'status-cleared' : 'status-pending'}">${t.cleared ? "Cleared" : "Pending"}</td>
+// Render transactions table
+function renderTransactionsTable(transactions, privacyMode) {
+  if (!transactions || transactions.length === 0) {
+    return `
+      <div class="empty-state">
+        <div class="empty-state-icon">📋</div>
+        <div class="empty-state-text">No transactions found</div>
+        <div class="empty-state-subtext">
+          ${hasActiveFilters() ? 'Try adjusting your filters' : 'Add your first transaction to get started'}
+        </div>
+      </div>
+    `
+  }
+  
+  return `
+    <table class="transactions-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Category</th>
+          <th>Account</th>
+          <th>Amount</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${transactions.map(t => `
+          <tr data-transaction-id="${t.id}">
+            <td class="date-cell">${formatDatePretty(t.date)}</td>
+            <td class="description-cell">${t.description}</td>
             <td>
-                <div class="transaction-actions">
-                    <button class="btn btn-small btn-edit-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>
-                        ${isEditing ? 'Editing...' : 'Edit'}
-                    </button>
-                    <button class="btn btn-small btn-delete-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>Delete</button>
-                </div>
+              <span class="category-badge category-${getCategoryClass(t.category)}">
+                ${t.category || 'Other'}
+              </span>
             </td>
-        </tr>`;
-    }).join('');
+            <td class="account-cell ${!t.account_name ? 'empty' : ''}">
+              ${t.account_name || '—'}
+            </td>
+            <td class="amount-cell ${t.amount > 0 ? 'amount-positive' : 'amount-negative'}">
+              ${maskCurrency(t.amount, privacyMode, { showPlus: t.amount > 0 })}
+            </td>
+            <td>
+              <div class="transaction-actions">
+                <button class="text-btn edit" data-transaction-id="${t.id}">Edit</button>
+                <button class="text-btn delete" data-transaction-id="${t.id}" data-description="${t.description.replace(/"/g, '&quot;')}">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `
 }
 
-async function deleteTransaction(id, appState, onUpdate) {
-    const transactionToDelete = appState.appData.transactions.find(t => t.id === id);
-    if (!transactionToDelete) {
-        showError("Transaction not found.");
-        return;
+// Format date for display (e.g., "Jul 18, 2025")
+function formatDatePretty(dateStr) {
+  const date = new Date(dateStr)
+  const options = { month: 'short', day: 'numeric', year: 'numeric' }
+  return date.toLocaleDateString('en-US', options)
+}
+
+// Set up filter event listeners
+function setupFilterListeners(appState) {
+  // Search input with debounce
+  const searchInput = document.getElementById('search-input')
+  if (searchInput) {
+    searchInput.addEventListener('input', debounce((e) => {
+      filterState.searchQuery = e.target.value
+      updateTransactionsView(appState)
+    }, 300))
+  }
+  
+  // Category filter
+  const categoryFilter = document.getElementById('category-filter')
+  if (categoryFilter) {
+    categoryFilter.addEventListener('change', (e) => {
+      filterState.category = e.target.value
+      updateTransactionsView(appState)
+    })
+  }
+  
+  // Date filter
+  const dateFilter = document.getElementById('date-filter')
+  if (dateFilter) {
+    dateFilter.addEventListener('change', (e) => {
+      filterState.selectedDate = e.target.value || null
+      updateTransactionsView(appState)
+    })
+  }
+  
+  // Setup transaction action buttons
+  setupTransactionActions(appState)
+}
+
+// Update transactions view with current filters
+function updateTransactionsView(appState) {
+  // Recalculate filtered transactions and summary
+  const filteredTransactions = getFilteredTransactions()
+  const summary = calculateSummary(filteredTransactions)
+  
+  // Update summary cards
+  document.querySelector('.summary-income').textContent = 
+    maskCurrency(summary.totalIncome, appState.privacyMode, { showPlus: true })
+  document.querySelector('.summary-expense').textContent = 
+    maskCurrency(-summary.totalExpenses, appState.privacyMode)
+  document.querySelector('.summary-balance').textContent = 
+    maskCurrency(summary.netBalance, appState.privacyMode, { showPlus: true })
+  
+  // Update table
+  const tableContainer = document.querySelector('.transactions-table-container')
+  if (tableContainer) {
+    tableContainer.innerHTML = renderTransactionsTable(filteredTransactions, appState.privacyMode)
+    
+    // Re-attach action listeners
+    setupTransactionActions(appState)
+  }
+}
+
+// Get filtered transactions based on current filter state
+function getFilteredTransactions() {
+  let filtered = [...allTransactions]
+  
+  // Apply search filter
+  if (filterState.searchQuery) {
+    const query = filterState.searchQuery.toLowerCase()
+    filtered = filtered.filter(t => 
+      t.description.toLowerCase().includes(query) ||
+      (t.notes && t.notes.toLowerCase().includes(query)) ||
+      (t.category && t.category.toLowerCase().includes(query))
+    )
+  }
+  
+  // Apply category filter
+  if (filterState.category) {
+    filtered = filtered.filter(t => t.category === filterState.category)
+  }
+  
+  // Apply date filter
+  if (filterState.selectedDate) {
+    const filterDate = new Date(filterState.selectedDate)
+    filtered = filtered.filter(t => {
+      const transactionDate = new Date(t.date)
+      return transactionDate.toDateString() === filterDate.toDateString()
+    })
+  }
+  
+  // Sort by date (newest first)
+  filtered.sort((a, b) => new Date(b.date) - new Date(a.date))
+  
+  return filtered
+}
+
+// Check if any filters are active
+function hasActiveFilters() {
+  return filterState.searchQuery || filterState.category || filterState.selectedDate
+}
+
+// Setup transaction action buttons (edit/delete)
+function setupTransactionActions(appState) {
+  const tableContainer = document.querySelector('.transactions-table-container')
+  if (!tableContainer) return
+  
+  // Use event delegation for better performance
+  tableContainer.addEventListener('click', async (e) => {
+    // Handle edit button clicks
+    if (e.target.classList.contains('edit')) {
+      e.stopPropagation()
+      const transactionId = e.target.dataset.transactionId
+      const transaction = allTransactions.find(t => t.id === transactionId)
+      
+      if (transaction) {
+        const { showTransactionModal } = await import('./transactionForms.js')
+        await showTransactionModal(transaction)
+      }
     }
-
-    if (confirm("Are you sure you want to delete this transaction? This will adjust account balances and potentially revert recurring bill payments.")) {
-        // Store original state for rollback
-        const stateBackup = {
-            transaction: JSON.parse(JSON.stringify(transactionToDelete)),
-            balances: new Map(),
-            transactionIndex: appState.appData.transactions.findIndex(t => t.id === id)
-        };
-
+    
+    // Handle delete button clicks
+    if (e.target.classList.contains('delete')) {
+      e.stopPropagation()
+      const transactionId = e.target.dataset.transactionId
+      const description = e.target.dataset.description
+      
+      // Import modal manager
+      const { modalManager } = await import('../app.js')
+      
+      // Show delete confirmation modal
+      const confirmed = await modalManager.confirm({
+        title: 'Delete Transaction?',
+        message: `Are you sure you want to delete "${description}"? This action cannot be undone.`,
+        confirmText: 'Delete Transaction',
+        confirmClass: 'btn-danger',
+        cancelText: 'Cancel'
+      })
+      
+      if (confirmed) {
         try {
-            // Backup current balances
-            if (transactionToDelete.account_id) {
-                const account = appState.appData.cashAccounts.find(a => a.id === transactionToDelete.account_id);
-                if (account) {
-                    stateBackup.balances.set(`cash_${transactionToDelete.account_id}`, account.balance);
-                }
-            }
-            if (transactionToDelete.debt_account_id) {
-                const debtAccount = appState.appData.debtAccounts.find(d => d.id === transactionToDelete.debt_account_id);
-                if (debtAccount) {
-                    stateBackup.balances.set(`debt_${transactionToDelete.debt_account_id}`, debtAccount.balance);
-                }
-            }
-
-            // First, try to delete from database
-            await db.deleteTransaction(id);
-
-            try {
-                // Handle both cash account and credit card transaction deletions
-                if (transactionToDelete.account_id) {
-                    await updateCashAccountBalance(transactionToDelete.account_id, -transactionToDelete.amount, appState);
-                } else if (transactionToDelete.debt_account_id) {
-                    await updateDebtAccountBalance(transactionToDelete.debt_account_id, -transactionToDelete.amount, appState);
-                }
-
-                // Check if this was a recurring bill payment and revert the due date
-                await handleRecurringBillReversion(transactionToDelete, appState);
-
-                // Check if this was a savings goal contribution and revert the goal amount
-                await handleSavingsGoalTransactionDeletion(transactionToDelete, appState);
-
-                // Remove from app state
-                appState.appData.transactions = appState.appData.transactions.filter(t => t.id !== id);
-
-                // Cancel edit if we're deleting the transaction being edited
-                if (editingTransactionId === id) {
-                    cancelEdit();
-                }
-
-                onUpdate();
-                
-                // Dispatch event for Smart Rules to refresh statistics
-                window.dispatchEvent(new CustomEvent('transaction:deleted', {
-                    detail: { transactionId: id }
-                }));
-                
-                announceToScreenReader("Transaction deleted");
-            } catch (stateError) {
-                // State update failed, try to restore the transaction
-                debug.error('Failed to update state after deletion, attempting to restore:', stateError);
-                
-                // Restore balances
-                for (const [key, originalBalance] of stateBackup.balances) {
-                    const [type, id] = key.split('_');
-                    if (type === 'cash') {
-                        const account = appState.appData.cashAccounts.find(a => a.id === parseInt(id));
-                        if (account) account.balance = originalBalance;
-                    } else if (type === 'debt') {
-                        const debtAccount = appState.appData.debtAccounts.find(d => d.id === parseInt(id));
-                        if (debtAccount) debtAccount.balance = originalBalance;
-                    }
-                }
-
-                // Try to re-add the transaction to database
-                try {
-                    const restoredTransaction = await db.addTransaction(stateBackup.transaction);
-                    // Re-insert into app state at original position
-                    if (stateBackup.transactionIndex >= 0) {
-                        appState.appData.transactions.splice(stateBackup.transactionIndex, 0, {
-                            ...restoredTransaction,
-                            amount: parseFloat(restoredTransaction.amount)
-                        });
-                    }
-                    showError("Failed to complete deletion. Transaction has been restored.");
-                } catch (restoreError) {
-                    debug.error('Failed to restore transaction:', restoreError);
-                    showError("Critical error: Failed to delete transaction and unable to restore. Please refresh the page.");
-                }
-
-                throw stateError;
-            }
+          const { deleteTransaction, getTransactions } = await import('./database.js')
+          await deleteTransaction(transactionId)
+          
+          // Reload transactions
+          allTransactions = await getTransactions({ limit: 1000 })
+          updateTransactionsView(appState)
+          
+          // Show success message
+          modalManager.showNotification('Transaction deleted successfully', 'success')
         } catch (error) {
-            debug.error("Error deleting transaction:", error);
-            showError("Failed to delete transaction. Please try again.");
+          console.error('Failed to delete transaction:', error)
+          modalManager.showNotification('Failed to delete transaction', 'error')
         }
+      }
     }
+  })
 }
 
-// Handle recurring bill due date reversion
-async function handleRecurringBillReversion(deletedTransaction, appState) {
-    const isRecurringPayment = deletedTransaction.description &&
-        (deletedTransaction.description.includes('(Recurring)') ||
-            deletedTransaction.description.includes('(Recurring - Credit Card)'));
-
-    if (!isRecurringPayment) return;
-
-    let billName = deletedTransaction.description
-        .replace(' (Recurring)', '')
-        .replace(' (Recurring - Credit Card)', '');
-
-    const recurringBill = appState.appData.recurringBills.find(bill =>
-        bill.name === billName || deletedTransaction.description.startsWith(bill.name)
-    );
-
-    if (!recurringBill) {
-        debug.warn('Could not find matching recurring bill for transaction:', deletedTransaction.description);
-        return;
-    }
-
-    try {
-        const currentDueDate = recurringBill.nextDue || recurringBill.next_due;
-        const previousDueDate = calculatePreviousDueDate(currentDueDate, recurringBill.frequency);
-
-        recurringBill.nextDue = previousDueDate;
-        recurringBill.next_due = previousDueDate;
-
-        await db.updateRecurringBill(recurringBill.id, {
-            next_due: previousDueDate,
-            active: recurringBill.active,
-            payment_method: recurringBill.paymentMethod || recurringBill.payment_method,
-            account_id: recurringBill.account_id,
-            debt_account_id: recurringBill.debtAccountId || recurringBill.debt_account_id
-        });
-    } catch (error) {
-        debug.error('Error reverting recurring bill due date:', error);
-    }
-}
-
-function calculatePreviousDueDate(currentDateStr, frequency) {
-    if (!currentDateStr || !frequency) return currentDateStr;
-
-    const currentDate = new Date(currentDateStr);
-    const date = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate()));
-
-    switch (frequency) {
-        case 'weekly':
-            date.setUTCDate(date.getUTCDate() - 7);
-            break;
-        case 'monthly':
-            date.setUTCMonth(date.getUTCMonth() - 1);
-            break;
-        case 'quarterly':
-            date.setUTCMonth(date.getUTCMonth() - 3);
-            break;
-        case 'semi-annually':
-            date.setUTCMonth(date.getUTCMonth() - 6);
-            break;
-        case 'annually':
-            date.setUTCFullYear(date.getUTCFullYear() - 1);
-            break;
-        default:
-            return currentDateStr;
-    }
-
-    return date.toISOString().split('T')[0];
-}
-
-// Virtual scrolling implementation
-function renderTransactionsVirtual(tbody, transactions, appState) {
-    const { appData } = appState;
-    const container = tbody.parentElement;
-    
-    // Create a wrapper for virtual scrolling if it doesn't exist
-    let wrapper = container.querySelector('.virtual-scroll-wrapper');
-    if (!wrapper) {
-        wrapper = document.createElement('div');
-        wrapper.className = 'virtual-scroll-wrapper';
-        wrapper.style.position = 'relative';
-        wrapper.style.height = `${transactions.length * 40}px`; // Approximate row height
-        
-        container.style.overflow = 'auto';
-        container.style.height = '600px'; // Fixed height for scrolling
-        
-        // Add scroll listener with throttling
-        import('./utils.js').then(module => {
-            const { throttle } = module;
-            container.addEventListener('scroll', throttle(() => {
-                const scrollTop = container.scrollTop;
-                const rowHeight = 40;
-                const newStartIndex = Math.floor(scrollTop / rowHeight);
-                
-                if (Math.abs(newStartIndex - visibleStartIndex) > 5) {
-                    visibleStartIndex = newStartIndex;
-                    renderVisibleTransactions(tbody, transactions, appState);
-                }
-            }, 100));
-        }).catch(error => {
-            debug.error('Failed to load utils module for virtual scrolling:', error);
-            // Fallback: Add scroll listener without throttling
-            container.addEventListener('scroll', () => {
-                const scrollTop = container.scrollTop;
-                const rowHeight = 40;
-                const newStartIndex = Math.floor(scrollTop / rowHeight);
-                
-                if (Math.abs(newStartIndex - visibleStartIndex) > 5) {
-                    visibleStartIndex = newStartIndex;
-                    renderVisibleTransactions(tbody, transactions, appState);
-                }
-            });
-        });
-    }
-    
-    renderVisibleTransactions(tbody, transactions, appState);
-}
-
-function renderVisibleTransactions(tbody, transactions, appState) {
-    const { appData } = appState;
-    const startIndex = Math.max(0, visibleStartIndex - BUFFER_ROWS);
-    const endIndex = Math.min(transactions.length, visibleStartIndex + VISIBLE_ROWS + BUFFER_ROWS);
-    const visibleTransactions = transactions.slice(startIndex, endIndex);
-    
-    // Clear and render only visible rows
-    tbody.innerHTML = '';
-    
-    // Add spacer for rows above
-    if (startIndex > 0) {
-        const spacer = document.createElement('tr');
-        spacer.style.height = `${startIndex * 40}px`;
-        tbody.appendChild(spacer);
-    }
-    
-    // Render visible transactions
-    visibleTransactions.forEach(t => {
-        const row = createTransactionRow(t, appData);
-        tbody.appendChild(row);
-    });
-    
-    // Add spacer for rows below
-    if (endIndex < transactions.length) {
-        const spacer = document.createElement('tr');
-        spacer.style.height = `${(transactions.length - endIndex) * 40}px`;
-        tbody.appendChild(spacer);
-    }
-}
-
-function createTransactionRow(t, appData) {
-    const row = document.createElement('tr');
-    
-    // Handle both cash account transactions and credit card transactions
-    let accountName = 'Credit Card Transaction';
-    
-    if (t.account_id) {
-        // Use dataIndex for O(1) lookup if available
-        const account = (dataIndex?.indexes?.cashAccountsById?.get(t.account_id)) || 
-                       appData.cashAccounts.find(a => a.id === t.account_id);
-        accountName = account ? escapeHtml(account.name) : 'Unknown Account';
-    } else if (t.debt_account_id) {
-        const debtAccount = (dataIndex?.indexes?.debtAccountsById?.get(t.debt_account_id)) ||
-                           appData.debtAccounts.find(d => d.id === t.debt_account_id);
-        accountName = debtAccount ? `${escapeHtml(debtAccount.name)} (Credit Card)` : 'Unknown Credit Card';
-    }
-    
-    let description = escapeHtml(t.description);
-    
-    if (t.category === "Debt") {
-        let debtAccountName = '';
-        if (t.debt_account_id) {
-            const debtAccount = appData.debtAccounts.find(d => d.id === t.debt_account_id);
-            if (debtAccount) {
-                debtAccountName = debtAccount.name;
-            }
-        } else if (t.debt_account) {
-            debtAccountName = t.debt_account;
-        }
-        
-        if (debtAccountName) {
-            description += ` (${escapeHtml(debtAccountName)})`;
-        }
-    }
-    
-    // Consistent color logic for all transactions:
-    // Positive = income/payment (green), Negative = expense (red)
-    const amountClass = t.amount >= 0 ? 'text-success' : 'text-error';
-    const displayAmount = formatCurrency(t.amount);
-    
-    const isEditing = editingTransactionId === t.id;
-    if (isEditing) {
-        row.style.backgroundColor = 'var(--color-secondary)';
-    }
-    
-    row.innerHTML = `
-        <td>${formatDate(t.date)}</td>
-        <td>${escapeHtml(accountName)}</td>
-        <td>${t.category === 'Uncategorized' ? '<span class="badge badge--warning">Uncategorized</span>' : escapeHtml(t.category)}</td>
-        <td>${description}</td>
-        <td class="${amountClass}" data-sensitive="true">
-            <div class="transaction-amount-container">
-                <span class="monetary-amount">${displayAmount}</span>
-                ${timeBudgets.isEnabled() && t.amount < 0 ? timeBudgets.createTimeDisplay(Math.abs(t.amount), { className: 'time-cost-badge', showIcon: true }) : ''}
-            </div>
-        </td>
-        <td class="${t.cleared ? 'status-cleared' : 'status-pending'}">${t.cleared ? "Cleared" : "Pending"}</td>
-        <td>
-            <div class="transaction-actions">
-                <button class="btn btn-small btn-edit-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>
-                    ${isEditing ? 'Editing...' : 'Edit'}
-                </button>
-                <button class="btn btn-small btn-delete-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>Delete</button>
-            </div>
-        </td>
-    `;
-    
-    return row;
-}
-
-// Cleanup function to remove all event listeners
-export function cleanupEventListeners() {
-    eventListeners.forEach(({ element, event, handler }) => {
-        element.removeEventListener(event, handler);
-    });
-    eventListeners.clear();
-    
-    // Clear module-level state
-    currentCategoryFilter = "";
-    editingTransactionId = null;
-    originalTransaction = null;
-    appStateReference = null;
-    
-    debug.log('Transaction event listeners cleaned up');
+// Setup transaction event handlers
+function setupTransactionEventHandlers() {
+  // Add Transaction button
+  const addTransactionBtn = document.getElementById('add-transaction-btn')
+  if (addTransactionBtn) {
+    addTransactionBtn.addEventListener('click', async () => {
+      const { showTransactionModal } = await import('./transactionForms.js')
+      await showTransactionModal()
+    })
+  }
 }
