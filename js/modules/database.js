@@ -302,15 +302,33 @@ export async function deleteTransaction(id) {
 // Delete all transactions for an account
 export async function deleteTransactionsByAccountId(accountId) {
   const supabase = getSupabase()
-  return executeQuery(() =>
+  
+  // First, check how many transactions will be deleted
+  const { data: transactions, error: countError } = await supabase
+    .from('transactions')
+    .select('id')
+    .eq('account_id', accountId)
+  
+  if (countError) {
+    console.error('Failed to count transactions:', countError)
+  } else {
+    console.log(`Found ${transactions?.length || 0} transactions to delete for account ${accountId}`)
+  }
+  
+  // Delete all transactions for this account
+  const result = await executeQuery(() =>
     supabase
       .from('transactions')
       .delete()
       .eq('account_id', accountId),
     {
-      queryName: 'Delete account transactions'
+      queryName: 'Delete account transactions',
+      timeout: QUERY_TIMEOUT_LONG // Use longer timeout for potentially many deletions
     }
   )
+  
+  console.log(`Deleted transactions for account ${accountId}`)
+  return result
 }
 
 // Account operations
@@ -451,12 +469,17 @@ export async function deleteCashAccount(id) {
   
   try {
     // First, delete all transactions associated with this account
-    console.log(`Deleting all transactions for account ${id}...`)
+    console.log(`Starting deletion process for account ${id}...`)
+    
+    // Delete transactions first (this is critical)
     await deleteTransactionsByAccountId(id)
+    
+    // Add a small delay to ensure transaction deletion is fully processed
+    await new Promise(resolve => setTimeout(resolve, 500))
     
     // Then delete the account itself
     console.log(`Deleting cash account ${id}...`)
-    return executeQuery(() =>
+    const result = await executeQuery(() =>
       supabase
         .from('cash_accounts')
         .delete()
@@ -465,6 +488,10 @@ export async function deleteCashAccount(id) {
         queryName: 'Delete cash account'
       }
     )
+    
+    console.log(`Successfully deleted account ${id}`)
+    return result
+    
   } catch (error) {
     console.error('Failed to delete cash account:', error)
     throw error

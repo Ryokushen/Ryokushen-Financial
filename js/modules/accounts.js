@@ -1,6 +1,6 @@
 // Accounts Module
 
-import { getCashAccounts, getInvestmentAccounts, getDebtAccounts, getTransactions } from './database.js'
+import { getCashAccounts, getInvestmentAccounts, getDebtAccounts, getTransactions, deleteCashAccount as dbDeleteCashAccount } from './database.js'
 import { formatCurrency, maskCurrency } from './ui.js'
 import { modalManager } from '../app.js'
 
@@ -207,6 +207,62 @@ function renderDebtAccounts(accounts, privacyMode) {
   `
 }
 
+// Delete account and update UI immediately
+async function deleteAccountAndRefresh(accountId, accountName) {
+  try {
+    // Show loading state
+    modalManager.showNotification('Deleting account and associated transactions...', 'info')
+    
+    // First, remove the account from the UI immediately for better UX
+    const accountElement = document.querySelector(`.account-item[data-account-id="${accountId}"]`)
+    if (accountElement) {
+      accountElement.style.opacity = '0.5'
+      accountElement.style.pointerEvents = 'none'
+    }
+    
+    // Delete the account and its transactions
+    await dbDeleteCashAccount(accountId)
+    
+    // Get updated data directly from the database
+    const [cashAccounts, transactions] = await Promise.all([
+      getCashAccounts(),
+      getTransactions()
+    ])
+    
+    // Update the global app state
+    const appState = window.appState || { data: {} }
+    if (!appState.data) {
+      appState.data = {}
+    }
+    
+    // Update with fresh data
+    appState.data.cashAccounts = cashAccounts
+    appState.data.transactions = transactions
+    
+    // Clear any caches
+    if (appState.cache) {
+      appState.cache.clear()
+    }
+    
+    // Re-render the accounts page with updated data
+    await renderAccounts(appState)
+    
+    // Show success message
+    modalManager.showNotification('Account and all associated transactions deleted successfully', 'success')
+    
+  } catch (error) {
+    console.error('Failed to delete account:', error)
+    modalManager.showNotification('Failed to delete account: ' + error.message, 'error')
+    
+    // Restore the account element if deletion failed
+    const accountElement = document.querySelector(`.account-item[data-account-id="${accountId}"]`)
+    if (accountElement) {
+      accountElement.style.opacity = '1'
+      accountElement.style.pointerEvents = 'auto'
+    }
+  }
+}
+
 // Setup event handlers for accounts page
 function setupAccountsEventHandlers() {
   // Add Cash Account button
@@ -256,46 +312,7 @@ function setupAccountsEventHandlers() {
       )
       
       if (confirmed) {
-        try {
-          // Show loading state
-          modalManager.showNotification('Deleting account...', 'info')
-          
-          const { deleteCashAccount } = await import('./database.js')
-          await deleteCashAccount(accountId)
-          
-          // Wait for database operations to complete
-          await new Promise(resolve => setTimeout(resolve, 1500))
-          
-          // Force reload all data including transactions
-          if (window.loadInitialData) {
-            await window.loadInitialData(true) // Force refresh
-          } else {
-            // Fallback if loadInitialData is not available
-            const appState = window.appState || { data: {} }
-            if (!appState.data) {
-              appState.data = {}
-            }
-            
-            // Reload both accounts and transactions to ensure consistency
-            const [cashAccounts, transactions] = await Promise.all([
-              getCashAccounts(),
-              getTransactions()
-            ])
-            
-            appState.data.cashAccounts = cashAccounts
-            appState.data.transactions = transactions
-          }
-          
-          // Re-render the accounts page
-          const appState = window.appState || { data: {} }
-          await renderAccounts(appState)
-          
-          // Show success message
-          modalManager.showNotification('Account and all associated transactions deleted successfully', 'success')
-        } catch (error) {
-          console.error('Failed to delete account:', error)
-          modalManager.showNotification('Failed to delete account: ' + error.message, 'error')
-        }
+        await deleteAccountAndRefresh(accountId, accountName)
       }
     })
   })

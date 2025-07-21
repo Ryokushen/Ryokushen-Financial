@@ -30,11 +30,14 @@ const appState = {
   initialized: false, // Prevent multiple initializations
 }
 
-// Make appState globally accessible for debugging
+// Make appState globally accessible for debugging and modules
+window.appState = appState
+
+// Make loadInitialData globally accessible for modules
+window.loadInitialData = loadInitialData
+
+// Add database test functions for debugging in development
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-  window.appState = appState
-  
-  // Add database test functions for debugging
   import('./modules/database.js').then(({ testDatabaseConnection, testInvestmentAccountsConnection }) => {
     window.testDB = testDatabaseConnection
     window.testInvestments = testInvestmentAccountsConnection
