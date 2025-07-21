@@ -1,6 +1,6 @@
 // Accounts Module
 
-import { getCashAccounts, getInvestmentAccounts, getDebtAccounts } from './database.js'
+import { getCashAccounts, getInvestmentAccounts, getDebtAccounts, getTransactions } from './database.js'
 import { formatCurrency, maskCurrency } from './ui.js'
 import { modalManager } from '../app.js'
 
@@ -257,22 +257,38 @@ function setupAccountsEventHandlers() {
       
       if (confirmed) {
         try {
-          const { deleteCashAccount, getCashAccounts } = await import('./database.js')
+          // Show loading state
+          modalManager.showNotification('Deleting account...', 'info')
+          
+          const { deleteCashAccount } = await import('./database.js')
           await deleteCashAccount(accountId)
           
-          // Refresh the page - fix the appState reference
+          // Wait for database operations to complete
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          
+          // Force reload all data including transactions
           const appState = window.appState || { data: {} }
           if (!appState.data) {
             appState.data = {}
           }
-          appState.data.cashAccounts = await getCashAccounts()
+          
+          // Reload both accounts and transactions to ensure consistency
+          const [cashAccounts, transactions] = await Promise.all([
+            getCashAccounts(),
+            getTransactions()
+          ])
+          
+          appState.data.cashAccounts = cashAccounts
+          appState.data.transactions = transactions
+          
+          // Re-render the accounts page
           await renderAccounts(appState)
           
           // Show success message
           modalManager.showNotification('Account and all associated transactions deleted successfully', 'success')
         } catch (error) {
           console.error('Failed to delete account:', error)
-          modalManager.showNotification('Failed to delete account', 'error')
+          modalManager.showNotification('Failed to delete account: ' + error.message, 'error')
         }
       }
     })
