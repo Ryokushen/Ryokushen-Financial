@@ -6,7 +6,7 @@ import { initDashboard } from './modules/dashboard.js'
 import { initTheme } from './modules/theme.js'
 import { initNavigation } from './modules/navigation.js'
 import { showLoading, hideLoading, showError } from './modules/ui.js'
-import { initSupabase, setCachedAuthUser, setSkipAuthChecks, setInitialLoad } from './modules/database.js'
+import { initSupabase, setCachedAuthUser, setSkipAuthChecks, setInitialLoad, getCashAccounts, getDebtAccounts } from './modules/database.js'
 import modalManager from './modules/modal.js'
 
 // Application State
@@ -192,7 +192,7 @@ async function loadInitialData(forceRefresh = false) {
       appState.data.debtAccounts = []
     }
     
-    // Load transactions (limited to recent ones for dashboard)
+    // Load transactions with account names
     try {
       updateLoadingProgress('transactions', 'loading')
       const transactions = await modules.transactions.loadTransactions()

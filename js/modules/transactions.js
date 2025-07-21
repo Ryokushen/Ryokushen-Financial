@@ -1,6 +1,6 @@
 // Transactions Module - Improved Design
 
-import { getTransactions as fetchTransactions } from './database.js'
+import { getTransactions as fetchTransactions, getCashAccounts, getDebtAccounts } from './database.js'
 import { formatCurrency, formatDate, maskCurrency, debounce } from './ui.js'
 
 // Filter state
@@ -20,18 +20,34 @@ const mockTransactions = [
   { id: 3, description: 'Electric Bill', amount: -89.75, date: '2025-01-18', category: 'Utilities', account_id: 1 }
 ]
 
-// Load transactions from database
+// Load transactions from database with account names
 export async function loadTransactions() {
   try {
     console.log('Loading transactions from database...')
-    // Load only recent transactions for initial performance (last 100)
-    const transactions = await fetchTransactions({ 
-      limit: 100,
-      startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // Last 90 days
-    })
     
-    console.log(`Loaded ${transactions.length} transactions from database`)
-    allTransactions = transactions
+    // Load transactions and accounts in parallel
+    const [transactions, cashAccounts, debtAccounts] = await Promise.all([
+      fetchTransactions({ 
+        limit: 100,
+        startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // Last 90 days
+      }),
+      getCashAccounts(),
+      getDebtAccounts()
+    ])
+    
+    // Create account lookup map
+    const accountsMap = new Map()
+    cashAccounts.forEach(acc => accountsMap.set(acc.id, acc.name))
+    debtAccounts.forEach(acc => accountsMap.set(acc.id, acc.name))
+    
+    // Join account names to transactions
+    const transactionsWithAccounts = transactions.map(t => ({
+      ...t,
+      account_name: accountsMap.get(t.account_id) || '—'
+    }))
+    
+    console.log(`Loaded ${transactionsWithAccounts.length} transactions from database`)
+    allTransactions = transactionsWithAccounts
     return allTransactions
   } catch (error) {
     console.error('Failed to load transactions:', error)
@@ -295,7 +311,8 @@ function getFilteredTransactions() {
     filtered = filtered.filter(t => 
       t.description.toLowerCase().includes(query) ||
       (t.notes && t.notes.toLowerCase().includes(query)) ||
-      (t.category && t.category.toLowerCase().includes(query))
+      (t.category && t.category.toLowerCase().includes(query)) ||
+      (t.account_name && t.account_name.toLowerCase().includes(query))
     )
   }
   
@@ -353,21 +370,37 @@ function setupTransactionActions(appState) {
       const { modalManager } = await import('../app.js')
       
       // Show delete confirmation modal
-      const confirmed = await modalManager.confirm({
-        title: 'Delete Transaction?',
-        message: `Are you sure you want to delete "${description}"? This action cannot be undone.`,
-        confirmText: 'Delete Transaction',
-        confirmClass: 'btn-danger',
-        cancelText: 'Cancel'
-      })
+      const confirmed = await modalManager.confirm(
+        `Are you sure you want to delete "${description}"? This action cannot be undone.`,
+        'Delete Transaction?'
+      )
       
       if (confirmed) {
         try {
-          const { deleteTransaction, getTransactions } = await import('./database.js')
+          const { deleteTransaction, getTransactions, getCashAccounts, getDebtAccounts } = await import('./database.js')
           await deleteTransaction(transactionId)
           
-          // Reload transactions
-          allTransactions = await getTransactions({ limit: 1000 })
+          // Reload transactions with account info
+          const [transactions, cashAccounts, debtAccounts] = await Promise.all([
+            getTransactions({ limit: 1000 }),
+            getCashAccounts(),
+            getDebtAccounts()
+          ])
+          
+          // Create account lookup map
+          const accountsMap = new Map()
+          cashAccounts.forEach(acc => accountsMap.set(acc.id, acc.name))
+          debtAccounts.forEach(acc => accountsMap.set(acc.id, acc.name))
+          
+          // Update transactions with account names
+          allTransactions = transactions.map(t => ({
+            ...t,
+            account_name: accountsMap.get(t.account_id) || '—'
+          }))
+          
+          // Update app state
+          appState.data.transactions = allTransactions
+          
           updateTransactionsView(appState)
           
           // Show success message

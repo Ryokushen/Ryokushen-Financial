@@ -1,27 +1,27 @@
 // Transaction Forms Module - Form configurations for transaction management
 
 import formBuilder from './formBuilder.js'
-import { createTransaction, updateTransaction, getCashAccounts } from './database.js'
+import { createTransaction, updateTransaction, getCashAccounts, getDebtAccounts, getSupabase } from './database.js'
 import modalManager from './modal.js'
 import { appState } from '../app.js'
 
 // Transaction categories
 const TRANSACTION_CATEGORIES = [
-  { value: 'income', label: 'Income', type: 'income' },
-  { value: 'housing', label: 'Housing', type: 'expense' },
-  { value: 'transportation', label: 'Transportation', type: 'expense' },
-  { value: 'food', label: 'Food & Dining', type: 'expense' },
-  { value: 'utilities', label: 'Utilities', type: 'expense' },
-  { value: 'healthcare', label: 'Healthcare', type: 'expense' },
-  { value: 'insurance', label: 'Insurance', type: 'expense' },
-  { value: 'personal', label: 'Personal', type: 'expense' },
-  { value: 'entertainment', label: 'Entertainment', type: 'expense' },
-  { value: 'shopping', label: 'Shopping', type: 'expense' },
-  { value: 'education', label: 'Education', type: 'expense' },
-  { value: 'savings', label: 'Savings', type: 'transfer' },
-  { value: 'investment', label: 'Investment', type: 'transfer' },
-  { value: 'debt', label: 'Debt Payment', type: 'expense' },
-  { value: 'other', label: 'Other', type: 'expense' }
+  { value: 'Income', label: 'Income', type: 'income' },
+  { value: 'Housing', label: 'Housing', type: 'expense' },
+  { value: 'Transportation', label: 'Transportation', type: 'expense' },
+  { value: 'Food', label: 'Food & Dining', type: 'expense' },
+  { value: 'Utilities', label: 'Utilities', type: 'expense' },
+  { value: 'Healthcare', label: 'Healthcare', type: 'expense' },
+  { value: 'Insurance', label: 'Insurance', type: 'expense' },
+  { value: 'Personal', label: 'Personal', type: 'expense' },
+  { value: 'Entertainment', label: 'Entertainment', type: 'expense' },
+  { value: 'Shopping', label: 'Shopping', type: 'expense' },
+  { value: 'Education', label: 'Education', type: 'expense' },
+  { value: 'Savings', label: 'Savings', type: 'transfer' },
+  { value: 'Investment', label: 'Investment', type: 'transfer' },
+  { value: 'Debt', label: 'Debt Payment', type: 'expense' },
+  { value: 'Other', label: 'Other', type: 'expense' }
 ]
 
 // Transaction types
@@ -31,23 +31,51 @@ const TRANSACTION_TYPES = [
   { value: 'transfer', label: 'Transfer' }
 ]
 
+// Get all accounts (cash and debt) for dropdown
+async function getAllAccounts() {
+  const [cashAccounts, debtAccounts] = await Promise.all([
+    getCashAccounts(),
+    getDebtAccounts()
+  ])
+  
+  // Combine and format accounts
+  const allAccounts = [
+    ...cashAccounts.map(acc => ({
+      ...acc,
+      display_name: `${acc.name} (${acc.type || 'Cash'})`,
+      account_type: 'cash'
+    })),
+    ...debtAccounts.map(acc => ({
+      ...acc,
+      display_name: `${acc.name} (${acc.account_type || 'Debt'})`,
+      account_type: 'debt'
+    }))
+  ]
+  
+  return allAccounts
+}
+
 // Create transaction form configuration
 export async function createTransactionForm(transactionData = null) {
   const isEdit = transactionData !== null
   const formId = `transaction-form-${Date.now()}`
 
-  // Get cash accounts for the account dropdown
-  const cashAccounts = await getCashAccounts()
-  const accountOptions = cashAccounts.map(acc => ({
+  // Get all accounts for the dropdown
+  const allAccounts = await getAllAccounts()
+  const accountOptions = allAccounts.map(acc => ({
     value: acc.id,
-    label: `${acc.name} (${acc.account_type})`
+    label: acc.display_name
   }))
 
-  // Filter categories based on transaction type
-  const currentType = transactionData?.type || 'expense'
-  const filteredCategories = TRANSACTION_CATEGORIES.filter(cat => 
-    cat.type === currentType || cat.type === 'transfer'
-  )
+  // Determine transaction type based on amount if editing
+  let currentType = 'expense'
+  if (isEdit) {
+    if (transactionData.amount > 0) {
+      currentType = 'income'
+    } else {
+      currentType = transactionData.type || 'expense'
+    }
+  }
 
   const fields = [
     {
@@ -63,10 +91,10 @@ export async function createTransactionForm(transactionData = null) {
       type: 'select',
       options: TRANSACTION_TYPES,
       required: true,
-      value: transactionData?.type || 'expense',
+      value: currentType,
       onChange: (value) => {
-        // Update category options when type changes
-        updateCategoryOptions(formId, value)
+        // Update amount sign when type changes
+        updateAmountSign(formId, value)
       }
     },
     {
@@ -84,13 +112,13 @@ export async function createTransactionForm(transactionData = null) {
       type: 'amount',
       placeholder: '0.00',
       required: true,
-      value: transactionData?.amount || ''
+      value: Math.abs(transactionData?.amount || 0) || ''
     },
     {
       name: 'category',
       label: 'Category',
       type: 'select',
-      options: filteredCategories,
+      options: TRANSACTION_CATEGORIES,
       required: true,
       value: transactionData?.category || '',
       placeholder: 'Select category'
@@ -112,30 +140,13 @@ export async function createTransactionForm(transactionData = null) {
       value: transactionData?.notes || ''
     },
     {
-      name: 'is_recurring',
-      label: 'Recurring Transaction',
+      name: 'cleared',
+      label: 'Cleared',
       type: 'toggle',
-      placeholder: 'This is a recurring transaction',
-      value: transactionData?.is_recurring || false
+      placeholder: 'Transaction has cleared',
+      value: transactionData?.cleared !== false
     }
   ]
-
-  // Add transfer fields if type is transfer
-  if (currentType === 'transfer') {
-    const transferAccountField = {
-      name: 'to_account_id',
-      label: 'Transfer To',
-      type: 'select',
-      options: accountOptions.filter(opt => opt.value !== transactionData?.account_id),
-      required: true,
-      value: transactionData?.to_account_id || '',
-      placeholder: 'Select destination account'
-    }
-    
-    // Insert after account field
-    const accountIndex = fields.findIndex(f => f.name === 'account_id')
-    fields.splice(accountIndex + 1, 0, transferAccountField)
-  }
 
   // Create form configuration
   const form = formBuilder.createForm(formId, {
@@ -143,11 +154,29 @@ export async function createTransactionForm(transactionData = null) {
     submitText: isEdit ? 'Update Transaction' : 'Add Transaction',
     onSubmit: async (data) => {
       try {
+        // Get current user
+        const supabase = getSupabase()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('User not authenticated')
+        
+        // Adjust amount based on type
+        let amount = parseFloat(data.amount)
+        if (data.type === 'expense' && amount > 0) {
+          amount = -amount
+        } else if (data.type === 'income' && amount < 0) {
+          amount = Math.abs(amount)
+        }
+        
         // Prepare transaction data
         const transactionPayload = {
-          ...data,
-          amount: parseFloat(data.amount),
-          user_id: appState.user.id
+          date: data.date,
+          account_id: data.account_id,
+          amount: amount,
+          category: data.category,
+          description: data.description,
+          notes: data.notes || null,
+          cleared: data.cleared,
+          user_id: user.id
         }
 
         if (isEdit) {
@@ -158,17 +187,27 @@ export async function createTransactionForm(transactionData = null) {
           await modalManager.showSuccess('Transaction added successfully!')
         }
         
-        // Reload transactions data
-        if (window.loadInitialData) {
-          await window.loadInitialData()
-        }
+        // Reload transactions with account info
+        const { getTransactions } = await import('./database.js')
+        const transactions = await getTransactions()
+        
+        // Join account names
+        const accountsMap = new Map(allAccounts.map(acc => [acc.id, acc.name]))
+        const transactionsWithAccounts = transactions.map(t => ({
+          ...t,
+          account_name: accountsMap.get(t.account_id) || '—'
+        }))
+        
+        // Update app state
+        appState.data.transactions = transactionsWithAccounts
         
         // Refresh current page
-        if (appState.currentPage === 'transactions' || appState.currentPage === 'dashboard') {
-          const moduleName = appState.currentPage === 'transactions' ? 'transactions' : 'dashboard'
-          const renderFunction = appState.currentPage === 'transactions' ? 'renderTransactions' : 'renderDashboard'
-          const module = await import(`./${moduleName}.js`)
-          await module[renderFunction](appState)
+        if (appState.currentPage === 'transactions') {
+          const { renderTransactions } = await import('./transactions.js')
+          await renderTransactions(appState)
+        } else if (appState.currentPage === 'dashboard') {
+          const { renderDashboard } = await import('./dashboard.js')
+          await renderDashboard(appState)
         }
         
         return true
@@ -183,16 +222,6 @@ export async function createTransactionForm(transactionData = null) {
       // Validate amount
       if (data.amount <= 0) {
         errors.amount = 'Amount must be greater than 0'
-      }
-      
-      // Validate transfer
-      if (data.type === 'transfer') {
-        if (!data.to_account_id) {
-          errors.to_account_id = 'Destination account is required for transfers'
-        }
-        if (data.account_id === data.to_account_id) {
-          errors.to_account_id = 'Cannot transfer to the same account'
-        }
       }
       
       // Validate date
@@ -211,71 +240,30 @@ export async function createTransactionForm(transactionData = null) {
   return { formId, form }
 }
 
-// Update category options based on transaction type
-function updateCategoryOptions(formId, type) {
+// Update amount sign indicator based on transaction type
+function updateAmountSign(formId, type) {
   const formElement = document.getElementById(formId)
   if (!formElement) return
 
-  const categorySelect = formElement.querySelector('[name="category"]')
-  if (!categorySelect) return
+  const amountField = formElement.querySelector('[data-field="amount"]')
+  if (!amountField) return
 
-  // Filter categories based on type
-  const filteredCategories = TRANSACTION_CATEGORIES.filter(cat => 
-    cat.type === type || cat.type === 'transfer'
-  )
+  // Remove existing sign indicator
+  const existingSign = amountField.querySelector('.amount-sign')
+  if (existingSign) {
+    existingSign.remove()
+  }
 
-  // Update options
-  categorySelect.innerHTML = `
-    <option value="">Select category</option>
-    ${filteredCategories.map(cat => `
-      <option value="${cat.value}">${cat.label}</option>
-    `).join('')}
-  `
-
-  // Handle transfer fields
-  const toAccountField = formElement.querySelector('[data-field="to_account_id"]')
-  
-  if (type === 'transfer') {
-    // Add transfer field if not exists
-    if (!toAccountField) {
-      const accountField = formElement.querySelector('[data-field="account_id"]')
-      if (accountField) {
-        const transferField = createTransferField()
-        accountField.parentNode.insertBefore(transferField, accountField.nextSibling)
-      }
-    }
-  } else {
-    // Remove transfer field if exists
-    if (toAccountField) {
-      toAccountField.remove()
+  // Add new sign indicator
+  if (type === 'expense') {
+    const signSpan = document.createElement('span')
+    signSpan.className = 'amount-sign negative'
+    signSpan.textContent = '-'
+    const label = amountField.querySelector('label')
+    if (label) {
+      label.insertAdjacentElement('afterend', signSpan)
     }
   }
-}
-
-// Create transfer field HTML
-async function createTransferField() {
-  const cashAccounts = await getCashAccounts()
-  const accountOptions = cashAccounts.map(acc => ({
-    value: acc.id,
-    label: `${acc.name} (${acc.account_type})`
-  }))
-
-  const fieldDiv = document.createElement('div')
-  fieldDiv.className = 'form-field form-field--full'
-  fieldDiv.setAttribute('data-field', 'to_account_id')
-  
-  fieldDiv.innerHTML = `
-    <label for="to_account_id" class="form-label">Transfer To<span class="required">*</span></label>
-    <select id="to_account_id" name="to_account_id" class="form-select" required>
-      <option value="">Select destination account</option>
-      ${accountOptions.map(opt => `
-        <option value="${opt.value}">${opt.label}</option>
-      `).join('')}
-    </select>
-    <p class="form-error" data-error="to_account_id"></p>
-  `
-
-  return fieldDiv
 }
 
 // Show transaction form modal
@@ -294,8 +282,11 @@ export async function showTransactionModal(transactionData = null) {
     const typeSelect = formElement.querySelector('[name="type"]')
     if (typeSelect) {
       typeSelect.addEventListener('change', (e) => {
-        updateCategoryOptions(formId, e.target.value)
+        updateAmountSign(formId, e.target.value)
       })
+      
+      // Set initial amount sign
+      updateAmountSign(formId, typeSelect.value)
     }
   }
 
@@ -306,16 +297,16 @@ export async function showTransactionModal(transactionData = null) {
 export async function showQuickExpenseModal() {
   const formId = `quick-expense-form-${Date.now()}`
 
-  // Get cash accounts
-  const cashAccounts = await getCashAccounts()
-  const accountOptions = cashAccounts.map(acc => ({
+  // Get all accounts
+  const allAccounts = await getAllAccounts()
+  const accountOptions = allAccounts.map(acc => ({
     value: acc.id,
-    label: `${acc.name} (${acc.account_type})`
+    label: acc.display_name
   }))
 
   // Get default account (first checking account or first account)
-  const defaultAccount = cashAccounts.find(acc => acc.account_type === 'checking')?.id || 
-                        cashAccounts[0]?.id || ''
+  const defaultAccount = allAccounts.find(acc => acc.type === 'checking')?.id || 
+                        allAccounts[0]?.id || ''
 
   const expenseCategories = TRANSACTION_CATEGORIES.filter(cat => cat.type === 'expense')
 
@@ -342,7 +333,7 @@ export async function showQuickExpenseModal() {
       type: 'select',
       options: expenseCategories,
       required: true,
-      value: 'food',
+      value: 'Food',
       width: 'half'
     },
     {
@@ -362,20 +353,39 @@ export async function showQuickExpenseModal() {
     className: 'quick-expense-form',
     onSubmit: async (data) => {
       try {
+        // Get current user
+        const supabase = getSupabase()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('User not authenticated')
+        
         const transactionPayload = {
           ...data,
-          amount: parseFloat(data.amount),
+          amount: -Math.abs(parseFloat(data.amount)), // Always negative for expenses
           type: 'expense',
           date: new Date().toISOString().split('T')[0],
-          user_id: appState.user.id
+          cleared: false,
+          user_id: user.id
         }
 
         await createTransaction(transactionPayload)
         await modalManager.showSuccess('Expense added successfully!')
         
-        // Reload data
-        if (window.loadInitialData) {
-          await window.loadInitialData()
+        // Reload data and refresh page
+        const { getTransactions } = await import('./database.js')
+        const transactions = await getTransactions()
+        
+        // Join account names
+        const accountsMap = new Map(allAccounts.map(acc => [acc.id, acc.name]))
+        const transactionsWithAccounts = transactions.map(t => ({
+          ...t,
+          account_name: accountsMap.get(t.account_id) || '—'
+        }))
+        
+        appState.data.transactions = transactionsWithAccounts
+        
+        if (appState.currentPage === 'transactions') {
+          const { renderTransactions } = await import('./transactions.js')
+          await renderTransactions(appState)
         }
         
         return true
