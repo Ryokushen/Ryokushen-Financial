@@ -93,8 +93,12 @@ function getAllHoldings(accounts) {
 
 // Render investments page
 export async function renderInvestments(appState) {
+  console.log('=== renderInvestments called ===')
   const container = document.getElementById('page-content')
-  if (!container) return
+  if (!container) {
+    console.error('No page-content container found!')
+    return
+  }
   
   // Use real investment accounts from appState
   const investmentAccounts = appState.data.investmentAccounts || []
@@ -126,7 +130,7 @@ export async function renderInvestments(appState) {
   // No need to load holdings separately - they're nested in accounts
   const summary = calculatePortfolioSummary(finalInvestmentAccounts)
   
-  container.innerHTML = `
+  const htmlContent = `
     <div class="investments-page">
       <!-- Page Header -->
       <div class="page-header">
@@ -274,8 +278,13 @@ export async function renderInvestments(appState) {
     </div>
   `
   
+  console.log('Setting container innerHTML...')
+  container.innerHTML = htmlContent
+  console.log('HTML content set, container children:', container.children.length)
+  
   // Set up event handlers after a short delay to ensure DOM is ready
   setTimeout(() => {
+    console.log('Setting up event handlers after rendering...')
     setupInvestmentEventHandlers(appState)
   }, 100)
 }
