@@ -20,6 +20,29 @@ const mockData = {
   ]
 }
 
+// Account type labels
+const ACCOUNT_TYPE_LABELS = {
+  checking: 'Checking',
+  savings: 'Savings',
+  money_market: 'Money Market',
+  cash: 'Cash on Hand',
+  '401k': '401(k)',
+  ira: 'IRA',
+  roth_ira: 'Roth IRA',
+  brokerage: 'Brokerage',
+  crypto: 'Cryptocurrency',
+  credit_card: 'Credit Card',
+  mortgage: 'Mortgage',
+  auto_loan: 'Auto Loan',
+  student_loan: 'Student Loan',
+  personal_loan: 'Personal Loan'
+}
+
+// Format account type for display
+function formatAccountType(type) {
+  return ACCOUNT_TYPE_LABELS[type] || type || 'Account'
+}
+
 // Load all accounts from database
 export async function loadAccounts() {
   console.log('Loading accounts from database...')
@@ -113,7 +136,7 @@ function renderCashAccounts(accounts, privacyMode) {
         <div class="account-item" data-account-id="${account.id}">
           <div class="account-info">
             <h4>${account.name}</h4>
-            <p>${account.type || 'Checking'}</p>
+            <p>${formatAccountType(account.type)}</p>
           </div>
           <div class="account-right">
             <div class="account-balance">${maskCurrency(account.balance || 0, privacyMode)}</div>
@@ -139,7 +162,7 @@ function renderInvestmentAccounts(accounts, privacyMode) {
           <div class="account-item">
             <div class="account-info">
               <h4>${account.name}</h4>
-              <p class="text-sm text-secondary">${account.account_type || 'Brokerage'}</p>
+              <p class="text-sm text-secondary">${formatAccountType(account.account_type || 'brokerage')}</p>
             </div>
             <div class="account-balance">
               <p class="text-lg font-semibold">${maskCurrency(account.current_value, privacyMode)}</p>
@@ -165,7 +188,7 @@ function renderDebtAccounts(accounts, privacyMode) {
           <div class="account-item">
             <div class="account-info">
               <h4>${account.name}</h4>
-              <p class="text-sm text-secondary">${account.account_type || 'Credit Card'}</p>
+              <p class="text-sm text-secondary">${formatAccountType(account.account_type || 'credit_card')}</p>
               <p class="text-xs text-tertiary">APR: ${account.interest_rate}%</p>
             </div>
             <div class="account-balance">
@@ -222,22 +245,22 @@ function setupAccountsEventHandlers() {
       const accountId = btn.dataset.accountId
       const accountName = btn.dataset.accountName
       
-      // Show delete confirmation modal
-      const confirmed = await modalManager.confirm({
-        title: 'Delete Account?',
-        message: `Are you sure you want to delete "${accountName}"? This action cannot be undone.`,
-        confirmText: 'Delete Account',
-        confirmClass: 'btn-danger',
-        cancelText: 'Cancel'
-      })
+      // Show delete confirmation modal using the correct confirm method signature
+      const confirmed = await modalManager.confirm(
+        `Are you sure you want to delete "${accountName}"? This action cannot be undone.`,
+        'Delete Account?'
+      )
       
       if (confirmed) {
         try {
           const { deleteCashAccount, getCashAccounts } = await import('./database.js')
           await deleteCashAccount(accountId)
           
-          // Refresh the page
-          const appState = window.appState || {}
+          // Refresh the page - fix the appState reference
+          const appState = window.appState || { data: {} }
+          if (!appState.data) {
+            appState.data = {}
+          }
           appState.data.cashAccounts = await getCashAccounts()
           await renderAccounts(appState)
           
