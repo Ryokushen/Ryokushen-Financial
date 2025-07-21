@@ -299,6 +299,20 @@ export async function deleteTransaction(id) {
   )
 }
 
+// Delete all transactions for an account
+export async function deleteTransactionsByAccountId(accountId) {
+  const supabase = getSupabase()
+  return executeQuery(() =>
+    supabase
+      .from('transactions')
+      .delete()
+      .eq('account_id', accountId),
+    {
+      queryName: 'Delete account transactions'
+    }
+  )
+}
+
 // Account operations
 export async function getCashAccounts() {
   const supabase = getSupabase()
@@ -434,12 +448,27 @@ export async function updateCashAccount(id, updates) {
 
 export async function deleteCashAccount(id) {
   const supabase = getSupabase()
-  return executeQuery(() =>
-    supabase
-      .from('cash_accounts')
-      .delete()
-      .eq('id', id)
-  )
+  
+  try {
+    // First, delete all transactions associated with this account
+    console.log(`Deleting all transactions for account ${id}...`)
+    await deleteTransactionsByAccountId(id)
+    
+    // Then delete the account itself
+    console.log(`Deleting cash account ${id}...`)
+    return executeQuery(() =>
+      supabase
+        .from('cash_accounts')
+        .delete()
+        .eq('id', id),
+      {
+        queryName: 'Delete cash account'
+      }
+    )
+  } catch (error) {
+    console.error('Failed to delete cash account:', error)
+    throw error
+  }
 }
 
 // Investment account operations
@@ -495,12 +524,35 @@ export async function updateInvestmentAccount(id, updates) {
 
 export async function deleteInvestmentAccount(id) {
   const supabase = getSupabase()
-  return executeQuery(() =>
-    supabase
-      .from('investment_accounts')
-      .delete()
-      .eq('id', id)
-  )
+  
+  try {
+    // First, delete all holdings associated with this account
+    console.log(`Deleting all holdings for investment account ${id}...`)
+    await executeQuery(() =>
+      supabase
+        .from('holdings')
+        .delete()
+        .eq('account_id', id),
+      {
+        queryName: 'Delete account holdings'
+      }
+    )
+    
+    // Then delete the account itself
+    console.log(`Deleting investment account ${id}...`)
+    return executeQuery(() =>
+      supabase
+        .from('investment_accounts')
+        .delete()
+        .eq('id', id),
+      {
+        queryName: 'Delete investment account'
+      }
+    )
+  } catch (error) {
+    console.error('Failed to delete investment account:', error)
+    throw error
+  }
 }
 
 // Debt account operations
@@ -545,12 +597,27 @@ export async function updateDebtAccount(id, updates) {
 
 export async function deleteDebtAccount(id) {
   const supabase = getSupabase()
-  return executeQuery(() =>
-    supabase
-      .from('debt_accounts')
-      .delete()
-      .eq('id', id)
-  )
+  
+  try {
+    // First, delete all transactions associated with this account
+    console.log(`Deleting all transactions for debt account ${id}...`)
+    await deleteTransactionsByAccountId(id)
+    
+    // Then delete the account itself
+    console.log(`Deleting debt account ${id}...`)
+    return executeQuery(() =>
+      supabase
+        .from('debt_accounts')
+        .delete()
+        .eq('id', id),
+      {
+        queryName: 'Delete debt account'
+      }
+    )
+  } catch (error) {
+    console.error('Failed to delete debt account:', error)
+    throw error
+  }
 }
 
 // Recurring bills operations
@@ -992,6 +1059,7 @@ export default {
   createTransaction,
   updateTransaction,
   deleteTransaction,
+  deleteTransactionsByAccountId,
   batchCreateTransactions,
   batchUpdateTransactions,
   // Cash Accounts
