@@ -1,9 +1,10 @@
 // Account Forms Module - Form configurations for account management
 
 import formBuilder from './formBuilder.js'
-import { createCashAccount, updateCashAccount, createTransaction, getSupabase } from './database.js'
+import { createCashAccount, updateCashAccount, createTransaction, getSupabase, getCashAccounts } from './database.js'
 import modalManager from './modal.js'
 import { appState } from '../app.js'
+import { hideLoading } from './ui.js'
 
 // Account types
 const ACCOUNT_TYPES = {
@@ -110,6 +111,11 @@ export function createCashAccountForm(accountData = null) {
           // Remove fields that shouldn't be updated
           const { initial_balance, ...updateData } = data
           await updateCashAccount(accountData.id, updateData)
+          
+          // Update the local state directly
+          const updatedAccounts = await getCashAccounts()
+          appState.data.cashAccounts = updatedAccounts
+          
           await modalManager.showSuccess('Account updated successfully!')
         } else {
           // Create account
@@ -129,24 +135,17 @@ export function createCashAccountForm(accountData = null) {
               category: 'Income',
               date: new Date().toISOString().split('T')[0],
               cleared: true
-              // Removed 'notes' field as it doesn't exist in transactions table
             })
-            
-            // Small delay to ensure transaction is saved
-            await new Promise(resolve => setTimeout(resolve, 500))
           }
+          
+          // Update the local state directly
+          const updatedAccounts = await getCashAccounts()
+          appState.data.cashAccounts = updatedAccounts
           
           await modalManager.showSuccess('Account created successfully!')
         }
         
-        // Reload accounts data - add delay to ensure database is updated
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        if (window.loadInitialData) {
-          await window.loadInitialData(true) // Force refresh
-        }
-        
-        // Refresh current page
+        // Refresh the accounts page if we're on it
         if (appState.currentPage === 'accounts') {
           const { renderAccounts } = await import('./accounts.js')
           await renderAccounts(appState)
