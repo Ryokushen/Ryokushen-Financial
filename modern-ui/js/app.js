@@ -6,7 +6,7 @@ import { initDashboard } from './modules/dashboard.js'
 import { initTheme } from './modules/theme.js'
 import { initNavigation } from './modules/navigation.js'
 import { showLoading, hideLoading, showError } from './modules/ui.js'
-import { initSupabase } from './modules/database.js'
+import { initSupabase, setCachedAuthUser, setSkipAuthChecks, setInitialLoad } from './modules/database.js'
 import modalManager from './modules/modal.js'
 
 // Application State
@@ -27,15 +27,27 @@ const appState = {
   cache: new Map(),
   isLoading: false,
   error: null,
+  initialized: false, // Prevent multiple initializations
 }
 
 // Make appState globally accessible for debugging
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
   window.appState = appState
+  
+  // Add database test function for debugging
+  import('./modules/database.js').then(({ testDatabaseConnection }) => {
+    window.testDB = testDatabaseConnection
+  })
 }
 
 // Initialize Application
 async function initApp() {
+  // Prevent duplicate initialization
+  if (appState.initialized) {
+    console.log('App already initialized, skipping')
+    return
+  }
+  
   try {
     showLoading('Initializing Ryokushen...')
     
@@ -56,8 +68,14 @@ async function initApp() {
       return
     }
     
+    // Mark as initialized
+    appState.initialized = true
+    
     // User is authenticated
     appState.user = user
+    
+    // Cache the authenticated user for database queries
+    setCachedAuthUser(user)
     
     // Initialize theme
     initTheme(appState)
@@ -90,53 +108,134 @@ async function initApp() {
     console.error('Failed to initialize app:', error)
     hideLoading()
     showError('Failed to initialize application. Please refresh and try again.')
+    // Reset initialized flag on error
+    appState.initialized = false
   }
 }
 
-// Load Initial Data
+// Progressive data loading state
+const loadingState = {
+  accounts: 'pending',
+  transactions: 'pending',
+  bills: 'pending',
+  rules: 'pending',
+  progress: 0,
+  total: 4
+}
+
+// Update loading progress
+function updateLoadingProgress(module, status) {
+  loadingState[module] = status
+  if (status === 'loaded' || status === 'failed') {
+    loadingState.progress++
+  }
+  
+  const percentage = Math.round((loadingState.progress / loadingState.total) * 100)
+  showLoading(`Loading your financial data... ${percentage}%`)
+}
+
+// Load Initial Data Progressively
 async function loadInitialData() {
   try {
-    showLoading('Loading your financial data...')
+    showLoading('Loading your financial data... 0%')
+    
+    // Skip auth checks during initial load since we know user is authenticated
+    setSkipAuthChecks(true)
+    
+    // Mark as initial load for longer timeouts
+    setInitialLoad(true)
     
     // Import data modules
-    const { loadTransactions } = await import('./modules/transactions.js')
-    const { loadAccounts } = await import('./modules/accounts.js')
-    const { loadRecurringBills } = await import('./modules/recurringBills.js')
-    const { loadSmartRules } = await import('./modules/smartRules.js')
+    const modules = {
+      accounts: await import('./modules/accounts.js'),
+      transactions: await import('./modules/transactions.js'),
+      bills: await import('./modules/recurringBills.js'),
+      rules: await import('./modules/smartRules.js')
+    }
     
-    // Load data in parallel
-    const [
-      transactions,
-      { cashAccounts, investmentAccounts, debtAccounts },
-      recurringBills,
-      smartRules,
-    ] = await Promise.all([
-      loadTransactions(),
-      loadAccounts(),
-      loadRecurringBills(),
-      loadSmartRules(),
+    // Load critical data first (accounts needed for dashboard)
+    try {
+      updateLoadingProgress('accounts', 'loading')
+      const accountData = await modules.accounts.loadAccounts()
+      appState.data = {
+        ...appState.data,
+        cashAccounts: accountData.cashAccounts || [],
+        investmentAccounts: accountData.investmentAccounts || [],
+        debtAccounts: accountData.debtAccounts || []
+      }
+      updateLoadingProgress('accounts', 'loaded')
+    } catch (error) {
+      console.error('Failed to load accounts:', error)
+      updateLoadingProgress('accounts', 'failed')
+      // Continue with empty accounts
+      appState.data.cashAccounts = []
+      appState.data.investmentAccounts = []
+      appState.data.debtAccounts = []
+    }
+    
+    // Load transactions (limited to recent ones for dashboard)
+    try {
+      updateLoadingProgress('transactions', 'loading')
+      const transactions = await modules.transactions.loadTransactions()
+      appState.data.transactions = transactions || []
+      updateLoadingProgress('transactions', 'loaded')
+    } catch (error) {
+      console.error('Failed to load transactions:', error)
+      updateLoadingProgress('transactions', 'failed')
+      appState.data.transactions = []
+    }
+    
+    // Load bills and rules in background (not critical for dashboard)
+    const backgroundPromises = []
+    
+    // Load bills
+    backgroundPromises.push(
+      modules.bills.loadRecurringBills()
+        .then(bills => {
+          appState.data.recurringBills = bills || []
+          updateLoadingProgress('bills', 'loaded')
+        })
+        .catch(error => {
+          console.error('Failed to load bills:', error)
+          appState.data.recurringBills = []
+          updateLoadingProgress('bills', 'failed')
+        })
+    )
+    
+    // Load smart rules
+    backgroundPromises.push(
+      modules.rules.loadSmartRules()
+        .then(rules => {
+          appState.data.smartRules = rules || []
+          updateLoadingProgress('rules', 'loaded')
+          
+          // Process rules if enabled
+          if (FEATURES.SMART_RULES && rules.length > 0 && appState.data.transactions.length > 0) {
+            return modules.rules.processTransactions(appState.data.transactions, rules)
+          }
+        })
+        .catch(error => {
+          console.error('Failed to load rules:', error)
+          appState.data.smartRules = []
+          updateLoadingProgress('rules', 'failed')
+        })
+    )
+    
+    // Wait for background tasks with timeout
+    await Promise.race([
+      Promise.all(backgroundPromises),
+      new Promise(resolve => setTimeout(resolve, 10000)) // 10s timeout for background tasks
     ])
-    
-    // Update app state
-    appState.data = {
-      ...appState.data,
-      transactions,
-      cashAccounts,
-      investmentAccounts,
-      debtAccounts,
-      recurringBills,
-      smartRules,
-    }
-    
-    // Process smart rules on loaded transactions
-    if (FEATURES.SMART_RULES && smartRules.length > 0) {
-      const { processTransactions } = await import('./modules/smartRules.js')
-      await processTransactions(transactions, smartRules)
-    }
     
   } catch (error) {
     console.error('Failed to load data:', error)
     showError('Failed to load some data. Some features may be limited.')
+  } finally {
+    // Re-enable auth checks after initial load
+    setSkipAuthChecks(false)
+    
+    // Reset initial load flag
+    setInitialLoad(false)
   }
 }
 
@@ -405,11 +504,23 @@ async function logout() {
 
 // Continue initialization after authentication
 export async function continueWithUser(user) {
+  // Prevent duplicate initialization
+  if (appState.initialized) {
+    console.log('App already initialized, skipping continueWithUser')
+    return
+  }
+  
   try {
     showLoading('Loading your financial data...')
     
+    // Mark as initialized early to prevent race conditions
+    appState.initialized = true
+    
     // User is authenticated
     appState.user = user
+    
+    // Cache the authenticated user for database queries
+    setCachedAuthUser(user)
     
     // Initialize theme
     initTheme(appState)
@@ -436,6 +547,8 @@ export async function continueWithUser(user) {
     console.error('Failed to continue initialization:', error)
     hideLoading()
     showError('Failed to load application. Please refresh and try again.')
+    // Reset initialized flag on error
+    appState.initialized = false
   }
 }
 
@@ -458,7 +571,6 @@ export {
   showPage,
   loadInitialData,
   modalManager,
-  continueWithUser,
 }
 
 // Export default for auth module

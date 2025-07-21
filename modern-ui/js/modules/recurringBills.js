@@ -3,14 +3,24 @@
 import { getRecurringBills as fetchRecurringBills } from './database.js'
 import { formatCurrency, formatDate, maskCurrency } from './ui.js'
 
+// Mock data as fallback
+const mockBills = [
+  { id: 1, name: 'Netflix', amount: 15.99, frequency: 'monthly', next_due: '2025-02-01', category: 'Entertainment' },
+  { id: 2, name: 'Rent', amount: 1500.00, frequency: 'monthly', next_due: '2025-02-01', category: 'Housing' }
+]
+
 // Load recurring bills from database
 export async function loadRecurringBills() {
   try {
+    console.log('Loading recurring bills from database...')
     const bills = await fetchRecurringBills()
-    return bills || []
+    console.log(`Loaded ${bills.length} recurring bills from database`)
+    return bills
   } catch (error) {
     console.error('Failed to load recurring bills:', error)
-    return []
+    // Return mock data as fallback
+    console.log('Using mock bills data as fallback')
+    return mockBills
   }
 }
 

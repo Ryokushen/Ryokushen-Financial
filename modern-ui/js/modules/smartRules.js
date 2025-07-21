@@ -5,10 +5,13 @@ import { getSmartRules as fetchSmartRules } from './database.js'
 // Load smart rules from database
 export async function loadSmartRules() {
   try {
+    console.log('Loading smart rules from database...')
     const rules = await fetchSmartRules()
-    return rules || []
+    console.log(`Loaded ${rules.length} smart rules from database`)
+    return rules
   } catch (error) {
     console.error('Failed to load smart rules:', error)
+    // Return empty array as fallback
     return []
   }
 }

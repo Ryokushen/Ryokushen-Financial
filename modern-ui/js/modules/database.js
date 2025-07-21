@@ -8,7 +8,35 @@ import getSupabaseClient from '../supabase-client.js'
 export async function initSupabase() {
   const client = getSupabaseClient()
   console.log('Supabase client initialized:', !!client)
+  
+  // Warm up the connection with a simple query
+  if (client) {
+    try {
+      console.log('Warming up Supabase connection...')
+      const { data, error } = await client
+        .from('cash_accounts')
+        .select('id')
+        .limit(1)
+      
+      if (!error) {
+        console.log('Supabase connection ready')
+      }
+    } catch (e) {
+      console.log('Warmup query failed (non-critical):', e.message)
+    }
+  }
+  
   return client
+}
+
+// Set cached auth state (called from app.js when user is authenticated)
+export function setCachedAuthUser(user) {
+  cachedAuthState = {
+    user: user,
+    lastCheck: Date.now(),
+    cacheExpiry: 30000
+  }
+  console.log('Auth cache updated for user:', user?.email)
 }
 
 // Get Supabase client
@@ -20,27 +48,155 @@ export function getSupabase() {
   return client
 }
 
-// Generic query builder with error handling
-async function executeQuery(queryFn) {
+// Query timeout configuration
+const QUERY_TIMEOUT = 10000 // 10 seconds default (increased for cold starts)
+const QUERY_TIMEOUT_LONG = 20000 // 20 seconds for complex queries
+const QUERY_TIMEOUT_INITIAL = 15000 // 15 seconds for initial queries (cold start)
+const AUTH_CHECK_TIMEOUT = 5000 // 5 seconds for auth check
+
+// Auth state cache
+let cachedAuthState = {
+  user: null,
+  lastCheck: 0,
+  cacheExpiry: 30000 // Cache auth state for 30 seconds
+}
+
+// Global flag to skip auth checks during initial load
+let skipAuthChecks = false
+
+// Global flag for initial load (use longer timeouts)
+let isInitialLoad = true
+
+// Set whether to skip auth checks (used during initial load)
+export function setSkipAuthChecks(skip) {
+  skipAuthChecks = skip
+  console.log('Skip auth checks:', skip)
+}
+
+// Set initial load state
+export function setInitialLoad(initial) {
+  isInitialLoad = initial
+  console.log('Initial load:', initial)
+}
+
+// Create a promise that rejects after timeout
+function createTimeoutPromise(ms, queryName = 'Database query') {
+  return new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`${queryName} timed out after ${ms}ms`))
+    }, ms)
+  })
+}
+
+// Wrapper to add timeout to any promise with retry logic
+async function withTimeout(promise, timeoutMs = QUERY_TIMEOUT, queryName = 'Database query', retryCount = 0) {
   try {
-    // Check if user is authenticated
-    const supabase = getSupabase()
-    const { data: { user } } = await supabase.auth.getUser()
+    const result = await Promise.race([
+      promise,
+      createTimeoutPromise(timeoutMs, queryName)
+    ])
+    return result
+  } catch (error) {
+    console.error(`Query timeout or error for ${queryName}:`, error.message)
     
-    if (!user) {
-      throw new Error('User not authenticated')
+    // Retry once on timeout with longer timeout
+    if (error.message.includes('timed out') && retryCount === 0) {
+      console.log(`Retrying ${queryName} with longer timeout...`)
+      return withTimeout(promise, timeoutMs * 2, queryName, retryCount + 1)
     }
     
-    const result = await queryFn()
+    throw error
+  }
+}
+
+// Check if auth is cached and still valid
+async function getCachedAuth(forceCache = false) {
+  const now = Date.now()
+  
+  // If we have a cached user and it's still valid (or forced), return it immediately
+  if (cachedAuthState.user && (forceCache || (now - cachedAuthState.lastCheck) < cachedAuthState.cacheExpiry)) {
+    return cachedAuthState.user
+  }
+  
+  // Only refresh cache if not forced and cache is expired
+  if (!forceCache) {
+    try {
+      const supabase = getSupabase()
+      const { data: { user } } = await withTimeout(
+        supabase.auth.getUser(),
+        AUTH_CHECK_TIMEOUT,
+        'Auth check'
+      )
+      
+      cachedAuthState = {
+        user: user,
+        lastCheck: now,
+        cacheExpiry: 30000
+      }
+      
+      return user
+    } catch (error) {
+      // Return last known user if auth check fails
+      if (cachedAuthState.user) {
+        console.log('Auth check failed, using cached user')
+        return cachedAuthState.user
+      }
+      throw error
+    }
+  }
+  
+  return null
+}
+
+// Generic query builder with error handling and timeout
+async function executeQuery(queryFn, options = {}) {
+  const {
+    timeout = isInitialLoad ? QUERY_TIMEOUT_INITIAL : QUERY_TIMEOUT,
+    queryName = 'Database query',
+    fallbackData = null,
+    skipAuth = false,
+    trustContext = false // New option to trust the context and use cached auth
+  } = options
+  
+  try {
+    // Check if user is authenticated (unless skipped)
+    if (!skipAuth && !skipAuthChecks) {
+      // Use cached auth in trusted contexts (like initial load after sign in)
+      const user = await getCachedAuth(trustContext)
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
+    }
+    
+    // Execute the query with timeout
+    const result = await withTimeout(
+      queryFn(),
+      timeout,
+      queryName
+    )
+    
     if (result.error) {
       throw result.error
     }
+    
     return result.data
   } catch (error) {
-    console.error('Database query failed:', error)
+    console.error(`${queryName} failed:`, error.message)
     
+    // Handle specific error types
     if (error.message === 'User not authenticated') {
       showError('Please sign in to continue.')
+      throw error
+    } else if (error.message.includes('timed out')) {
+      // Don't show error for auth timeouts if we have fallback data
+      if (!error.message.includes('Auth check') || fallbackData === null) {
+        showError(`Loading is taking longer than expected. Please try again.`)
+      }
+      // Return fallback data if provided
+      if (fallbackData !== null) {
+        console.log(`Returning fallback data for ${queryName}`)
+        return fallbackData
+      }
     } else {
       showError('Database operation failed. Please try again.')
     }
@@ -96,7 +252,18 @@ export async function getTransactions(filters = {}) {
     query = query.limit(filters.limit)
   }
   
-  return executeQuery(() => query)
+  // Set timeout based on expected data size
+  const timeout = filters.limit && filters.limit <= 100 ? QUERY_TIMEOUT : QUERY_TIMEOUT_LONG
+  
+  return executeQuery(
+    () => query,
+    {
+      queryName: 'Get transactions',
+      timeout: timeout,
+      fallbackData: [],
+      trustContext: true // Trust cached auth during initial load
+    }
+  )
 }
 
 export async function createTransaction(transaction) {
@@ -135,22 +302,72 @@ export async function deleteTransaction(id) {
 // Account operations
 export async function getCashAccounts() {
   const supabase = getSupabase()
-  const accounts = await executeQuery(() =>
-    supabase
-      .from('cash_accounts')
-      .select('*')
-      .order('name')
-  )
   
-  // Calculate balance for each account
-  const accountsWithBalances = await Promise.all(
-    accounts.map(async (account) => {
-      const balance = await calculateAccountBalance(account.id)
-      return { ...account, balance }
-    })
-  )
-  
-  return accountsWithBalances
+  try {
+    // First, get all cash accounts
+    const accounts = await executeQuery(
+      () => supabase
+        .from('cash_accounts')
+        .select('*')
+        .order('name'),
+      {
+        queryName: 'Get cash accounts',
+        timeout: isInitialLoad ? QUERY_TIMEOUT_INITIAL : QUERY_TIMEOUT,
+        fallbackData: [],
+        trustContext: true // Trust cached auth during initial load
+      }
+    )
+    
+    if (!accounts || accounts.length === 0) {
+      return []
+    }
+    
+    // Get all account IDs
+    const accountIds = accounts.map(acc => acc.id)
+    
+    // Single query to get all balances at once (fixes N+1 problem)
+    const balances = await executeQuery(
+      async () => {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('account_id, amount')
+          .in('account_id', accountIds)
+        
+        if (error) return { error, data: null }
+        
+        // Calculate balances in memory
+        const balanceMap = {}
+        accountIds.forEach(id => balanceMap[id] = 0)
+        
+        data.forEach(transaction => {
+          if (transaction.account_id && transaction.amount) {
+            balanceMap[transaction.account_id] += transaction.amount
+          }
+        })
+        
+        return { data: balanceMap, error: null }
+      },
+      {
+        queryName: 'Calculate account balances',
+        timeout: QUERY_TIMEOUT_LONG, // 15s for potentially large query
+        fallbackData: {},
+        trustContext: true // Trust cached auth during initial load
+      }
+    )
+    
+    // Combine accounts with their balances
+    const accountsWithBalances = accounts.map(account => ({
+      ...account,
+      balance: balances[account.id] || 0
+    }))
+    
+    return accountsWithBalances
+    
+  } catch (error) {
+    console.error('Failed to get cash accounts:', error)
+    // Return empty array as fallback
+    return []
+  }
 }
 
 export async function getCashAccountById(id) {
@@ -228,11 +445,17 @@ export async function deleteCashAccount(id) {
 // Investment account operations
 export async function getInvestmentAccounts() {
   const supabase = getSupabase()
-  return executeQuery(() =>
-    supabase
+  return executeQuery(
+    () => supabase
       .from('investment_accounts')
       .select('*')
-      .order('name')
+      .order('name'),
+    {
+      queryName: 'Get investment accounts',
+      timeout: QUERY_TIMEOUT,
+      fallbackData: [],
+      trustContext: true // Trust cached auth during initial load
+    }
   )
 }
 
@@ -272,11 +495,17 @@ export async function deleteInvestmentAccount(id) {
 // Debt account operations
 export async function getDebtAccounts() {
   const supabase = getSupabase()
-  return executeQuery(() =>
-    supabase
+  return executeQuery(
+    () => supabase
       .from('debt_accounts')
       .select('*')
-      .order('name')
+      .order('name'),
+    {
+      queryName: 'Get debt accounts',
+      timeout: QUERY_TIMEOUT,
+      fallbackData: [],
+      trustContext: true // Trust cached auth during initial load
+    }
   )
 }
 
@@ -316,11 +545,17 @@ export async function deleteDebtAccount(id) {
 // Recurring bills operations
 export async function getRecurringBills() {
   const supabase = getSupabase()
-  return executeQuery(() =>
-    supabase
+  return executeQuery(
+    () => supabase
       .from('recurring_bills')
       .select('*')
-      .order('next_due')
+      .order('next_due'),
+    {
+      queryName: 'Get recurring bills',
+      timeout: QUERY_TIMEOUT,
+      fallbackData: [],
+      trustContext: true // Trust cached auth during initial load
+    }
   )
 }
 
@@ -360,11 +595,17 @@ export async function deleteRecurringBill(id) {
 // Smart rules operations
 export async function getSmartRules() {
   const supabase = getSupabase()
-  return executeQuery(() =>
-    supabase
+  return executeQuery(
+    () => supabase
       .from('smart_rules')
       .select('*')
-      .order('priority')
+      .order('priority'),
+    {
+      queryName: 'Get smart rules',
+      timeout: QUERY_TIMEOUT,
+      fallbackData: [],
+      trustContext: true // Trust cached auth during initial load
+    }
   )
 }
 
@@ -615,10 +856,39 @@ export async function getNetWorthHistory() {
   return data
 }
 
+// Test database connection directly (for debugging)
+export async function testDatabaseConnection() {
+  console.log('Testing direct database connection...')
+  try {
+    const supabase = getSupabase()
+    const start = Date.now()
+    
+    // Simple query with no auth check
+    const { data, error } = await supabase
+      .from('cash_accounts')
+      .select('id, name')
+      .limit(1)
+    
+    const elapsed = Date.now() - start
+    
+    if (error) {
+      console.error('Database test failed:', error)
+      return { success: false, error: error.message, elapsed }
+    }
+    
+    console.log(`Database test successful in ${elapsed}ms:`, data)
+    return { success: true, data, elapsed }
+  } catch (e) {
+    console.error('Database test error:', e)
+    return { success: false, error: e.message }
+  }
+}
+
 // Export all functions
 export default {
   initSupabase,
   getSupabase,
+  testDatabaseConnection,
   // User
   getUserProfile,
   updateUserProfile,

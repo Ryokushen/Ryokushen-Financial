@@ -488,17 +488,39 @@ function addAuthStyles() {
   document.head.appendChild(style)
 }
 
+// Track initialization state
+let authInitialized = false
+
 // Initialize auth listeners
 export function initAuth() {
+  // Prevent duplicate initialization
+  if (authInitialized) {
+    console.log('Auth already initialized, skipping')
+    return
+  }
+  
   const supabase = initSupabase()
+  authInitialized = true
   
   // Listen for auth state changes
   supabase.auth.onAuthStateChange(async (event, session) => {
     console.log('Auth state changed:', event, session?.user?.email)
     
+    // Ignore initial session event - it's handled by initApp
+    if (event === 'INITIAL_SESSION') {
+      console.log('Ignoring INITIAL_SESSION event')
+      return
+    }
+    
     if (event === 'SIGNED_IN' && session) {
       // User signed in - update app state instead of reloading
       if (window.appState) {
+        // Check if we're already initialized with this user
+        if (window.appState.user?.id === session.user.id) {
+          console.log('User already loaded, skipping re-initialization')
+          return
+        }
+        
         window.appState.user = session.user
         
         // Hide auth modal
