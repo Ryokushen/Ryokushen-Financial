@@ -124,6 +124,15 @@ const loadingState = {
   total: 4
 }
 
+// Reset loading state for forced refresh
+function resetLoadingState() {
+  loadingState.accounts = 'pending'
+  loadingState.transactions = 'pending'
+  loadingState.bills = 'pending'
+  loadingState.rules = 'pending'
+  loadingState.progress = 0
+}
+
 // Update loading progress
 function updateLoadingProgress(module, status) {
   loadingState[module] = status
@@ -136,8 +145,14 @@ function updateLoadingProgress(module, status) {
 }
 
 // Load Initial Data Progressively
-async function loadInitialData() {
+async function loadInitialData(forceRefresh = false) {
   try {
+    // Reset loading state if forcing refresh
+    if (forceRefresh) {
+      resetLoadingState()
+      appState.cache.clear() // Clear any cached data
+    }
+    
     showLoading('Loading your financial data... 0%')
     
     // Skip auth checks during initial load since we know user is authenticated
