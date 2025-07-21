@@ -120,6 +120,8 @@ export async function renderInvestments(appState) {
   
   // Refresh investmentAccounts after potential update
   const finalInvestmentAccounts = appState.data.investmentAccounts || []
+  console.log('Final investment accounts for rendering:', finalInvestmentAccounts)
+  console.log('Final investment accounts count:', finalInvestmentAccounts.length)
   
   // No need to load holdings separately - they're nested in accounts
   const summary = calculatePortfolioSummary(finalInvestmentAccounts)
@@ -367,35 +369,40 @@ async function showAddInvestmentAccountModal(appState) {
   
   modalManager.show(modalContent)
   
-  // Handle form submission
-  document.getElementById('add-investment-account-form').addEventListener('submit', async (e) => {
-    e.preventDefault()
-    const formData = new FormData(e.target)
-    
-    try {
-      // Save to database
-      const newAccount = {
-        name: formData.get('name'),
-        type: formData.get('type'),
-        institution: formData.get('institution') || null,
-        current_value: 0 // Start with 0 value
-      }
-      
-      await createAccount(newAccount)
-      
-      modalManager.close()
-      modalManager.showNotification('Investment account added successfully', 'success')
-      
-      // Reload investment accounts
-      appState.data.investmentAccounts = await fetchInvestmentAccounts()
-      
-      // Refresh the page
-      await renderInvestments(appState)
-    } catch (error) {
-      console.error('Failed to add investment account:', error)
-      modalManager.showNotification('Failed to add investment account', 'error')
+  // Handle form submission - wait for modal to be rendered
+  setTimeout(() => {
+    const form = document.getElementById('add-investment-account-form')
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const formData = new FormData(e.target)
+        
+        try {
+          // Save to database
+          const newAccount = {
+            name: formData.get('name'),
+            type: formData.get('type'),
+            institution: formData.get('institution') || null,
+            current_value: 0 // Start with 0 value
+          }
+          
+          await createAccount(newAccount)
+          
+          modalManager.close()
+          modalManager.showNotification('Investment account added successfully', 'success')
+          
+          // Reload investment accounts
+          appState.data.investmentAccounts = await fetchInvestmentAccounts()
+          
+          // Refresh the page
+          await renderInvestments(appState)
+        } catch (error) {
+          console.error('Failed to add investment account:', error)
+          modalManager.showNotification('Failed to add investment account', 'error')
+        }
+      })
     }
-  })
+  }, 100)
 }
 
 // Show edit investment account modal
