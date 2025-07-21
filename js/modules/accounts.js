@@ -264,24 +264,30 @@ function setupAccountsEventHandlers() {
           await deleteCashAccount(accountId)
           
           // Wait for database operations to complete
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          await new Promise(resolve => setTimeout(resolve, 1500))
           
           // Force reload all data including transactions
-          const appState = window.appState || { data: {} }
-          if (!appState.data) {
-            appState.data = {}
+          if (window.loadInitialData) {
+            await window.loadInitialData(true) // Force refresh
+          } else {
+            // Fallback if loadInitialData is not available
+            const appState = window.appState || { data: {} }
+            if (!appState.data) {
+              appState.data = {}
+            }
+            
+            // Reload both accounts and transactions to ensure consistency
+            const [cashAccounts, transactions] = await Promise.all([
+              getCashAccounts(),
+              getTransactions()
+            ])
+            
+            appState.data.cashAccounts = cashAccounts
+            appState.data.transactions = transactions
           }
           
-          // Reload both accounts and transactions to ensure consistency
-          const [cashAccounts, transactions] = await Promise.all([
-            getCashAccounts(),
-            getTransactions()
-          ])
-          
-          appState.data.cashAccounts = cashAccounts
-          appState.data.transactions = transactions
-          
           // Re-render the accounts page
+          const appState = window.appState || { data: {} }
           await renderAccounts(appState)
           
           // Show success message
