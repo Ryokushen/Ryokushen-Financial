@@ -186,7 +186,6 @@ export async function renderInvestments(appState) {
       
       <!-- Investment Accounts -->
       ${finalInvestmentAccounts.length > 0 ? finalInvestmentAccounts.map((account, index) => `
-        ${index === 0 ? `
         <!-- Account Card -->
         <div class="account-card">
           <div class="account-header">
@@ -222,7 +221,7 @@ export async function renderInvestments(appState) {
               <span>Add Holding</span>
             </button>
           </div>
-          ${getAllHoldings(finalInvestmentAccounts).length > 0 ? `
+          ${(account.holdings || []).length > 0 ? `
             <table class="holdings-table">
               <thead>
                 <tr>
@@ -234,7 +233,7 @@ export async function renderInvestments(appState) {
                 </tr>
               </thead>
               <tbody>
-                ${getAllHoldings(finalInvestmentAccounts).map(holding => `
+                ${(account.holdings || []).map(holding => `
                   <tr>
                     <td>
                       <div class="symbol-cell">
@@ -263,7 +262,6 @@ export async function renderInvestments(appState) {
             </div>
           `}
         </div>
-        ` : ''}
       `).join('') : `
         <div class="no-accounts-message">
           <div class="no-accounts-icon">📈</div>
