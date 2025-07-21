@@ -284,7 +284,7 @@ async function showPage(pageName) {
         console.log('=== ROUTING TO INVESTMENTS PAGE ===')
         try {
           console.log('Importing investments module...')
-          const investmentsModule = await import('./modules/investments.js')
+          const investmentsModule = await import(`./modules/investments.js?t=${Date.now()}`)
           console.log('Investments module imported:', investmentsModule)
           console.log('renderInvestments function:', investmentsModule.renderInvestments)
           
