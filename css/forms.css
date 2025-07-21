@@ -400,6 +400,7 @@ input[type="datetime-local"].form-control {
 /* Form Field Container */
 .form-field {
   margin-bottom: var(--spacing-4);
+  position: relative;
 }
 
 .form-field--half {
@@ -811,6 +812,32 @@ input[type="datetime-local"].form-control {
   width: 100%;
   padding: 8px 16px;
   font-size: 14px;
+}
+
+/* Amount Sign Indicator */
+.amount-sign {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  font-weight: 600;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.amount-sign.negative {
+  color: #ef4444;
+}
+
+.amount-sign.positive {
+  color: #10b981;
+}
+
+/* Adjust input padding when sign is present */
+.form-field .amount-sign + .form-input,
+.form-field .amount-sign + .form-control {
+  padding-left: 36px;
 }
 
 /* Responsive form actions */
