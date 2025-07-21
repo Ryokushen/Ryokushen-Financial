@@ -245,9 +245,13 @@ function setupAccountsEventHandlers() {
       const accountId = btn.dataset.accountId
       const accountName = btn.dataset.accountName
       
-      // Show delete confirmation modal using the correct confirm method signature
+      // Show delete confirmation modal with warning about transactions
       const confirmed = await modalManager.confirm(
-        `Are you sure you want to delete "${accountName}"? This action cannot be undone.`,
+        `Are you sure you want to delete "${accountName}"? 
+        
+        <strong>Warning:</strong> This will also delete all transactions associated with this account.
+        
+        This action cannot be undone.`,
         'Delete Account?'
       )
       
@@ -265,7 +269,7 @@ function setupAccountsEventHandlers() {
           await renderAccounts(appState)
           
           // Show success message
-          modalManager.showNotification('Account deleted successfully', 'success')
+          modalManager.showNotification('Account and all associated transactions deleted successfully', 'success')
         } catch (error) {
           console.error('Failed to delete account:', error)
           modalManager.showNotification('Failed to delete account', 'error')
