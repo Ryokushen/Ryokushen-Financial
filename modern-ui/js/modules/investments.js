@@ -61,18 +61,18 @@ function calculatePortfolioSummary(accounts) {
   }
   
   accounts.forEach(account => {
-    // Use current_value from database schema
-    summary.totalValue += account.current_value || 0
+    // Use balance from database schema (not current_value)
+    summary.totalValue += account.balance || 0
     
-    // For now, estimate day change as 0 until we implement price tracking
+    // Use day_change from database
     summary.dayChange += account.day_change || 0
     
     // Count holdings from nested holdings array
     const holdings = account.holdings || []
     summary.totalHoldings += holdings.length
     
-    // Calculate value from holdings if current_value isn't set
-    if (!account.current_value && holdings.length > 0) {
+    // Calculate value from holdings if balance isn't set
+    if (!account.balance && holdings.length > 0) {
       const holdingsValue = holdings.reduce((sum, holding) => {
         return sum + (holding.value || (holding.shares * (holding.current_price || holding.price)) || 0)
       }, 0)
@@ -193,7 +193,7 @@ export async function renderInvestments(appState) {
         <div class="account-card">
           <div class="account-header">
             <div class="account-info">
-              <h2>${account.name} (${account.type})</h2>
+              <h2>${account.name} (${account.account_type || account.type})</h2>
               <div class="account-meta">
                 <div class="meta-item">
                   <span class="meta-label">Institution:</span>
@@ -201,7 +201,7 @@ export async function renderInvestments(appState) {
                 </div>
                 <div class="meta-item">
                   <span class="meta-label">Account Type:</span>
-                  <span>${account.type}</span>
+                  <span>${account.account_type || account.type}</span>
                 </div>
               </div>
             </div>
@@ -392,16 +392,28 @@ async function showAddInvestmentAccountModal(appState) {
         const formData = new FormData(e.target)
         
         try {
-          // Save to database
+          // Get current user from Supabase
+          const { getSupabase } = await import('./database.js')
+          const supabase = getSupabase()
+          const { data: { user } } = await supabase.auth.getUser()
+          
+          if (!user) {
+            throw new Error('User not authenticated')
+          }
+          
+          // Save to database with correct column names
           const newAccount = {
             name: formData.get('name'),
-            type: formData.get('type'),
-            institution: formData.get('institution') || null
+            account_type: formData.get('type'), // Changed from 'type' to 'account_type'
+            institution: formData.get('institution') || null,
+            user_id: user.id, // Required field
+            balance: 0, // Initialize with 0 balance
+            day_change: 0 // Initialize with 0 day change
           }
           
           await createInvestmentAccount(newAccount)
           
-          modalManager.close()
+          modalManager.closeAll()
           modalManager.showNotification('Investment account added successfully', 'success')
           
           // Reload investment accounts
@@ -421,6 +433,9 @@ async function showAddInvestmentAccountModal(appState) {
 // Show edit investment account modal
 async function showEditInvestmentAccountModal(accountId, accountName, appState) {
   const { modalManager } = await import('../app.js')
+  
+  // Make modalManager available globally for this modal
+  window.modalManager = modalManager
   
   // TODO: Load actual account data
   const modalContent = `
@@ -451,22 +466,32 @@ async function showEditInvestmentAccountModal(accountId, accountName, appState) 
     content: modalContent
   })
   
-  // Handle form submission
-  document.getElementById('edit-investment-account-form').addEventListener('submit', async (e) => {
-    e.preventDefault()
-    const formData = new FormData(e.target)
-    
-    try {
-      // Update in database
-      const updates = {
-        name: formData.get('name'),
-        type: formData.get('type')
-      }
-      
-      await updateInvestmentAccount(accountId, updates)
-      
-      modalManager.close()
-      modalManager.showNotification('Investment account updated successfully', 'success')
+  // Handle form submission - wait for modal to be rendered
+  setTimeout(() => {
+    const form = document.getElementById('edit-investment-account-form')
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const formData = new FormData(e.target)
+        
+        console.log('Edit form submitted')
+        
+        try {
+          // Update in database with correct column names
+          const updates = {
+            name: formData.get('name'),
+            account_type: formData.get('type') // Changed from 'type' to 'account_type'
+          }
+          
+          await updateInvestmentAccount(accountId, updates)
+          
+          console.log('About to close modal')
+          console.log('window.modalManager exists:', !!window.modalManager)
+          console.log('window.modalManager.closeAll exists:', !!window.modalManager.closeAll)
+          
+          // Close all modals (simpler approach)
+          window.modalManager.closeAll()
+          window.modalManager.showNotification('Investment account updated successfully', 'success')
       
       // Reload investment accounts
       appState.data.investmentAccounts = await fetchInvestmentAccounts()
@@ -477,20 +502,19 @@ async function showEditInvestmentAccountModal(accountId, accountName, appState) 
       console.error('Failed to update investment account:', error)
       modalManager.showNotification('Failed to update investment account', 'error')
     }
-  })
+      })
+    }
+  }, 100)
 }
 
 // Handle delete investment account
 async function handleDeleteInvestmentAccount(accountId, accountName, appState) {
   const { modalManager } = await import('../app.js')
   
-  const confirmed = await modalManager.confirm({
-    title: 'Delete Investment Account?',
-    message: `Are you sure you want to delete "${accountName}"? This will also delete all holdings in this account. This action cannot be undone.`,
-    confirmText: 'Delete Account',
-    confirmClass: 'btn-danger',
-    cancelText: 'Cancel'
-  })
+  const confirmed = await modalManager.confirm(
+    `Are you sure you want to delete "${accountName}"? This will also delete all holdings in this account. This action cannot be undone.`,
+    'Delete Investment Account?'
+  )
   
   if (confirmed) {
     try {
@@ -548,22 +572,35 @@ async function showAddHoldingModal(accountId, appState) {
     const formData = new FormData(e.target)
     
     try {
+      // Get current user from Supabase
+      const { getSupabase } = await import('./database.js')
+      const supabase = getSupabase()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
+      
       // Save to database
       const shares = parseFloat(formData.get('shares'))
       const price = parseFloat(formData.get('price'))
       
       const newHolding = {
-        account_id: accountId,
+        investment_account_id: accountId, // Changed from account_id to investment_account_id
         symbol: formData.get('symbol').toUpperCase(),
         shares: shares,
         current_price: price,
-        value: shares * price
+        value: shares * price,
+        user_id: user.id // Required field
       }
       
       await createHolding(newHolding)
       
-      modalManager.close()
+      modalManager.closeAll()
       modalManager.showNotification('Holding added successfully', 'success')
+      
+      // Reload investment accounts to get updated holdings
+      appState.data.investmentAccounts = await fetchInvestmentAccounts()
       
       // Refresh the page
       await renderInvestments(appState)
@@ -606,8 +643,11 @@ async function showEditHoldingModal(holdingId, symbol, appState) {
     content: modalContent
   })
   
-  // Handle form submission
-  document.getElementById('edit-holding-form').addEventListener('submit', async (e) => {
+  // Handle form submission - wait for modal to be rendered
+  setTimeout(() => {
+    const form = document.getElementById('edit-holding-form')
+    if (form) {
+      form.addEventListener('submit', async (e) => {
     e.preventDefault()
     const formData = new FormData(e.target)
     
@@ -621,12 +661,16 @@ async function showEditHoldingModal(holdingId, symbol, appState) {
         shares: shares,
         current_price: price,
         value: shares * price
+        // Note: user_id and investment_account_id should not be updated
       }
       
       await updateHolding(holdingId, updates)
       
-      modalManager.close()
+      modalManager.closeAll()
       modalManager.showNotification('Holding updated successfully', 'success')
+      
+      // Reload investment accounts to get updated holdings
+      appState.data.investmentAccounts = await fetchInvestmentAccounts()
       
       // Refresh the page
       await renderInvestments(appState)
@@ -634,20 +678,19 @@ async function showEditHoldingModal(holdingId, symbol, appState) {
       console.error('Failed to update holding:', error)
       modalManager.showNotification('Failed to update holding', 'error')
     }
-  })
+      })
+    }
+  }, 100)
 }
 
 // Handle delete holding
 async function handleDeleteHolding(holdingId, symbol, appState) {
   const { modalManager } = await import('../app.js')
   
-  const confirmed = await modalManager.confirm({
-    title: 'Delete Holding?',
-    message: `Are you sure you want to delete ${symbol} from this account? This action cannot be undone.`,
-    confirmText: 'Delete Holding',
-    confirmClass: 'btn-danger',
-    cancelText: 'Cancel'
-  })
+  const confirmed = await modalManager.confirm(
+    `Are you sure you want to delete ${symbol} from this account? This action cannot be undone.`,
+    'Delete Holding?'
+  )
   
   if (confirmed) {
     try {
@@ -655,6 +698,9 @@ async function handleDeleteHolding(holdingId, symbol, appState) {
       await deleteHolding(holdingId)
       
       modalManager.showNotification('Holding deleted successfully', 'success')
+      
+      // Reload investment accounts to get updated holdings
+      appState.data.investmentAccounts = await fetchInvestmentAccounts()
       
       // Refresh the page
       await renderInvestments(appState)
