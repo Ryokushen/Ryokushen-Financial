@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Test - No Database</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 3px solid #666;
+        }
+        .success { border-color: #4CAF50; }
+        .error { border-color: #f44336; }
+        .info { border-color: #2196F3; }
+    </style>
+</head>
+<body>
+    <h1>Simple Test - Loading Without Database</h1>
+    <div id="status"></div>
+
+    <script type="module">
+        function log(message, type = 'info') {
+            const statusDiv = document.getElementById('status')
+            const div = document.createElement('div')
+            div.className = `status ${type}`
+            div.textContent = message
+            statusDiv.appendChild(div)
+            console.log(message)
+        }
+
+        // Mock modules that return data immediately
+        window.mockModules = {
+            loadTransactions: async () => {
+                log('Loading transactions (mock)...')
+                return []
+            },
+            loadAccounts: async () => {
+                log('Loading accounts (mock)...')
+                return {
+                    cashAccounts: [
+                        { id: 1, name: 'Checking', balance: 1000 }
+                    ],
+                    investmentAccounts: [],
+                    debtAccounts: []
+                }
+            },
+            loadRecurringBills: async () => {
+                log('Loading bills (mock)...')
+                return []
+            },
+            loadSmartRules: async () => {
+                log('Loading rules (mock)...')
+                return []
+            }
+        }
+
+        // Test basic loading
+        async function testLoading() {
+            try {
+                log('Starting test...')
+                
+                // Simulate app initialization
+                log('Creating Supabase client...')
+                const supabase = window.supabase.createClient(
+                    'https://rplbjnknqxdyjgsuavcp.supabase.co',
+                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJwbGJqbmtucXhkeWpnc3VhdmNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4NjY2OTIsImV4cCI6MjA2NzQ0MjY5Mn0.09RYF_oOrH8mmPjLo7fulai7ofwW5k94Y3_CIJbn6rI'
+                )
+                
+                log('Checking auth...')
+                const { data: { user } } = await supabase.auth.getUser()
+                if (user) {
+                    log(`Authenticated as: ${user.email}`, 'success')
+                } else {
+                    log('Not authenticated', 'info')
+                }
+                
+                log('Loading data...')
+                const start = Date.now()
+                
+                const data = await Promise.all([
+                    window.mockModules.loadTransactions(),
+                    window.mockModules.loadAccounts(),
+                    window.mockModules.loadRecurringBills(),
+                    window.mockModules.loadSmartRules()
+                ])
+                
+                const loadTime = Date.now() - start
+                log(`Data loaded in ${loadTime}ms`, 'success')
+                
+                log('Test complete!', 'success')
+                
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error')
+                console.error(error)
+            }
+        }
+
+        // Run test
+        testLoading()
+    </script>
+</body>
+</html>

@@ -195,20 +195,41 @@ function createTrendChart(appState) {
     chartInstances.trend.destroy()
   }
   
-  // Generate mock data for last 6 months
+  // Calculate current net worth
+  const { cashAccounts, investmentAccounts, debtAccounts } = appState.data
+  const totalCash = cashAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0)
+  const totalInvestments = investmentAccounts.reduce((sum, acc) => sum + (acc.current_value || 0), 0)
+  const totalDebt = debtAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0)
+  const currentNetWorth = totalCash + totalInvestments - totalDebt
+  
+  // Generate estimated historical data based on transaction trends
   const months = []
   const netWorthData = []
-  const baseNetWorth = calculateNetWorth(appState)
   
   for (let i = 5; i >= 0; i--) {
     const date = new Date()
     date.setMonth(date.getMonth() - i)
     months.push(date.toLocaleString('default', { month: 'short' }))
     
-    // Generate realistic trend
-    const variance = (Math.random() - 0.3) * 0.1
-    const growth = 1 + (0.015 * (5 - i)) + variance
-    netWorthData.push(baseNetWorth / growth)
+    // Calculate net transaction flow for each month
+    const monthStart = new Date(date.getFullYear(), date.getMonth(), 1)
+    const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+    
+    const monthlyFlow = appState.data.transactions
+      .filter(t => {
+        const tDate = new Date(t.date)
+        return tDate >= monthStart && tDate <= monthEnd
+      })
+      .reduce((sum, t) => sum + t.amount, 0)
+    
+    // Estimate historical net worth by subtracting cumulative flow
+    let estimatedNetWorth = currentNetWorth
+    for (let j = 0; j < i; j++) {
+      // Rough estimate: subtract average monthly flow
+      estimatedNetWorth -= monthlyFlow
+    }
+    
+    netWorthData.push(Math.max(0, estimatedNetWorth))
   }
   
   chartInstances.trend = new Chart(ctx, {

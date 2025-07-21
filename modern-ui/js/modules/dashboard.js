@@ -57,7 +57,7 @@ export async function renderDashboard(appState) {
 
 // Calculate dashboard metrics
 function calculateMetrics(appState) {
-  const { cashAccounts, investmentAccounts, debtAccounts, transactions } = appState.data
+  const { cashAccounts, investmentAccounts, debtAccounts, transactions, recurringBills } = appState.data
   
   // Calculate totals
   const totalCash = cashAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0)
@@ -80,11 +80,66 @@ function calculateMetrics(appState) {
     .filter(t => t.amount < 0)
     .reduce((sum, t) => sum + t.amount, 0))
   
-  // Calculate trends (mock data for now)
-  const netWorthChange = 0.153 // 15.3%
-  const cashChange = 0.125 // 12.5%
-  const investmentChange = 0.082 // 8.2%
-  const debtChange = -0.021 // -2.1%
+  // Calculate trends by comparing to previous period (30-60 days ago)
+  const sixtyDaysAgo = new Date()
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
+  
+  const previousPeriodTransactions = transactions.filter(t => {
+    const date = new Date(t.date)
+    return date >= sixtyDaysAgo && date < thirtyDaysAgo
+  })
+  
+  // Calculate previous period metrics
+  const prevIncome = previousPeriodTransactions
+    .filter(t => t.amount > 0)
+    .reduce((sum, t) => sum + t.amount, 0)
+  const prevExpenses = Math.abs(previousPeriodTransactions
+    .filter(t => t.amount < 0)
+    .reduce((sum, t) => sum + t.amount, 0))
+  
+  // Calculate cash balance trend
+  const cashTransactions = recentTransactions
+    .filter(t => cashAccounts.some(acc => acc.id === t.account_id))
+  const cashFlow = cashTransactions.reduce((sum, t) => sum + t.amount, 0)
+  const prevCashTransactions = previousPeriodTransactions
+    .filter(t => cashAccounts.some(acc => acc.id === t.account_id))
+  const prevCashFlow = prevCashTransactions.reduce((sum, t) => sum + t.amount, 0)
+  const cashChange = prevCashFlow !== 0 ? (cashFlow - prevCashFlow) / Math.abs(prevCashFlow) : 0
+  
+  // Calculate income/expense trends
+  const incomeChange = prevIncome > 0 ? (monthlyIncome - prevIncome) / prevIncome : 0
+  const expenseChange = prevExpenses > 0 ? (monthlyExpenses - prevExpenses) / prevExpenses : 0
+  
+  // Estimate net worth change based on cash flow (simplified since we don't have historical balances)
+  const netWorthChange = totalAssets > 0 ? cashFlow / totalAssets : 0
+  
+  // For investment and debt changes, use placeholder values if no historical data
+  const investmentChange = 0.082 // Will be calculated when investment module is updated
+  const debtChange = -0.021 // Will be calculated when debt module is updated
+  
+  // Calculate total monthly bills from recurring bills
+  const monthlyBills = recurringBills
+    .filter(bill => bill.is_active)
+    .reduce((total, bill) => {
+      // Convert frequency to monthly amount
+      let monthlyAmount = bill.amount
+      switch (bill.frequency) {
+        case 'weekly':
+          monthlyAmount = bill.amount * 4.33 // Average weeks per month
+          break
+        case 'bi-weekly':
+          monthlyAmount = bill.amount * 2.17
+          break
+        case 'quarterly':
+          monthlyAmount = bill.amount / 3
+          break
+        case 'annually':
+          monthlyAmount = bill.amount / 12
+          break
+        // 'monthly' is already correct
+      }
+      return total + monthlyAmount
+    }, 0)
   
   // Calculate financial health metrics
   const savingsRate = monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : 0
@@ -99,10 +154,13 @@ function calculateMetrics(appState) {
     netWorth,
     monthlyIncome,
     monthlyExpenses,
+    monthlyBills,
     netWorthChange,
     cashChange,
     investmentChange,
     debtChange,
+    incomeChange,
+    expenseChange,
     savingsRate,
     emergencyFund,
     debtRatio,
@@ -141,25 +199,25 @@ function renderNetWorthHero(metrics, privacyMode) {
           <div class="stat-card">
             <p class="stat-label">Assets</p>
             <p class="stat-value">${maskCurrency(metrics.totalAssets, privacyMode)}</p>
-            <span class="stat-change positive">+8.2%</span>
+            <span class="stat-change ${metrics.cashChange >= 0 ? 'positive' : 'negative'}">${metrics.cashChange >= 0 ? '+' : ''}${(metrics.cashChange * 100).toFixed(1)}%</span>
           </div>
           
           <div class="stat-card">
             <p class="stat-label">Liabilities</p>
             <p class="stat-value">${maskCurrency(metrics.totalDebt, privacyMode)}</p>
-            <span class="stat-change positive">-2.1%</span>
+            <span class="stat-change ${metrics.debtChange <= 0 ? 'positive' : 'negative'}">${metrics.debtChange >= 0 ? '+' : ''}${(metrics.debtChange * 100).toFixed(1)}%</span>
           </div>
           
           <div class="stat-card">
             <p class="stat-label">Monthly Income</p>
             <p class="stat-value">${maskCurrency(metrics.monthlyIncome, privacyMode)}</p>
-            <span class="stat-change positive">+5.0%</span>
+            <span class="stat-change ${metrics.incomeChange >= 0 ? 'positive' : 'negative'}">${metrics.incomeChange >= 0 ? '+' : ''}${(metrics.incomeChange * 100).toFixed(1)}%</span>
           </div>
           
           <div class="stat-card">
             <p class="stat-label">Monthly Expenses</p>
             <p class="stat-value">${maskCurrency(metrics.monthlyExpenses, privacyMode)}</p>
-            <span class="stat-change negative">+1.5%</span>
+            <span class="stat-change ${metrics.expenseChange <= 0 ? 'positive' : 'negative'}">${metrics.expenseChange >= 0 ? '+' : ''}${(metrics.expenseChange * 100).toFixed(1)}%</span>
           </div>
         </div>
         
@@ -198,8 +256,8 @@ function renderAccountCards(metrics, privacyMode) {
     },
     {
       title: 'Monthly Bills',
-      value: metrics.monthlyExpenses,
-      change: '+1.5%',
+      value: metrics.monthlyBills,
+      change: `${metrics.expenseChange >= 0 ? '+' : ''}${(metrics.expenseChange * 100).toFixed(1)}%`,
       icon: '📅',
       color: 'monthly'
     }
@@ -225,14 +283,71 @@ function renderAccountCards(metrics, privacyMode) {
 
 // Render monthly budget
 function renderMonthlyBudget(appState) {
-  // Mock budget data for now
-  const budgetItems = [
-    { category: 'Housing', spent: 1200, budget: 1400, icon: '🏠' },
-    { category: 'Food', spent: 487, budget: 600, icon: '🛒' },
-    { category: 'Transport', spent: 234, budget: 300, icon: '🚗' },
-    { category: 'Entertainment', spent: 156, budget: 200, icon: '☕' },
-    { category: 'Travel', spent: 0, budget: 500, icon: '✈️' }
-  ]
+  // Calculate spending by category for current month
+  const currentDate = new Date()
+  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+  
+  // Get current month transactions
+  const monthTransactions = appState.data.transactions.filter(t => {
+    const date = new Date(t.date)
+    return date >= startOfMonth && t.amount < 0 // Only expenses
+  })
+  
+  // Calculate spending by category
+  const categorySpending = {}
+  monthTransactions.forEach(t => {
+    const category = t.category || 'Other'
+    categorySpending[category] = (categorySpending[category] || 0) + Math.abs(t.amount)
+  })
+  
+  // Define category icons
+  const categoryIcons = {
+    'Housing': '🏠',
+    'Food': '🛒',
+    'Transportation': '🚗',
+    'Transport': '🚗',
+    'Entertainment': '☕',
+    'Travel': '✈️',
+    'Utilities': '💡',
+    'Healthcare': '🏥',
+    'Shopping': '🛍️',
+    'Education': '📚',
+    'Income': '💼',
+    'Other': '📌'
+  }
+  
+  // Get top 5 spending categories
+  const topCategories = Object.entries(categorySpending)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+  
+  // Create budget items with estimated budgets (since we don't have budget module yet)
+  const budgetItems = topCategories.map(([category, spent]) => {
+    // Estimate budget as 120% of spent (will be replaced when budget module is implemented)
+    const estimatedBudget = spent * 1.2
+    return {
+      category,
+      spent,
+      budget: estimatedBudget,
+      icon: categoryIcons[category] || '💰'
+    }
+  })
+  
+  // Add any categories with 0 spending if less than 5 categories
+  if (budgetItems.length < 5) {
+    const missingCategories = ['Housing', 'Food', 'Transportation', 'Entertainment', 'Travel']
+      .filter(cat => !budgetItems.some(item => item.category === cat))
+      .slice(0, 5 - budgetItems.length)
+    
+    missingCategories.forEach(category => {
+      budgetItems.push({
+        category,
+        spent: 0,
+        budget: 500, // Default budget
+        icon: categoryIcons[category] || '💰'
+      })
+    })
+  }
   
   return `
     <div class="budget-card">
