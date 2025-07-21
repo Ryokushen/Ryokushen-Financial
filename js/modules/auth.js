@@ -3,6 +3,7 @@
 import { STORAGE_KEYS } from '../config.js'
 import { showLoading, hideLoading, showError, showSuccess } from './ui.js'
 import getSupabaseClient from '../supabase-client.js'
+import { shouldPreventAuthRefresh, initVisibilityHandler, preventUnintendedRefresh } from './visibility-handler.js'
 
 // Initialize Supabase client
 export function initSupabase() {
@@ -502,9 +503,21 @@ export function initAuth() {
   const supabase = initSupabase()
   authInitialized = true
   
+  // Initialize visibility handler
+  initVisibilityHandler()
+  
+  // Prevent unintended refresh
+  preventUnintendedRefresh()
+  
   // Listen for auth state changes
   supabase.auth.onAuthStateChange(async (event, session) => {
     console.log('Auth state changed:', event, session?.user?.email)
+    
+    // Prevent auth refresh if tab just became visible
+    if (shouldPreventAuthRefresh() && (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
+      console.log('Preventing auth refresh due to visibility change')
+      return
+    }
     
     // Ignore initial session event - it's handled by initApp
     if (event === 'INITIAL_SESSION') {
@@ -569,8 +582,10 @@ export function initAuth() {
         window.location.reload()
       }
     } else if (event === 'TOKEN_REFRESHED') {
-      // Token refreshed
-      console.log('Token refreshed successfully')
+      // Token refreshed - only log if not prevented
+      if (!shouldPreventAuthRefresh()) {
+        console.log('Token refreshed successfully')
+      }
     } else if (event === 'USER_UPDATED') {
       // User data updated
       if (session && window.appState) {
