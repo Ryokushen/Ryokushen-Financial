@@ -124,19 +124,24 @@ export function createCashAccountForm(accountData = null) {
             await createTransaction({
               user_id: user.id,
               account_id: newAccount.id,
-              amount: initial_balance,
+              amount: parseFloat(initial_balance), // Ensure it's a number
               description: 'Initial Balance',
               category: 'Income',
               date: new Date().toISOString().split('T')[0],
               cleared: true
               // Removed 'notes' field as it doesn't exist in transactions table
             })
+            
+            // Small delay to ensure transaction is saved
+            await new Promise(resolve => setTimeout(resolve, 500))
           }
           
           await modalManager.showSuccess('Account created successfully!')
         }
         
-        // Reload accounts data
+        // Reload accounts data - add delay to ensure database is updated
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
         if (window.loadInitialData) {
           await window.loadInitialData()
         }
