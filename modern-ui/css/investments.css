@@ -93,7 +93,7 @@
   border: 1px solid #2a2a3a;
   border-radius: 12px;
   padding: 24px;
-  margin-bottom: 24px;
+  margin-bottom: 8px; /* Reduced gap to holdings */
 }
 
 .account-header {
@@ -160,13 +160,14 @@
   background-color: rgba(239, 68, 68, 0.1);
 }
 
-/* Holdings Section - Now separate from account card */
+/* Holdings Section - Visually grouped with account card */
 .holdings-section {
   background-color: #242430;
   border: 1px solid #2a2a3a;
   border-radius: 12px;
   overflow: hidden;
-  margin-top: 24px; /* Separate from account card */
+  margin-top: 0px; /* Closer to account card */
+  margin-bottom: 32px; /* Larger gap between account groups */
 }
 
 .holdings-header {

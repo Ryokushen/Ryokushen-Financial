@@ -3,9 +3,9 @@
 import { formatCurrency, maskCurrency } from './ui.js'
 import { 
   getInvestmentAccounts as fetchInvestmentAccounts,
-  createInvestmentAccount as createAccount,
-  updateInvestmentAccount as updateAccount,
-  deleteInvestmentAccount as deleteAccount,
+  createInvestmentAccount,
+  updateInvestmentAccount,
+  deleteInvestmentAccount,
   getHoldings as fetchHoldings,
   createHolding,
   updateHolding,
@@ -185,7 +185,10 @@ export async function renderInvestments(appState) {
       </div>
       
       <!-- Investment Accounts -->
-      ${finalInvestmentAccounts.length > 0 ? finalInvestmentAccounts.map((account, index) => `
+      ${finalInvestmentAccounts.length > 0 ? finalInvestmentAccounts.map((account, index) => {
+        console.log(`Account ${account.name}:`, account.holdings?.length || 0, 'holdings')
+        console.log(`Holdings for ${account.name}:`, account.holdings)
+        return `
         <!-- Account Card -->
         <div class="account-card">
           <div class="account-header">
@@ -262,7 +265,8 @@ export async function renderInvestments(appState) {
             </div>
           `}
         </div>
-      `).join('') : `
+      `
+    }).join('') : `
         <div class="no-accounts-message">
           <div class="no-accounts-icon">📈</div>
           <div class="no-accounts-text">No investment accounts yet</div>
@@ -374,7 +378,10 @@ async function showAddInvestmentAccountModal(appState) {
     </form>
   `
   
-  modalManager.show(modalContent)
+  modalManager.show({
+    title: 'Add Investment Account',
+    content: modalContent
+  })
   
   // Handle form submission - wait for modal to be rendered
   setTimeout(() => {
@@ -389,11 +396,10 @@ async function showAddInvestmentAccountModal(appState) {
           const newAccount = {
             name: formData.get('name'),
             type: formData.get('type'),
-            institution: formData.get('institution') || null,
-            current_value: 0 // Start with 0 value
+            institution: formData.get('institution') || null
           }
           
-          await createAccount(newAccount)
+          await createInvestmentAccount(newAccount)
           
           modalManager.close()
           modalManager.showNotification('Investment account added successfully', 'success')
@@ -440,7 +446,10 @@ async function showEditInvestmentAccountModal(accountId, accountName, appState) 
     </form>
   `
   
-  modalManager.show(modalContent)
+  modalManager.show({
+    title: 'Edit Investment Account',
+    content: modalContent
+  })
   
   // Handle form submission
   document.getElementById('edit-investment-account-form').addEventListener('submit', async (e) => {
@@ -454,7 +463,7 @@ async function showEditInvestmentAccountModal(accountId, accountName, appState) 
         type: formData.get('type')
       }
       
-      await updateAccount(accountId, updates)
+      await updateInvestmentAccount(accountId, updates)
       
       modalManager.close()
       modalManager.showNotification('Investment account updated successfully', 'success')
@@ -486,7 +495,7 @@ async function handleDeleteInvestmentAccount(accountId, accountName, appState) {
   if (confirmed) {
     try {
       // Delete from database
-      await deleteAccount(accountId)
+      await deleteInvestmentAccount(accountId)
       
       modalManager.showNotification('Investment account deleted successfully', 'success')
       
@@ -528,7 +537,10 @@ async function showAddHoldingModal(accountId, appState) {
     </form>
   `
   
-  modalManager.show(modalContent)
+  modalManager.show({
+    title: 'Add Holding',
+    content: modalContent
+  })
   
   // Handle form submission
   document.getElementById('add-holding-form').addEventListener('submit', async (e) => {
@@ -589,7 +601,10 @@ async function showEditHoldingModal(holdingId, symbol, appState) {
     </form>
   `
   
-  modalManager.show(modalContent)
+  modalManager.show({
+    title: 'Edit Holding',
+    content: modalContent
+  })
   
   // Handle form submission
   document.getElementById('edit-holding-form').addEventListener('submit', async (e) => {
