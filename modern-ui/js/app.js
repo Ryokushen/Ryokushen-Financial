@@ -281,8 +281,19 @@ async function showPage(pageName) {
         break
         
       case 'investments':
-        const { renderInvestments } = await import('./modules/investments.js')
-        await renderInvestments(appState)
+        console.log('=== ROUTING TO INVESTMENTS PAGE ===')
+        try {
+          console.log('Importing investments module...')
+          const investmentsModule = await import('./modules/investments.js')
+          console.log('Investments module imported:', investmentsModule)
+          console.log('renderInvestments function:', investmentsModule.renderInvestments)
+          
+          console.log('Calling renderInvestments...')
+          await investmentsModule.renderInvestments(appState)
+          console.log('renderInvestments completed')
+        } catch (error) {
+          console.error('Error in investments routing:', error)
+        }
         break
         
       case 'debt':
