@@ -107,12 +107,22 @@ export async function renderInvestments(appState) {
     const directAccountsLoad = await fetchInvestmentAccounts()
     console.log('Direct database load result:', directAccountsLoad)
     console.log('Direct load count:', directAccountsLoad?.length || 0)
+    
+    // If appState has no accounts but database has accounts, update appState
+    if ((!investmentAccounts || investmentAccounts.length === 0) && directAccountsLoad && directAccountsLoad.length > 0) {
+      console.log('Found investment accounts in database but not in appState, updating...')
+      appState.data.investmentAccounts = directAccountsLoad
+      console.log('Updated appState.data.investmentAccounts:', appState.data.investmentAccounts)
+    }
   } catch (error) {
     console.error('Direct load failed:', error)
   }
   
+  // Refresh investmentAccounts after potential update
+  const finalInvestmentAccounts = appState.data.investmentAccounts || []
+  
   // No need to load holdings separately - they're nested in accounts
-  const summary = calculatePortfolioSummary(investmentAccounts)
+  const summary = calculatePortfolioSummary(finalInvestmentAccounts)
   
   container.innerHTML = `
     <div class="investments-page">
@@ -169,7 +179,7 @@ export async function renderInvestments(appState) {
       </div>
       
       <!-- Investment Accounts -->
-      ${investmentAccounts.length > 0 ? investmentAccounts.map((account, index) => `
+      ${finalInvestmentAccounts.length > 0 ? finalInvestmentAccounts.map((account, index) => `
         ${index === 0 ? `
         <!-- Account Card -->
         <div class="account-card">
@@ -206,7 +216,7 @@ export async function renderInvestments(appState) {
               <span>Add Holding</span>
             </button>
           </div>
-          ${getAllHoldings(investmentAccounts).length > 0 ? `
+          ${getAllHoldings(finalInvestmentAccounts).length > 0 ? `
             <table class="holdings-table">
               <thead>
                 <tr>
@@ -218,7 +228,7 @@ export async function renderInvestments(appState) {
                 </tr>
               </thead>
               <tbody>
-                ${getAllHoldings(investmentAccounts).map(holding => `
+                ${getAllHoldings(finalInvestmentAccounts).map(holding => `
                   <tr>
                     <td>
                       <div class="symbol-cell">
@@ -262,17 +272,27 @@ export async function renderInvestments(appState) {
     </div>
   `
   
-  // Set up event handlers
-  setupInvestmentEventHandlers(appState)
+  // Set up event handlers after a short delay to ensure DOM is ready
+  setTimeout(() => {
+    setupInvestmentEventHandlers(appState)
+  }, 100)
 }
 
 // Set up event handlers
 function setupInvestmentEventHandlers(appState) {
+  console.log('Setting up investment event handlers...')
+  
   // Add Investment Account button
   const addAccountBtns = document.querySelectorAll('#add-investment-account-btn, #first-investment-account-btn')
+  console.log('Found add account buttons:', addAccountBtns.length)
+  
   addAccountBtns.forEach(btn => {
     if (btn) {
-      btn.addEventListener('click', () => showAddInvestmentAccountModal(appState))
+      console.log('Attaching event listener to button:', btn.id)
+      btn.addEventListener('click', () => {
+        console.log('Add account button clicked!')
+        showAddInvestmentAccountModal(appState)
+      })
     }
   })
   
