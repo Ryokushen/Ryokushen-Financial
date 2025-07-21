@@ -585,18 +585,79 @@ export async function deleteInvestmentAccount(id) {
 // Debt account operations
 export async function getDebtAccounts() {
   const supabase = getSupabase()
-  return executeQuery(
-    () => supabase
-      .from('debt_accounts')
-      .select('*')
-      .order('name'),
-    {
-      queryName: 'Get debt accounts',
-      timeout: QUERY_TIMEOUT,
-      fallbackData: [],
-      trustContext: true // Trust cached auth during initial load
+  
+  try {
+    // First, get all debt accounts
+    const accounts = await executeQuery(
+      () => supabase
+        .from('debt_accounts')
+        .select('*')
+        .order('name'),
+      {
+        queryName: 'Get debt accounts',
+        timeout: QUERY_TIMEOUT,
+        fallbackData: [],
+        trustContext: true
+      }
+    )
+    
+    if (!accounts || accounts.length === 0) {
+      return []
     }
-  )
+    
+    // Get all account IDs
+    const accountIds = accounts.map(acc => acc.id)
+    
+    // Calculate dynamic balances from transactions (like cash accounts)
+    const balances = await executeQuery(
+      async () => {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('account_id, amount')
+          .in('account_id', accountIds)
+        
+        if (error) return { error, data: null }
+        
+        // Calculate balances for debt accounts
+        // For debt accounts, the logic is inverted:
+        // - Purchases/expenses (positive in transaction) increase debt (add to balance)
+        // - Payments (negative in transaction) decrease debt (subtract from balance)
+        const balanceMap = {}
+        accountIds.forEach(id => balanceMap[id] = 0)
+        
+        data.forEach(transaction => {
+          if (transaction.account_id && transaction.amount) {
+            // For debt accounts, positive transactions (purchases) increase debt
+            // Negative transactions (payments) decrease debt
+            // This is opposite of cash accounts
+            balanceMap[transaction.account_id] += Math.abs(transaction.amount) * (transaction.amount > 0 ? 1 : -1)
+          }
+        })
+        
+        return { data: balanceMap, error: null }
+      },
+      {
+        queryName: 'Calculate debt balances',
+        timeout: QUERY_TIMEOUT_LONG,
+        fallbackData: {},
+        trustContext: true
+      }
+    )
+    
+    // Combine accounts with their calculated balances
+    // If there's a stored balance and no transactions, use the stored balance as initial balance
+    const accountsWithBalances = accounts.map(account => ({
+      ...account,
+      calculated_balance: balances[account.id] || 0,
+      balance: balances[account.id] !== undefined ? balances[account.id] : (account.balance || 0)
+    }))
+    
+    return accountsWithBalances
+    
+  } catch (error) {
+    console.error('Failed to get debt accounts:', error)
+    return []
+  }
 }
 
 export async function createDebtAccount(account) {
@@ -630,6 +691,9 @@ export async function deleteDebtAccount(id) {
     console.log(`Deleting all transactions for debt account ${id}...`)
     await deleteTransactionsByAccountId(id)
     
+    // Add a small delay to ensure transaction deletion is fully processed
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
     // Then delete the account itself
     console.log(`Deleting debt account ${id}...`)
     return executeQuery(() =>
@@ -644,6 +708,33 @@ export async function deleteDebtAccount(id) {
   } catch (error) {
     console.error('Failed to delete debt account:', error)
     throw error
+  }
+}
+
+// Calculate debt account balance from transactions
+export async function calculateDebtBalance(accountId) {
+  const supabase = getSupabase()
+  
+  try {
+    const { data: transactions, error } = await supabase
+      .from('transactions')
+      .select('amount')
+      .eq('account_id', accountId)
+    
+    if (error) throw error
+    
+    // For debt accounts:
+    // - Positive amounts (purchases) increase debt
+    // - Negative amounts (payments) decrease debt
+    const balance = transactions.reduce((sum, transaction) => {
+      const amount = transaction.amount || 0
+      return sum + Math.abs(amount) * (amount > 0 ? 1 : -1)
+    }, 0)
+    
+    return balance
+  } catch (error) {
+    console.error('Failed to calculate debt balance:', error)
+    return 0
   }
 }
 
@@ -1106,6 +1197,7 @@ export default {
   createDebtAccount,
   updateDebtAccount,
   deleteDebtAccount,
+  calculateDebtBalance,
   // Recurring Bills
   getRecurringBills,
   createRecurringBill,
