@@ -72,7 +72,14 @@ function calculateMetrics(appState) {
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   
-  const recentTransactions = transactions.filter(t => new Date(t.date) >= thirtyDaysAgo)
+  const recentTransactions = transactions.filter(t => {
+    const date = new Date(t.date)
+    // Exclude balance adjustments
+    const isBalanceAdjustment = t.description?.includes('Balance Adjustment:') || 
+                               t.description?.includes('Debt Balance Adjustment:')
+    return date >= thirtyDaysAgo && !isBalanceAdjustment
+  })
+  
   const monthlyIncome = recentTransactions
     .filter(t => t.amount > 0)
     .reduce((sum, t) => sum + t.amount, 0)
@@ -86,7 +93,10 @@ function calculateMetrics(appState) {
   
   const previousPeriodTransactions = transactions.filter(t => {
     const date = new Date(t.date)
-    return date >= sixtyDaysAgo && date < thirtyDaysAgo
+    // Exclude balance adjustments
+    const isBalanceAdjustment = t.description?.includes('Balance Adjustment:') || 
+                               t.description?.includes('Debt Balance Adjustment:')
+    return date >= sixtyDaysAgo && date < thirtyDaysAgo && !isBalanceAdjustment
   })
   
   // Calculate previous period metrics

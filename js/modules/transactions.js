@@ -7,7 +7,8 @@ import { formatCurrency, formatDate, maskCurrency, debounce } from './ui.js'
 let filterState = {
   searchQuery: '',
   category: '',
-  selectedDate: null
+  selectedDate: null,
+  hideAdjustments: true // Default to hiding balance adjustments
 }
 
 // Store original transactions
@@ -67,6 +68,11 @@ function calculateSummary(transactions) {
   }
   
   transactions.forEach(t => {
+    // Skip balance adjustments in summary calculations
+    const isBalanceAdjustment = t.description?.includes('Balance Adjustment:') || 
+                               t.description?.includes('Debt Balance Adjustment:')
+    if (isBalanceAdjustment) return
+    
     if (t.amount > 0) {
       summary.totalIncome += t.amount
     } else {
@@ -166,6 +172,14 @@ export async function renderTransactions(appState) {
           id="date-filter"
           value="${filterState.selectedDate || ''}"
         >
+        <label class="hide-adjustments-toggle" style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+          <input 
+            type="checkbox" 
+            id="hide-adjustments"
+            ${filterState.hideAdjustments ? 'checked' : ''}
+          >
+          Hide Balance Adjustments
+        </label>
       </div>
       
       <!-- Transactions Table -->
@@ -273,6 +287,15 @@ function setupFilterListeners(appState) {
     })
   }
   
+  // Hide adjustments toggle
+  const hideAdjustmentsToggle = document.getElementById('hide-adjustments')
+  if (hideAdjustmentsToggle) {
+    hideAdjustmentsToggle.addEventListener('change', (e) => {
+      filterState.hideAdjustments = e.target.checked
+      updateTransactionsView(appState)
+    })
+  }
+  
   // Setup transaction action buttons
   setupTransactionActions(appState)
 }
@@ -304,6 +327,15 @@ function updateTransactionsView(appState) {
 // Get filtered transactions based on current filter state
 function getFilteredTransactions() {
   let filtered = [...allTransactions]
+  
+  // Apply hide adjustments filter
+  if (filterState.hideAdjustments) {
+    filtered = filtered.filter(t => {
+      const isBalanceAdjustment = t.description?.includes('Balance Adjustment:') || 
+                                 t.description?.includes('Debt Balance Adjustment:')
+      return !isBalanceAdjustment
+    })
+  }
   
   // Apply search filter
   if (filterState.searchQuery) {

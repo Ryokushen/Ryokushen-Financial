@@ -141,7 +141,11 @@ function createSpendingChart(appState) {
   
   const categorySpending = {}
   appState.data.transactions
-    .filter(t => new Date(t.date) >= thirtyDaysAgo && t.amount < 0)
+    .filter(t => {
+      const isBalanceAdjustment = t.description?.includes('Balance Adjustment:') || 
+                                 t.description?.includes('Debt Balance Adjustment:')
+      return new Date(t.date) >= thirtyDaysAgo && t.amount < 0 && !isBalanceAdjustment
+    })
     .forEach(t => {
       const category = t.category || 'Other'
       categorySpending[category] = (categorySpending[category] || 0) + Math.abs(t.amount)
@@ -218,7 +222,9 @@ function createTrendChart(appState) {
     const monthlyFlow = appState.data.transactions
       .filter(t => {
         const tDate = new Date(t.date)
-        return tDate >= monthStart && tDate <= monthEnd
+        const isBalanceAdjustment = t.description?.includes('Balance Adjustment:') || 
+                                   t.description?.includes('Debt Balance Adjustment:')
+        return tDate >= monthStart && tDate <= monthEnd && !isBalanceAdjustment
       })
       .reduce((sum, t) => sum + t.amount, 0)
     
@@ -315,7 +321,9 @@ function createIncomeExpenseChart(appState) {
     
     const monthTransactions = appState.data.transactions.filter(t => {
       const date = new Date(t.date)
-      return date >= startDate && date < endDate
+      const isBalanceAdjustment = t.description?.includes('Balance Adjustment:') || 
+                                 t.description?.includes('Debt Balance Adjustment:')
+      return date >= startDate && date < endDate && !isBalanceAdjustment
     })
     
     const income = monthTransactions
@@ -415,7 +423,11 @@ function createCategoryBreakdown(appState) {
   
   const categorySpending = {}
   appState.data.transactions
-    .filter(t => new Date(t.date) >= thirtyDaysAgo && t.amount < 0)
+    .filter(t => {
+      const isBalanceAdjustment = t.description?.includes('Balance Adjustment:') || 
+                                 t.description?.includes('Debt Balance Adjustment:')
+      return new Date(t.date) >= thirtyDaysAgo && t.amount < 0 && !isBalanceAdjustment
+    })
     .forEach(t => {
       const category = t.category || 'Other'
       categorySpending[category] = (categorySpending[category] || 0) + Math.abs(t.amount)
