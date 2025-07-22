@@ -349,7 +349,7 @@ async function showSetBalanceModal(accountId, accountName, accountType, currentB
             amount: adjustmentAmount,
             date: adjustmentDate,
             description: `Balance Adjustment: ${note}`,
-            category: accountType === 'debt' ? 'Debt Payment' : 'Other',
+            category: 'Other', // Always use 'Other' for cash account adjustments
             cleared: true,
             user_id: user.id
           }

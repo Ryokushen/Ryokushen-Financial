@@ -362,7 +362,7 @@ export async function getCashAccounts() {
       async () => {
         const { data, error } = await supabase
           .from('transactions')
-          .select('account_id, amount')
+          .select('account_id, amount, category, description')
           .in('account_id', accountIds)
         
         if (error) return { error, data: null }
@@ -373,6 +373,13 @@ export async function getCashAccounts() {
         
         data.forEach(transaction => {
           if (transaction.account_id && transaction.amount) {
+            // Only include transactions meant for cash accounts
+            // Skip debt account balance adjustments
+            if (transaction.description?.startsWith('Debt Balance Adjustment:')) {
+              return // Skip debt adjustments
+            }
+            
+            // Include all other transactions for cash accounts
             balanceMap[transaction.account_id] += transaction.amount
           }
         })
@@ -424,13 +431,17 @@ export async function calculateAccountBalance(accountId) {
   try {
     const { data: transactions, error } = await supabase
       .from('transactions')
-      .select('amount')
+      .select('amount, description')
       .eq('account_id', accountId)
     
     if (error) throw error
     
-    // Sum all transaction amounts
+    // Sum all transaction amounts, excluding debt balance adjustments
     const balance = transactions.reduce((sum, transaction) => {
+      // Skip debt balance adjustments for cash accounts
+      if (transaction.description?.startsWith('Debt Balance Adjustment:')) {
+        return sum
+      }
       return sum + (transaction.amount || 0)
     }, 0)
     
@@ -613,7 +624,7 @@ export async function getDebtAccounts() {
       async () => {
         const { data, error } = await supabase
           .from('transactions')
-          .select('account_id, amount')
+          .select('account_id, amount, category, description')
           .in('account_id', accountIds)
         
         if (error) return { error, data: null }
@@ -627,10 +638,21 @@ export async function getDebtAccounts() {
         
         data.forEach(transaction => {
           if (transaction.account_id && transaction.amount) {
-            // Simply invert the transaction amount for debt calculation
-            // Negative amount (charge) becomes positive debt
-            // Positive amount (payment) becomes negative debt
-            balanceMap[transaction.account_id] += -transaction.amount
+            // Only include transactions that are clearly for debt accounts
+            // Skip cash account balance adjustments
+            if (transaction.description?.startsWith('Balance Adjustment:') && transaction.category === 'Other') {
+              return // Skip cash account adjustments
+            }
+            
+            // Include debt-specific transactions
+            if (transaction.description?.startsWith('Debt Balance Adjustment:') || 
+                transaction.category === 'Debt Payment' ||
+                !transaction.description?.includes('Balance Adjustment')) {
+              // Simply invert the transaction amount for debt calculation
+              // Negative amount (charge) becomes positive debt
+              // Positive amount (payment) becomes negative debt
+              balanceMap[transaction.account_id] += -transaction.amount
+            }
           }
         })
         
@@ -716,17 +738,35 @@ export async function calculateDebtBalance(accountId) {
   const supabase = getSupabase()
   
   try {
+    // Get all transactions for this account ID
     const { data: transactions, error } = await supabase
       .from('transactions')
-      .select('amount')
+      .select('amount, category, description')
       .eq('account_id', accountId)
     
     if (error) throw error
     
+    // Filter transactions to only include those meant for debt accounts
+    const debtTransactions = transactions.filter(t => {
+      // Exclude cash account balance adjustments
+      if (t.description?.startsWith('Balance Adjustment:') && t.category === 'Other') {
+        return false
+      }
+      
+      // Include debt-specific transactions
+      if (t.description?.startsWith('Debt Balance Adjustment:') || 
+          t.category === 'Debt Payment' ||
+          !t.description?.includes('Balance Adjustment')) {
+        return true
+      }
+      
+      return false
+    })
+    
     // For debt accounts with standard convention:
     // - Negative amounts (charges) increase debt
     // - Positive amounts (payments) decrease debt
-    const balance = transactions.reduce((sum, transaction) => {
+    const balance = debtTransactions.reduce((sum, transaction) => {
       const amount = transaction.amount || 0
       // Simply invert the amount
       return sum + (-amount)

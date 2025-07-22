@@ -665,7 +665,7 @@ async function showSetBalanceModal(debtId, debtName, currentBalance, appState) {
             account_id: debtId,
             amount: adjustmentAmount,
             date: adjustmentDate,
-            description: `Balance Adjustment: ${note}`,
+            description: `Debt Balance Adjustment: ${note}`, // Different description prefix for debt
             category: 'Debt Payment',
             cleared: true,
             user_id: user.id
