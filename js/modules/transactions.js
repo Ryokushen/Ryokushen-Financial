@@ -619,8 +619,3 @@ async function showSetBalanceModal(accountId, accountName, accountType, currentB
   }, 100)
 }
 
-// Export functions
-export {
-  transactionFilters,
-  recentTransactions
-}
