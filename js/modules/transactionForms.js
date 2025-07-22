@@ -44,12 +44,14 @@ async function getAllAccounts() {
     ...cashAccounts.map(acc => ({
       ...acc,
       display_name: `${acc.name} (${acc.type || 'Cash'})`,
-      account_type: 'cash'
+      account_type: 'cash',
+      transaction_account_id: acc.id // Use original ID for cash accounts
     })),
     ...debtAccounts.map(acc => ({
       ...acc,
       display_name: `${acc.name} (${acc.type || 'Debt'})`,
-      account_type: 'debt'
+      account_type: 'debt',
+      transaction_account_id: `debt_${acc.id}` // Prefix debt account IDs
     }))
   ]
   
@@ -198,7 +200,7 @@ export async function createTransactionForm(transactionData = null) {
           // Transaction 1: Withdrawal from source account
           const fromTransaction = {
             date: data.date,
-            account_id: data.account_id,
+            account_id: fromAccount?.transaction_account_id || data.account_id,
             amount: fromAccount?.account_type === 'debt' ? transferAmount : -transferAmount,
             category: 'Transfer',
             description: `Transfer to ${toAccount?.name || 'Account'}`,
@@ -209,7 +211,7 @@ export async function createTransactionForm(transactionData = null) {
           // Transaction 2: Deposit to destination account
           const toTransaction = {
             date: data.date,
-            account_id: data.to_account_id,
+            account_id: toAccount?.transaction_account_id || data.to_account_id,
             amount: toAccount?.account_type === 'debt' ? -transferAmount : transferAmount,
             category: 'Transfer',
             description: `Transfer from ${fromAccount?.name || 'Account'}`,
@@ -252,7 +254,7 @@ export async function createTransactionForm(transactionData = null) {
           // Prepare transaction data
           const transactionPayload = {
             date: data.date,
-            account_id: data.account_id,
+            account_id: selectedAccount?.transaction_account_id || data.account_id,
             amount: amount,
             category: data.category,
             description: data.description,

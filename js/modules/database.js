@@ -354,8 +354,9 @@ export async function getCashAccounts() {
       return []
     }
     
-    // Get all account IDs
+    // Get all account IDs (prefix debt accounts with 'debt_')
     const accountIds = accounts.map(acc => acc.id)
+    const prefixedAccountIds = accounts.map(acc => `debt_${acc.id}`)
     
     // Single query to get all balances at once (fixes N+1 problem)
     const balances = await executeQuery(
@@ -363,7 +364,7 @@ export async function getCashAccounts() {
         const { data, error } = await supabase
           .from('transactions')
           .select('account_id, amount')
-          .in('account_id', accountIds)
+          .in('account_id', [...accountIds, ...prefixedAccountIds])
         
         if (error) return { error, data: null }
         
@@ -605,8 +606,9 @@ export async function getDebtAccounts() {
       return []
     }
     
-    // Get all account IDs
+    // Get all account IDs - debt accounts use prefixed IDs in transactions
     const accountIds = accounts.map(acc => acc.id)
+    const prefixedAccountIds = accounts.map(acc => `debt_${acc.id}`)
     
     // Calculate dynamic balances from transactions (like cash accounts)
     const balances = await executeQuery(
@@ -614,7 +616,7 @@ export async function getDebtAccounts() {
         const { data, error } = await supabase
           .from('transactions')
           .select('account_id, amount')
-          .in('account_id', accountIds)
+          .in('account_id', prefixedAccountIds)
         
         if (error) return { error, data: null }
         
@@ -627,10 +629,12 @@ export async function getDebtAccounts() {
         
         data.forEach(transaction => {
           if (transaction.account_id && transaction.amount) {
+            // Extract the actual account ID from the prefixed ID
+            const actualId = transaction.account_id.replace('debt_', '')
             // Simply invert the transaction amount for debt calculation
             // Negative amount (charge) becomes positive debt
             // Positive amount (payment) becomes negative debt
-            balanceMap[transaction.account_id] += -transaction.amount
+            balanceMap[actualId] = (balanceMap[actualId] || 0) + (-transaction.amount)
           }
         })
         
@@ -716,10 +720,11 @@ export async function calculateDebtBalance(accountId) {
   const supabase = getSupabase()
   
   try {
+    // Debt accounts use prefixed IDs in transactions
     const { data: transactions, error } = await supabase
       .from('transactions')
       .select('amount')
-      .eq('account_id', accountId)
+      .eq('account_id', `debt_${accountId}`)
     
     if (error) throw error
     

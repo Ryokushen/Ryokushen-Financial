@@ -661,8 +661,9 @@ async function showSetBalanceModal(debtId, debtName, currentBalance, appState) {
           }
           
           // Create adjustment transaction
+          // Prefix debt account ID with 'debt_' to avoid collision with cash accounts
           const transaction = {
-            account_id: debtId,
+            account_id: `debt_${debtId}`,
             amount: adjustmentAmount,
             date: adjustmentDate,
             description: `Balance Adjustment: ${note}`,
