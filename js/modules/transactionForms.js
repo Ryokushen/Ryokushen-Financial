@@ -39,43 +39,44 @@ async function getAllAccounts() {
     getDebtAccounts()
   ])
   
-  // Debug: Log the raw account data
-  console.log('Raw cash accounts:', cashAccounts)
-  console.log('Raw debt accounts:', debtAccounts)
-  
-  // Combine and format accounts
+  // Create unique identifiers to avoid ID collisions between cash and debt accounts
+  // Format: "cash_123" or "debt_456"
   const allAccounts = [
     ...cashAccounts.map(acc => ({
       ...acc,
+      composite_id: `cash_${acc.id}`,
+      original_id: acc.id,
       display_name: `${acc.name} (${acc.type || 'Cash'})`,
       account_type: 'cash'
     })),
     ...debtAccounts.map(acc => ({
       ...acc,
+      composite_id: `debt_${acc.id}`,
+      original_id: acc.id,
       display_name: `${acc.name} (${acc.type || 'Debt'})`,
       account_type: 'debt'
     }))
   ]
   
-  // Debug: Check for duplicate IDs
-  const idCounts = {}
-  allAccounts.forEach(acc => {
-    const id = String(acc.id)
-    idCounts[id] = (idCounts[id] || 0) + 1
-    if (idCounts[id] > 1) {
-      console.error(`DUPLICATE ACCOUNT ID FOUND: ${id}`, acc)
-    }
-  })
-  
-  console.log('All accounts with IDs:', allAccounts.map(a => ({
-    id: a.id,
-    name: a.name,
-    display_name: a.display_name,
-    type: a.account_type,
-    id_type: typeof a.id
-  })))
-  
   return allAccounts
+}
+
+// Parse composite ID back to original values
+function parseCompositeId(compositeId) {
+  if (!compositeId || typeof compositeId !== 'string') {
+    return { type: null, id: compositeId }
+  }
+  
+  const parts = compositeId.split('_')
+  if (parts.length === 2) {
+    return {
+      type: parts[0], // 'cash' or 'debt'
+      id: parts[1]    // Original numeric ID
+    }
+  }
+  
+  // Fallback for non-composite IDs (backward compatibility)
+  return { type: null, id: compositeId }
 }
 
 // Create transaction form configuration
@@ -86,9 +87,22 @@ export async function createTransactionForm(transactionData = null) {
   // Get all accounts for the dropdown
   const allAccounts = await getAllAccounts()
   const accountOptions = allAccounts.map(acc => ({
-    value: acc.id,
+    value: acc.composite_id,
     label: acc.display_name
   }))
+
+  // For editing, determine the composite ID from the transaction data
+  let currentAccountCompositeId = ''
+  if (isEdit && transactionData.account_id) {
+    // Try to find the account by matching the original ID
+    const matchingAccount = allAccounts.find(acc => 
+      acc.original_id === transactionData.account_id || 
+      String(acc.original_id) === String(transactionData.account_id)
+    )
+    if (matchingAccount) {
+      currentAccountCompositeId = matchingAccount.composite_id
+    }
+  }
 
   // Determine transaction type based on amount if editing
   let currentType = 'expense'
@@ -132,11 +146,9 @@ export async function createTransactionForm(transactionData = null) {
       type: 'select',
       options: accountOptions,
       required: true,
-      value: transactionData?.account_id || '',
+      value: currentAccountCompositeId,
       placeholder: 'Select account',
       onChange: (value) => {
-        // Debug log
-        console.log('Account selected:', value, typeof value)
         // Update the "To Account" dropdown to exclude the selected account
         updateToAccountOptions(formId, value, accountOptions)
       }
@@ -145,9 +157,9 @@ export async function createTransactionForm(transactionData = null) {
       name: 'to_account_id',
       label: 'To Account',
       type: 'select',
-      options: accountOptions.filter(acc => acc.value !== transactionData?.account_id),
+      options: accountOptions.filter(acc => acc.value !== currentAccountCompositeId),
       required: false,
-      value: transactionData?.to_account_id || '',
+      value: '',
       placeholder: 'Select destination account',
       hidden: currentType !== 'transfer',
       className: 'transfer-only'
@@ -197,43 +209,32 @@ export async function createTransactionForm(transactionData = null) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('User not authenticated')
         
-        // Debug: Log the form data
-        console.log('Form submission data:', data)
+        // Parse the composite account ID to get the original ID
+        const accountInfo = parseCompositeId(data.account_id)
+        const originalAccountId = accountInfo.id
         
         // Find the selected account to check if it's a debt account
-        // Use String() to ensure proper comparison
-        const selectedAccount = allAccounts.find(acc => String(acc.id) === String(data.account_id))
+        const selectedAccount = allAccounts.find(acc => acc.composite_id === data.account_id)
         const isDebtAccount = selectedAccount?.account_type === 'debt'
-        
-        console.log('Selected account lookup:', {
-          searching_for: data.account_id,
-          found: selectedAccount ? { id: selectedAccount.id, name: selectedAccount.name } : null
-        })
         
         // Handle transfers differently
         if (data.type === 'transfer') {
           // For transfers that are being edited, we'll just update the single transaction
-          // In the future, we could implement linked transfer tracking
           if (isEdit) {
             // When editing a transfer, we just update the current transaction
-            // We don't create or update a paired transaction
             const amount = parseFloat(data.amount)
             
             // Determine amount sign based on account type
             let finalAmount = amount
             if (isDebtAccount) {
-              // For debt accounts, transfers out (to pay debt) are positive
-              // For transfers in (borrowing more), they would be negative
-              // But for simplicity, we'll treat all transfers as absolute values
               finalAmount = amount
             } else {
-              // For cash accounts, transfers out are negative
               finalAmount = -amount
             }
             
             const transactionPayload = {
               date: data.date,
-              account_id: data.account_id,
+              account_id: originalAccountId, // Use original ID for database
               amount: finalAmount,
               category: 'Transfer',
               description: data.description,
@@ -245,49 +246,28 @@ export async function createTransactionForm(transactionData = null) {
             await modalManager.showSuccess('Transfer updated successfully!')
           } else {
             // Creating new transfer - create two linked transactions
-            // Validate that both accounts are selected
             if (!data.to_account_id) {
               throw new Error('Please select a destination account for the transfer')
             }
             
-            if (String(data.account_id) === String(data.to_account_id)) {
+            if (data.account_id === data.to_account_id) {
               throw new Error('Cannot transfer to the same account')
             }
             
-            // Use String() to ensure proper comparison when finding accounts
-            const fromAccount = allAccounts.find(acc => String(acc.id) === String(data.account_id))
-            const toAccount = allAccounts.find(acc => String(acc.id) === String(data.to_account_id))
+            // Parse both account IDs
+            const toAccountInfo = parseCompositeId(data.to_account_id)
+            const originalToAccountId = toAccountInfo.id
             
-            // Enhanced debug logging
-            console.log('Transfer accounts detailed lookup:', {
-              from_id: data.account_id,
-              from_id_type: typeof data.account_id,
-              to_id: data.to_account_id,
-              to_id_type: typeof data.to_account_id,
-              fromAccount: fromAccount ? { 
-                id: fromAccount.id, 
-                name: fromAccount.name,
-                id_type: typeof fromAccount.id 
-              } : null,
-              toAccount: toAccount ? { 
-                id: toAccount.id, 
-                name: toAccount.name,
-                id_type: typeof toAccount.id 
-              } : null,
-              allAccountIds: allAccounts.map(a => ({ 
-                id: a.id, 
-                name: a.name, 
-                type: typeof a.id,
-                stringId: String(a.id)
-              }))
-            })
+            // Find both accounts
+            const fromAccount = allAccounts.find(acc => acc.composite_id === data.account_id)
+            const toAccount = allAccounts.find(acc => acc.composite_id === data.to_account_id)
             
             const transferAmount = parseFloat(data.amount)
             
             // Transaction 1: Withdrawal from source account
             const fromTransaction = {
               date: data.date,
-              account_id: data.account_id,
+              account_id: originalAccountId, // Use original ID
               amount: fromAccount?.account_type === 'debt' ? transferAmount : -transferAmount,
               category: 'Transfer',
               description: `Transfer to ${toAccount?.name || 'Account'}`,
@@ -298,18 +278,13 @@ export async function createTransactionForm(transactionData = null) {
             // Transaction 2: Deposit to destination account
             const toTransaction = {
               date: data.date,
-              account_id: data.to_account_id,
+              account_id: originalToAccountId, // Use original ID
               amount: toAccount?.account_type === 'debt' ? -transferAmount : transferAmount,
               category: 'Transfer',
               description: `Transfer from ${fromAccount?.name || 'Account'}`,
               cleared: data.cleared,
               user_id: user.id
             }
-            
-            console.log('Creating transfer transactions:', {
-              from: fromTransaction,
-              to: toTransaction
-            })
             
             // Create both transactions
             await createTransaction(fromTransaction)
@@ -322,9 +297,6 @@ export async function createTransactionForm(transactionData = null) {
           
           // For debt accounts, handle the amount differently
           if (isDebtAccount) {
-            // For debt accounts with standard convention:
-            // - Expenses (charges) should be negative
-            // - Income (payments) should be positive
             if (data.type === 'expense' && amount > 0) {
               amount = -amount
             } else if (data.type === 'income' && amount < 0) {
@@ -342,7 +314,7 @@ export async function createTransactionForm(transactionData = null) {
           // Prepare transaction data
           const transactionPayload = {
             date: data.date,
-            account_id: data.account_id,
+            account_id: originalAccountId, // Use original ID for database
             amount: amount,
             category: data.category,
             description: data.description,
@@ -363,11 +335,16 @@ export async function createTransactionForm(transactionData = null) {
         const { getTransactions } = await import('./database.js')
         const transactions = await getTransactions({ limit: 10000 })
         
-        // Join account names
-        const accountsMap = new Map(allAccounts.map(acc => [acc.id, acc.name]))
+        // Create account lookup map using original IDs
+        const accountsMap = new Map()
+        allAccounts.forEach(acc => {
+          accountsMap.set(acc.original_id, acc.name)
+          accountsMap.set(String(acc.original_id), acc.name)
+        })
+        
         const transactionsWithAccounts = transactions.map(t => ({
           ...t,
-          account_name: accountsMap.get(t.account_id) || '—'
+          account_name: accountsMap.get(t.account_id) || accountsMap.get(String(t.account_id)) || '—'
         }))
         
         // Update app state
@@ -477,14 +454,14 @@ function updateToAccountOptions(formId, selectedAccountId, allAccountOptions) {
   // Clear options
   toAccountSelect.innerHTML = '<option value="">Select destination account</option>'
   
-  // Add filtered options - use String() for comparison
+  // Add filtered options
   allAccountOptions
-    .filter(acc => String(acc.value) !== String(selectedAccountId))
+    .filter(acc => acc.value !== selectedAccountId)
     .forEach(acc => {
       const option = document.createElement('option')
       option.value = acc.value
       option.textContent = acc.label
-      if (String(acc.value) === String(currentValue)) {
+      if (acc.value === currentValue) {
         option.selected = true
       }
       toAccountSelect.appendChild(option)
@@ -545,7 +522,7 @@ export async function showTransactionModal(transactionData = null) {
       // Get all account options for the To Account field updates
       const allAccounts = await getAllAccounts()
       const accountOptions = allAccounts.map(acc => ({
-        value: acc.id,
+        value: acc.composite_id,
         label: acc.display_name
       }))
       
@@ -565,13 +542,13 @@ export async function showQuickExpenseModal() {
   // Get all accounts
   const allAccounts = await getAllAccounts()
   const accountOptions = allAccounts.map(acc => ({
-    value: acc.id,
+    value: acc.composite_id,
     label: acc.display_name
   }))
 
   // Get default account (first checking account or first account)
-  const defaultAccount = allAccounts.find(acc => acc.type === 'checking')?.id || 
-                        allAccounts[0]?.id || ''
+  const defaultAccount = allAccounts.find(acc => acc.type === 'checking')?.composite_id || 
+                        allAccounts[0]?.composite_id || ''
 
   const expenseCategories = TRANSACTION_CATEGORIES.filter(cat => cat.type === 'expense')
 
@@ -623,8 +600,13 @@ export async function showQuickExpenseModal() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('User not authenticated')
         
+        // Parse composite ID to get original account ID
+        const accountInfo = parseCompositeId(data.account_id)
+        const originalAccountId = accountInfo.id
+        
         const transactionPayload = {
           ...data,
+          account_id: originalAccountId, // Use original ID
           amount: -Math.abs(parseFloat(data.amount)), // Always negative for expenses
           type: 'expense',
           date: new Date().toISOString().split('T')[0],
@@ -639,11 +621,16 @@ export async function showQuickExpenseModal() {
         const { getTransactions } = await import('./database.js')
         const transactions = await getTransactions({ limit: 10000 })
         
-        // Join account names
-        const accountsMap = new Map(allAccounts.map(acc => [acc.id, acc.name]))
+        // Join account names - create proper map with original IDs
+        const accountsMap = new Map()
+        allAccounts.forEach(acc => {
+          accountsMap.set(acc.original_id, acc.name)
+          accountsMap.set(String(acc.original_id), acc.name)
+        })
+        
         const transactionsWithAccounts = transactions.map(t => ({
           ...t,
-          account_name: accountsMap.get(t.account_id) || '—'
+          account_name: accountsMap.get(t.account_id) || accountsMap.get(String(t.account_id)) || '—'
         }))
         
         appState.data.transactions = transactionsWithAccounts
