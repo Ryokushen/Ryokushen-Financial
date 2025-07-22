@@ -59,6 +59,52 @@ export async function loadTransactions() {
   }
 }
 
+// Helper function to join account names to transactions
+async function ensureAccountNames(transactions, appState) {
+  // Check if we need to join account names
+  const needsAccountNames = transactions.some(t => !t.account_name && t.account_id)
+  
+  if (!needsAccountNames) {
+    return transactions
+  }
+  
+  console.log('Joining account names to transactions...')
+  
+  // Create account lookup map from appState
+  const accountsMap = new Map()
+  
+  // Add cash accounts
+  if (appState.data.cashAccounts) {
+    appState.data.cashAccounts.forEach(acc => accountsMap.set(acc.id, acc.name))
+  }
+  
+  // Add debt accounts
+  if (appState.data.debtAccounts) {
+    appState.data.debtAccounts.forEach(acc => accountsMap.set(acc.id, acc.name))
+  }
+  
+  // If we don't have accounts in appState, load them
+  if (accountsMap.size === 0) {
+    try {
+      const [cashAccounts, debtAccounts] = await Promise.all([
+        getCashAccounts(),
+        getDebtAccounts()
+      ])
+      
+      cashAccounts.forEach(acc => accountsMap.set(acc.id, acc.name))
+      debtAccounts.forEach(acc => accountsMap.set(acc.id, acc.name))
+    } catch (error) {
+      console.error('Failed to load accounts for transaction display:', error)
+    }
+  }
+  
+  // Join account names to transactions
+  return transactions.map(t => ({
+    ...t,
+    account_name: t.account_name || accountsMap.get(t.account_id) || '—'
+  }))
+}
+
 // Calculate summary statistics
 function calculateSummary(transactions) {
   const summary = {
@@ -95,8 +141,14 @@ export async function renderTransactions(appState) {
   const container = document.getElementById('page-content')
   if (!container) return
   
+  // Ensure transactions have account names joined
+  const transactionsWithNames = await ensureAccountNames(appState.data.transactions, appState)
+  
   // Store transactions globally
-  allTransactions = appState.data.transactions
+  allTransactions = transactionsWithNames
+  
+  // Update appState with transactions that have account names
+  appState.data.transactions = transactionsWithNames
   
   // Get filtered transactions and calculate summary
   const filteredTransactions = getFilteredTransactions()
