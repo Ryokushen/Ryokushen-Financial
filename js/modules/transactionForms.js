@@ -174,7 +174,8 @@ export async function createTransactionForm(transactionData = null) {
         if (!user) throw new Error('User not authenticated')
         
         // Find the selected account to check if it's a debt account
-        const selectedAccount = allAccounts.find(acc => acc.id === data.account_id)
+        // Use String() to ensure proper comparison
+        const selectedAccount = allAccounts.find(acc => String(acc.id) === String(data.account_id))
         const isDebtAccount = selectedAccount?.account_type === 'debt'
         
         // Handle transfers differently
@@ -221,8 +222,18 @@ export async function createTransactionForm(transactionData = null) {
               throw new Error('Cannot transfer to the same account')
             }
             
-            const fromAccount = allAccounts.find(acc => acc.id === data.account_id)
-            const toAccount = allAccounts.find(acc => acc.id === data.to_account_id)
+            // Use String() to ensure proper comparison when finding accounts
+            const fromAccount = allAccounts.find(acc => String(acc.id) === String(data.account_id))
+            const toAccount = allAccounts.find(acc => String(acc.id) === String(data.to_account_id))
+            
+            // Debug logging
+            console.log('Transfer accounts lookup:', {
+              from_id: data.account_id,
+              to_id: data.to_account_id,
+              fromAccount: fromAccount ? { id: fromAccount.id, name: fromAccount.name } : null,
+              toAccount: toAccount ? { id: toAccount.id, name: toAccount.name } : null,
+              allAccounts: allAccounts.map(a => ({ id: a.id, name: a.name, type: typeof a.id }))
+            })
             
             const transferAmount = parseFloat(data.amount)
             
@@ -414,14 +425,14 @@ function updateToAccountOptions(formId, selectedAccountId, allAccountOptions) {
   // Clear options
   toAccountSelect.innerHTML = '<option value="">Select destination account</option>'
   
-  // Add filtered options
+  // Add filtered options - use String() for comparison
   allAccountOptions
-    .filter(acc => acc.value !== selectedAccountId)
+    .filter(acc => String(acc.value) !== String(selectedAccountId))
     .forEach(acc => {
       const option = document.createElement('option')
       option.value = acc.value
       option.textContent = acc.label
-      if (acc.value === currentValue) {
+      if (String(acc.value) === String(currentValue)) {
         option.selected = true
       }
       toAccountSelect.appendChild(option)
