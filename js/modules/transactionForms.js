@@ -39,6 +39,10 @@ async function getAllAccounts() {
     getDebtAccounts()
   ])
   
+  // Debug: Log the raw account data
+  console.log('Raw cash accounts:', cashAccounts)
+  console.log('Raw debt accounts:', debtAccounts)
+  
   // Combine and format accounts
   const allAccounts = [
     ...cashAccounts.map(acc => ({
@@ -52,6 +56,24 @@ async function getAllAccounts() {
       account_type: 'debt'
     }))
   ]
+  
+  // Debug: Check for duplicate IDs
+  const idCounts = {}
+  allAccounts.forEach(acc => {
+    const id = String(acc.id)
+    idCounts[id] = (idCounts[id] || 0) + 1
+    if (idCounts[id] > 1) {
+      console.error(`DUPLICATE ACCOUNT ID FOUND: ${id}`, acc)
+    }
+  })
+  
+  console.log('All accounts with IDs:', allAccounts.map(a => ({
+    id: a.id,
+    name: a.name,
+    display_name: a.display_name,
+    type: a.account_type,
+    id_type: typeof a.id
+  })))
   
   return allAccounts
 }
@@ -113,6 +135,8 @@ export async function createTransactionForm(transactionData = null) {
       value: transactionData?.account_id || '',
       placeholder: 'Select account',
       onChange: (value) => {
+        // Debug log
+        console.log('Account selected:', value, typeof value)
         // Update the "To Account" dropdown to exclude the selected account
         updateToAccountOptions(formId, value, accountOptions)
       }
@@ -173,10 +197,18 @@ export async function createTransactionForm(transactionData = null) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('User not authenticated')
         
+        // Debug: Log the form data
+        console.log('Form submission data:', data)
+        
         // Find the selected account to check if it's a debt account
         // Use String() to ensure proper comparison
         const selectedAccount = allAccounts.find(acc => String(acc.id) === String(data.account_id))
         const isDebtAccount = selectedAccount?.account_type === 'debt'
+        
+        console.log('Selected account lookup:', {
+          searching_for: data.account_id,
+          found: selectedAccount ? { id: selectedAccount.id, name: selectedAccount.name } : null
+        })
         
         // Handle transfers differently
         if (data.type === 'transfer') {
@@ -218,7 +250,7 @@ export async function createTransactionForm(transactionData = null) {
               throw new Error('Please select a destination account for the transfer')
             }
             
-            if (data.account_id === data.to_account_id) {
+            if (String(data.account_id) === String(data.to_account_id)) {
               throw new Error('Cannot transfer to the same account')
             }
             
@@ -226,13 +258,28 @@ export async function createTransactionForm(transactionData = null) {
             const fromAccount = allAccounts.find(acc => String(acc.id) === String(data.account_id))
             const toAccount = allAccounts.find(acc => String(acc.id) === String(data.to_account_id))
             
-            // Debug logging
-            console.log('Transfer accounts lookup:', {
+            // Enhanced debug logging
+            console.log('Transfer accounts detailed lookup:', {
               from_id: data.account_id,
+              from_id_type: typeof data.account_id,
               to_id: data.to_account_id,
-              fromAccount: fromAccount ? { id: fromAccount.id, name: fromAccount.name } : null,
-              toAccount: toAccount ? { id: toAccount.id, name: toAccount.name } : null,
-              allAccounts: allAccounts.map(a => ({ id: a.id, name: a.name, type: typeof a.id }))
+              to_id_type: typeof data.to_account_id,
+              fromAccount: fromAccount ? { 
+                id: fromAccount.id, 
+                name: fromAccount.name,
+                id_type: typeof fromAccount.id 
+              } : null,
+              toAccount: toAccount ? { 
+                id: toAccount.id, 
+                name: toAccount.name,
+                id_type: typeof toAccount.id 
+              } : null,
+              allAccountIds: allAccounts.map(a => ({ 
+                id: a.id, 
+                name: a.name, 
+                type: typeof a.id,
+                stringId: String(a.id)
+              }))
             })
             
             const transferAmount = parseFloat(data.amount)
@@ -258,6 +305,11 @@ export async function createTransactionForm(transactionData = null) {
               cleared: data.cleared,
               user_id: user.id
             }
+            
+            console.log('Creating transfer transactions:', {
+              from: fromTransaction,
+              to: toTransaction
+            })
             
             // Create both transactions
             await createTransaction(fromTransaction)
