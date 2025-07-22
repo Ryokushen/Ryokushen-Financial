@@ -20,6 +20,7 @@ const TRANSACTION_CATEGORIES = [
   { value: 'Education', label: 'Education', type: 'expense' },
   { value: 'Savings', label: 'Savings', type: 'transfer' },
   { value: 'Investment', label: 'Investment', type: 'transfer' },
+  { value: 'Transfer', label: 'Transfer', type: 'transfer' },
   { value: 'Debt', label: 'Debt Payment', type: 'expense' },
   { value: 'Other', label: 'Other', type: 'expense' }
 ]
@@ -95,6 +96,8 @@ export async function createTransactionForm(transactionData = null) {
       onChange: (value) => {
         // Update amount sign when type changes
         updateAmountSign(formId, value)
+        // Show/hide To Account field for transfers
+        updateTransferFields(formId, value)
       }
     },
     {
@@ -104,7 +107,22 @@ export async function createTransactionForm(transactionData = null) {
       options: accountOptions,
       required: true,
       value: transactionData?.account_id || '',
-      placeholder: 'Select account'
+      placeholder: 'Select account',
+      onChange: (value) => {
+        // Update the "To Account" dropdown to exclude the selected account
+        updateToAccountOptions(formId, value, accountOptions)
+      }
+    },
+    {
+      name: 'to_account_id',
+      label: 'To Account',
+      type: 'select',
+      options: accountOptions.filter(acc => acc.value !== transactionData?.account_id),
+      required: false,
+      value: transactionData?.to_account_id || '',
+      placeholder: 'Select destination account',
+      hidden: currentType !== 'transfer',
+      className: 'transfer-only'
     },
     {
       name: 'amount',
@@ -163,46 +181,100 @@ export async function createTransactionForm(transactionData = null) {
         const selectedAccount = allAccounts.find(acc => acc.id === data.account_id)
         const isDebtAccount = selectedAccount?.account_type === 'debt'
         
-        // Adjust amount based on type and account type
-        let amount = parseFloat(data.amount)
-        
-        // For debt accounts, handle the amount differently
-        if (isDebtAccount) {
-          // For debt accounts with standard convention:
-          // - Expenses (charges) should be negative
-          // - Income (payments) should be positive
-          if (data.type === 'expense' && amount > 0) {
-            amount = -amount
-          } else if (data.type === 'income' && amount < 0) {
-            amount = Math.abs(amount)
+        // Handle transfers differently
+        if (data.type === 'transfer') {
+          // Validate that both accounts are selected
+          if (!data.to_account_id) {
+            throw new Error('Please select a destination account for the transfer')
+          }
+          
+          if (data.account_id === data.to_account_id) {
+            throw new Error('Cannot transfer to the same account')
+          }
+          
+          const fromAccount = allAccounts.find(acc => acc.id === data.account_id)
+          const toAccount = allAccounts.find(acc => acc.id === data.to_account_id)
+          
+          const transferAmount = parseFloat(data.amount)
+          
+          // Create two linked transactions for the transfer
+          const transferNote = data.notes ? `Transfer: ${data.notes}` : 'Transfer'
+          
+          // Transaction 1: Withdrawal from source account
+          const fromTransaction = {
+            date: data.date,
+            account_id: data.account_id,
+            amount: fromAccount?.account_type === 'debt' ? transferAmount : -transferAmount,
+            category: 'Transfer',
+            description: `Transfer to ${toAccount?.name || 'Account'}`,
+            notes: transferNote,
+            cleared: data.cleared,
+            user_id: user.id
+          }
+          
+          // Transaction 2: Deposit to destination account
+          const toTransaction = {
+            date: data.date,
+            account_id: data.to_account_id,
+            amount: toAccount?.account_type === 'debt' ? -transferAmount : transferAmount,
+            category: 'Transfer',
+            description: `Transfer from ${fromAccount?.name || 'Account'}`,
+            notes: transferNote,
+            cleared: data.cleared,
+            user_id: user.id
+          }
+          
+          // Create both transactions
+          if (isEdit) {
+            // For edits, we'll need to update the transfer logic later
+            throw new Error('Editing transfers is not yet supported')
+          } else {
+            await createTransaction(fromTransaction)
+            await createTransaction(toTransaction)
+            await modalManager.showSuccess('Transfer completed successfully!')
           }
         } else {
-          // For cash accounts (normal behavior)
-          if (data.type === 'expense' && amount > 0) {
-            amount = -amount
-          } else if (data.type === 'income' && amount < 0) {
-            amount = Math.abs(amount)
+          // Handle regular income/expense transactions
+          let amount = parseFloat(data.amount)
+          
+          // For debt accounts, handle the amount differently
+          if (isDebtAccount) {
+            // For debt accounts with standard convention:
+            // - Expenses (charges) should be negative
+            // - Income (payments) should be positive
+            if (data.type === 'expense' && amount > 0) {
+              amount = -amount
+            } else if (data.type === 'income' && amount < 0) {
+              amount = Math.abs(amount)
+            }
+          } else {
+            // For cash accounts (normal behavior)
+            if (data.type === 'expense' && amount > 0) {
+              amount = -amount
+            } else if (data.type === 'income' && amount < 0) {
+              amount = Math.abs(amount)
+            }
           }
-        }
-        
-        // Prepare transaction data
-        const transactionPayload = {
-          date: data.date,
-          account_id: data.account_id,
-          amount: amount,
-          category: data.category,
-          description: data.description,
-          notes: data.notes || null,
-          cleared: data.cleared,
-          user_id: user.id
-        }
+          
+          // Prepare transaction data
+          const transactionPayload = {
+            date: data.date,
+            account_id: data.account_id,
+            amount: amount,
+            category: data.category,
+            description: data.description,
+            notes: data.notes || null,
+            cleared: data.cleared,
+            user_id: user.id
+          }
 
-        if (isEdit) {
-          await updateTransaction(transactionData.id, transactionPayload)
-          await modalManager.showSuccess('Transaction updated successfully!')
-        } else {
-          await createTransaction(transactionPayload)
-          await modalManager.showSuccess('Transaction added successfully!')
+          if (isEdit) {
+            await updateTransaction(transactionData.id, transactionPayload)
+            await modalManager.showSuccess('Transaction updated successfully!')
+          } else {
+            await createTransaction(transactionPayload)
+            await modalManager.showSuccess('Transaction added successfully!')
+          }
         }
         
         // Reload transactions with account info
@@ -263,6 +335,80 @@ export async function createTransactionForm(transactionData = null) {
   return { formId, form }
 }
 
+// Show/hide transfer-related fields
+function updateTransferFields(formId, type) {
+  const form = document.getElementById(formId)
+  if (!form) return
+
+  const toAccountField = form.querySelector('.form-group:has([name="to_account_id"])')
+  const categoryField = form.querySelector('.form-group:has([name="category"])')
+  
+  if (type === 'transfer') {
+    // Show To Account field
+    if (toAccountField) {
+      toAccountField.style.display = 'block'
+      const toAccountSelect = toAccountField.querySelector('select')
+      if (toAccountSelect) {
+        toAccountSelect.required = true
+      }
+    }
+    // Hide category field for transfers
+    if (categoryField) {
+      categoryField.style.display = 'none'
+      const categorySelect = categoryField.querySelector('select')
+      if (categorySelect) {
+        categorySelect.required = false
+        categorySelect.value = 'Transfer'
+      }
+    }
+  } else {
+    // Hide To Account field
+    if (toAccountField) {
+      toAccountField.style.display = 'none'
+      const toAccountSelect = toAccountField.querySelector('select')
+      if (toAccountSelect) {
+        toAccountSelect.required = false
+      }
+    }
+    // Show category field
+    if (categoryField) {
+      categoryField.style.display = 'block'
+      const categorySelect = categoryField.querySelector('select')
+      if (categorySelect) {
+        categorySelect.required = true
+      }
+    }
+  }
+}
+
+// Update To Account options to exclude the selected From account
+function updateToAccountOptions(formId, selectedAccountId, allAccountOptions) {
+  const form = document.getElementById(formId)
+  if (!form) return
+  
+  const toAccountSelect = form.querySelector('[name="to_account_id"]')
+  if (!toAccountSelect) return
+  
+  // Get current value
+  const currentValue = toAccountSelect.value
+  
+  // Clear options
+  toAccountSelect.innerHTML = '<option value="">Select destination account</option>'
+  
+  // Add filtered options
+  allAccountOptions
+    .filter(acc => acc.value !== selectedAccountId)
+    .forEach(acc => {
+      const option = document.createElement('option')
+      option.value = acc.value
+      option.textContent = acc.label
+      if (acc.value === currentValue) {
+        option.selected = true
+      }
+      toAccountSelect.appendChild(option)
+    })
+}
+
 // Update amount sign indicator based on transaction type
 function updateAmountSign(formId, type) {
   const formElement = document.getElementById(formId)
@@ -299,17 +445,31 @@ export async function showTransactionModal(transactionData = null) {
     size: 'medium'
   })
 
-  // Setup type change handler
+  // Setup type change handler and initial visibility
   const formElement = document.getElementById(formId)
   if (formElement) {
     const typeSelect = formElement.querySelector('[name="type"]')
     if (typeSelect) {
-      typeSelect.addEventListener('change', (e) => {
-        updateAmountSign(formId, e.target.value)
-      })
-      
-      // Set initial amount sign
+      // Set initial visibility
       updateAmountSign(formId, typeSelect.value)
+      updateTransferFields(formId, typeSelect.value)
+      
+      // The event listener is already set up in the form configuration
+    }
+    
+    // Setup account change handler for transfers
+    const accountSelect = formElement.querySelector('[name="account_id"]')
+    if (accountSelect) {
+      // Get all account options for the To Account field updates
+      const allAccounts = await getAllAccounts()
+      const accountOptions = allAccounts.map(acc => ({
+        value: acc.id,
+        label: acc.display_name
+      }))
+      
+      accountSelect.addEventListener('change', (e) => {
+        updateToAccountOptions(formId, e.target.value, accountOptions)
+      })
     }
   }
 
