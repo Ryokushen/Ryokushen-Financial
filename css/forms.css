@@ -461,6 +461,14 @@ input[type="datetime-local"].form-control {
   margin-top: 32px;
 }
 
+.form-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  gap: 12px;
+}
+
 .form-toggle input[type="checkbox"] {
   position: absolute;
   opacity: 0;

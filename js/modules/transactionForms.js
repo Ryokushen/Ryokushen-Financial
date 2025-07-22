@@ -71,7 +71,11 @@ export async function createTransactionForm(transactionData = null) {
   // Determine transaction type based on amount if editing
   let currentType = 'expense'
   if (isEdit) {
-    if (transactionData.amount > 0) {
+    // Check if this is a transfer transaction
+    if (transactionData.category === 'Transfer' || 
+        ['Savings', 'Investment', 'Transfer'].includes(transactionData.category)) {
+      currentType = 'transfer'
+    } else if (transactionData.amount > 0) {
       currentType = 'income'
     } else {
       currentType = transactionData.type || 'expense'

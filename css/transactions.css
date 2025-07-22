@@ -455,3 +455,92 @@
     display: none;
   }
 }
+
+/* Account Balances Section */
+.account-balances-section {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
+.account-balances-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.account-balance-card {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid var(--border);
+}
+
+.account-balance-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.account-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.account-type-badge {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.account-type-badge.cash {
+  background: var(--color-success-dim);
+  color: var(--color-success);
+}
+
+.account-type-badge.debt {
+  background: var(--color-danger-dim);
+  color: var(--color-danger);
+}
+
+.account-balance-amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.account-balance-amount.negative {
+  color: var(--color-danger);
+}
+
+.set-balance-btn {
+  width: 100%;
+  text-align: center;
+  padding: 8px 16px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.set-balance-btn:hover {
+  background: var(--bg-quaternary);
+}
+
+.no-accounts-message {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 40px;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
