@@ -397,6 +397,17 @@ function setupAccountsEventHandlers() {
     })
   }
   
+  // Debug button (temporary)
+  const debugBtn = document.createElement('button')
+  debugBtn.textContent = 'Debug Account IDs'
+  debugBtn.className = 'btn btn-secondary'
+  debugBtn.style.marginLeft = '10px'
+  debugBtn.onclick = async () => {
+    const { debugAccountIDs } = await import('./debugAccounts.js')
+    await debugAccountIDs()
+  }
+  document.querySelector('.page-header')?.appendChild(debugBtn)
+  
   // Edit buttons
   const editBtns = document.querySelectorAll('.text-btn.edit')
   editBtns.forEach(btn => {
