@@ -47,7 +47,7 @@ async function getAllAccounts() {
     })),
     ...debtAccounts.map(acc => ({
       ...acc,
-      display_name: `${acc.name} (${acc.account_type || 'Debt'})`,
+      display_name: `${acc.name} (${acc.type || 'Debt'})`,
       account_type: 'debt'
     }))
   ]
@@ -159,12 +159,30 @@ export async function createTransactionForm(transactionData = null) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('User not authenticated')
         
-        // Adjust amount based on type
+        // Find the selected account to check if it's a debt account
+        const selectedAccount = allAccounts.find(acc => acc.id === data.account_id)
+        const isDebtAccount = selectedAccount?.account_type === 'debt'
+        
+        // Adjust amount based on type and account type
         let amount = parseFloat(data.amount)
-        if (data.type === 'expense' && amount > 0) {
-          amount = -amount
-        } else if (data.type === 'income' && amount < 0) {
-          amount = Math.abs(amount)
+        
+        // For debt accounts, handle the amount differently
+        if (isDebtAccount) {
+          // For debt accounts with standard convention:
+          // - Expenses (charges) should be negative
+          // - Income (payments) should be positive
+          if (data.type === 'expense' && amount > 0) {
+            amount = -amount
+          } else if (data.type === 'income' && amount < 0) {
+            amount = Math.abs(amount)
+          }
+        } else {
+          // For cash accounts (normal behavior)
+          if (data.type === 'expense' && amount > 0) {
+            amount = -amount
+          } else if (data.type === 'income' && amount < 0) {
+            amount = Math.abs(amount)
+          }
         }
         
         // Prepare transaction data
@@ -208,6 +226,11 @@ export async function createTransactionForm(transactionData = null) {
         } else if (appState.currentPage === 'dashboard') {
           const { renderDashboard } = await import('./dashboard.js')
           await renderDashboard(appState)
+        } else if (appState.currentPage === 'debt') {
+          // Also refresh debt page if we're on it
+          const { renderDebt } = await import('./debt.js')
+          appState.data.debtAccounts = await getDebtAccounts()
+          await renderDebt(appState)
         }
         
         return true
