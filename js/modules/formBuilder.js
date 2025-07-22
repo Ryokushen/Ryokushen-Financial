@@ -216,16 +216,18 @@ class FormBuilder {
 
       case 'toggle':
         fieldHTML += `
-          <label class="form-toggle">
-            <input 
-              type="checkbox" 
-              id="${name}" 
-              name="${name}" 
-              ${value ? 'checked' : ''}
-            />
-            <span class="toggle-slider"></span>
+          <div class="form-toggle">
             <span class="toggle-label">${placeholder}</span>
-          </label>
+            <label class="toggle-switch-wrapper">
+              <input 
+                type="checkbox" 
+                id="${name}" 
+                name="${name}" 
+                ${value ? 'checked' : ''}
+              />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         `
         break
 

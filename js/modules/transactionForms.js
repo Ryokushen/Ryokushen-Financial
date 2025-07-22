@@ -154,14 +154,6 @@ export async function createTransactionForm(transactionData = null) {
       value: transactionData?.description || ''
     },
     {
-      name: 'notes',
-      label: 'Notes',
-      type: 'textarea',
-      placeholder: 'Additional notes or details',
-      rows: 3,
-      value: transactionData?.notes || ''
-    },
-    {
       name: 'cleared',
       label: 'Cleared',
       type: 'toggle',
@@ -202,7 +194,6 @@ export async function createTransactionForm(transactionData = null) {
           const transferAmount = parseFloat(data.amount)
           
           // Create two linked transactions for the transfer
-          const transferNote = data.notes ? `Transfer: ${data.notes}` : 'Transfer'
           
           // Transaction 1: Withdrawal from source account
           const fromTransaction = {
@@ -211,7 +202,6 @@ export async function createTransactionForm(transactionData = null) {
             amount: fromAccount?.account_type === 'debt' ? transferAmount : -transferAmount,
             category: 'Transfer',
             description: `Transfer to ${toAccount?.name || 'Account'}`,
-            notes: transferNote,
             cleared: data.cleared,
             user_id: user.id
           }
@@ -223,7 +213,6 @@ export async function createTransactionForm(transactionData = null) {
             amount: toAccount?.account_type === 'debt' ? -transferAmount : transferAmount,
             category: 'Transfer',
             description: `Transfer from ${fromAccount?.name || 'Account'}`,
-            notes: transferNote,
             cleared: data.cleared,
             user_id: user.id
           }
@@ -267,7 +256,6 @@ export async function createTransactionForm(transactionData = null) {
             amount: amount,
             category: data.category,
             description: data.description,
-            notes: data.notes || null,
             cleared: data.cleared,
             user_id: user.id
           }
