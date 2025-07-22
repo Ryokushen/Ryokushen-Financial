@@ -300,19 +300,22 @@ export async function deleteTransaction(id) {
 }
 
 // Delete all transactions for an account
-export async function deleteTransactionsByAccountId(accountId) {
+export async function deleteTransactionsByAccountId(accountId, accountType = 'cash') {
   const supabase = getSupabase()
+  
+  // Use prefixed ID for debt accounts
+  const transactionAccountId = accountType === 'debt' ? `debt_${accountId}` : accountId
   
   // First, check how many transactions will be deleted
   const { data: transactions, error: countError } = await supabase
     .from('transactions')
     .select('id')
-    .eq('account_id', accountId)
+    .eq('account_id', transactionAccountId)
   
   if (countError) {
     console.error('Failed to count transactions:', countError)
   } else {
-    console.log(`Found ${transactions?.length || 0} transactions to delete for account ${accountId}`)
+    console.log(`Found ${transactions?.length || 0} transactions to delete for account ${transactionAccountId}`)
   }
   
   // Delete all transactions for this account
@@ -320,14 +323,14 @@ export async function deleteTransactionsByAccountId(accountId) {
     supabase
       .from('transactions')
       .delete()
-      .eq('account_id', accountId),
+      .eq('account_id', transactionAccountId),
     {
       queryName: 'Delete account transactions',
       timeout: QUERY_TIMEOUT_LONG // Use longer timeout for potentially many deletions
     }
   )
   
-  console.log(`Deleted transactions for account ${accountId}`)
+  console.log(`Deleted transactions for account ${transactionAccountId}`)
   return result
 }
 
@@ -693,7 +696,7 @@ export async function deleteDebtAccount(id) {
   try {
     // First, delete all transactions associated with this account
     console.log(`Deleting all transactions for debt account ${id}...`)
-    await deleteTransactionsByAccountId(id)
+    await deleteTransactionsByAccountId(id, 'debt')
     
     // Add a small delay to ensure transaction deletion is fully processed
     await new Promise(resolve => setTimeout(resolve, 500))

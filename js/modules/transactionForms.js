@@ -66,7 +66,7 @@ export async function createTransactionForm(transactionData = null) {
   // Get all accounts for the dropdown
   const allAccounts = await getAllAccounts()
   const accountOptions = allAccounts.map(acc => ({
-    value: acc.id,
+    value: acc.transaction_account_id || acc.id,
     label: acc.display_name
   }))
 
@@ -176,7 +176,7 @@ export async function createTransactionForm(transactionData = null) {
         if (!user) throw new Error('User not authenticated')
         
         // Find the selected account to check if it's a debt account
-        const selectedAccount = allAccounts.find(acc => acc.id === data.account_id)
+        const selectedAccount = allAccounts.find(acc => (acc.transaction_account_id || acc.id) === data.account_id)
         const isDebtAccount = selectedAccount?.account_type === 'debt'
         
         // Handle transfers differently
@@ -190,8 +190,8 @@ export async function createTransactionForm(transactionData = null) {
             throw new Error('Cannot transfer to the same account')
           }
           
-          const fromAccount = allAccounts.find(acc => acc.id === data.account_id)
-          const toAccount = allAccounts.find(acc => acc.id === data.to_account_id)
+          const fromAccount = allAccounts.find(acc => (acc.transaction_account_id || acc.id) === data.account_id)
+          const toAccount = allAccounts.find(acc => (acc.transaction_account_id || acc.id) === data.to_account_id)
           
           const transferAmount = parseFloat(data.amount)
           
@@ -200,7 +200,7 @@ export async function createTransactionForm(transactionData = null) {
           // Transaction 1: Withdrawal from source account
           const fromTransaction = {
             date: data.date,
-            account_id: fromAccount?.transaction_account_id || data.account_id,
+            account_id: data.account_id,
             amount: fromAccount?.account_type === 'debt' ? transferAmount : -transferAmount,
             category: 'Transfer',
             description: `Transfer to ${toAccount?.name || 'Account'}`,
@@ -211,7 +211,7 @@ export async function createTransactionForm(transactionData = null) {
           // Transaction 2: Deposit to destination account
           const toTransaction = {
             date: data.date,
-            account_id: toAccount?.transaction_account_id || data.to_account_id,
+            account_id: data.to_account_id,
             amount: toAccount?.account_type === 'debt' ? -transferAmount : transferAmount,
             category: 'Transfer',
             description: `Transfer from ${fromAccount?.name || 'Account'}`,
@@ -254,7 +254,7 @@ export async function createTransactionForm(transactionData = null) {
           // Prepare transaction data
           const transactionPayload = {
             date: data.date,
-            account_id: selectedAccount?.transaction_account_id || data.account_id,
+            account_id: data.account_id,
             amount: amount,
             category: data.category,
             description: data.description,
