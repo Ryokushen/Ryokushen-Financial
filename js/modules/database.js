@@ -300,22 +300,19 @@ export async function deleteTransaction(id) {
 }
 
 // Delete all transactions for an account
-export async function deleteTransactionsByAccountId(accountId, accountType = 'cash') {
+export async function deleteTransactionsByAccountId(accountId) {
   const supabase = getSupabase()
-  
-  // Use prefixed ID for debt accounts
-  const transactionAccountId = accountType === 'debt' ? `debt_${accountId}` : accountId
   
   // First, check how many transactions will be deleted
   const { data: transactions, error: countError } = await supabase
     .from('transactions')
     .select('id')
-    .eq('account_id', transactionAccountId)
+    .eq('account_id', accountId)
   
   if (countError) {
     console.error('Failed to count transactions:', countError)
   } else {
-    console.log(`Found ${transactions?.length || 0} transactions to delete for account ${transactionAccountId}`)
+    console.log(`Found ${transactions?.length || 0} transactions to delete for account ${accountId}`)
   }
   
   // Delete all transactions for this account
@@ -323,14 +320,14 @@ export async function deleteTransactionsByAccountId(accountId, accountType = 'ca
     supabase
       .from('transactions')
       .delete()
-      .eq('account_id', transactionAccountId),
+      .eq('account_id', accountId),
     {
       queryName: 'Delete account transactions',
       timeout: QUERY_TIMEOUT_LONG // Use longer timeout for potentially many deletions
     }
   )
   
-  console.log(`Deleted transactions for account ${transactionAccountId}`)
+  console.log(`Deleted transactions for account ${accountId}`)
   return result
 }
 
@@ -357,9 +354,8 @@ export async function getCashAccounts() {
       return []
     }
     
-    // Get all account IDs (prefix debt accounts with 'debt_')
+    // Get all account IDs
     const accountIds = accounts.map(acc => acc.id)
-    const prefixedAccountIds = accounts.map(acc => `debt_${acc.id}`)
     
     // Single query to get all balances at once (fixes N+1 problem)
     const balances = await executeQuery(
@@ -367,7 +363,7 @@ export async function getCashAccounts() {
         const { data, error } = await supabase
           .from('transactions')
           .select('account_id, amount')
-          .in('account_id', [...accountIds, ...prefixedAccountIds])
+          .in('account_id', accountIds)
         
         if (error) return { error, data: null }
         
@@ -609,9 +605,8 @@ export async function getDebtAccounts() {
       return []
     }
     
-    // Get all account IDs - debt accounts use prefixed IDs in transactions
+    // Get all account IDs
     const accountIds = accounts.map(acc => acc.id)
-    const prefixedAccountIds = accounts.map(acc => `debt_${acc.id}`)
     
     // Calculate dynamic balances from transactions (like cash accounts)
     const balances = await executeQuery(
@@ -619,7 +614,7 @@ export async function getDebtAccounts() {
         const { data, error } = await supabase
           .from('transactions')
           .select('account_id, amount')
-          .in('account_id', prefixedAccountIds)
+          .in('account_id', accountIds)
         
         if (error) return { error, data: null }
         
@@ -632,12 +627,10 @@ export async function getDebtAccounts() {
         
         data.forEach(transaction => {
           if (transaction.account_id && transaction.amount) {
-            // Extract the actual account ID from the prefixed ID
-            const actualId = transaction.account_id.replace('debt_', '')
             // Simply invert the transaction amount for debt calculation
             // Negative amount (charge) becomes positive debt
             // Positive amount (payment) becomes negative debt
-            balanceMap[actualId] = (balanceMap[actualId] || 0) + (-transaction.amount)
+            balanceMap[transaction.account_id] += -transaction.amount
           }
         })
         
@@ -696,7 +689,7 @@ export async function deleteDebtAccount(id) {
   try {
     // First, delete all transactions associated with this account
     console.log(`Deleting all transactions for debt account ${id}...`)
-    await deleteTransactionsByAccountId(id, 'debt')
+    await deleteTransactionsByAccountId(id)
     
     // Add a small delay to ensure transaction deletion is fully processed
     await new Promise(resolve => setTimeout(resolve, 500))
@@ -723,11 +716,10 @@ export async function calculateDebtBalance(accountId) {
   const supabase = getSupabase()
   
   try {
-    // Debt accounts use prefixed IDs in transactions
     const { data: transactions, error } = await supabase
       .from('transactions')
       .select('amount')
-      .eq('account_id', `debt_${accountId}`)
+      .eq('account_id', accountId)
     
     if (error) throw error
     

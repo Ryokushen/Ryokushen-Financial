@@ -44,14 +44,12 @@ async function getAllAccounts() {
     ...cashAccounts.map(acc => ({
       ...acc,
       display_name: `${acc.name} (${acc.type || 'Cash'})`,
-      account_type: 'cash',
-      transaction_account_id: acc.id // Use original ID for cash accounts
+      account_type: 'cash'
     })),
     ...debtAccounts.map(acc => ({
       ...acc,
       display_name: `${acc.name} (${acc.type || 'Debt'})`,
-      account_type: 'debt',
-      transaction_account_id: `debt_${acc.id}` // Prefix debt account IDs
+      account_type: 'debt'
     }))
   ]
   
@@ -66,7 +64,7 @@ export async function createTransactionForm(transactionData = null) {
   // Get all accounts for the dropdown
   const allAccounts = await getAllAccounts()
   const accountOptions = allAccounts.map(acc => ({
-    value: acc.transaction_account_id || acc.id,
+    value: acc.id,
     label: acc.display_name
   }))
 
@@ -176,7 +174,7 @@ export async function createTransactionForm(transactionData = null) {
         if (!user) throw new Error('User not authenticated')
         
         // Find the selected account to check if it's a debt account
-        const selectedAccount = allAccounts.find(acc => (acc.transaction_account_id || acc.id) === data.account_id)
+        const selectedAccount = allAccounts.find(acc => acc.id === data.account_id)
         const isDebtAccount = selectedAccount?.account_type === 'debt'
         
         // Handle transfers differently
@@ -190,8 +188,8 @@ export async function createTransactionForm(transactionData = null) {
             throw new Error('Cannot transfer to the same account')
           }
           
-          const fromAccount = allAccounts.find(acc => (acc.transaction_account_id || acc.id) === data.account_id)
-          const toAccount = allAccounts.find(acc => (acc.transaction_account_id || acc.id) === data.to_account_id)
+          const fromAccount = allAccounts.find(acc => acc.id === data.account_id)
+          const toAccount = allAccounts.find(acc => acc.id === data.to_account_id)
           
           const transferAmount = parseFloat(data.amount)
           
