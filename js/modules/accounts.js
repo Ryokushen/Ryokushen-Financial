@@ -142,6 +142,7 @@ function renderCashAccounts(accounts, privacyMode) {
             <div class="account-balance">${maskCurrency(account.balance || 0, privacyMode)}</div>
             <div class="text-actions">
               <button class="text-btn edit" data-account-id="${account.id}" data-account-name="${account.name}">Edit</button>
+              <button class="text-btn set-balance" data-account-id="${account.id}" data-account-name="${account.name}" data-account-type="cash" data-current-balance="${account.balance || 0}">Set Balance</button>
               <button class="text-btn delete" data-account-id="${account.id}" data-account-name="${account.name}">Delete</button>
             </div>
           </div>
@@ -263,6 +264,128 @@ async function deleteAccountAndRefresh(accountId, accountName) {
   }
 }
 
+// Show set balance modal
+async function showSetBalanceModal(accountId, accountName, accountType, currentBalance) {
+  const { modalManager } = await import('../app.js')
+  const { createTransaction } = await import('./database.js')
+  const { getSupabase } = await import('./database.js')
+  
+  const modalContent = `
+    <h2>Set Balance for ${accountName}</h2>
+    <form id="set-balance-form">
+      <div class="form-info">
+        <p>Current calculated balance: <strong>${formatCurrency(currentBalance)}</strong></p>
+        <p>This will create an adjustment transaction to set the balance to your desired amount.</p>
+      </div>
+      <div class="form-group">
+        <label for="new-balance">New Balance</label>
+        <input type="number" id="new-balance" name="new_balance" step="0.01" required placeholder="0.00" 
+               ${accountType === 'debt' ? 'min="0"' : ''}>
+      </div>
+      <div class="form-group">
+        <label for="adjustment-date">Adjustment Date</label>
+        <input type="date" id="adjustment-date" name="adjustment_date" value="${new Date().toISOString().split('T')[0]}" required>
+      </div>
+      <div class="form-group">
+        <label for="adjustment-note">Note (Optional)</label>
+        <input type="text" id="adjustment-note" name="note" placeholder="e.g., Initial balance, Reconciliation">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" onclick="window.modalManager.closeAll()">Cancel</button>
+        <button type="submit" class="btn-primary">Set Balance</button>
+      </div>
+    </form>
+  `
+  
+  modalManager.show({
+    title: 'Set Account Balance',
+    content: modalContent,
+    showFooter: false
+  })
+  
+  // Make modalManager available globally
+  window.modalManager = modalManager
+  
+  // Handle form submission
+  setTimeout(() => {
+    const form = document.getElementById('set-balance-form')
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const formData = new FormData(e.target)
+        
+        try {
+          const newBalance = parseFloat(formData.get('new_balance')) || 0
+          const adjustmentDate = formData.get('adjustment_date')
+          const note = formData.get('note') || 'Balance adjustment'
+          
+          // Calculate the adjustment amount needed
+          let adjustmentAmount
+          if (accountType === 'debt') {
+            // For debt accounts: negative transaction increases debt, positive decreases
+            adjustmentAmount = currentBalance - newBalance
+          } else {
+            // For cash accounts: positive transaction increases balance
+            adjustmentAmount = newBalance - currentBalance
+          }
+          
+          if (Math.abs(adjustmentAmount) < 0.01) {
+            modalManager.showNotification('Balance is already at the desired amount', 'info')
+            modalManager.closeAll()
+            return
+          }
+          
+          // Get current user
+          const supabase = getSupabase()
+          const { data: { user } } = await supabase.auth.getUser()
+          
+          if (!user) {
+            throw new Error('User not authenticated')
+          }
+          
+          // Create adjustment transaction
+          const transaction = {
+            account_id: accountId,
+            amount: adjustmentAmount,
+            date: adjustmentDate,
+            description: `Balance Adjustment: ${note}`,
+            category: accountType === 'debt' ? 'Debt Payment' : 'Other',
+            cleared: true,
+            user_id: user.id
+          }
+          
+          await createTransaction(transaction)
+          
+          modalManager.closeAll()
+          modalManager.showNotification(`Balance adjusted to ${formatCurrency(newBalance)}`, 'success')
+          
+          // Reload the accounts page
+          const appState = window.appState
+          if (appState) {
+            const { getTransactions, getCashAccounts } = await import('./database.js')
+            
+            // Reload data
+            const [cashAccounts, transactions] = await Promise.all([
+              getCashAccounts(),
+              getTransactions()
+            ])
+            
+            // Update app state
+            appState.data.cashAccounts = cashAccounts
+            appState.data.transactions = transactions
+            
+            // Re-render the page
+            await renderAccounts(appState)
+          }
+        } catch (error) {
+          console.error('Failed to set balance:', error)
+          modalManager.showNotification('Failed to set balance', 'error')
+        }
+      })
+    }
+  }, 100)
+}
+
 // Setup event handlers for accounts page
 function setupAccountsEventHandlers() {
   // Add Cash Account button
@@ -290,6 +413,20 @@ function setupAccountsEventHandlers() {
         const { showCashAccountModal } = await import('./accountForms.js')
         await showCashAccountModal(accountData)
       }
+    })
+  })
+  
+  // Set Balance buttons
+  const setBalanceBtns = document.querySelectorAll('.text-btn.set-balance')
+  setBalanceBtns.forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const accountId = btn.dataset.accountId
+      const accountName = btn.dataset.accountName
+      const accountType = btn.dataset.accountType
+      const currentBalance = parseFloat(btn.dataset.currentBalance) || 0
+      
+      await showSetBalanceModal(accountId, accountName, accountType, currentBalance)
     })
   })
   
