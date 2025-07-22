@@ -179,49 +179,76 @@ export async function createTransactionForm(transactionData = null) {
         
         // Handle transfers differently
         if (data.type === 'transfer') {
-          // Validate that both accounts are selected
-          if (!data.to_account_id) {
-            throw new Error('Please select a destination account for the transfer')
-          }
-          
-          if (data.account_id === data.to_account_id) {
-            throw new Error('Cannot transfer to the same account')
-          }
-          
-          const fromAccount = allAccounts.find(acc => acc.id === data.account_id)
-          const toAccount = allAccounts.find(acc => acc.id === data.to_account_id)
-          
-          const transferAmount = parseFloat(data.amount)
-          
-          // Create two linked transactions for the transfer
-          
-          // Transaction 1: Withdrawal from source account
-          const fromTransaction = {
-            date: data.date,
-            account_id: data.account_id,
-            amount: fromAccount?.account_type === 'debt' ? transferAmount : -transferAmount,
-            category: 'Transfer',
-            description: `Transfer to ${toAccount?.name || 'Account'}`,
-            cleared: data.cleared,
-            user_id: user.id
-          }
-          
-          // Transaction 2: Deposit to destination account
-          const toTransaction = {
-            date: data.date,
-            account_id: data.to_account_id,
-            amount: toAccount?.account_type === 'debt' ? -transferAmount : transferAmount,
-            category: 'Transfer',
-            description: `Transfer from ${fromAccount?.name || 'Account'}`,
-            cleared: data.cleared,
-            user_id: user.id
-          }
-          
-          // Create both transactions
+          // For transfers that are being edited, we'll just update the single transaction
+          // In the future, we could implement linked transfer tracking
           if (isEdit) {
-            // For edits, we'll need to update the transfer logic later
-            throw new Error('Editing transfers is not yet supported')
+            // When editing a transfer, we just update the current transaction
+            // We don't create or update a paired transaction
+            const amount = parseFloat(data.amount)
+            
+            // Determine amount sign based on account type
+            let finalAmount = amount
+            if (isDebtAccount) {
+              // For debt accounts, transfers out (to pay debt) are positive
+              // For transfers in (borrowing more), they would be negative
+              // But for simplicity, we'll treat all transfers as absolute values
+              finalAmount = amount
+            } else {
+              // For cash accounts, transfers out are negative
+              finalAmount = -amount
+            }
+            
+            const transactionPayload = {
+              date: data.date,
+              account_id: data.account_id,
+              amount: finalAmount,
+              category: 'Transfer',
+              description: data.description,
+              cleared: data.cleared,
+              user_id: user.id
+            }
+            
+            await updateTransaction(transactionData.id, transactionPayload)
+            await modalManager.showSuccess('Transfer updated successfully!')
           } else {
+            // Creating new transfer - create two linked transactions
+            // Validate that both accounts are selected
+            if (!data.to_account_id) {
+              throw new Error('Please select a destination account for the transfer')
+            }
+            
+            if (data.account_id === data.to_account_id) {
+              throw new Error('Cannot transfer to the same account')
+            }
+            
+            const fromAccount = allAccounts.find(acc => acc.id === data.account_id)
+            const toAccount = allAccounts.find(acc => acc.id === data.to_account_id)
+            
+            const transferAmount = parseFloat(data.amount)
+            
+            // Transaction 1: Withdrawal from source account
+            const fromTransaction = {
+              date: data.date,
+              account_id: data.account_id,
+              amount: fromAccount?.account_type === 'debt' ? transferAmount : -transferAmount,
+              category: 'Transfer',
+              description: `Transfer to ${toAccount?.name || 'Account'}`,
+              cleared: data.cleared,
+              user_id: user.id
+            }
+            
+            // Transaction 2: Deposit to destination account
+            const toTransaction = {
+              date: data.date,
+              account_id: data.to_account_id,
+              amount: toAccount?.account_type === 'debt' ? -transferAmount : transferAmount,
+              category: 'Transfer',
+              description: `Transfer from ${fromAccount?.name || 'Account'}`,
+              cleared: data.cleared,
+              user_id: user.id
+            }
+            
+            // Create both transactions
             await createTransaction(fromTransaction)
             await createTransaction(toTransaction)
             await modalManager.showSuccess('Transfer completed successfully!')
@@ -271,7 +298,7 @@ export async function createTransactionForm(transactionData = null) {
         
         // Reload transactions with account info
         const { getTransactions } = await import('./database.js')
-        const transactions = await getTransactions()
+        const transactions = await getTransactions({ limit: 10000 })
         
         // Join account names
         const accountsMap = new Map(allAccounts.map(acc => [acc.id, acc.name]))
@@ -547,7 +574,7 @@ export async function showQuickExpenseModal() {
         
         // Reload data and refresh page
         const { getTransactions } = await import('./database.js')
-        const transactions = await getTransactions()
+        const transactions = await getTransactions({ limit: 10000 })
         
         // Join account names
         const accountsMap = new Map(allAccounts.map(acc => [acc.id, acc.name]))
