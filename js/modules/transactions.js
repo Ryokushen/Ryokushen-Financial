@@ -455,6 +455,12 @@ function editTransaction(id, appState) {
         debtGroup.style.display = transaction.category === "Debt" ? "block" : "none";
     }
 
+    // Show the transaction form section
+    const formSection = document.querySelector('.transaction-form-section');
+    if (formSection) {
+        formSection.style.display = 'block';
+    }
+
     // Scroll to form
     const form = document.getElementById("transaction-form");
     if (form) {
