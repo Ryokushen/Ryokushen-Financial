@@ -1,0 +1,159 @@
+/* ===== DROPDOWN CONTRAST FIX - OPTION 1 (DARK THEME CONSISTENT) ===== */
+
+/* Ensure all select dropdowns and their options have proper dark theme contrast */
+select:not(.settings-container select) {
+  background: #2c3e50 !important;
+  color: #ecf0f1 !important;
+  border: 1px solid #4a5f7a !important;
+  border-radius: var(--radius-md, 6px) !important;
+  padding: var(--space-2, 8px) var(--space-3, 12px) !important;
+  font-size: var(--font-size-sm, 14px) !important;
+  font-family: inherit !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Style all option elements for proper contrast */
+select:not(.settings-container select) option {
+  background: #2c3e50 !important;
+  color: #ecf0f1 !important;
+  padding: 8px 12px !important;
+  border: none !important;
+}
+
+/* Hover states for better UX */
+select:not(.settings-container select):hover {
+  background: #34495e !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+select:not(.settings-container select):focus {
+  outline: none !important;
+  border-color: var(--color-primary, #3b82f6) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+  background: #2c3e50 !important;
+  color: #ecf0f1 !important;
+}
+
+/* Specific targeting for form control class */
+.form-control:not(.settings-container .form-control) {
+  background: #2c3e50 !important;
+  color: #ecf0f1 !important;
+  border: 1px solid #4a5f7a !important;
+}
+
+/* Target specific dropdown IDs from your form */
+#transaction-account,
+#transaction-category,
+#debt-account-select,
+#transfer-to-account,
+#filter-category,
+#recurring-category,
+#recurring-frequency,
+#recurring-payment-method,
+#recurring-account,
+#recurring-debt-account,
+#debt-strategy-select,
+#calculator-type,
+#contrib-account-select,
+#pay-frequency,
+#pay-day-of-week {
+  background: #2c3e50 !important;
+  color: #ecf0f1 !important;
+  border: 1px solid #4a5f7a !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  font-size: 14px !important;
+}
+
+/* Style options for the specific dropdowns */
+#transaction-account option,
+#transaction-category option,
+#debt-account-select option,
+#transfer-to-account option,
+#filter-category option,
+#recurring-category option,
+#recurring-frequency option,
+#recurring-payment-method option,
+#recurring-account option,
+#recurring-debt-account option,
+#debt-strategy-select option,
+#calculator-type option,
+#contrib-account-select option,
+#pay-frequency option,
+#pay-day-of-week option {
+  background: #2c3e50 !important;
+  color: #ecf0f1 !important;
+  padding: 8px !important;
+}
+
+/* Fix for dropdowns in modal dialogs */
+.modal select:not(.settings-container select) {
+  background: #2c3e50 !important;
+  color: #ecf0f1 !important;
+  border: 1px solid #4a5f7a !important;
+}
+
+.modal select:not(.settings-container select) option {
+  background: #2c3e50 !important;
+  color: #ecf0f1 !important;
+}
+
+/* Additional specificity for transaction form */
+.transaction-form-section select,
+.transaction-form-section select option {
+  background: #2c3e50 !important;
+  color: #ecf0f1 !important;
+}
+
+/* Webkit-specific styling for better cross-browser support */
+select:not(.settings-container select)::-webkit-scrollbar {
+  width: 8px;
+}
+
+select:not(.settings-container select)::-webkit-scrollbar-track {
+  background: #2c3e50;
+}
+
+select:not(.settings-container select)::-webkit-scrollbar-thumb {
+  background: #4a5f7a;
+  border-radius: 4px;
+}
+
+select:not(.settings-container select)::-webkit-scrollbar-thumb:hover {
+  background: #5a6f8a;
+}
+
+/* Firefox-specific styling */
+@-moz-document url-prefix() {
+  select:not(.settings-container select) {
+    background: #2c3e50 !important;
+    color: #ecf0f1 !important;
+  }
+  
+  select:not(.settings-container select) option {
+    background: #2c3e50 !important;
+    color: #ecf0f1 !important;
+  }
+}
+
+/* High specificity override for any stubborn dropdowns */
+body .form-control[id*="account"],
+body .form-control[id*="category"],
+body .form-control[id*="select"],
+body select[id*="transaction"],
+body select[id*="recurring"],
+body select[id*="debt"] {
+  background: #2c3e50 !important;
+  color: #ecf0f1 !important;
+  border: 1px solid #4a5f7a !important;
+}
+
+body .form-control[id*="account"] option,
+body .form-control[id*="category"] option,
+body .form-control[id*="select"] option,
+body select[id*="transaction"] option,
+body select[id*="recurring"] option,
+body select[id*="debt"] option {
+  background: #2c3e50 !important;
+  color: #ecf0f1 !important;
+}
