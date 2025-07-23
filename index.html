@@ -155,39 +155,99 @@
                 </div>
 
 
-                <div class="charts-section">
-                    <!-- Hero Chart Section -->
-                    <div class="hero-chart-section">
-                        <h3>Net Worth Progress</h3>
-                        <div class="chart-container">
-                            <canvas id="netWorthChart"></canvas>
+                <!-- Compact Metrics Grid -->
+                <div class="compact-metrics-grid">
+                    <div class="metric-card-enhanced">
+                        <div class="metric-sparkline">
+                            <svg viewBox="0 0 300 60">
+                                <path d="M0,50 L50,45 L100,40 L150,35 L200,30 L250,25 L300,20" 
+                                      stroke="rgba(76, 175, 80, 0.5)" stroke-width="2" fill="none"/>
+                            </svg>
+                        </div>
+                        <div class="metric-enhanced-header">
+                            <div class="metric-enhanced-title">Net Worth</div>
+                            <div class="metric-badge positive" id="net-worth-change-badge">+0.0%</div>
+                        </div>
+                        <div class="metric-enhanced-value" id="net-worth-enhanced" data-sensitive="true">$0.00</div>
+                        <div class="metric-enhanced-change" id="net-worth-change">↑ $0 this month</div>
+                    </div>
+
+                    <div class="metric-card-enhanced">
+                        <div class="metric-sparkline">
+                            <svg viewBox="0 0 300 60">
+                                <rect x="20" y="40" width="20" height="20" fill="rgba(76, 175, 80, 0.5)"/>
+                                <rect x="60" y="35" width="20" height="25" fill="rgba(76, 175, 80, 0.5)"/>
+                                <rect x="100" y="30" width="20" height="30" fill="rgba(76, 175, 80, 0.5)"/>
+                                <rect x="140" y="25" width="20" height="35" fill="rgba(76, 175, 80, 0.5)"/>
+                                <rect x="180" y="20" width="20" height="40" fill="rgba(76, 175, 80, 0.5)"/>
+                                <rect x="220" y="15" width="20" height="45" fill="rgba(76, 175, 80, 0.5)"/>
+                                <rect x="260" y="25" width="20" height="35" fill="rgba(76, 175, 80, 0.5)"/>
+                            </svg>
+                        </div>
+                        <div class="metric-enhanced-header">
+                            <div class="metric-enhanced-title">Monthly Cash Flow</div>
+                            <div class="metric-badge" id="cash-flow-badge">Calculating...</div>
+                        </div>
+                        <div class="metric-enhanced-value" id="monthly-cash-flow" data-sensitive="true">$0.00</div>
+                        <div class="metric-enhanced-change" id="cash-flow-breakdown">Income: $0 • Expenses: $0</div>
+                    </div>
+
+                    <div class="metric-card-enhanced">
+                        <div class="metric-sparkline" style="background: linear-gradient(to top, rgba(255, 152, 0, 0.1), transparent);">
+                            <svg viewBox="0 0 300 60">
+                                <circle cx="150" cy="30" r="25" fill="none" stroke="rgba(255, 152, 0, 0.5)" stroke-width="8"/>
+                                <circle cx="150" cy="30" r="25" fill="none" stroke="rgba(76, 175, 80, 0.5)" stroke-width="8" 
+                                        stroke-dasharray="40 157" transform="rotate(-90 150 30)"/>
+                            </svg>
+                        </div>
+                        <div class="metric-enhanced-header">
+                            <div class="metric-enhanced-title">Investment Performance</div>
+                            <div class="metric-badge positive" id="investment-performance-badge">+0.0%</div>
+                        </div>
+                        <div class="metric-enhanced-value" id="investment-total" data-sensitive="true">$0.00</div>
+                        <div class="metric-enhanced-change" id="investment-gains">↑ $0 YTD gains</div>
+                    </div>
+
+                    <div class="metric-card-enhanced">
+                        <div class="metric-sparkline" style="background: linear-gradient(to top, rgba(244, 67, 54, 0.1), transparent);">
+                            <svg viewBox="0 0 300 60">
+                                <rect x="0" y="20" width="180" height="20" fill="rgba(76, 175, 80, 0.5)"/>
+                                <rect x="180" y="20" width="120" height="20" fill="rgba(244, 67, 54, 0.5)"/>
+                            </svg>
+                        </div>
+                        <div class="metric-enhanced-header">
+                            <div class="metric-enhanced-title">Assets vs Debt</div>
+                            <div class="metric-badge" id="assets-debt-ratio">0/0</div>
+                        </div>
+                        <div class="metric-enhanced-value" id="total-assets" data-sensitive="true">$0.00</div>
+                        <div class="metric-enhanced-change" id="assets-debt-breakdown">Assets: $0 • Debt: $0</div>
+                    </div>
+                </div>
+
+                <!-- Focus Charts -->
+                <div class="focus-charts-row">
+                    <div class="main-focus-chart">
+                        <div class="chart-container" id="main-chart-container">
+                            <canvas id="mainDashboardChart"></canvas>
                         </div>
                     </div>
-                    
-                    <!-- Priority Charts Grid -->
-                    <div class="priority-charts-grid">
-                        <div class="chart-card chart-main">
-                            <h3>Monthly Cash Flow</h3>
-                            <div class="chart-container">
-                                <canvas id="cashFlowChart"></canvas>
+                    <div class="side-focus-charts">
+                        <div class="mini-focus-chart">
+                            <h4>
+                                <span>Top Expenses</span>
+                                <span class="chart-subtitle" id="total-expenses" data-sensitive="true">$0/mo</span>
+                            </h4>
+                            <div class="expense-breakdown" id="expense-breakdown-list">
+                                <!-- Expense items will be rendered here -->
                             </div>
                         </div>
-                        <div class="chart-card chart-side">
-                            <h3>Investment Allocation</h3>
-                            <div class="chart-container">
-                                <canvas id="investmentAllocation"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-card chart-bottom1">
-                            <h3>Expense Categories</h3>
-                            <div class="chart-container">
-                                <canvas id="expenseCategoryChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-card chart-bottom2">
-                            <h3>Assets vs Debt</h3>
-                            <div class="chart-container">
-                                <canvas id="assetsDebtChart"></canvas>
+                        <div class="mini-focus-chart">
+                            <h4>
+                                <span>Investment Mix</span>
+                                <span class="chart-subtitle" id="investment-mix-total" data-sensitive="true">$0</span>
+                            </h4>
+                            <div class="investment-breakdown" id="investment-breakdown-list">
+                                <!-- Investment items will be rendered here -->
                             </div>
                         </div>
                     </div>
@@ -222,7 +282,13 @@
             <div id="transactions" class="tab-content" role="region" aria-labelledby="transactions-tab-btn">
                 <div class="transactions-header">
                     <h2 class="section-title">Recent Transactions</h2>
-                    <button class="btn btn--primary" id="add-transaction-btn">Add Transaction</button>
+                    <div style="display: flex; gap: var(--space-2);">
+                        <button class="btn btn--primary" id="add-transaction-btn">Add Transaction</button>
+                        <button class="btn btn--secondary" id="voice-add-transaction-btn" title="Add transaction by voice">
+                            <span>🎤</span>
+                            <span>Voice Add</span>
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="enhanced-table" id="transactions-table">
@@ -448,15 +514,12 @@
                 </div>
 
                 <div class="savings-goals mt-16">
-                    <div class="card">
-                        <div class="card__header">
-                            <h3>Savings Goals</h3>
-                            <button class="btn btn--primary" id="add-goal-btn">Add New Goal</button>
-                        </div>
-                        <div class="card__body">
-                            <div id="savings-goals-list" class="savings-goals-grid">
-                            </div>
-                        </div>
+                    <div class="investments-header">
+                        <h2 class="section-title">Savings Goals</h2>
+                        <button class="btn btn--primary" id="add-goal-btn">Add New Goal</button>
+                    </div>
+                    <div id="savings-goals-list" class="card-grid">
+                        <!-- Goal cards will be rendered here -->
                     </div>
                 </div>
                 

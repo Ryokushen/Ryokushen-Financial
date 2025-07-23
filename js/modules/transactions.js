@@ -129,6 +129,19 @@ export function setupEventListeners(appState, onUpdate) {
         });
     }
     
+    // Voice add transaction button
+    const voiceAddTransactionBtn = document.getElementById('voice-add-transaction-btn');
+    if (voiceAddTransactionBtn) {
+        voiceAddTransactionBtn.addEventListener('click', () => {
+            // Trigger voice command with context for adding a transaction
+            if (window.voiceCommandEngine) {
+                window.voiceCommandEngine.startListeningWithContext('add transaction');
+            } else {
+                showError('Voice commands are not available');
+            }
+        });
+    }
+    
     // Helper to add and track event listeners
     const addEventListener = (elementId, event, handler) => {
         const element = document.getElementById(elementId);

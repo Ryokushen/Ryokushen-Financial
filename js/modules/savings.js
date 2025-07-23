@@ -30,7 +30,7 @@ export function setupEventListeners(appState, onUpdate) {
 
     document.getElementById("savings-goals-list")?.addEventListener('click', event => {
         const target = event.target;
-        const card = target.closest('.savings-goal-card');
+        const card = target.closest('.goal-card');
         if (!card) return;
 
         const goalId = parseInt(card.getAttribute('data-id'));
@@ -392,36 +392,40 @@ export function renderSavingsGoals(appState) {
         const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
         const clampedProgress = Math.min(progress, 100);
 
-        // UPDATED: Check if linked account exists and show appropriate status
+        // Check if linked account exists and show appropriate status
         const cashAccount = appState.appData.cashAccounts.find(acc => acc.id === goal.linkedAccountId);
         const investmentAccount = appState.appData.investmentAccounts.find(acc => acc.id === goal.linkedAccountId);
         const linkedAccount = cashAccount || investmentAccount;
         const accountDeleted = !linkedAccount;
 
+        // Determine icon based on completion status
+        const icon = goal.completedDate ? '✅' : '🎯';
+        
         return `
-        <div class="savings-goal-card ${goal.completedDate ? 'completed' : ''} ${accountDeleted ? 'error' : ''}" data-id="${goal.id}">
+        <div class="goal-card ${goal.completedDate ? 'completed' : ''} ${accountDeleted ? 'error' : ''}" data-id="${goal.id}">
             ${accountDeleted ? '<div class="goal-error-notice">Linked account was deleted!</div>' : ''}
-            <div class="savings-goal-header">
-                <h5>${escapeHtml(goal.name)}</h5>
-            </div>
-
-            <div class="savings-goal-progress-ring">
-                <div class="progress-ring" style="--progress-percent: ${clampedProgress}%;">
-                    <div class="progress-ring-inner">
-                        <span class="progress-ring-percent">${Math.round(clampedProgress)}%</span>
+            
+            <div class="goal-card__icon">${icon}</div>
+            
+            <div class="goal-card__name">${escapeHtml(goal.name)}</div>
+            
+            <div class="goal-card__progress">
+                <div class="goal-card__progress-bar">
+                    <div class="goal-card__progress-fill" style="width: ${clampedProgress}%"></div>
+                </div>
+                <div class="goal-card__progress-text">
+                    <div class="goal-card__progress-percent">${Math.round(clampedProgress)}%</div>
+                    <div class="goal-card__amounts">
+                        <span class="goal-card__current">${formatCurrency(goal.currentAmount)}</span>
+                        <span class="goal-card__target">of ${formatCurrency(goal.targetAmount)}</span>
                     </div>
                 </div>
-                <div class="progress-ring-text">
-                    <span class="progress-current">${formatCurrency(goal.currentAmount)}</span>
-                    <span> of </span>
-                    <span class="progress-target">${formatCurrency(goal.targetAmount)}</span>
-                </div>
             </div>
 
-            <div class="savings-goal-actions">
-                <button class="btn btn--primary btn--sm btn-contribute" data-id="${goal.id}" ${accountDeleted ? 'disabled' : ''}>Contribute</button>
-                <button class="btn btn--secondary btn--sm btn-edit-goal" data-id="${goal.id}">Edit</button>
-                <button class="btn btn--outline btn--sm btn-delete-goal" data-id="${goal.id}">Delete</button>
+            <div class="goal-card__actions">
+                <button class="btn btn--primary btn-contribute" data-id="${goal.id}" ${accountDeleted ? 'disabled' : ''}>Contribute</button>
+                <button class="btn btn--secondary btn-edit-goal" data-id="${goal.id}">Edit</button>
+                <button class="icon-btn btn-delete-goal" data-id="${goal.id}" title="Delete">🗑️</button>
             </div>
         </div>
         `;

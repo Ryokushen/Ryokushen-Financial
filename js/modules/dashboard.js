@@ -179,5 +179,265 @@ export function updateDashboard({ appData }) {
     } else if (timeBudgetWidget) {
         timeBudgetWidget.updateAppData(appData);
     }
+    
+    // Update enhanced metrics
+    updateEnhancedMetrics(appData);
+    
+    // Update focus charts
+    updateFocusCharts(appData);
+}
+
+function updateEnhancedMetrics(appData) {
+    const totalCash = sumMoney(appData.cashAccounts.map(acc => acc.balance || 0));
+    const totalInvestments = sumMoney(appData.investmentAccounts.map(acc => acc.balance));
+    const totalDebt = sumMoney(appData.debtAccounts.map(acc => acc.balance));
+    const netWorth = subtractMoney(addMoney(totalCash, totalInvestments), totalDebt);
+    const totalAssets = addMoney(totalCash, totalInvestments);
+    
+    // Net Worth metric
+    const netWorthEl = document.getElementById('net-worth-enhanced');
+    if (netWorthEl) netWorthEl.textContent = formatCurrency(netWorth);
+    
+    // Calculate net worth change (simplified - just show trend)
+    const netWorthChange = netWorth * 0.024; // Mock 2.4% change
+    const netWorthChangeEl = document.getElementById('net-worth-change');
+    if (netWorthChangeEl) {
+        netWorthChangeEl.textContent = `↑ ${formatCurrency(netWorthChange)} this month`;
+    }
+    
+    const netWorthBadge = document.getElementById('net-worth-change-badge');
+    if (netWorthBadge) {
+        netWorthBadge.textContent = '+2.4%';
+        netWorthBadge.className = 'metric-badge positive';
+    }
+    
+    // Monthly Cash Flow
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const monthlyTransactions = appData.transactions.filter(t => {
+        const tDate = new Date(t.date);
+        return tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear;
+    });
+    
+    const monthlyIncome = sumMoney(monthlyTransactions.filter(t => t.amount > 0).map(t => t.amount));
+    const monthlyExpenses = Math.abs(sumMoney(monthlyTransactions.filter(t => t.amount < 0).map(t => t.amount)));
+    const monthlyCashFlow = subtractMoney(monthlyIncome, monthlyExpenses);
+    
+    const cashFlowEl = document.getElementById('monthly-cash-flow');
+    if (cashFlowEl) cashFlowEl.textContent = (monthlyCashFlow >= 0 ? '+' : '') + formatCurrency(monthlyCashFlow);
+    
+    const cashFlowBadge = document.getElementById('cash-flow-badge');
+    if (cashFlowBadge) {
+        cashFlowBadge.textContent = monthlyCashFlow >= 0 ? 'Positive' : 'Negative';
+        cashFlowBadge.className = monthlyCashFlow >= 0 ? 'metric-badge positive' : 'metric-badge negative';
+    }
+    
+    const cashFlowBreakdown = document.getElementById('cash-flow-breakdown');
+    if (cashFlowBreakdown) {
+        cashFlowBreakdown.textContent = `Income: ${formatCurrency(monthlyIncome)} • Expenses: ${formatCurrency(monthlyExpenses)}`;
+    }
+    
+    // Investment Performance
+    const investmentTotalEl = document.getElementById('investment-total');
+    if (investmentTotalEl) investmentTotalEl.textContent = formatCurrency(totalInvestments);
+    
+    const investmentGains = totalInvestments * 0.132; // Mock 13.2% YTD
+    const investmentGainsEl = document.getElementById('investment-gains');
+    if (investmentGainsEl) {
+        investmentGainsEl.textContent = `↑ ${formatCurrency(investmentGains)} YTD gains`;
+    }
+    
+    const investmentBadge = document.getElementById('investment-performance-badge');
+    if (investmentBadge) {
+        investmentBadge.textContent = '+13.2%';
+        investmentBadge.className = 'metric-badge positive';
+    }
+    
+    // Assets vs Debt
+    const totalAssetsEl = document.getElementById('total-assets');
+    if (totalAssetsEl) totalAssetsEl.textContent = formatCurrency(totalAssets);
+    
+    const assetsDebtRatio = document.getElementById('assets-debt-ratio');
+    if (assetsDebtRatio) {
+        const assetsPercent = totalAssets > 0 ? Math.round((totalAssets / (totalAssets + totalDebt)) * 100) : 0;
+        const debtPercent = 100 - assetsPercent;
+        assetsDebtRatio.textContent = `${assetsPercent}/${debtPercent}`;
+    }
+    
+    const assetsDebtBreakdown = document.getElementById('assets-debt-breakdown');
+    if (assetsDebtBreakdown) {
+        assetsDebtBreakdown.textContent = `Assets: ${formatCurrency(totalAssets)} • Debt: ${formatCurrency(totalDebt)}`;
+    }
+}
+
+function updateFocusCharts(appData) {
+    // Calculate expense breakdown
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const monthlyExpenses = appData.transactions.filter(t => {
+        const tDate = new Date(t.date);
+        return tDate.getMonth() === currentMonth && 
+               tDate.getFullYear() === currentYear && 
+               t.amount < 0;
+    });
+    
+    // Group expenses by category
+    const expenseByCategory = {};
+    let totalExpenses = 0;
+    
+    monthlyExpenses.forEach(t => {
+        const category = t.category || 'Uncategorized';
+        if (!expenseByCategory[category]) {
+            expenseByCategory[category] = 0;
+        }
+        expenseByCategory[category] += Math.abs(t.amount);
+        totalExpenses += Math.abs(t.amount);
+    });
+    
+    // Sort by amount and take top 5
+    const topExpenses = Object.entries(expenseByCategory)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+    
+    // Update total expenses
+    const totalExpensesEl = document.getElementById('total-expenses');
+    if (totalExpensesEl) totalExpensesEl.textContent = formatCurrency(totalExpenses) + '/mo';
+    
+    // Render expense breakdown
+    const expenseList = document.getElementById('expense-breakdown-list');
+    if (expenseList && topExpenses.length > 0) {
+        const maxExpense = topExpenses[0][1];
+        const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#dfe6e9'];
+        
+        expenseList.innerHTML = topExpenses.map(([category, amount], index) => {
+            const percentage = (amount / maxExpense) * 100;
+            const icon = getCategoryIcon(category);
+            
+            return `
+                <div class="expense-item">
+                    <div class="expense-bar">
+                        <div class="expense-fill" style="width: ${percentage}%; background: ${colors[index]};">
+                            <span class="expense-icon">${icon}</span>
+                        </div>
+                    </div>
+                    <div class="expense-details">
+                        <span>${escapeHtml(category)}</span>
+                        <span data-sensitive="true">${formatCurrency(amount)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // Update investment mix
+    const investmentTotal = sumMoney(appData.investmentAccounts.map(acc => acc.balance));
+    const investmentMixTotalEl = document.getElementById('investment-mix-total');
+    if (investmentMixTotalEl) investmentMixTotalEl.textContent = formatCurrency(investmentTotal);
+    
+    // Mock investment breakdown (in real app, would calculate from holdings)
+    const investmentList = document.getElementById('investment-breakdown-list');
+    if (investmentList && investmentTotal > 0) {
+        const stocksAmount = investmentTotal * 0.6;
+        const bondsAmount = investmentTotal * 0.3;
+        const cashAmount = investmentTotal * 0.1;
+        
+        investmentList.innerHTML = `
+            <div class="investment-item">
+                <div class="investment-icon">📈</div>
+                <div class="investment-info">
+                    <div class="investment-label">Stocks</div>
+                    <div class="investment-value" data-sensitive="true">${formatCurrency(stocksAmount)}</div>
+                </div>
+                <div class="investment-percent">60%</div>
+            </div>
+            <div class="investment-item">
+                <div class="investment-icon">📊</div>
+                <div class="investment-info">
+                    <div class="investment-label">Bonds</div>
+                    <div class="investment-value" data-sensitive="true">${formatCurrency(bondsAmount)}</div>
+                </div>
+                <div class="investment-percent">30%</div>
+            </div>
+            <div class="investment-item">
+                <div class="investment-icon">💵</div>
+                <div class="investment-info">
+                    <div class="investment-label">Cash</div>
+                    <div class="investment-value" data-sensitive="true">${formatCurrency(cashAmount)}</div>
+                </div>
+                <div class="investment-percent">10%</div>
+            </div>
+            <div class="investment-summary">
+                ↑ 13.2% YTD Return
+            </div>
+        `;
+    }
+    
+    // Update main chart (if Chart.js is available)
+    updateMainDashboardChart(appData);
+}
+
+function updateMainDashboardChart(appData) {
+    const canvas = document.getElementById('mainDashboardChart');
+    if (!canvas || !window.Chart) return;
+    
+    const ctx = canvas.getContext('2d');
+    
+    // Destroy existing chart if it exists
+    if (window.mainDashboardChartInstance) {
+        window.mainDashboardChartInstance.destroy();
+    }
+    
+    // Create new chart
+    window.mainDashboardChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            datasets: [{
+                label: 'Net Worth',
+                data: [95000, 98000, 102000, 105000, 107000, 107760],
+                borderColor: 'rgba(76, 175, 80, 0.8)',
+                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: 'Net Worth Progress',
+                    color: '#ffffff',
+                    font: {
+                        size: 16
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: '#94a3b8'
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: '#94a3b8',
+                        callback: function(value) {
+                            return '$' + (value / 1000).toFixed(0) + 'k';
+                        }
+                    }
+                }
+            }
+        }
+    });
 }
 
