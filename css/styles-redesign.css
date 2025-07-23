@@ -386,14 +386,19 @@ body::before {
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
   margin-bottom: var(--space-5);
+  /* Match the Financial Overview container */
+  background: linear-gradient(135deg, var(--glass-bg), rgba(34, 197, 94, 0.02));
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-5);
+  position: relative;
+  overflow: hidden;
 }
 
 .financial-health-section {
-  background: linear-gradient(135deg, var(--glass-bg), rgba(34, 197, 94, 0.03));
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  padding: var(--space-4);
+  /* Remove individual styling since parent has it now */
+  padding: 0;
 }
 
 .health-score-container {
@@ -462,11 +467,8 @@ body::before {
 
 /* ===== ULTRA COMPACT BILLS WIDGET ===== */
 .bills-timeline-section {
-  background: linear-gradient(135deg, var(--glass-bg), rgba(239, 68, 68, 0.03));
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  padding: var(--space-4);
+  /* Remove individual styling since parent has it now */
+  padding: 0;
   overflow: hidden; /* Ensure nothing overflows from the section */
   max-width: 100%; /* Constraint to parent width */
 }
