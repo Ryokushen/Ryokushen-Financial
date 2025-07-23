@@ -1953,25 +1953,27 @@ tr:hover td {
 /* Bills timeline mobile adjustments */
 @media (max-width: 768px) {
   #bills-timeline-container {
-    gap: var(--space-1); /* Reduce gap on mobile */
+    gap: var(--space-2); /* Slightly larger gap for 4 bills */
+    justify-content: space-between; /* Distribute bills evenly */
   }
   
   .bill-mini {
-    min-width: 80px; /* Smaller min-width on mobile */
-    max-width: 100px;
-    padding: var(--space-1);
+    min-width: 100px; /* Larger min-width since we show only 4 */
+    max-width: 120px; /* Larger max-width to fill space */
+    padding: var(--space-2); /* More padding for larger cards */
+    flex: 1 1 auto; /* Allow bills to grow to fill space */
   }
   
   .bill-name {
-    font-size: 12px;
+    font-size: 13px; /* Slightly larger text */
   }
   
   .bill-amount {
-    font-size: 14px;
+    font-size: 15px; /* Slightly larger amount */
   }
   
   .bill-days {
-    font-size: 11px;
+    font-size: 12px; /* Slightly larger days text */
   }
 }
 
