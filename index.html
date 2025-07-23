@@ -637,28 +637,78 @@
             </div>
 
             <div id="debt" class="tab-content" role="region" aria-labelledby="debt-tab-btn">
-                <div class="debt-summary">
-                    <div class="card">
-                        <div class="card__header">
-                            <h3>Debt Summary</h3>
-                            <button class="btn btn--primary" id="add-debt-btn">Add New Debt Account</button>
+                <!-- Unified Debt Dashboard (Mockup 1 Strategy) -->
+                
+                <!-- Overview Metrics -->
+                <div class="debt-overview">
+                    <div class="debt-metric-card primary">
+                        <div class="debt-metric-label">Total Debt Balance</div>
+                        <div class="debt-metric-value" id="debt-total-balance" data-sensitive="true">$0.00</div>
+                        <div class="debt-metric-change" id="debt-balance-change">↓ $0 this month</div>
+                        <div class="debt-progress-bar">
+                            <div class="debt-progress-fill" id="debt-progress-fill" style="width: 0%;"></div>
                         </div>
-                        <div class="card__body">
-                            <div class="debt-metrics">
-                                <div class="metric-item">
-                                    <span class="metric-label">Total Debt:</span>
-                                    <span class="metric-value debt-value" id="debt-total-value">$0.00</span>
+                    </div>
+                    
+                    <div class="debt-metric-card">
+                        <div class="debt-metric-label">Monthly Payment</div>
+                        <div class="debt-metric-value" id="debt-monthly-total" data-sensitive="true">$0</div>
+                        <div class="debt-metric-change" id="debt-principal-info">Principal: $0</div>
+                    </div>
+                    
+                    <div class="debt-metric-card">
+                        <div class="debt-metric-label">Payoff Progress</div>
+                        <div class="debt-metric-value" id="debt-payoff-percent">0%</div>
+                        <div class="debt-metric-change positive" id="debt-progress-change">↑ 0% this quarter</div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="debt-charts-grid">
+                    <div class="debt-chart-container">
+                        <div class="debt-chart-header">
+                            <h3 class="debt-chart-title">Debt Payoff Timeline</h3>
+                            <div class="debt-chart-legend">
+                                <div class="debt-legend-item">
+                                    <div class="debt-legend-dot projected"></div>
+                                    <span>Projected</span>
                                 </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Monthly Payments:</span>
-                                    <span class="metric-value" id="debt-monthly-payments">$0.00</span>
+                                <div class="debt-legend-item">
+                                    <div class="debt-legend-dot current"></div>
+                                    <span>Current</span>
                                 </div>
                             </div>
+                        </div>
+                        <div class="debt-chart-placeholder">
+                            <canvas id="debt-payoff-timeline-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="debt-chart-container">
+                        <div class="debt-chart-header">
+                            <h3 class="debt-chart-title">Debt Breakdown</h3>
+                        </div>
+                        <div class="debt-chart-placeholder">
+                            <canvas id="debt-breakdown-chart"></canvas>
                         </div>
                     </div>
                 </div>
 
-                <div class="debt-strategy mt-16">
+                <!-- Individual Debt Cards -->
+                <h3 class="debt-accounts-title">Debt Accounts</h3>
+                <div class="debt-cards">
+                    <div id="debt-accounts-list">
+                        <!-- Debt cards will be rendered here -->
+                    </div>
+                </div>
+
+                <!-- Add New Debt Button -->
+                <div class="debt-actions">
+                    <button class="btn btn--primary" id="add-debt-btn">Add New Debt Account</button>
+                </div>
+
+                <!-- Payoff Strategy Section -->
+                <div class="debt-strategy">
                     <div class="card">
                         <div class="card__header">
                             <h3>Payoff Strategy</h3>
@@ -697,40 +747,6 @@
                                     <h4>Strategy Comparison</h4>
                                     <div class="comparison-results"></div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="debt-charts mt-16">
-                    <div class="card">
-                        <div class="card__header">
-                            <h3>Debt Analysis</h3>
-                        </div>
-                        <div class="card__body">
-                            <div class="charts-grid">
-                                <div class="chart-container">
-                                    <canvas id="debt-breakdown-chart"></canvas>
-                                </div>
-                                <div class="chart-container">
-                                    <canvas id="payoff-timeline-chart"></canvas>
-                                </div>
-                                <div class="chart-container">
-                                    <canvas id="interest-analysis-chart"></canvas>
-                                </div>
-                                <div class="chart-container">
-                                    <canvas id="credit-utilization-chart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="debt-accounts mt-16">
-                    <div class="card">
-                        <div class="card__header">
-                            <h3>Debt Accounts</h3>
-                        </div>
-                        <div class="card__body">
-                            <div id="debt-accounts-list">
                             </div>
                         </div>
                     </div>
