@@ -20,7 +20,7 @@ let appStateReference = null;
 const eventListeners = new Map();
 
 // Get icon for transaction category
-function getCategoryIcon(category, isIncome = false) {
+export function getCategoryIcon(category, isIncome = false) {
     if (isIncome || category === 'Income') {
         return '💵'; // Money with wings for income
     }
@@ -1203,7 +1203,7 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
     transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     if (transactions.length === 0) {
-        tbody.innerHTML = "<tr><td colspan=\"7\" class=\"no-transactions\">No transactions found</td></tr>";
+        tbody.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 3rem;">No transactions found</div>';
         return;
     }
 
@@ -1258,28 +1258,37 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
         const isEditing = editingTransactionId === t.id;
         const rowClass = isEditing ? 'style="background-color: var(--color-secondary);"' : '';
 
+        const isIncome = t.category === 'Income' || t.amount > 0;
+        const categoryIcon = getCategoryIcon(t.category, isIncome);
+        
+        // Determine status badge
+        let statusBadge = '';
+        if (!t.cleared) {
+            statusBadge = '<span class="status-badge status-badge--warning">Pending</span>';
+        } else {
+            statusBadge = '<span class="status-badge">Cleared</span>';
+        }
+        
         return `
-        <tr ${rowClass}>
-            <td>${formatDate(t.date)}</td>
-            <td>${escapeHtml(accountName)}</td>
-            <td>${t.category === 'Uncategorized' ? '<span class="badge badge--warning">Uncategorized</span>' : escapeHtml(t.category)}</td>
-            <td>${description}</td>
-            <td class="${amountClass}" data-sensitive="true">
-                <div class="transaction-amount-container">
-                    <span class="monetary-amount">${displayAmount}</span>
-                    ${timeBudgets.isEnabled() && t.amount < 0 ? timeBudgets.createTimeDisplay(Math.abs(t.amount), { className: 'time-cost-badge', showIcon: true }) : ''}
+        <div class="table-row ${isEditing ? 'editing' : ''}">
+            <div class="table-transaction">
+                <div class="table-icon">${categoryIcon}</div>
+                <div>
+                    <div style="font-weight: 600;">${description}</div>
+                    <div class="text-muted" style="font-size: 14px;">${escapeHtml(accountName)}</div>
                 </div>
-            </td>
-            <td class="${t.cleared ? 'status-cleared' : 'status-pending'}">${t.cleared ? "Cleared" : "Pending"}</td>
-            <td>
-                <div class="transaction-actions">
-                    <button class="btn btn-small btn-edit-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>
-                        ${isEditing ? 'Editing...' : 'Edit'}
-                    </button>
-                    <button class="btn btn-small btn-delete-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>Delete</button>
-                </div>
-            </td>
-        </tr>`;
+            </div>
+            <div class="table-amount ${amountClass}" data-sensitive="true">
+                ${displayAmount}
+                ${timeBudgets.isEnabled() && t.amount < 0 ? timeBudgets.createTimeDisplay(Math.abs(t.amount), { className: 'time-cost-badge', showIcon: true }) : ''}
+            </div>
+            <div>${formatDate(t.date)}</div>
+            <div>${statusBadge}</div>
+            <div class="quick-actions">
+                <button class="icon-btn btn-edit-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''} title="${isEditing ? 'Editing...' : 'Edit'}">✏️</button>
+                <button class="icon-btn btn-delete-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''} title="Delete">🗑️</button>
+            </div>
+        </div>`;
     }).join('');
 }
 

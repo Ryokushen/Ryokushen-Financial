@@ -13,19 +13,6 @@ export function setupEventListeners(appState, onUpdate) {
         onSubmit: (e) => handleCashAccountSubmit(e, appState, onUpdate)
     });
     
-    // Legacy list event listeners
-    document.getElementById("cash-accounts-list")?.addEventListener('click', (event) => {
-        const target = event.target;
-        const id = parseInt(target.getAttribute('data-id'));
-        if (!id) return;
-
-        if (target.classList.contains('btn-edit-account')) {
-            openCashAccountModal(appState.appData, id);
-        }
-        if (target.classList.contains('btn-delete-account')) {
-            deleteCashAccount(id, appState, onUpdate);
-        }
-    });
 }
 
 function openCashAccountModal(appData, accountId = null) {
@@ -168,41 +155,18 @@ async function deleteCashAccount(id, appState, onUpdate) {
 export function renderCashAccounts(appState) {
     const { appData } = appState;
     
-    // Update legacy list if it exists
-    const cashAccountsList = document.getElementById("cash-accounts-list");
-    if (cashAccountsList) {
-        const totalValue = appData.cashAccounts
-            .filter(account => account.isActive)
-            .reduce((sum, account) => sum + (account.balance || 0), 0);
+    // Update summary values if they exist
+    const totalValue = appData.cashAccounts
+        .filter(account => account.isActive)
+        .reduce((sum, account) => sum + (account.balance || 0), 0);
 
-        const totalValueEl = document.getElementById("accounts-total-value");
-        if (totalValueEl) totalValueEl.textContent = formatCurrency(totalValue);
-        
-        const countEl = document.getElementById("accounts-count");
-        if (countEl) countEl.textContent = appData.cashAccounts.length;
-        
-        cashAccountsList.innerHTML = appData.cashAccounts.map(account => {
-            const balance = account.balance || 0;
-            return `
-            <div class="investment-account ${!account.isActive ? 'inactive' : ''}" data-id="${account.id}">
-                 <div class="investment-account-header">
-                    <h4>${escapeHtml(account.name)} <span class="account-type">(${escapeHtml(account.type)})</span></h4>
-                    <div class="investment-account-actions">
-                        <button class="btn btn--secondary btn--sm btn-edit-account" data-id="${account.id}">Edit</button>
-                        <button class="btn btn--outline btn--sm btn-delete-account" data-id="${account.id}">Delete</button>
-                </div>
-            </div>
-             <div class="account-info">
-                 <div class="account-info-item">
-                     <span class="account-info-label">Balance</span>
-                     <span class="account-info-value ${balance >= 0 ? '' : 'text-error'}" data-sensitive="true">${formatCurrency(balance)}</span>
-                 </div>
-             </div>
-        </div>`;
-    }).join('');
-    }
+    const totalValueEl = document.getElementById("accounts-total-value");
+    if (totalValueEl) totalValueEl.textContent = formatCurrency(totalValue);
     
-    // Render new card layout
+    const countEl = document.getElementById("accounts-count");
+    if (countEl) countEl.textContent = appData.cashAccounts.length;
+    
+    // Render card layout
     const accountsGrid = document.getElementById("accounts-grid");
     if (accountsGrid) {
         // Get account type icons

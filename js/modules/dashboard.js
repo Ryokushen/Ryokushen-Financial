@@ -6,6 +6,7 @@ import * as Accounts from './accounts.js';
 import * as Debt from './debt.js';
 import { addMoney, subtractMoney, sumMoney, convertToMonthlyPrecise } from './financialMath.js';
 import { TimeBudgetWidget } from './widgets/timeBudgetWidget.js';
+import { getCategoryIcon } from './transactions.js';
 
 // Initialize time budget widget
 let timeBudgetWidget = null;
@@ -112,13 +113,19 @@ function renderRecentTransactions(appData) {
         const account = appData.cashAccounts.find(a => a.id === t.account_id);
         const accountName = account ? escapeHtml(account.name) : "Unknown";
         const isPositive = t.amount >= 0;
+        const isIncome = t.category === 'Income' || t.amount > 0;
+        const categoryIcon = getCategoryIcon(t.category, isIncome);
+        
         return `
-            <div class="transaction-item">
-                <div class="transaction-info">
-                    <div class="transaction-description">${escapeHtml(t.description)}</div>
-                    <div class="transaction-details">${formatDate(t.date)} - ${escapeHtml(accountName)}</div>
+            <div class="table-row compact">
+                <div class="table-transaction">
+                    <div class="table-icon small">${categoryIcon}</div>
+                    <div>
+                        <div style="font-weight: 500; font-size: 14px;">${escapeHtml(t.description)}</div>
+                        <div class="text-muted" style="font-size: 12px;">${formatDate(t.date)} • ${escapeHtml(accountName)}</div>
+                    </div>
                 </div>
-                <div class="transaction-amount ${isPositive ? 'positive' : 'negative'}">
+                <div class="table-amount ${isPositive ? 'positive' : 'negative'}" style="font-size: 16px;">
                     ${isPositive ? '+' : ''}${formatCurrency(t.amount)}
                 </div>
             </div>`;

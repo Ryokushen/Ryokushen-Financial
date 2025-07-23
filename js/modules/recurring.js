@@ -21,23 +21,6 @@ export function setupEventListeners(appState, onUpdate) {
         togglePaymentMethodFields();
     });
 
-    document.getElementById("all-recurring-bills-list")?.addEventListener('click', (event) => {
-        const id = parseInt(event.target.getAttribute('data-id'));
-        if (!id) return;
-        
-        if (event.target.classList.contains('btn-pay-bill')) {
-            event.stopPropagation();
-            payRecurringBill(id, appState, onUpdate);
-        }
-        if (event.target.classList.contains('btn-edit-bill')) {
-            event.stopPropagation();
-            openRecurringModal(appState.appData, id);
-        }
-        if (event.target.classList.contains('btn-delete-bill')) {
-            event.stopPropagation();
-            deleteRecurringBill(id, appState, onUpdate);
-        }
-    });
     
     // View toggle for calendar/list view
     document.getElementById('calendar-view-toggle')?.addEventListener('change', (e) => {
@@ -421,7 +404,6 @@ export function renderRecurringBills(appState) {
     const { appData } = appState;
     renderSummary(appData);
     renderUpcomingBills(appData);
-    renderAllRecurringBills(appData);
     renderBillsCardGrid(appState); // New card grid rendering
     
     // Check if calendar view is selected
@@ -563,6 +545,7 @@ function renderBillsCardGrid(appState) {
             <div class="bill-card__actions">
                 <button class="btn btn--primary btn-pay-bill" data-id="${bill.id}">Pay Bill</button>
                 <button class="btn btn--secondary btn-edit-bill" data-id="${bill.id}">Edit</button>
+                <button class="icon-btn btn-delete-bill" data-id="${bill.id}" title="Delete">🗑️</button>
             </div>
         </div>
         `;
@@ -596,60 +579,3 @@ function renderBillsCardGrid(appState) {
     });
 }
 
-function renderAllRecurringBills(appData) {
-    const billsList = document.getElementById("all-recurring-bills-list");
-    if (!billsList) return;
-
-    if (appData.recurringBills.length === 0) {
-        billsList.innerHTML = `<div class="empty-state">No recurring bills added yet.</div>`;
-        return;
-    }
-
-    billsList.innerHTML = appData.recurringBills.map(bill => {
-        const paymentMethod = bill.paymentMethod || bill.payment_method || 'cash';
-        const isActive = bill.active !== false;
-        const dueDate = bill.nextDue || bill.next_due;
-
-        let accountInfo = '';
-        if (paymentMethod === 'cash') {
-            const account = appData.cashAccounts.find(a => a.id === bill.account_id);
-            accountInfo = account ? `${escapeHtml(account.name)} (Cash)` : 'N/A';
-        } else {
-            const debtAccountId = bill.debtAccountId || bill.debt_account_id;
-            const account = appData.debtAccounts.find(d => d.id === debtAccountId);
-            accountInfo = account ? `${escapeHtml(account.name)} (Credit Card)` : 'N/A';
-        }
-
-        return `
-        <div class="recurring-bill-card ${isActive ? '' : 'inactive'}" data-id="${bill.id}">
-            <div class="recurring-bill-header">
-                <h5>${escapeHtml(bill.name)}</h5>
-                <div class="recurring-bill-amount" data-sensitive="true">${formatCurrency(bill.amount)}</div>
-            </div>
-            <div class="recurring-bill-info">
-                <div class="recurring-bill-detail">
-                    <span class="label">Next Due:</span>
-                    <span class="value ${getDueDateClass(dueDate)}">${formatDate(dueDate)}</span>
-                </div>
-                <div class="recurring-bill-detail">
-                    <span class="label">Frequency:</span>
-                    <span class="value">${escapeHtml(bill.frequency)}</span>
-                </div>
-                <div class="recurring-bill-detail">
-                    <span class="label">Payment Method:</span>
-                    <span class="value">${accountInfo}</span>
-                </div>
-                <div class="recurring-bill-detail">
-                    <span class="label">Status:</span>
-                    <span class="value">${isActive ? 'Active' : 'Inactive'}</span>
-                </div>
-            </div>
-            <div class="recurring-bill-actions">
-                ${isActive ? `<button class="btn btn--primary btn--sm btn-pay-bill" data-id="${bill.id}">Pay Bill</button>` : ''}
-                <button class="btn btn--secondary btn--sm btn-edit-bill" data-id="${bill.id}">Edit</button>
-                <button class="btn btn--outline btn--sm btn-delete-bill" data-id="${bill.id}">Delete</button>
-            </div>
-        </div>
-        `;
-    }).join('');
-}
