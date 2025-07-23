@@ -203,11 +203,18 @@ class SupabaseAuthManager {
                     font-size: 16px;
                     transition: border-color 0.2s;
                     box-sizing: border-box;
+                    color: #333;
+                    background: #ffffff;
+                }
+                
+                .form-control::placeholder {
+                    color: #9ca3af;
                 }
                 
                 .form-control:focus {
                     outline: none;
                     border-color: #3b82f6;
+                    color: #333;
                 }
                 
                 .btn {
@@ -351,13 +358,13 @@ class SupabaseAuthManager {
                     <!-- Login Form -->
                     <div id="login-form" class="auth-form active">
                         <div class="form-group">
-                            <label for="login-email">Email</label>
+                            <label for="login-email">EMAIL</label>
                             <input type="email" id="login-email" class="form-control" 
                                    placeholder="your@email.com" required>
                         </div>
                         
                         <div class="form-group">
-                            <label for="login-password">Password</label>
+                            <label for="login-password">PASSWORD</label>
                             <input type="password" id="login-password" class="form-control" 
                                    placeholder="Your password" required>
                         </div>
@@ -382,25 +389,25 @@ class SupabaseAuthManager {
                     <!-- Sign Up Form -->
                     <div id="signup-form" class="auth-form">
                         <div class="form-group">
-                            <label for="signup-email">Email</label>
+                            <label for="signup-email">EMAIL</label>
                             <input type="email" id="signup-email" class="form-control" 
                                    placeholder="your@email.com" required>
                         </div>
                         
                         <div class="form-group">
-                            <label for="signup-password">Password</label>
+                            <label for="signup-password">PASSWORD</label>
                             <input type="password" id="signup-password" class="form-control" 
                                    placeholder="Choose a strong password" required>
                         </div>
                         
                         <div class="form-group">
-                            <label for="signup-confirm">Confirm Password</label>
+                            <label for="signup-confirm">CONFIRM PASSWORD</label>
                             <input type="password" id="signup-confirm" class="form-control" 
                                    placeholder="Confirm your password" required>
                         </div>
                         
                         <button id="signup-btn" class="btn btn--primary btn--block">
-                            Create Account
+                            Sign Up
                         </button>
                     </div>
                     
@@ -490,7 +497,9 @@ class SupabaseAuthManager {
                     display: block;
                     margin-bottom: 8px;
                     color: #374151;
-                    font-weight: 500;
+                    font-weight: 600;
+                    font-size: 13px;
+                    letter-spacing: 0.5px;
                 }
                 
                 .form-control {
@@ -501,11 +510,22 @@ class SupabaseAuthManager {
                     font-size: 16px;
                     transition: border-color 0.2s;
                     box-sizing: border-box;
+                    color: #333;
+                    background: #ffffff;
+                }
+                
+                .form-control::placeholder {
+                    color: #9ca3af;
                 }
                 
                 .form-control:focus {
                     outline: none;
                     border-color: #3b82f6;
+                    color: #333;
+                }
+                
+                .form-control:hover {
+                    border-color: #d1d5db;
                 }
                 
                 .btn {
@@ -569,6 +589,20 @@ class SupabaseAuthManager {
                     margin-top: 20px;
                     font-size: 14px;
                     text-align: center;
+                }
+                
+                /* Dark mode support */
+                @media (prefers-color-scheme: dark) {
+                    .form-control {
+                        background: #ffffff;
+                        color: #333;
+                        border-color: #e5e7eb;
+                    }
+                    
+                    .form-control:focus {
+                        color: #333;
+                        background: #ffffff;
+                    }
                 }
             </style>
         `;
