@@ -413,24 +413,38 @@
             </div>
 
             <div id="investments" class="tab-content" role="region" aria-labelledby="investments-tab-btn">
-                <div class="investment-summary">
-                    <div class="card">
-                        <div class="card__header">
-                            <h3>Investment Summary</h3>
-                        </div>
-                        <div class="card__body">
-                            <div class="investment-metrics">
-                                <div class="metric-item">
-                                    <span class="metric-label">Total Value:</span>
-                                    <span class="metric-value" id="investment-total-value">$0.00</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Day Change:</span>
-                                    <span class="metric-value" id="investment-day-change">$0.00</span>
-                                </div>
-                            </div>
-                        </div>
+                <div class="investments-header">
+                    <h2 class="section-title">Investment Portfolio</h2>
+                    <button class="btn btn--primary" id="add-investment-account-btn">Add New Account</button>
+                </div>
+                
+                <!-- Investment Summary Cards -->
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="summary-label">Total Portfolio Value</div>
+                        <div class="summary-value" id="investment-total-value" data-sensitive="true">$0.00</div>
+                        <div class="summary-change" id="investment-day-change-percent">↑ 0.0% Today</div>
                     </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Investment Accounts</div>
+                        <div class="summary-value" id="investment-accounts-count">0 Active</div>
+                        <div class="summary-change" id="investment-accounts-types">No accounts</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Total Holdings</div>
+                        <div class="summary-value" id="investment-holdings-count">0 Positions</div>
+                        <div class="summary-change" id="investment-holdings-breakdown">No holdings</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Day Change</div>
+                        <div class="summary-value" id="investment-day-change" data-sensitive="true">$0.00</div>
+                        <div class="summary-change" id="investment-best-performer">No data</div>
+                    </div>
+                </div>
+                
+                <!-- Expandable Investment Account Cards -->
+                <div id="investment-accounts-list" class="investment-accounts-container">
+                    <!-- Account cards will be rendered here -->
                 </div>
 
                 <div class="savings-goals mt-16">
@@ -441,19 +455,6 @@
                         </div>
                         <div class="card__body">
                             <div id="savings-goals-list" class="savings-goals-grid">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="investment-accounts mt-16">
-                    <div class="card">
-                        <div class="card__header">
-                            <h3>Investment Accounts</h3>
-                            <button class="btn btn--primary" id="add-investment-account-btn">Add New Account</button>
-                        </div>
-                        <div class="card__body">
-                            <div id="investment-accounts-list">
                             </div>
                         </div>
                     </div>

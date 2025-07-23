@@ -365,20 +365,136 @@ async function updateSingleHolding(symbol, appState, onUpdate) {
     }
 }
 
+// Helper function to get holding type icon
+function getHoldingIcon(symbol, company) {
+    // Try to determine type from symbol or company name
+    const symbolUpper = symbol.toUpperCase();
+    const companyLower = (company || '').toLowerCase();
+    
+    if (symbolUpper.includes('ETF') || companyLower.includes('etf')) return '📊';
+    if (symbolUpper.includes('FUND') || companyLower.includes('fund')) return '🏦';
+    if (symbolUpper.includes('BOND') || companyLower.includes('bond')) return '📜';
+    if (symbolUpper.includes('REIT') || companyLower.includes('reit')) return '🏢';
+    if (companyLower.includes('money market') || symbolUpper.includes('MM')) return '💵';
+    
+    // Default to stock icon
+    return '💼';
+}
+
+// Helper function to get account type icon and gradient
+function getAccountStyle(accountType) {
+    const type = (accountType || '').toLowerCase();
+    
+    if (type.includes('roth') || type.includes('ira')) {
+        return {
+            icon: '🏦',
+            gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        };
+    }
+    if (type.includes('401k') || type.includes('403b')) {
+        return {
+            icon: '💼',
+            gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
+        };
+    }
+    if (type.includes('brokerage') || type.includes('taxable')) {
+        return {
+            icon: '📈',
+            gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+        };
+    }
+    if (type.includes('savings')) {
+        return {
+            icon: '💰',
+            gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)'
+        };
+    }
+    
+    // Default
+    return {
+        icon: '💹',
+        gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
+    };
+}
+
 export function renderInvestmentAccountsEnhanced(appState) {
     const { investmentAccounts } = appState.appData;
     const list = document.getElementById("investment-accounts-list");
     const totalValueEl = document.getElementById("investment-total-value");
     const dayChangeEl = document.getElementById("investment-day-change");
+    const dayChangePercentEl = document.getElementById("investment-day-change-percent");
+    const accountsCountEl = document.getElementById("investment-accounts-count");
+    const accountsTypesEl = document.getElementById("investment-accounts-types");
+    const holdingsCountEl = document.getElementById("investment-holdings-count");
+    const holdingsBreakdownEl = document.getElementById("investment-holdings-breakdown");
+    const bestPerformerEl = document.getElementById("investment-best-performer");
 
     if (!list || !totalValueEl || !dayChangeEl) return;
 
     const totalValue = sumMoney(investmentAccounts.map(acc => acc.balance));
     const totalDayChange = sumMoney(investmentAccounts.map(acc => acc.dayChange));
-
+    const dayChangePercent = totalValue > 0 ? (totalDayChange / totalValue * 100).toFixed(2) : 0;
+    
+    // Update summary cards
     totalValueEl.textContent = formatCurrency(totalValue);
-    dayChangeEl.textContent = formatCurrency(totalDayChange);
-    dayChangeEl.className = `metric-value ${totalDayChange >= 0 ? 'text-success' : 'text-error'}`;
+    dayChangeEl.textContent = formatCurrency(Math.abs(totalDayChange));
+    dayChangeEl.className = totalDayChange >= 0 ? 'summary-value positive' : 'summary-value negative';
+    
+    if (dayChangePercentEl) {
+        const arrow = totalDayChange >= 0 ? '↑' : '↓';
+        dayChangePercentEl.textContent = `${arrow} ${Math.abs(dayChangePercent)}% Today`;
+        dayChangePercentEl.className = totalDayChange >= 0 ? 'summary-change positive' : 'summary-change negative';
+    }
+    
+    if (accountsCountEl) {
+        accountsCountEl.textContent = `${investmentAccounts.length} Active`;
+    }
+    
+    if (accountsTypesEl) {
+        const types = [...new Set(investmentAccounts.map(a => a.accountType))];
+        accountsTypesEl.textContent = types.length > 0 ? types.join(', ') : 'No accounts';
+    }
+    
+    // Calculate total holdings and breakdown
+    let totalHoldings = 0;
+    let holdingTypes = { stocks: 0, etfs: 0, funds: 0, other: 0 };
+    let bestPerformer = null;
+    let bestPerformance = 0;
+    
+    investmentAccounts.forEach(account => {
+        account.holdings.forEach(holding => {
+            totalHoldings++;
+            const icon = getHoldingIcon(holding.symbol, holding.company);
+            if (icon === '💼') holdingTypes.stocks++;
+            else if (icon === '📊') holdingTypes.etfs++;
+            else if (icon === '🏦') holdingTypes.funds++;
+            else holdingTypes.other++;
+            
+            // Track best performer (simplified - would need previous price for real calculation)
+            if (holding.value > bestPerformance) {
+                bestPerformance = holding.value;
+                bestPerformer = holding.symbol;
+            }
+        });
+    });
+    
+    if (holdingsCountEl) {
+        holdingsCountEl.textContent = `${totalHoldings} Positions`;
+    }
+    
+    if (holdingsBreakdownEl) {
+        const breakdown = [];
+        if (holdingTypes.stocks > 0) breakdown.push(`${holdingTypes.stocks} Stocks`);
+        if (holdingTypes.etfs > 0) breakdown.push(`${holdingTypes.etfs} ETFs`);
+        if (holdingTypes.funds > 0) breakdown.push(`${holdingTypes.funds} Funds`);
+        if (holdingTypes.other > 0) breakdown.push(`${holdingTypes.other} Other`);
+        holdingsBreakdownEl.textContent = breakdown.length > 0 ? breakdown.join(', ') : 'No holdings';
+    }
+    
+    if (bestPerformerEl) {
+        bestPerformerEl.textContent = bestPerformer ? `↑ Best: ${bestPerformer}` : 'No data';
+        if (bestPerformer) bestPerformerEl.className = 'summary-change positive';
+    }
 
     if (investmentAccounts.length === 0) {
         list.innerHTML = `<div class="empty-state">No investment accounts added yet.</div>`;
@@ -387,67 +503,91 @@ export function renderInvestmentAccountsEnhanced(appState) {
 
     // Add update button and last update info at the top
     const updateControlsHTML = `
-        <div class="investment-update-controls" style="margin-bottom: 1rem; padding: 1rem; background: var(--color-secondary); border-radius: var(--radius-base);">
+        <div class="investment-update-controls" style="margin-bottom: 1rem; padding: 1rem; background: var(--glass-bg); backdrop-filter: blur(10px); border-radius: var(--radius-lg); border: 1px solid var(--glass-border);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                 <button id="update-all-prices-btn" class="btn btn--primary">Update All Prices</button>
-                <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+                <span style="font-size: var(--font-size-sm); opacity: 0.8;">
                     Last updated: ${formatLastUpdateTime(lastUpdateTime)}
                 </span>
             </div>
-            <div style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">
+            <div style="font-size: var(--font-size-xs); opacity: 0.7;">
                 Fetches real-time stock prices for all holdings with valid symbols
             </div>
         </div>
     `;
 
-    list.innerHTML = updateControlsHTML + investmentAccounts.map(account => `
-        <div class="investment-account" data-id="${account.id}">
-            <div class="investment-account-header">
-                <h4>${escapeHtml(account.name)} <span class="account-type">(${escapeHtml(account.accountType)})</span></h4>
-                <div class="investment-account-actions">
-                    <button class="btn btn--secondary btn--sm btn-edit-account" data-id="${account.id}">Edit</button>
-                    <button class="btn btn--outline btn--sm btn-delete-account" data-id="${account.id}">Delete</button>
-                </div>
-            </div>
-            <div class="account-info">
-                <div class="account-info-item"><span class="account-info-label">Institution</span><span class="account-info-value">${escapeHtml(account.institution)}</span></div>
-                <div class="account-info-item"><span class="account-info-label">Balance</span><span class="account-info-value" data-sensitive="true">${formatCurrency(account.balance)}</span></div>
-                <div class="account-info-item"><span class="account-info-label">Day Change</span><span class="account-info-value ${account.dayChange >= 0 ? 'text-success' : 'text-error'}" data-sensitive="true">${formatCurrency(account.dayChange)}</span></div>
-            </div>
-            <div class="holdings">
-                <div class="holdings-header">
-                    <h5>Holdings</h5>
-                    <button class="btn btn--primary btn--sm btn-add-holding" data-id="${account.id}">Add Holding</button>
-                </div>
-                ${account.holdings.length > 0 ? `
-                <table class="holdings-table">
-                    <thead><tr><th>Symbol</th><th>Shares</th><th>Price</th><th>Value</th><th>Actions</th></tr></thead>
-                    <tbody>
-                        ${account.holdings.map(h => {
-        const isValidSymbol = stockApiService.isValidSymbol(h.symbol);
+    // Render expandable account cards
+    list.innerHTML = updateControlsHTML + investmentAccounts.map((account, index) => {
+        const accountStyle = getAccountStyle(account.accountType);
+        const dayChangePercent = account.balance > 0 ? (account.dayChange / account.balance * 100).toFixed(1) : 0;
+        const isExpanded = index === 0; // Expand first account by default
+        
         return `
-                            <tr data-holding-id="${h.id}">
-                                <td>
-                                    ${escapeHtml(h.symbol)}
-                                    ${isValidSymbol ? '<span style="color: var(--color-success); font-size: 0.8em;">📈</span>' : '<span style="color: var(--color-text-secondary); font-size: 0.8em;">—</span>'}
-                                </td>
-                                <td>${h.shares.toFixed(3)}</td>
-                                <td data-sensitive="true">${formatCurrency(h.currentPrice)}</td>
-                                <td data-sensitive="true">${formatCurrency(h.value)}</td>
-                                <td>
-                                    <div class="holding-actions">
-                                        ${isValidSymbol ? `<button class="btn btn-small btn--secondary btn-update-holding" data-symbol="${h.symbol}" title="Update ${h.symbol} price">📊</button>` : ''}
-                                        <button class="btn btn-small btn-edit-holding">Edit</button>
-                                        <button class="btn btn-small btn-delete-holding">Delete</button>
-                                    </div>
-                                </td>
-                            </tr>`;
-    }).join('')}
-                    </tbody>
-                </table>` : '<div class="empty-state empty-state--small">No holdings for this account.</div>'}
+        <div class="investment-account-card ${isExpanded ? 'expanded' : ''}" data-id="${account.id}">
+            <div class="investment-account-header" onclick="this.parentElement.classList.toggle('expanded')">
+                <div class="investment-account-info">
+                    <div class="investment-account-icon" style="background: ${accountStyle.gradient}">
+                        ${accountStyle.icon}
+                    </div>
+                    <div class="investment-account-details">
+                        <h3>${escapeHtml(account.name)}</h3>
+                        <div class="investment-account-type">${escapeHtml(account.institution)} • ${escapeHtml(account.accountType)}</div>
+                    </div>
+                </div>
+                <div class="investment-account-metrics">
+                    <div class="investment-account-value">
+                        <div class="amount" data-sensitive="true">${formatCurrency(account.balance)}</div>
+                        <div class="change ${account.dayChange >= 0 ? 'positive' : 'negative'}">
+                            ${account.dayChange >= 0 ? '↑' : '↓'} ${formatCurrency(Math.abs(account.dayChange))} (${Math.abs(dayChangePercent)}%)
+                        </div>
+                    </div>
+                    <div class="expand-icon">⌄</div>
+                </div>
+            </div>
+            
+            <div class="holdings-container">
+                <div class="holdings-list">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) 0; margin-bottom: var(--space-2);">
+                        <h4 style="font-size: var(--font-size-lg); margin: 0;">Holdings</h4>
+                        <button class="btn btn--primary btn--sm btn-add-holding" data-id="${account.id}">+ Add Holding</button>
+                    </div>
+                    ${account.holdings.length > 0 ? account.holdings.map(h => {
+                        const holdingIcon = getHoldingIcon(h.symbol, h.company);
+                        const isValidSymbol = stockApiService.isValidSymbol(h.symbol);
+                        const percentOfAccount = account.balance > 0 ? (h.value / account.balance * 100).toFixed(1) : 0;
+                        
+                        return `
+                        <div class="holding-row" data-holding-id="${h.id}">
+                            <div class="holding-symbol">
+                                <div class="holding-icon">${holdingIcon}</div>
+                                <div class="holding-symbol-info">
+                                    <div class="symbol">${escapeHtml(h.symbol)}</div>
+                                    <div class="type">${h.company || 'Stock'}</div>
+                                </div>
+                            </div>
+                            <div>${h.shares.toFixed(3)} shares</div>
+                            <div data-sensitive="true">${formatCurrency(h.currentPrice)}</div>
+                            <div class="holding-value" data-sensitive="true">${formatCurrency(h.value)}</div>
+                            <div>
+                                <div>${percentOfAccount}%</div>
+                                <div class="holdings-actions">
+                                    ${isValidSymbol ? `<button class="icon-btn btn-update-holding" data-symbol="${h.symbol}" title="Update price">📊</button>` : ''}
+                                    <button class="icon-btn btn-edit-holding" title="Edit">✏️</button>
+                                    <button class="icon-btn btn-delete-holding" title="Delete">🗑️</button>
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('') : '<div class="empty-state" style="padding: var(--space-6); text-align: center; opacity: 0.7;">No holdings for this account yet.</div>'}
+                    
+                    <div style="display: flex; gap: var(--space-3); margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--glass-border);">
+                        <button class="btn btn--secondary btn--sm btn-edit-account" data-id="${account.id}">Edit Account</button>
+                        <button class="btn btn--outline btn--sm btn-delete-account" data-id="${account.id}">Delete Account</button>
+                    </div>
+                </div>
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
     
     // Update account dropdown for calculators
     populateAccountDropdown(appState.appData);
@@ -471,7 +611,13 @@ export function setupEventListeners(appState, onUpdate) {
 
     document.getElementById("investment-accounts-list")?.addEventListener('click', event => {
         const target = event.target;
-        const accountEl = target.closest('.investment-account');
+        
+        // Prevent header click from triggering button actions
+        if (target.closest('.investment-account-header') && !target.closest('button')) {
+            return; // Let the inline onclick handler handle the expand/collapse
+        }
+        
+        const accountEl = target.closest('.investment-account-card');
         if (!accountEl) return;
         const accountId = parseInt(accountEl.getAttribute('data-id'));
 
@@ -482,10 +628,12 @@ export function setupEventListeners(appState, onUpdate) {
         } else if (target.classList.contains('btn-add-holding')) {
             openHoldingModal(appState.appData, accountId);
         } else if (target.classList.contains('btn-edit-holding')) {
-            const holdingId = parseInt(target.closest('tr').getAttribute('data-holding-id'));
+            const holdingRow = target.closest('.holding-row');
+            const holdingId = parseInt(holdingRow.getAttribute('data-holding-id'));
             openHoldingModal(appState.appData, accountId, holdingId);
         } else if (target.classList.contains('btn-delete-holding')) {
-            const holdingId = parseInt(target.closest('tr').getAttribute('data-holding-id'));
+            const holdingRow = target.closest('.holding-row');
+            const holdingId = parseInt(holdingRow.getAttribute('data-holding-id'));
             deleteHolding(accountId, holdingId, appState, onUpdate);
         } else if (target.classList.contains('btn-update-holding')) {
             const symbol = target.getAttribute('data-symbol');
