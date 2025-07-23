@@ -964,7 +964,11 @@ tr:hover td {
 .privacy-mode .health-score-value,
 .privacy-mode .kpi-value,
 .privacy-mode .bill-amount,
-.privacy-mode .user-email {
+.privacy-mode .user-email,
+.privacy-mode .account-card__balance,
+.privacy-mode .bill-card__amount,
+.privacy-mode .table-amount,
+.privacy-mode [data-sensitive="true"] {
   filter: blur(8px);
   pointer-events: none;
   user-select: none;
@@ -993,3 +997,334 @@ tr:hover td {
 .status-good { color: var(--color-secondary); }
 .status-fair { color: var(--color-warning); }
 .status-poor { color: var(--color-danger); }
+
+/* ===== SECTION HEADERS ===== */
+.accounts-header,
+.transactions-header,
+.bills-header-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-5);
+}
+
+.accounts-header h2,
+.transactions-header h2,
+.bills-header-main h2 {
+  color: #ffffff;
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  margin: 0;
+}
+
+/* ===== CARD GRID LAYOUT (Accounts & Bills) ===== */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.account-card,
+.bill-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  border: 1px solid var(--glass-border);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.account-card::before,
+.bill-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-teal), var(--color-purple));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.account-card:hover,
+.bill-card:hover {
+  transform: translateY(-4px);
+  background: var(--glass-hover);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.account-card:hover::before,
+.bill-card:hover::before {
+  opacity: 1;
+}
+
+.account-card__icon,
+.bill-card__icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-teal));
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-2xl);
+  margin-bottom: var(--space-3);
+  box-shadow: var(--shadow-md);
+}
+
+.account-card__icon.investment {
+  background: linear-gradient(135deg, var(--color-purple), var(--color-pink));
+}
+
+.account-card__icon.debt {
+  background: linear-gradient(135deg, var(--color-danger), #dc2626);
+}
+
+.account-card__balance,
+.bill-card__amount {
+  font-size: var(--font-size-2xl);
+  font-weight: 800;
+  margin-bottom: var(--space-2);
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.account-card__name,
+.bill-card__name {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  opacity: 0.9;
+  margin-bottom: var(--space-4);
+  color: #ffffff;
+}
+
+.account-card__details,
+.bill-card__details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  opacity: 0.8;
+  color: #e2e8f0;
+}
+
+.account-card__details > div,
+.bill-card__details > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.account-card__actions,
+.bill-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.account-card__actions .btn,
+.bill-card__actions .btn {
+  flex: 1;
+  font-size: var(--font-size-xs);
+  padding: var(--space-2) var(--space-3);
+}
+
+/* Inactive state for cards */
+.account-card.inactive,
+.bill-card.inactive {
+  opacity: 0.6;
+  filter: grayscale(0.5);
+}
+
+.account-card.inactive::after,
+.bill-card.inactive::after {
+  content: 'INACTIVE';
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  background: var(--color-danger);
+  color: white;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/* ===== ENHANCED TABLE VIEW (Transactions) ===== */
+.enhanced-table {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  margin-bottom: var(--space-5);
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+  padding: var(--space-4) var(--space-5);
+  background: var(--glass-hover);
+  font-weight: 600;
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+  color: #94a3b8;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+  align-items: center;
+  color: #e2e8f0;
+}
+
+.table-row:hover {
+  background: var(--glass-hover);
+}
+
+.table-transaction {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.table-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-teal));
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-lg);
+  flex-shrink: 0;
+}
+
+.table-icon.income {
+  background: linear-gradient(135deg, var(--color-success), var(--color-secondary));
+}
+
+.table-icon.expense {
+  background: linear-gradient(135deg, var(--color-danger), #dc2626);
+}
+
+.table-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.table-info > div:first-child {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  color: #ffffff;
+  margin-bottom: var(--space-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-info > div:last-child {
+  font-size: var(--font-size-xs);
+  opacity: 0.7;
+}
+
+.table-amount {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-amount.positive {
+  color: var(--color-success);
+}
+
+.table-amount.negative {
+  color: var(--color-danger);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+}
+
+.status-badge--pending {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+}
+
+.status-badge--cleared {
+  background: rgba(20, 184, 166, 0.2);
+  color: var(--color-teal);
+}
+
+.quick-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--glass-bg);
+  color: #e2e8f0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: var(--font-size-sm);
+}
+
+.icon-btn:hover {
+  background: var(--glass-hover);
+  transform: scale(1.1);
+  color: #ffffff;
+}
+
+/* Mobile responsiveness for tables */
+@media (max-width: 768px) {
+  .table-header {
+    display: none;
+  }
+  
+  .table-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+    padding: var(--space-4);
+  }
+  
+  .table-row > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .table-row > div:before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+}

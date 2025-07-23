@@ -422,6 +422,7 @@ export function renderRecurringBills(appState) {
     renderSummary(appData);
     renderUpcomingBills(appData);
     renderAllRecurringBills(appData);
+    renderBillsCardGrid(appState); // New card grid rendering
     
     // Check if calendar view is selected
     const viewToggle = document.getElementById('calendar-view-toggle');
@@ -494,6 +495,107 @@ function renderUpcomingBills(appData) {
 }
 
 // UPDATED: Display payment method information
+// New function to render bills in card grid layout
+function renderBillsCardGrid(appState) {
+    const { appData } = appState;
+    const billsGrid = document.getElementById("recurring-bills-grid");
+    if (!billsGrid) return;
+    
+    if (appData.recurringBills.length === 0) {
+        billsGrid.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 3rem;">No recurring bills added yet.</div>`;
+        return;
+    }
+    
+    // Sort bills by next due date
+    const sortedBills = [...appData.recurringBills].sort((a, b) => {
+        const dateA = new Date(a.nextDue || a.next_due);
+        const dateB = new Date(b.nextDue || b.next_due);
+        return dateA - dateB;
+    });
+    
+    billsGrid.innerHTML = sortedBills.map(bill => {
+        const paymentMethod = bill.paymentMethod || bill.payment_method || 'cash';
+        const isActive = bill.active !== false;
+        const dueDate = bill.nextDue || bill.next_due;
+        const today = new Date();
+        const dueDateObj = new Date(dueDate);
+        const daysUntil = Math.ceil((dueDateObj - today) / (1000 * 60 * 60 * 24));
+        
+        let accountInfo = '';
+        if (paymentMethod === 'cash') {
+            const account = appData.cashAccounts.find(a => a.id === bill.account_id);
+            accountInfo = account ? account.name : 'Cash Account';
+        } else {
+            const debtAccountId = bill.debtAccountId || bill.debt_account_id;
+            const account = appData.debtAccounts.find(d => d.id === debtAccountId);
+            accountInfo = account ? account.name : 'Credit Card';
+        }
+        
+        // Get icon based on bill name or category
+        const getBillIcon = (name) => {
+            const lowerName = name.toLowerCase();
+            if (lowerName.includes('gym') || lowerName.includes('fitness')) return '🏋️';
+            if (lowerName.includes('phone') || lowerName.includes('mobile')) return '📱';
+            if (lowerName.includes('internet') || lowerName.includes('wifi')) return '🌐';
+            if (lowerName.includes('electric') || lowerName.includes('power')) return '⚡';
+            if (lowerName.includes('water')) return '💧';
+            if (lowerName.includes('gas')) return '🔥';
+            if (lowerName.includes('insurance')) return '🛡️';
+            if (lowerName.includes('rent') || lowerName.includes('mortgage')) return '🏠';
+            if (lowerName.includes('car') || lowerName.includes('auto')) return '🚗';
+            if (lowerName.includes('streaming') || lowerName.includes('netflix') || lowerName.includes('youtube')) return '🎬';
+            if (lowerName.includes('music') || lowerName.includes('spotify')) return '🎵';
+            if (lowerName.includes('cloud') || lowerName.includes('storage')) return '☁️';
+            if (lowerName.includes('subscription')) return '💳';
+            return '💸';
+        };
+        
+        return `
+        <div class="bill-card ${!isActive ? 'inactive' : ''}" data-id="${bill.id}">
+            <div class="bill-card__icon">${getBillIcon(bill.name)}</div>
+            <div class="bill-card__amount" data-sensitive="true">${formatCurrency(bill.amount)}</div>
+            <div class="bill-card__name">${escapeHtml(bill.name)}</div>
+            <div class="bill-card__details">
+                <div>📅 Next Due: ${formatDate(dueDate)}</div>
+                <div>🔄 Frequency: ${escapeHtml(bill.frequency)}</div>
+                <div>💳 ${escapeHtml(accountInfo)}</div>
+            </div>
+            <div class="bill-card__actions">
+                <button class="btn btn--primary btn-pay-bill" data-id="${bill.id}">Pay Bill</button>
+                <button class="btn btn--secondary btn-edit-bill" data-id="${bill.id}">Edit</button>
+            </div>
+        </div>
+        `;
+    }).join('');
+    
+    // Add event listeners for the grid
+    billsGrid.addEventListener('click', (event) => {
+        const target = event.target;
+        const card = target.closest('.bill-card');
+        if (!card) return;
+        
+        const id = parseInt(card.getAttribute('data-id'));
+        if (!id) return;
+
+        if (target.classList.contains('btn-pay-bill')) {
+            event.stopPropagation();
+            payRecurringBill(id, appState, () => {
+                renderRecurringBills(appState);
+            });
+        }
+        if (target.classList.contains('btn-edit-bill')) {
+            event.stopPropagation();
+            openRecurringModal(appState.appData, id);
+        }
+        if (target.classList.contains('btn-delete-bill')) {
+            event.stopPropagation();
+            deleteRecurringBill(id, appState, () => {
+                renderRecurringBills(appState);
+            });
+        }
+    });
+}
+
 function renderAllRecurringBills(appData) {
     const billsList = document.getElementById("all-recurring-bills-list");
     if (!billsList) return;

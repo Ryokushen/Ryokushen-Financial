@@ -13,6 +13,7 @@ export function setupEventListeners(appState, onUpdate) {
         onSubmit: (e) => handleCashAccountSubmit(e, appState, onUpdate)
     });
     
+    // Legacy list event listeners
     document.getElementById("cash-accounts-list")?.addEventListener('click', (event) => {
         const target = event.target;
         const id = parseInt(target.getAttribute('data-id'));
@@ -166,25 +167,29 @@ async function deleteCashAccount(id, appState, onUpdate) {
 
 export function renderCashAccounts(appState) {
     const { appData } = appState;
-    const cashAccountsList = document.getElementById("cash-accounts-list");
-    if (!cashAccountsList) return;
-
-    const totalValue = appData.cashAccounts
-        .filter(account => account.isActive)
-        .reduce((sum, account) => sum + (account.balance || 0), 0);
-
-    document.getElementById("accounts-total-value").textContent = formatCurrency(totalValue);
-    document.getElementById("accounts-count").textContent = appData.cashAccounts.length;
     
-    cashAccountsList.innerHTML = appData.cashAccounts.map(account => {
-        const balance = account.balance || 0;
-        return `
-        <div class="investment-account ${!account.isActive ? 'inactive' : ''}" data-id="${account.id}">
-             <div class="investment-account-header">
-                <h4>${escapeHtml(account.name)} <span class="account-type">(${escapeHtml(account.type)})</span></h4>
-                <div class="investment-account-actions">
-                    <button class="btn btn--secondary btn--sm btn-edit-account" data-id="${account.id}">Edit</button>
-                    <button class="btn btn--outline btn--sm btn-delete-account" data-id="${account.id}">Delete</button>
+    // Update legacy list if it exists
+    const cashAccountsList = document.getElementById("cash-accounts-list");
+    if (cashAccountsList) {
+        const totalValue = appData.cashAccounts
+            .filter(account => account.isActive)
+            .reduce((sum, account) => sum + (account.balance || 0), 0);
+
+        const totalValueEl = document.getElementById("accounts-total-value");
+        if (totalValueEl) totalValueEl.textContent = formatCurrency(totalValue);
+        
+        const countEl = document.getElementById("accounts-count");
+        if (countEl) countEl.textContent = appData.cashAccounts.length;
+        
+        cashAccountsList.innerHTML = appData.cashAccounts.map(account => {
+            const balance = account.balance || 0;
+            return `
+            <div class="investment-account ${!account.isActive ? 'inactive' : ''}" data-id="${account.id}">
+                 <div class="investment-account-header">
+                    <h4>${escapeHtml(account.name)} <span class="account-type">(${escapeHtml(account.type)})</span></h4>
+                    <div class="investment-account-actions">
+                        <button class="btn btn--secondary btn--sm btn-edit-account" data-id="${account.id}">Edit</button>
+                        <button class="btn btn--outline btn--sm btn-delete-account" data-id="${account.id}">Delete</button>
                 </div>
             </div>
              <div class="account-info">
@@ -195,6 +200,64 @@ export function renderCashAccounts(appState) {
              </div>
         </div>`;
     }).join('');
+    }
+    
+    // Render new card layout
+    const accountsGrid = document.getElementById("accounts-grid");
+    if (accountsGrid) {
+        // Get account type icons
+        const getAccountIcon = (type) => {
+            const icons = {
+                'Checking': '💳',
+                'Savings': '💰',
+                'Money Market': '🏦',
+                'Other': '📊'
+            };
+            return icons[type] || '💼';
+        };
+        
+        accountsGrid.innerHTML = appData.cashAccounts.map(account => {
+            const balance = account.balance || 0;
+            const isActive = account.isActive !== false;
+            
+            return `
+            <div class="account-card ${!isActive ? 'inactive' : ''}" data-id="${account.id}">
+                <div class="account-card__icon">${getAccountIcon(account.type)}</div>
+                <div class="account-card__balance" data-sensitive="true">${formatCurrency(balance)}</div>
+                <div class="account-card__name">${escapeHtml(account.name)}</div>
+                <div class="account-card__details">
+                    <div>🏦 ${escapeHtml(account.institution || 'No institution')}</div>
+                    <div>📁 ${escapeHtml(account.type)}</div>
+                    <div>🔄 ${isActive ? 'Active' : 'Inactive'}</div>
+                </div>
+                <div class="account-card__actions">
+                    <button class="btn btn--primary btn-edit-account" data-id="${account.id}">Edit</button>
+                    <button class="btn btn--secondary btn-delete-account" data-id="${account.id}">Delete</button>
+                </div>
+            </div>
+            `;
+        }).join('');
+        
+        // Also update event listeners for the grid
+        accountsGrid.addEventListener('click', (event) => {
+            const target = event.target;
+            const card = target.closest('.account-card');
+            if (!card) return;
+            
+            const id = parseInt(card.getAttribute('data-id'));
+            if (!id) return;
+
+            if (target.classList.contains('btn-edit-account')) {
+                openCashAccountModal(appData, id);
+            }
+            if (target.classList.contains('btn-delete-account')) {
+                deleteCashAccount(id, appState, () => {
+                    // Refresh accounts after delete
+                    renderCashAccounts(appState);
+                });
+            }
+        });
+    }
 }
 
 export function populateAccountDropdowns(appData) {

@@ -207,11 +207,20 @@
             </div>
 
             <div id="accounts" class="tab-content" role="region" aria-labelledby="accounts-tab-btn">
-                <div class="accounts-summary">
+                <div class="accounts-header">
+                    <h2 class="section-title">All Accounts</h2>
+                    <button class="btn btn--primary" id="add-cash-account-btn">Add New Account</button>
+                </div>
+                
+                <div class="card-grid" id="accounts-grid">
+                    <!-- Account cards will be rendered here -->
+                </div>
+                
+                <!-- Legacy account summary (hidden) -->
+                <div class="accounts-summary" style="display: none;">
                     <div class="card">
                         <div class="card__header">
                             <h3>Account Summary</h3>
-                            <button class="btn btn--primary" id="add-cash-account-btn">Add New Account</button>
                         </div>
                         <div class="card__body">
                             <div class="investment-metrics">
@@ -242,7 +251,26 @@
             </div>
 
             <div id="transactions" class="tab-content" role="region" aria-labelledby="transactions-tab-btn">
-                <div class="transaction-form-section">
+                <div class="transactions-header">
+                    <h2 class="section-title">Recent Transactions</h2>
+                    <button class="btn btn--primary" id="add-transaction-btn">Add Transaction</button>
+                </div>
+                
+                <div class="enhanced-table" id="transactions-table">
+                    <div class="table-header">
+                        <div>Transaction</div>
+                        <div>Amount</div>
+                        <div>Date</div>
+                        <div>Status</div>
+                        <div>Actions</div>
+                    </div>
+                    <div id="transactions-table-body">
+                        <!-- Transaction rows will be rendered here -->
+                    </div>
+                </div>
+                
+                <!-- Transaction form modal (hidden by default) -->
+                <div class="transaction-form-section" style="display: none;">
                     <div class="card">
                         <div class="card__header">
                             <h3>Add New Transaction</h3>
@@ -677,11 +705,20 @@
             </div>
 
             <div id="recurring" class="tab-content" role="region" aria-labelledby="recurring-tab-btn">
-                <div class="recurring-summary">
+                <div class="bills-header-main">
+                    <h2 class="section-title">Recurring Bills</h2>
+                    <button class="btn btn--primary" id="add-recurring-btn">Add New Bill</button>
+                </div>
+                
+                <div class="card-grid" id="recurring-bills-grid">
+                    <!-- Bill cards will be rendered here -->
+                </div>
+                
+                <!-- Legacy summary (hidden) -->
+                <div class="recurring-summary" style="display: none;">
                     <div class="card">
                         <div class="card__header">
                             <h3>Recurring Bills Summary</h3>
-                            <button class="btn btn--primary" id="add-recurring-btn">Add New Recurring Bill</button>
                         </div>
                         <div class="card__body">
                             <div class="recurring-metrics">

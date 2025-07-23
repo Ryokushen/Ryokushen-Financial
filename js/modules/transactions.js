@@ -19,6 +19,47 @@ let appStateReference = null;
 // Store event listener references for cleanup
 const eventListeners = new Map();
 
+// Get icon for transaction category
+function getCategoryIcon(category, isIncome = false) {
+    if (isIncome || category === 'Income') {
+        return '💵'; // Money with wings for income
+    }
+    
+    const icons = {
+        'Groceries': '🛒',
+        'Dining': '🍴',
+        'Transportation': '🚗',
+        'Entertainment': '🎭',
+        'Shopping': '🛍️',
+        'Healthcare': '🏥',
+        'Bills': '💳',
+        'Housing': '🏠',
+        'Debt': '💳',
+        'Payment': '💸',
+        'Savings': '💰',
+        'Investment': '📈',
+        'Education': '🎓',
+        'Travel': '✈️',
+        'Gifts': '🎁',
+        'Insurance': '🛡️',
+        'Taxes': '📜',
+        'ATM/Cash': '💵',
+        'Fees': '💸',
+        'Business': '💼',
+        'Childcare': '👶',
+        'Pet Care': '🐶',
+        'Personal Care': '💇',
+        'Home Improvement': '🔨',
+        'Professional Services': '👩‍💼',
+        'Interest': '💹',
+        'Transfer': '🔄',
+        'Misc': '📊',
+        'Uncategorized': '📦'
+    };
+    
+    return icons[category] || '💼';
+}
+
 // Function to populate the transfer-to-account dropdown
 function populateTransferToAccount(type, excludeAccount = null) {
     const transferToSelect = document.getElementById("transfer-to-account");
@@ -69,6 +110,24 @@ export function setupEventListeners(appState, onUpdate) {
     
     // Store reference to appState for use in other functions
     appStateReference = appState;
+    
+    // Add transaction button for enhanced table
+    const addTransactionBtn = document.getElementById('add-transaction-btn');
+    if (addTransactionBtn) {
+        addTransactionBtn.addEventListener('click', () => {
+            // Show the transaction form modal
+            const formSection = document.querySelector('.transaction-form-section');
+            if (formSection) {
+                formSection.style.display = 'block';
+                // Focus on first input
+                const dateField = document.getElementById('transaction-date');
+                if (dateField && !dateField.value) {
+                    dateField.value = new Date().toISOString().split('T')[0];
+                }
+                dateField?.focus();
+            }
+        });
+    }
     
     // Helper to add and track event listeners
     const addEventListener = (elementId, event, handler) => {
