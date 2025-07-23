@@ -2259,3 +2259,212 @@ tr:hover td {
     font-size: var(--font-size-2xl);
   }
 }
+
+/* ===== SETTINGS PAGE VISIBILITY FIX ===== */
+/* Add this CSS to the end of your styles-redesign.css file */
+
+/* Settings container and cards with light background */
+.settings-container .card {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #1f2937 !important;
+}
+
+.settings-container .card__header,
+.settings-container .card__body {
+  background: transparent !important;
+  color: #1f2937 !important;
+}
+
+/* Dark text for all headings in settings */
+.settings-container h1,
+.settings-container h2,
+.settings-container h3,
+.settings-container h4,
+.settings-container .section-title {
+  color: #111827 !important;
+}
+
+/* Dark text for all labels in settings */
+.settings-container label,
+.settings-container .form-label,
+.settings-container .feature-label {
+  color: #374151 !important;
+  font-weight: 600 !important;
+}
+
+/* White background and dark text for all form inputs in settings */
+.settings-container input,
+.settings-container select,
+.settings-container textarea,
+.settings-container .form-control,
+#hourly-wage,
+#tax-rate,
+#wage-config-form input {
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  color: #1f2937 !important;
+  padding: var(--space-2) var(--space-3) !important;
+}
+
+/* Placeholder text visibility */
+.settings-container input::placeholder,
+.settings-container textarea::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+/* Focus states with proper contrast */
+.settings-container input:focus,
+.settings-container select:focus,
+.settings-container textarea:focus {
+  outline: none !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Input group addons ($ and /hour, % symbols) */
+.settings-container .input-group-addon,
+.settings-container .input-group-text {
+  background: #f3f4f6 !important;
+  border: 1px solid #d1d5db !important;
+  color: #374151 !important;
+  padding: var(--space-2) var(--space-3) !important;
+}
+
+/* Help text visibility */
+.settings-container .form-text,
+.settings-container small {
+  color: #6b7280 !important;
+}
+
+/* Info notes with proper contrast */
+.settings-container .info-note {
+  background: #dbeafe !important;
+  border: 1px solid #60a5fa !important;
+  color: #1e40af !important;
+  padding: var(--space-3) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.settings-container .info-note strong {
+  color: #1e40af !important;
+}
+
+/* Wage preview section */
+.settings-container .wage-preview,
+#wage-preview {
+  background: #f9fafb !important;
+  border: 1px solid #e5e7eb !important;
+  color: #1f2937 !important;
+  border-radius: var(--radius-lg) !important;
+  padding: var(--space-4) !important;
+}
+
+.settings-container .wage-preview h4,
+#wage-preview h4 {
+  color: #111827 !important;
+  margin-bottom: var(--space-3) !important;
+}
+
+/* Preview examples */
+.settings-container .example-item,
+#wage-preview .example-item {
+  background: #ffffff !important;
+  padding: var(--space-2) var(--space-3) !important;
+  border-radius: var(--radius-md) !important;
+  margin-bottom: var(--space-2) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--space-2) !important;
+}
+
+.settings-container .example-amount {
+  color: #1f2937 !important;
+  font-weight: 600 !important;
+}
+
+.settings-container .example-arrow {
+  color: #6b7280 !important;
+}
+
+.settings-container .example-time,
+#preview-50,
+#preview-200,
+#preview-1000 {
+  color: #059669 !important;
+  font-weight: 600 !important;
+}
+
+/* Secondary buttons in settings */
+.settings-container .btn--secondary {
+  background: #f3f4f6 !important;
+  border: 1px solid #d1d5db !important;
+  color: #374151 !important;
+}
+
+.settings-container .btn--secondary:hover {
+  background: #e5e7eb !important;
+  border-color: #9ca3af !important;
+}
+
+/* Toggle switches with proper contrast */
+.settings-container .switch .slider {
+  background-color: #9ca3af !important;
+}
+
+.settings-container .switch input:checked + .slider {
+  background-color: #3b82f6 !important;
+}
+
+/* Feature toggle alignment */
+.settings-container .feature-toggle {
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--space-2) !important;
+}
+
+/* Checkbox styling */
+.settings-container input[type="checkbox"] {
+  accent-color: #3b82f6;
+}
+
+/* Input group proper styling */
+.settings-container .input-group {
+  display: flex !important;
+  align-items: stretch !important;
+}
+
+.settings-container .input-group .form-control {
+  border-radius: 0 !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+
+.settings-container .input-group-addon:first-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md) !important;
+  border-right: none !important;
+}
+
+.settings-container .input-group-addon:last-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0 !important;
+  border-left: none !important;
+}
+
+/* Form spacing */
+#wage-config-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Extra specificity for number inputs */
+#time-settings-body input[type="number"] {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+}
+
+/* Feature label alignment */
+label.feature-label {
+  margin-bottom: 0 !important;
+  cursor: pointer !important;
+}
