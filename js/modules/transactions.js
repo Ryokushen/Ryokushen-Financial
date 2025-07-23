@@ -134,8 +134,8 @@ export function setupEventListeners(appState, onUpdate) {
     if (voiceAddTransactionBtn) {
         voiceAddTransactionBtn.addEventListener('click', () => {
             // Trigger voice command with context for adding a transaction
-            if (window.voiceCommandEngine) {
-                window.voiceCommandEngine.startListeningWithContext('add transaction');
+            if (window.globalVoiceInterface) {
+                window.globalVoiceInterface.startListening();
             } else {
                 showError('Voice commands are not available');
             }

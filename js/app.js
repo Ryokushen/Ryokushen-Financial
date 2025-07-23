@@ -150,6 +150,8 @@ import { calendar } from './modules/calendar.js';
         // Initialize global voice interface after all data is loaded
         try {
             globalVoiceInterface = new GlobalVoiceInterface(appState);
+            // Expose to window for UI button integration
+            window.globalVoiceInterface = globalVoiceInterface;
             debug.log('Global voice interface initialized');
         } catch (error) {
             debug.error('Failed to initialize voice interface:', error);
@@ -466,6 +468,18 @@ import { calendar } from './modules/calendar.js';
         document.querySelectorAll(".tab-btn").forEach(button => {
             button.addEventListener("click", function () { switchTab(this.getAttribute("data-tab"), appState); });
         });
+        
+        // Add voice button event listener
+        const voiceBtn = document.getElementById('voice-command-btn');
+        if (voiceBtn) {
+            voiceBtn.addEventListener('click', () => {
+                if (window.globalVoiceInterface) {
+                    window.globalVoiceInterface.handleVoiceButtonClick();
+                } else {
+                    showError('Voice commands are not available');
+                }
+            });
+        }
         
         // Initialize time settings UI
         initializeTimeSettings();

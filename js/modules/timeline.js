@@ -23,7 +23,7 @@ export function renderBillsTimeline({ appData }) { // <-- THIS LINE IS NOW CORRE
         .filter(bill => bill.active !== false && new Date(bill.next_due) >= today)
         .sort((a, b) => new Date(a.next_due) - new Date(b.next_due));
 
-    // Update bills count
+    // Update bills count - show total count even if we limit display
     const billsCountEl = document.getElementById('bills-count');
     if (billsCountEl) billsCountEl.textContent = upcomingBills.length;
 
@@ -32,7 +32,12 @@ export function renderBillsTimeline({ appData }) { // <-- THIS LINE IS NOW CORRE
         return;
     }
 
-    const billsHTML = upcomingBills.map(bill => {
+    // Limit to maximum 7 bills to prevent overflow
+    const maxBillsToShow = 7;
+    const billsToDisplay = upcomingBills.slice(0, maxBillsToShow);
+    const hasMoreBills = upcomingBills.length > maxBillsToShow;
+
+    const billsHTML = billsToDisplay.map(bill => {
         const dueDate = new Date(bill.next_due);
         const daysUntil = daysDifference(dueDate, today);
         let dueText = `${daysUntil} days`;
@@ -48,5 +53,18 @@ export function renderBillsTimeline({ appData }) { // <-- THIS LINE IS NOW CORRE
         `;
     }).join('');
 
-    container.innerHTML = billsHTML;
+    // Add indicator if there are more bills
+    let finalHTML = billsHTML;
+    if (hasMoreBills) {
+        const remainingCount = upcomingBills.length - maxBillsToShow;
+        finalHTML += `
+            <div class="bill-mini more-indicator">
+                <div class="bill-name">+${remainingCount} more</div>
+                <div class="bill-amount">...</div>
+                <div class="bill-days">See Bills tab</div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = finalHTML;
 }

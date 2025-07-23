@@ -1943,6 +1943,17 @@ tr:hover td {
   max-width: 140px;
 }
 
+.bill-mini.more-indicator {
+  background: rgba(255, 255, 255, 0.03);
+  border-style: dashed;
+  opacity: 0.7;
+}
+
+.bill-mini.more-indicator:hover {
+  opacity: 0.9;
+  transform: none;
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
   .summary-grid {
