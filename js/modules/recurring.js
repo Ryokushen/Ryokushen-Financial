@@ -424,9 +424,15 @@ function renderSummary(appData) {
     const activeBills = appData.recurringBills.filter(bill => bill.active !== false);
     const monthlyTotal = activeBills.reduce((sum, bill) => sum + convertToMonthly(bill.amount, bill.frequency), 0);
 
-    document.getElementById("recurring-monthly-total").textContent = formatCurrency(monthlyTotal);
-    document.getElementById("recurring-annual-total").textContent = formatCurrency(monthlyTotal * 12);
-    document.getElementById("recurring-count").textContent = activeBills.length.toString();
+    // Update summary elements if they exist (they may not exist in the redesigned UI)
+    const monthlyTotalEl = document.getElementById("recurring-monthly-total");
+    if (monthlyTotalEl) monthlyTotalEl.textContent = formatCurrency(monthlyTotal);
+    
+    const annualTotalEl = document.getElementById("recurring-annual-total");
+    if (annualTotalEl) annualTotalEl.textContent = formatCurrency(monthlyTotal * 12);
+    
+    const countEl = document.getElementById("recurring-count");
+    if (countEl) countEl.textContent = activeBills.length.toString();
 }
 
 function renderUpcomingBills(appData) {

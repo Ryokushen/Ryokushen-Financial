@@ -32,8 +32,9 @@ export function renderBillsTimeline({ appData }) { // <-- THIS LINE IS NOW CORRE
         return;
     }
 
-    // Limit to maximum 7 bills to prevent overflow
-    const maxBillsToShow = 7;
+    // Limit bills to prevent overflow - fewer on mobile
+    const isMobile = window.innerWidth <= 768;
+    const maxBillsToShow = isMobile ? 5 : 7; // 5 on mobile, 7 on desktop
     const billsToDisplay = upcomingBills.slice(0, maxBillsToShow);
     const hasMoreBills = upcomingBills.length > maxBillsToShow;
 

@@ -467,6 +467,8 @@ body::before {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
   padding: var(--space-4);
+  overflow: hidden; /* Ensure nothing overflows from the section */
+  max-width: 100%; /* Constraint to parent width */
 }
 
 .bills-header {
@@ -495,14 +497,9 @@ body::before {
 #bills-timeline-container {
   display: flex;
   gap: var(--space-2);
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  overflow-x: hidden; /* Changed from auto to hidden - NO scrolling */
+  max-width: 100%; /* Ensure it doesn't exceed parent width */
   padding-bottom: var(--space-1);
-}
-
-#bills-timeline-container::-webkit-scrollbar {
-  display: none;
 }
 
 .bill-mini {
@@ -511,10 +508,11 @@ body::before {
   border-radius: var(--radius-md);
   padding: var(--space-2);
   min-width: 100px;
+  max-width: 130px; /* Add max-width to prevent bills from being too wide */
   text-align: center;
   transition: all 0.2s ease;
   cursor: pointer;
-  flex-shrink: 0;
+  flex: 0 0 auto; /* Don't grow or shrink */
 }
 
 .bill-mini:hover {
@@ -1931,11 +1929,7 @@ tr:hover td {
   color: #94a3b8;
 }
 
-/* Fix bills timeline overflow */
-#bills-timeline-container {
-  max-width: 100%;
-  padding-right: var(--space-2);
-}
+/* Bills timeline overflow fixed in main definition above */
 
 .bill-mini {
   flex: 0 0 auto;
@@ -1952,6 +1946,31 @@ tr:hover td {
 .bill-mini.more-indicator:hover {
   opacity: 0.9;
   transform: none;
+}
+
+/* Bills timeline mobile adjustments */
+@media (max-width: 768px) {
+  #bills-timeline-container {
+    gap: var(--space-1); /* Reduce gap on mobile */
+  }
+  
+  .bill-mini {
+    min-width: 80px; /* Smaller min-width on mobile */
+    max-width: 100px;
+    padding: var(--space-1);
+  }
+  
+  .bill-name {
+    font-size: 12px;
+  }
+  
+  .bill-amount {
+    font-size: 14px;
+  }
+  
+  .bill-days {
+    font-size: 11px;
+  }
 }
 
 /* Mobile Responsiveness */
