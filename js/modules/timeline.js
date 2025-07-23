@@ -21,32 +21,32 @@ export function renderBillsTimeline({ appData }) { // <-- THIS LINE IS NOW CORRE
 
     const upcomingBills = appData.recurringBills
         .filter(bill => bill.active !== false && new Date(bill.next_due) >= today)
-        .sort((a, b) => new Date(a.next_due) - new Date(b.next_due))
-        .slice(0, 5); // Get the next 5 upcoming bills
+        .sort((a, b) => new Date(a.next_due) - new Date(b.next_due));
+
+    // Update bills count
+    const billsCountEl = document.getElementById('bills-count');
+    if (billsCountEl) billsCountEl.textContent = upcomingBills.length;
 
     if (upcomingBills.length === 0) {
         container.innerHTML = `<div class="empty-state empty-state--small">No upcoming bills.</div>`;
         return;
     }
 
-    const timelineItemsHTML = upcomingBills.map(bill => {
+    const billsHTML = upcomingBills.map(bill => {
         const dueDate = new Date(bill.next_due);
         const daysUntil = daysDifference(dueDate, today);
-        let dueText = `in ${daysUntil} days`;
+        let dueText = `${daysUntil} days`;
         if (daysUntil === 0) dueText = 'Today';
         if (daysUntil === 1) dueText = 'Tomorrow';
 
         return `
-            <div class="timeline-item">
-                <div class="timeline-dot"></div>
-                <div class="timeline-content">
-                    <div class="timeline-title">${escapeHtml(bill.name)}</div>
-                    <div class="timeline-amount">${formatCurrency(bill.amount)}</div>
-                    <div class="timeline-date">${formatDate(bill.next_due)} (${dueText})</div>
-                </div>
+            <div class="bill-mini">
+                <div class="bill-name">${escapeHtml(bill.name)}</div>
+                <div class="bill-amount">${formatCurrency(bill.amount)}</div>
+                <div class="bill-days">${dueText}</div>
             </div>
         `;
     }).join('');
 
-    container.innerHTML = `<div class="timeline">${timelineItemsHTML}</div>`;
+    container.innerHTML = billsHTML;
 }

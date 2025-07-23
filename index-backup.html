@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
 
-    <link rel="stylesheet" href="css/styles-redesign.css">
+    <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/privacy.css">
     <link rel="stylesheet" href="css/rules.css">
     <link rel="stylesheet" href="css/calendar.css">
@@ -27,125 +27,69 @@
     
     <div class="container">
         <header class="header">
-            <div class="header-content">
-                <h1>Ryokushen Financial</h1>
-                <div class="user-actions">
-                    <span class="user-email" id="user-email"></span>
-                    <button class="btn-logout" id="logout-btn">Logout</button>
-                </div>
-            </div>
+            <h1>Ryokushen Financial Tracker</h1>
             <nav class="tab-nav">
                 <button class="tab-btn active" data-tab="dashboard" id="dashboard-tab-btn"
-                    aria-label="Dashboard tab">
-                    <span class="icon">📊</span>
-                    <span>Dashboard</span>
-                </button>
+                    aria-label="Dashboard tab">Dashboard</button>
                 <button class="tab-btn" data-tab="accounts" id="accounts-tab-btn"
-                    aria-label="Accounts tab">
-                    <span class="icon">💼</span>
-                    <span>Accounts</span>
-                </button>
+                    aria-label="Accounts tab">Accounts</button>
                 <button class="tab-btn" data-tab="transactions" id="transactions-tab-btn"
-                    aria-label="Transactions tab">
-                    <span class="icon">💸</span>
-                    <span>Transactions</span>
-                </button>
+                    aria-label="Transactions tab">Transactions</button>
                 <button class="tab-btn" data-tab="investments" id="investments-tab-btn"
-                    aria-label="Investments tab">
-                    <span class="icon">📈</span>
-                    <span>Investments</span>
-                </button>
-                <button class="tab-btn" data-tab="debt" id="debt-tab-btn" aria-label="Debt tab">
-                    <span class="icon">💳</span>
-                    <span>Debt</span>
-                </button>
+                    aria-label="Investments tab">Investments</button>
+                <button class="tab-btn" data-tab="debt" id="debt-tab-btn" aria-label="Debt tab">Debt</button>
                 <button class="tab-btn" data-tab="recurring" id="recurring-tab-btn"
-                    aria-label="Recurring Bills tab">
-                    <span class="icon">📅</span>
-                    <span>Bills</span>
-                </button>
+                    aria-label="Recurring Bills tab">Recurring Bills</button>
                 <button class="tab-btn" data-tab="rules" id="rules-tab-btn"
-                    aria-label="Smart Rules tab">
-                    <span class="icon">🎯</span>
-                    <span>Rules</span>
-                </button>
+                    aria-label="Smart Rules tab">Rules</button>
                 <button class="tab-btn" data-tab="settings" id="settings-tab-btn"
-                    aria-label="Settings tab">
-                    <span class="icon">⚙️</span>
-                    <span>Settings</span>
-                </button>
-                <button id="voice-command-btn" aria-label="Voice command">
-                    <span>🎤</span>
-                    <span>Voice</span>
-                </button>
+                    aria-label="Settings tab">Settings</button>
             </nav>
         </header>
 
         <main class="main-content">
             <div id="dashboard" class="tab-content active" role="region" aria-labelledby="dashboard-tab-btn">
                 <div class="dashboard-metrics">
-                    <div class="overview-header">
-                        <h2 class="overview-title">Financial Overview</h2>
-                        <div class="net-worth-highlight" id="net-worth-badge">Net Worth: $0.00</div>
+                    <div class="metric-card">
+                        <h3>Total Cash Balance</h3>
+                        <div class="metric-value" id="total-cash">$0.00</div>
                     </div>
-                    <div class="metrics-grid">
-                        <div class="metric-card positive">
-                            <div class="metric-header">
-                                <h3>Cash Balance</h3>
-                                <span class="metric-trend up" id="cash-trend"></span>
-                            </div>
-                            <div class="metric-value positive" id="total-cash">$0.00</div>
-                        </div>
-                        <div class="metric-card positive">
-                            <div class="metric-header">
-                                <h3>Investments</h3>
-                                <span class="metric-trend" id="investment-trend"></span>
-                            </div>
-                            <div class="metric-value positive" id="total-investments">$0.00</div>
-                        </div>
-                        <div class="metric-card negative">
-                            <div class="metric-header">
-                                <h3>Total Debt</h3>
-                                <span class="metric-trend" id="debt-trend"></span>
-                            </div>
-                            <div class="metric-value negative" id="total-debt">$0.00</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-header">
-                                <h3>Monthly Bills</h3>
-                                <span class="metric-trend" id="bills-trend"></span>
-                            </div>
-                            <div class="metric-value" id="monthly-recurring">$0.00</div>
-                        </div>
+                    <div class="metric-card">
+                        <h3>Total Investment Value</h3>
+                        <div class="metric-value" id="total-investments">$0.00</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Total Debt</h3>
+                        <div class="metric-value debt-value" id="total-debt">$0.00</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Monthly Recurring Bills</h3>
+                        <div class="metric-value" id="monthly-recurring">$0.00</div>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Net Worth</h3>
+                        <div class="metric-value" id="net-worth">$0.00</div>
                     </div>
                 </div>
 
-                <!-- Compact Health & Bills Combo -->
-                <div class="status-combo">
-                    <div class="financial-health-section">
-                        <div class="health-score-container">
-                            <!-- Health score will be rendered here -->
-                        </div>
-                    </div>
-                    
-                    <div class="bills-timeline-section">
-                        <div class="bills-header">
-                            <h2 class="section-title">Upcoming Bills</h2>
-                            <span class="bills-count" id="bills-count">0</span>
-                        </div>
-                        <div id="bills-timeline-container">
-                            <!-- Bills will be rendered here -->
-                        </div>
+                <div class="financial-health-section">
+                    <h2 class="section-title">Financial Health Overview</h2>
+                    <div class="health-score-container">
                     </div>
                 </div>
 
-                <!-- Legacy components hidden by CSS -->
                 <div class="enhanced-charts-grid">
                     <div class="chart-card-enhanced">
                         <h3 class="chart-title-enhanced">Debt Health Gauge</h3>
                         <div class="chart-container">
                             <canvas id="debtHealthGauge"></canvas>
                         </div>
+                    </div>
+                </div>
+
+                <div class="bills-timeline-section">
+                    <h2 class="section-title">Upcoming Bills Timeline</h2>
+                    <div id="bills-timeline-container">
                     </div>
                 </div>
 

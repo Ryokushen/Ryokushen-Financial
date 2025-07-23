@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redesign Test - Ryokushen Financial</title>
+    <link rel="stylesheet" href="css/styles-redesign.css">
+</head>
+<body>
+    <!-- Privacy & Voice Buttons -->
+    <button id="privacy-toggle-btn" aria-label="Toggle privacy mode">
+        <i class="privacy-icon">🔓</i> Privacy Off
+    </button>
+    
+    <button id="panic-button" aria-label="Enable privacy mode immediately" title="Panic Button - Hide all sensitive data">
+        🚨
+    </button>
+
+    <div class="container">
+        <!-- Ultra Compact Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>Ryokushen Financial</h1>
+                <div class="user-actions">
+                    <span class="user-email" id="user-email">test@example.com</span>
+                    <button class="btn-logout" id="logout-btn">Logout</button>
+                </div>
+            </div>
+            
+            <!-- Enhanced Tab Navigation -->
+            <nav class="tab-nav">
+                <button class="tab-btn active">
+                    <span class="icon">📊</span>
+                    <span>Dashboard</span>
+                </button>
+                <button class="tab-btn">
+                    <span class="icon">💼</span>
+                    <span>Accounts</span>
+                </button>
+                <button class="tab-btn">
+                    <span class="icon">💸</span>
+                    <span>Transactions</span>
+                </button>
+                <button class="tab-btn">
+                    <span class="icon">📈</span>
+                    <span>Investments</span>
+                </button>
+                <button class="tab-btn">
+                    <span class="icon">💳</span>
+                    <span>Debt</span>
+                </button>
+                <button class="tab-btn">
+                    <span class="icon">📅</span>
+                    <span>Bills</span>
+                </button>
+                <button class="tab-btn">
+                    <span class="icon">🎯</span>
+                    <span>Rules</span>
+                </button>
+                <button class="tab-btn">
+                    <span class="icon">⚙️</span>
+                    <span>Settings</span>
+                </button>
+                <button id="voice-command-btn" aria-label="Voice command">
+                    <span>🎤</span>
+                    <span>Voice</span>
+                </button>
+            </nav>
+        </header>
+
+        <!-- Enhanced Financial Overview -->
+        <div class="dashboard-metrics">
+            <div class="overview-header">
+                <h2 class="overview-title">Financial Overview</h2>
+                <div class="net-worth-highlight">Net Worth: $35,841.62</div>
+            </div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card positive">
+                    <div class="metric-header">
+                        <h3>Cash Balance</h3>
+                        <span class="metric-trend up">↗ +2.1%</span>
+                    </div>
+                    <div class="metric-value positive">$3,011.11</div>
+                </div>
+                
+                <div class="metric-card positive">
+                    <div class="metric-header">
+                        <h3>Investments</h3>
+                        <span class="metric-trend up">↗ +5.8%</span>
+                    </div>
+                    <div class="metric-value positive">$107,760.46</div>
+                </div>
+                
+                <div class="metric-card negative">
+                    <div class="metric-header">
+                        <h3>Total Debt</h3>
+                        <span class="metric-trend down">↘ -1.2%</span>
+                    </div>
+                    <div class="metric-value negative">$74,929.95</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Monthly Bills</h3>
+                        <span class="metric-trend">→ 0%</span>
+                    </div>
+                    <div class="metric-value">$455.73</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Compact Health & Bills Combo -->
+        <div class="status-combo">
+            <div class="financial-health-section">
+                <div class="health-score-container">
+                    <div class="health-indicator-enhanced">
+                        <div class="health-score-value">B+</div>
+                        <div class="health-score-status status-good">Good Standing</div>
+                    </div>
+                    <div class="kpi-details-grid">
+                        <div class="kpi-metric-card">
+                            <div class="kpi-value">99%</div>
+                            <div class="kpi-label">Savings</div>
+                        </div>
+                        <div class="kpi-metric-card">
+                            <div class="kpi-value">194mo</div>
+                            <div class="kpi-label">Emergency</div>
+                        </div>
+                        <div class="kpi-metric-card">
+                            <div class="kpi-value">72%</div>
+                            <div class="kpi-label">Debt Ratio</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ultra Compact Bills Widget -->
+            <div class="bills-timeline-section">
+                <div class="bills-header">
+                    <h2 class="section-title">Upcoming Bills</h2>
+                    <span class="bills-count" id="bills-count">5</span>
+                </div>
+                
+                <div id="bills-timeline-container">
+                    <div class="bill-mini">
+                        <div class="bill-name">Ender</div>
+                        <div class="bill-amount">$45.00</div>
+                        <div class="bill-days">11 days</div>
+                    </div>
+                    <div class="bill-mini">
+                        <div class="bill-name">Claude Max</div>
+                        <div class="bill-amount">$200.00</div>
+                        <div class="bill-days">15 days</div>
+                    </div>
+                    <div class="bill-mini">
+                        <div class="bill-name">Skylight</div>
+                        <div class="bill-amount">$7.99</div>
+                        <div class="bill-days">16 days</div>
+                    </div>
+                    <div class="bill-mini">
+                        <div class="bill-name">Kindroid</div>
+                        <div class="bill-amount">$24.99</div>
+                        <div class="bill-days">17 days</div>
+                    </div>
+                    <div class="bill-mini">
+                        <div class="bill-name">Storage</div>
+                        <div class="bill-amount">$51.00</div>
+                        <div class="bill-days">18 days</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Components -->
+        <div class="card mt-16">
+            <div class="card__header">
+                <h3>Test Card Component</h3>
+                <button class="btn btn--primary btn--small">Action</button>
+            </div>
+            <div class="card__body">
+                <p>This is a test of the glass-morphism card design.</p>
+                <div class="form-group">
+                    <label for="test-input">Test Input</label>
+                    <input type="text" id="test-input" placeholder="Type something...">
+                </div>
+                <button class="btn">Primary Button</button>
+                <button class="btn btn--secondary">Secondary Button</button>
+                <button class="btn btn--danger btn--small">Danger Button</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple privacy mode toggle for testing
+        const privacyBtn = document.getElementById('privacy-toggle-btn');
+        const panicBtn = document.getElementById('panic-button');
+        let privacyMode = false;
+
+        function togglePrivacy() {
+            privacyMode = !privacyMode;
+            document.body.classList.toggle('privacy-mode', privacyMode);
+            
+            if (privacyMode) {
+                privacyBtn.innerHTML = '<i class="privacy-icon">🔒</i> Privacy On';
+                privacyBtn.classList.add('active');
+            } else {
+                privacyBtn.innerHTML = '<i class="privacy-icon">🔓</i> Privacy Off';
+                privacyBtn.classList.remove('active');
+            }
+        }
+
+        privacyBtn.addEventListener('click', togglePrivacy);
+        panicBtn.addEventListener('click', () => {
+            if (!privacyMode) togglePrivacy();
+        });
+
+        // Tab switching for testing
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

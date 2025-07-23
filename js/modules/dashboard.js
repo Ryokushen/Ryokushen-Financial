@@ -10,6 +10,14 @@ import { TimeBudgetWidget } from './widgets/timeBudgetWidget.js';
 // Initialize time budget widget
 let timeBudgetWidget = null;
 
+// Store previous values for trend calculation
+let previousMetrics = {
+    totalCash: 0,
+    totalInvestments: 0,
+    totalDebt: 0,
+    monthlyRecurring: 0
+};
+
 function renderFinancialHealth(kpiResults) {
     const container = document.querySelector('.health-score-container');
     if (!container) return;
@@ -19,25 +27,76 @@ function renderFinancialHealth(kpiResults) {
     const healthScoreHTML = `
         <div class="health-indicator-enhanced">
             <div class="health-score-value ${healthScore.status.toLowerCase()}">${escapeHtml(healthScore.score)}</div>
-            <div class="health-score-label">Overall Score</div>
             <div class="health-score-status status-${healthScore.status.toLowerCase()}">${escapeHtml(healthScore.status)}</div>
         </div>
         <div class="kpi-details-grid">
             <div class="kpi-metric-card">
-                <div class="kpi-label">Savings Rate</div>
-                <div class="kpi-value">${savingsRate.toFixed(1)}%</div>
+                <div class="kpi-value">${savingsRate.toFixed(0)}%</div>
+                <div class="kpi-label">Savings</div>
             </div>
             <div class="kpi-metric-card">
-                <div class="kpi-label">Emergency Fund</div>
-                <div class="kpi-value">${isFinite(emergencyRatio) ? emergencyRatio.toFixed(1) : 'N/A'} mos</div>
+                <div class="kpi-value">${isFinite(emergencyRatio) ? Math.floor(emergencyRatio) : 'N/A'}mo</div>
+                <div class="kpi-label">Emergency</div>
             </div>
             <div class="kpi-metric-card">
-                <div class="kpi-label">Debt-to-Income</div>
-                <div class="kpi-value">${isFinite(dti) ? dti.toFixed(1) : '0'}%</div>
+                <div class="kpi-value">${isFinite(dti) ? dti.toFixed(0) : '0'}%</div>
+                <div class="kpi-label">Debt Ratio</div>
             </div>
         </div>
     `;
     container.innerHTML = healthScoreHTML;
+}
+
+function calculateTrend(current, previous) {
+    if (previous === 0) return { value: 0, direction: 'neutral' };
+    const change = ((current - previous) / Math.abs(previous)) * 100;
+    return {
+        value: Math.abs(change).toFixed(1),
+        direction: change > 0.1 ? 'up' : change < -0.1 ? 'down' : 'neutral'
+    };
+}
+
+function updateMetricTrends(metrics) {
+    const { totalCash, totalInvestments, totalDebt, monthlyRecurring } = metrics;
+    
+    // Calculate trends
+    const cashTrend = calculateTrend(totalCash, previousMetrics.totalCash);
+    const investmentTrend = calculateTrend(totalInvestments, previousMetrics.totalInvestments);
+    const debtTrend = calculateTrend(totalDebt, previousMetrics.totalDebt);
+    const billsTrend = calculateTrend(monthlyRecurring, previousMetrics.monthlyRecurring);
+    
+    // Update trend displays
+    const cashTrendEl = document.getElementById('cash-trend');
+    if (cashTrendEl) {
+        cashTrendEl.textContent = cashTrend.direction === 'neutral' ? '→ 0%' : 
+            `${cashTrend.direction === 'up' ? '↗' : '↘'} ${cashTrend.value}%`;
+        cashTrendEl.className = `metric-trend ${cashTrend.direction}`;
+    }
+    
+    const investmentTrendEl = document.getElementById('investment-trend');
+    if (investmentTrendEl) {
+        investmentTrendEl.textContent = investmentTrend.direction === 'neutral' ? '→ 0%' : 
+            `${investmentTrend.direction === 'up' ? '↗' : '↘'} ${investmentTrend.value}%`;
+        investmentTrendEl.className = `metric-trend ${investmentTrend.direction}`;
+    }
+    
+    const debtTrendEl = document.getElementById('debt-trend');
+    if (debtTrendEl) {
+        // For debt, down is good
+        debtTrendEl.textContent = debtTrend.direction === 'neutral' ? '→ 0%' : 
+            `${debtTrend.direction === 'up' ? '↗' : '↘'} ${debtTrend.value}%`;
+        debtTrendEl.className = `metric-trend ${debtTrend.direction === 'down' ? 'up' : debtTrend.direction === 'up' ? 'down' : ''}`;
+    }
+    
+    const billsTrendEl = document.getElementById('bills-trend');
+    if (billsTrendEl) {
+        billsTrendEl.textContent = billsTrend.direction === 'neutral' ? '→ 0%' : 
+            `${billsTrend.direction === 'up' ? '↗' : '↘'} ${billsTrend.value}%`;
+        billsTrendEl.className = `metric-trend ${billsTrend.direction}`;
+    }
+    
+    // Store current values for next comparison
+    previousMetrics = { totalCash, totalInvestments, totalDebt, monthlyRecurring };
 }
 
 function renderRecentTransactions(appData) {
@@ -96,6 +155,13 @@ export function updateDashboard({ appData }) {
 
     const netWorthEl = document.getElementById("net-worth");
     if (netWorthEl) netWorthEl.textContent = formatCurrency(netWorth);
+    
+    // Update net worth badge
+    const netWorthBadge = document.getElementById("net-worth-badge");
+    if (netWorthBadge) netWorthBadge.textContent = `Net Worth: ${formatCurrency(netWorth)}`;
+    
+    // Update metric trends
+    updateMetricTrends({ totalCash, totalInvestments, totalDebt, monthlyRecurring });
 
     renderRecentTransactions(appData);
     

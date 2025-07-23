@@ -366,98 +366,27 @@ import { calendar } from './modules/calendar.js';
 
     // Function to add user info and logout button to header
     function addUserInfoToHeader() {
-        const header = document.querySelector('.header');
-        if (!header) return;
+        const userEmailEl = document.getElementById('user-email');
+        const logoutBtn = document.getElementById('logout-btn');
+        
+        if (!userEmailEl) return;
         
         const user = supabaseAuth.getUser();
         if (!user) return;
         
-        // Create a wrapper for the header content
-        const headerContent = document.createElement('div');
-        headerContent.className = 'header-content';
+        // Update user email display
+        userEmailEl.textContent = user.email;
         
-        // Move existing header children to the wrapper
-        const h1 = header.querySelector('h1');
-        const tabNav = header.querySelector('.tab-nav');
-        
-        if (h1) headerContent.appendChild(h1);
-        
-        // Create user info container
-        const userInfoContainer = document.createElement('div');
-        userInfoContainer.className = 'user-info-container';
-        userInfoContainer.innerHTML = `
-            <span class="user-email">${user.email}</span>
-            <button id="logout-btn" class="btn btn--small btn--secondary">Logout</button>
-        `;
-        
-        headerContent.appendChild(userInfoContainer);
-        if (tabNav) headerContent.appendChild(tabNav);
-        
-        // Clear header and add the new structure
-        header.innerHTML = '';
-        header.appendChild(headerContent);
-        
-        // Add styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .header-content {
-                display: flex;
-                flex-direction: column;
-                width: 100%;
-            }
-            
-            .header h1 {
-                margin-bottom: 0;
-            }
-            
-            .user-info-container {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                align-self: flex-end;
-                margin-top: -30px;
-                margin-right: 20px;
-                margin-bottom: 10px;
-            }
-            
-            .user-email {
-                color: var(--color-text-secondary);
-                font-size: 13px;
-            }
-            
-            #logout-btn {
-                padding: 5px 12px;
-                font-size: 13px;
-                background: var(--color-surface);
-                border: 1px solid var(--color-border);
-                color: var(--color-text);
-                transition: all 0.2s ease;
-            }
-            
-            #logout-btn:hover {
-                background: var(--color-error);
-                color: white;
-                border-color: var(--color-error);
-            }
-            
-            @media (max-width: 768px) {
-                .user-info-container {
-                    margin-top: 0;
-                    margin-bottom: 15px;
-                    align-self: center;
+        // Setup logout button if it exists
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    await supabaseAuth.logout();
+                    window.location.reload();
+                } catch (error) {
+                    showError('Failed to logout: ' + error.message);
                 }
-                
-                .user-email {
-                    display: none;
-                }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        // Re-add the voice button if it exists
-        const voiceBtn = document.getElementById('global-voice-btn');
-        if (voiceBtn && voiceBtn.parentElement !== header) {
-            header.appendChild(voiceBtn);
+            });
         }
         
         // Add logout handler
