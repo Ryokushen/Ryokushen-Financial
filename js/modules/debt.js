@@ -111,41 +111,335 @@ async function deleteDebtAccount(id, appState, onUpdate) {
     }
 }
 
+// Get debt card icon based on debt type
+function getDebtIcon(debtType) {
+    const icons = {
+        'Credit Card': '💳',
+        'Student Loan': '🎓',
+        'Auto Loan': '🚗',
+        'Mortgage': '🏠',
+        'Personal Loan': '💰',
+        'Line of Credit': '💰',
+        'Other': '📄'
+    };
+    return icons[debtType] || '📄';
+}
+
+// Calculate debt utilization percentage
+function calculateUtilization(balance, creditLimit) {
+    if (!creditLimit || creditLimit <= 0) return 0;
+    return Math.min((balance / creditLimit) * 100, 100);
+}
+
+// Calculate estimated payoff time in months
+function calculatePayoffTime(balance, minimumPayment, interestRate) {
+    if (minimumPayment <= 0 || interestRate <= 0) return 0;
+    
+    const monthlyRate = interestRate / 100 / 12;
+    const monthlyInterest = balance * monthlyRate;
+    
+    if (minimumPayment <= monthlyInterest) return 999; // Never pays off
+    
+    const months = -Math.log(1 - (balance * monthlyRate) / minimumPayment) / Math.log(1 + monthlyRate);
+    return Math.ceil(months);
+}
+
+// Calculate debt metrics for overview
+function calculateDebtMetrics(debtAccounts) {
+    const totalBalance = debtAccounts.reduce((sum, account) => sum + account.balance, 0);
+    const totalPayments = debtAccounts.reduce((sum, account) => sum + account.minimumPayment, 0);
+    
+    // Calculate weighted average interest rate
+    const totalWeightedRate = debtAccounts.reduce((sum, account) => 
+        sum + (account.balance * account.interestRate), 0);
+    const avgInterestRate = totalBalance > 0 ? totalWeightedRate / totalBalance : 0;
+    
+    // Calculate total principal in payments (estimate)
+    const totalInterest = debtAccounts.reduce((sum, account) => {
+        const monthlyRate = account.interestRate / 100 / 12;
+        return sum + (account.balance * monthlyRate);
+    }, 0);
+    const totalPrincipal = Math.max(0, totalPayments - totalInterest);
+    
+    // Calculate overall progress (this is a simplified metric)
+    // In a real app, you'd track original balances vs current balances
+    const estimatedOriginalDebt = totalBalance * 1.3; // Assume 30% paid off for demo
+    const payoffProgress = Math.max(0, Math.min(100, ((estimatedOriginalDebt - totalBalance) / estimatedOriginalDebt) * 100));
+    
+    return {
+        totalBalance,
+        totalPayments,
+        totalPrincipal,
+        totalInterest,
+        avgInterestRate,
+        payoffProgress,
+        accountCount: debtAccounts.length
+    };
+}
+
+// Update debt overview metrics
+function updateDebtOverview(debtAccounts) {
+    const metrics = calculateDebtMetrics(debtAccounts);
+    
+    // Update total debt balance
+    const totalBalanceEl = document.getElementById("debt-total-balance");
+    if (totalBalanceEl) {
+        totalBalanceEl.textContent = formatCurrency(metrics.totalBalance);
+    }
+    
+    // Update monthly payment
+    const monthlyTotalEl = document.getElementById("debt-monthly-total");
+    if (monthlyTotalEl) {
+        monthlyTotalEl.textContent = formatCurrency(metrics.totalPayments);
+    }
+    
+    // Update principal info
+    const principalInfoEl = document.getElementById("debt-principal-info");
+    if (principalInfoEl) {
+        principalInfoEl.textContent = `Principal: ${formatCurrency(metrics.totalPrincipal)}`;
+    }
+    
+    // Update payoff progress
+    const payoffPercentEl = document.getElementById("debt-payoff-percent");
+    if (payoffPercentEl) {
+        payoffPercentEl.textContent = `${Math.round(metrics.payoffProgress)}%`;
+    }
+    
+    // Update progress bar
+    const progressFillEl = document.getElementById("debt-progress-fill");
+    if (progressFillEl) {
+        progressFillEl.style.width = `${metrics.payoffProgress}%`;
+    }
+    
+    // Update balance change (for demo, show a small decrease)
+    const balanceChangeEl = document.getElementById("debt-balance-change");
+    if (balanceChangeEl && metrics.totalBalance > 0) {
+        const monthlyChange = metrics.totalPrincipal;
+        balanceChangeEl.textContent = `↓ ${formatCurrency(monthlyChange)} this month`;
+        balanceChangeEl.className = "debt-metric-change positive";
+    }
+    
+    // Update progress change
+    const progressChangeEl = document.getElementById("debt-progress-change");
+    if (progressChangeEl) {
+        progressChangeEl.textContent = `↑ 2.4% this quarter`;
+    }
+}
+
+// Render individual debt cards using the new design
 export function renderDebtAccounts(appState) {
     const { appData } = appState;
     const debtAccountsList = document.getElementById("debt-accounts-list");
     if (!debtAccountsList) return;
 
-    const totalDebt = appData.debtAccounts.reduce((sum, account) => sum + account.balance, 0);
-    const totalPayments = appData.debtAccounts.reduce((sum, account) => sum + account.minimumPayment, 0);
-
-    document.getElementById("debt-total-value").textContent = formatCurrency(totalDebt);
-    document.getElementById("debt-monthly-payments").textContent = formatCurrency(totalPayments);
+    // Update overview metrics
+    updateDebtOverview(appData.debtAccounts);
     
     if (appData.debtAccounts.length === 0) {
-        debtAccountsList.innerHTML = `<div class="empty-state">No debt accounts.</div>`;
+        debtAccountsList.innerHTML = `
+            <div class="empty-state">
+                <div style="font-size: 48px; margin-bottom: 16px;">💳</div>
+                <p>No debt accounts added yet</p>
+                <p style="font-size: 12px; opacity: 0.7;">Add your first debt account to start tracking your payoff progress</p>
+            </div>`;
         return;
     }
     
-    debtAccountsList.innerHTML = appData.debtAccounts.map(account => `
-        <div class="debt-account" data-id="${account.id}">
-            <h4>${escapeHtml(account.name)}</h4>
-            <div class="account-info">
-                <div class="account-info-item"><span class="account-info-label">Type</span><span class="account-info-value">${escapeHtml(account.type)}</span></div>
-                <div class="account-info-item"><span class="account-info-label">Institution</span><span class="account-info-value">${escapeHtml(account.institution)}</span></div>
-                <div class="account-info-item"><span class="account-info-label">Balance</span><span class="account-info-value balance" data-sensitive="true">${formatCurrency(account.balance)}</span></div>
-                <div class="account-info-item"><span class="account-info-label">Rate</span><span class="account-info-value rate" data-sensitive="true">${account.interestRate}%</span></div>
-                <div class="account-info-item"><span class="account-info-label">Min. Payment</span><span class="account-info-value payment" data-sensitive="true">${formatCurrency(account.minimumPayment)}</span></div>
-                <div class="account-info-item"><span class="account-info-label">Due Date</span><span class="account-info-value">${formatDate(account.dueDate)}</span></div>
-            </div>
-            <div class="due-date ${getDueDateClass(account.dueDate)}">${getDueDateText(account.dueDate)}</div>
-            <div class="debt-actions">
-                <button class="btn btn--secondary btn--sm btn-edit-debt" data-id="${account.id}">Edit</button>
-                <button class="btn btn--outline btn--sm btn-delete-debt" data-id="${account.id}">Delete</button>
-            </div>
-        </div>`).join('');
+    debtAccountsList.innerHTML = appData.debtAccounts.map(account => {
+        const utilization = calculateUtilization(account.balance, account.creditLimit);
+        const payoffTime = calculatePayoffTime(account.balance, account.minimumPayment, account.interestRate);
+        const monthlyInterest = (account.balance * account.interestRate / 100 / 12);
+        const isCredit = account.type === 'Credit Card' || account.creditLimit > 0;
+        
+        return `
+            <div class="debt-card" data-id="${account.id}">
+                <div class="debt-header">
+                    <div>
+                        <div class="debt-name">${escapeHtml(account.name)}</div>
+                        <div class="debt-type">${escapeHtml(account.type)}</div>
+                    </div>
+                    <div class="debt-icon">${getDebtIcon(account.type)}</div>
+                </div>
+                
+                <div class="debt-amount" data-sensitive="true">${formatCurrency(account.balance)}</div>
+                
+                <div class="payment-breakdown">
+                    <div class="payment-item">
+                        <div class="payment-label">Min Payment</div>
+                        <div class="payment-value" data-sensitive="true">${formatCurrency(account.minimumPayment)}</div>
+                    </div>
+                    <div class="payment-item">
+                        <div class="payment-label">APR</div>
+                        <div class="payment-value">${account.interestRate.toFixed(1)}%</div>
+                    </div>
+                    <div class="payment-item">
+                        <div class="payment-label">Payoff</div>
+                        <div class="payment-value">${payoffTime > 120 ? '10+ yrs' : payoffTime + ' mo'}</div>
+                    </div>
+                </div>
+                
+                ${isCredit ? `
+                    <div style="font-size: 12px; opacity: 0.7; margin-bottom: 4px;">
+                        Utilization: ${utilization.toFixed(0)}%
+                    </div>
+                    <div class="utilization-bar">
+                        <div class="utilization-fill" style="width: ${utilization}%;"></div>
+                    </div>
+                ` : `
+                    <div class="debt-progress-bar">
+                        <div class="debt-progress-fill" style="width: ${Math.min(35, 100 - (account.balance / (account.balance * 1.5)) * 100)}%;"></div>
+                    </div>
+                    <div class="utilization-text">Progress: ${Math.min(35, 100 - (account.balance / (account.balance * 1.5)) * 100).toFixed(0)}% Paid Off</div>
+                `}
+                
+                <div class="debt-actions" style="margin-top: 16px; display: flex; gap: 8px;">
+                    <button class="btn btn--secondary btn--small btn-edit-debt" data-id="${account.id}">
+                        Edit
+                    </button>
+                    <button class="btn btn--secondary btn--small btn-delete-debt" data-id="${account.id}">
+                        Delete
+                    </button>
+                </div>
+                
+                ${monthlyInterest > 5 ? `
+                    <div style="margin-top: 12px; padding: 8px; background: rgba(244, 67, 54, 0.1); border-radius: 8px; font-size: 12px; color: #f44336;">
+                        💡 Monthly interest: ${formatCurrency(monthlyInterest)} - Consider extra payments
+                    </div>
+                ` : ''}
+            </div>`;
+    }).join('');
 }
 
+// Initialize debt charts (placeholder for Chart.js integration)
+function initializeDebtCharts(appState) {
+    // Debt Payoff Timeline Chart
+    const timelineCanvas = document.getElementById('debt-payoff-timeline-chart');
+    if (timelineCanvas && window.Chart) {
+        // This would implement a real chart showing debt payoff over time
+        // For now, we'll create a placeholder
+        const ctx = timelineCanvas.getContext('2d');
+        
+        // Sample data for demonstration
+        const months = Array.from({length: 12}, (_, i) => {
+            const date = new Date();
+            date.setMonth(date.getMonth() + i);
+            return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+        });
+        
+        const totalDebt = appState.appData.debtAccounts.reduce((sum, account) => sum + account.balance, 0);
+        const monthlyPayment = appState.appData.debtAccounts.reduce((sum, account) => sum + account.minimumPayment, 0);
+        
+        // Simple projection
+        const currentBalances = [];
+        const projectedBalances = [];
+        let currentBalance = totalDebt;
+        let projectedBalance = totalDebt;
+        
+        for (let i = 0; i < 12; i++) {
+            currentBalances.push(currentBalance);
+            projectedBalances.push(projectedBalance);
+            
+            // Current path (minimum payments)
+            const avgRate = 0.18 / 12; // 18% APR average
+            const interest = currentBalance * avgRate;
+            currentBalance = Math.max(0, currentBalance - Math.max(0, monthlyPayment - interest));
+            
+            // Projected path (with extra $100)
+            const projectedPayment = monthlyPayment + 100;
+            const projectedInterest = projectedBalance * avgRate;
+            projectedBalance = Math.max(0, projectedBalance - Math.max(0, projectedPayment - projectedInterest));
+        }
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'Current Path',
+                    data: currentBalances,
+                    borderColor: '#f44336',
+                    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }, {
+                    label: 'With Extra $100/mo',
+                    data: projectedBalances,
+                    borderColor: '#4CAF50',
+                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#e2e8f0' }
+                    }
+                },
+                scales: {
+                    x: { 
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    },
+                    y: { 
+                        ticks: { 
+                            color: '#94a3b8',
+                            callback: value => '$' + (value / 1000).toFixed(0) + 'k'
+                        },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Debt Breakdown Chart
+    const breakdownCanvas = document.getElementById('debt-breakdown-chart');
+    if (breakdownCanvas && window.Chart && appState.appData.debtAccounts.length > 0) {
+        const ctx = breakdownCanvas.getContext('2d');
+        
+        const data = appState.appData.debtAccounts.map(account => ({
+            label: account.name,
+            value: account.balance,
+            type: account.type
+        }));
+        
+        const colors = [
+            '#f44336', '#e91e63', '#9c27b0', '#673ab7',
+            '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4'
+        ];
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.map(d => d.label),
+                datasets: [{
+                    data: data.map(d => d.value),
+                    backgroundColor: colors.slice(0, data.length),
+                    borderWidth: 2,
+                    borderColor: 'rgba(255, 255, 255, 0.1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { 
+                            color: '#e2e8f0',
+                            padding: 15,
+                            usePointStyle: true
+                        }
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+    }
+}
 
 export function populateDebtAccountDropdown(appData) {
     const debtAccountSelect = document.getElementById("debt-account-select");
@@ -229,7 +523,6 @@ function calculateAndDisplayPayoff(appState) {
     }
     
     // Display extra payment allocation recommendation
-    // First, remove any existing allocation recommendations
     const existingAllocation = document.querySelector('.extra-payment-allocation');
     if (existingAllocation) {
         existingAllocation.remove();
@@ -253,9 +546,7 @@ function calculateAndDisplayPayoff(appState) {
     }
     
     // Update charts if they exist
-    if (window.updateDebtCharts) {
-        window.updateDebtCharts(appState);
-    }
+    initializeDebtCharts(appState);
 }
 
 export function setupEventListeners(appState, onUpdate) {
@@ -279,18 +570,29 @@ export function setupEventListeners(appState, onUpdate) {
         }
     });
     
-    // Add new event listeners for payoff calculation
+    // Payoff calculation event listeners
     document.getElementById("calculate-payoff-btn")?.addEventListener("click", () => calculateAndDisplayPayoff(appState));
     document.getElementById("debt-strategy-select")?.addEventListener("change", () => {
-        // Recalculate if results are already shown
         if (document.getElementById('payoff-results').style.display !== 'none') {
             calculateAndDisplayPayoff(appState);
         }
     });
     document.getElementById("extra-payment-amount")?.addEventListener("input", () => {
-        // Recalculate if results are already shown
         if (document.getElementById('payoff-results').style.display !== 'none') {
             calculateAndDisplayPayoff(appState);
         }
     });
+    
+    // Initialize charts on first load
+    setTimeout(() => {
+        if (appState.appData.debtAccounts.length > 0) {
+            initializeDebtCharts(appState);
+        }
+    }, 100);
+}
+
+// Export initialization function for charts
+export function initializeDebtDashboard(appState) {
+    renderDebtAccounts(appState);
+    initializeDebtCharts(appState);
 }
