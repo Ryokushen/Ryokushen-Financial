@@ -39,7 +39,7 @@ export class ConfirmationDialog {
             <div class="voice-confirmation-overlay">
                 <div class="voice-confirmation-content">
                     <div class="voice-confirmation-header">
-                        <h3>🎤 Voice Input Confirmation</h3>
+                        <h3>Voice Input Confirmation</h3>
                         <button class="voice-confirmation-close" aria-label="Close">&times;</button>
                     </div>
                     
@@ -53,7 +53,7 @@ export class ConfirmationDialog {
                         </div>
                         
                         <div class="voice-extracted-data">
-                            <h4>Extracted Information:</h4>
+                            <h4 style="color: #e2e8f0; font-weight: 600; margin-bottom: 12px;">Extracted Information:</h4>
                             <div class="voice-data-grid">
                                 <div class="voice-data-item" data-field="amount">
                                     <label>Amount:</label>
@@ -127,15 +127,17 @@ export class ConfirmationDialog {
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-                backdrop-filter: blur(4px);
+                background: rgba(0, 0, 0, 0.7);
+                backdrop-filter: blur(8px);
             }
 
             .voice-confirmation-content {
                 position: relative;
-                background: var(--color-surface, white);
-                border-radius: 12px;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+                background: var(--glass-bg, rgba(17, 24, 39, 0.95));
+                backdrop-filter: blur(20px);
+                border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+                border-radius: var(--radius-xl, 20px);
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
                 max-width: 500px;
                 max-height: 80vh;
                 overflow-y: auto;
@@ -158,52 +160,64 @@ export class ConfirmationDialog {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 20px;
-                border-bottom: 1px solid var(--color-border, #e0e0e0);
+                padding: var(--space-5, 20px);
+                margin-bottom: var(--space-4, 16px);
             }
 
             .voice-confirmation-header h3 {
                 margin: 0;
-                color: var(--color-text, #333);
+                color: #ffffff;
+                font-size: var(--font-size-lg, 1.25rem);
+                font-weight: 700;
             }
 
             .voice-confirmation-close {
-                background: none;
-                border: none;
-                font-size: 24px;
+                background: var(--glass-bg, rgba(255, 255, 255, 0.1));
+                border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+                font-size: 20px;
                 cursor: pointer;
-                color: var(--color-text-secondary, #666);
+                color: #e2e8f0;
                 padding: 0;
-                width: 30px;
-                height: 30px;
+                width: 32px;
+                height: 32px;
+                border-radius: var(--radius-md, 8px);
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                transition: all 0.2s ease;
+            }
+
+            .voice-confirmation-close:hover {
+                background: var(--glass-hover, rgba(255, 255, 255, 0.15));
+                border-color: rgba(255, 255, 255, 0.2);
             }
 
             .voice-confirmation-body {
-                padding: 20px;
+                padding: 0 var(--space-5, 20px) var(--space-5, 20px);
             }
 
             .voice-original-text {
-                background: var(--color-surface-secondary, #f8f9fa);
-                padding: 12px;
-                border-radius: 6px;
-                margin-bottom: 16px;
+                background: var(--glass-bg, rgba(255, 255, 255, 0.05));
+                border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+                padding: var(--space-3, 12px);
+                border-radius: var(--radius-md, 8px);
+                margin-bottom: var(--space-4, 16px);
                 font-style: italic;
+                color: #e2e8f0;
             }
 
             .voice-confidence {
                 text-align: center;
-                margin-bottom: 20px;
-                font-weight: bold;
-                color: var(--color-primary, #007bff);
+                margin-bottom: var(--space-5, 20px);
+                font-weight: 600;
+                color: var(--color-primary, #3b82f6);
+                font-size: 0.9rem;
             }
 
             .voice-data-grid {
                 display: grid;
-                gap: 16px;
-                margin-top: 12px;
+                gap: var(--space-4, 16px);
+                margin-top: var(--space-3, 12px);
             }
 
             .voice-data-item {
@@ -212,80 +226,110 @@ export class ConfirmationDialog {
             }
 
             .voice-data-item label {
-                font-weight: bold;
-                margin-bottom: 4px;
-                color: var(--color-text, #333);
+                font-weight: 600;
+                margin-bottom: var(--space-1, 4px);
+                color: #e2e8f0;
+                font-size: 0.875rem;
             }
 
             .voice-data-item input,
             .voice-data-item select {
-                padding: 8px 12px;
-                border: 1px solid var(--color-border, #ddd);
-                border-radius: 4px;
+                background: var(--glass-bg, rgba(255, 255, 255, 0.05));
+                border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+                border-radius: var(--radius-md, 8px);
+                padding: var(--space-2, 8px) var(--space-3, 12px);
+                color: #ffffff;
                 font-size: 14px;
+                transition: all 0.2s ease;
+            }
+
+            .voice-data-item input::placeholder,
+            .voice-data-item select::placeholder {
+                color: #94a3b8;
+                opacity: 1;
+            }
+
+            .voice-data-item select option {
+                background: var(--glass-bg, #1f2937);
+                color: #ffffff;
             }
 
             .voice-data-item input:focus,
             .voice-data-item select:focus {
                 outline: none;
-                border-color: var(--color-primary, #007bff);
-                box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+                border-color: var(--color-primary, #3b82f6);
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+                background: var(--glass-hover, rgba(255, 255, 255, 0.1));
             }
 
             .voice-warnings {
-                background: #fff3cd;
-                border: 1px solid #ffeaa7;
-                border-radius: 6px;
-                padding: 12px;
-                margin-top: 16px;
+                background: rgba(251, 191, 36, 0.1);
+                border: 1px solid rgba(251, 191, 36, 0.3);
+                border-radius: var(--radius-md, 8px);
+                padding: var(--space-3, 12px);
+                margin-top: var(--space-4, 16px);
             }
 
             .voice-warnings h5 {
                 margin: 0 0 8px 0;
-                color: #856404;
+                color: #fbbf24;
+                font-weight: 600;
             }
 
             .voice-warnings ul {
                 margin: 0;
                 padding-left: 20px;
-                color: #856404;
+                color: #fcd34d;
             }
 
             .voice-confirmation-footer {
                 display: flex;
                 justify-content: flex-end;
-                gap: 12px;
-                padding: 20px;
-                border-top: 1px solid var(--color-border, #e0e0e0);
+                gap: var(--space-3, 12px);
+                padding: var(--space-5, 20px);
+                margin-top: var(--space-4, 16px);
             }
 
             .voice-confirmation-footer .btn {
-                padding: 8px 16px;
-                border-radius: 4px;
+                padding: var(--space-2, 8px) var(--space-4, 16px);
+                border-radius: var(--radius-md, 8px);
                 cursor: pointer;
-                font-weight: 500;
+                font-weight: 600;
+                font-size: 0.875rem;
+                transition: all 0.2s ease;
                 border: none;
             }
 
             .btn--primary {
-                background: var(--color-primary, #007bff);
+                background: linear-gradient(135deg, var(--color-primary, #3b82f6), var(--color-teal, #14b8a6));
                 color: white;
             }
 
+            .btn--primary:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            }
+
             .btn--secondary {
-                background: var(--color-secondary, #6c757d);
-                color: white;
+                background: var(--glass-bg, rgba(255, 255, 255, 0.1));
+                border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+                color: #e2e8f0;
+            }
+
+            .btn--secondary:hover {
+                background: var(--glass-hover, rgba(255, 255, 255, 0.15));
+                border-color: rgba(255, 255, 255, 0.2);
             }
 
             .btn--outline {
                 background: transparent;
-                border: 1px solid var(--color-border, #ddd);
-                color: var(--color-text, #333);
+                border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+                color: #e2e8f0;
             }
 
-            .btn:hover {
-                opacity: 0.9;
-                transform: translateY(-1px);
+            .btn--outline:hover {
+                background: var(--glass-bg, rgba(255, 255, 255, 0.05));
+                border-color: rgba(255, 255, 255, 0.2);
             }
         `;
 
