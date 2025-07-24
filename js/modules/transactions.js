@@ -133,11 +133,57 @@ export function setupEventListeners(appState, onUpdate) {
     const voiceAddTransactionBtn = document.getElementById('voice-add-transaction-btn');
     if (voiceAddTransactionBtn) {
         voiceAddTransactionBtn.addEventListener('click', () => {
-            // Trigger voice command with context for adding a transaction
+            // First, show the transaction form
+            const formSection = document.querySelector('.transaction-form-section');
+            if (formSection) {
+                formSection.style.display = 'block';
+                
+                // Set today's date if not already set
+                const dateField = document.getElementById('transaction-date');
+                if (dateField && !dateField.value) {
+                    dateField.value = new Date().toISOString().split('T')[0];
+                }
+                
+                // Focus on the description field (best for voice input)
+                const descField = document.getElementById('transaction-description');
+                if (descField) {
+                    setTimeout(() => descField.focus(), 100);
+                }
+            }
+            
+            // Then trigger voice command for transaction input
             if (window.globalVoiceInterface) {
-                window.globalVoiceInterface.startListening();
+                // Add a small delay to ensure form is visible
+                setTimeout(() => {
+                    window.globalVoiceInterface.startListening();
+                }, 200);
             } else {
                 showError('Voice commands are not available');
+            }
+        });
+    }
+    
+    // Cancel transaction button
+    const cancelTransactionBtn = document.getElementById('cancel-transaction-btn');
+    if (cancelTransactionBtn) {
+        cancelTransactionBtn.addEventListener('click', () => {
+            const formSection = document.querySelector('.transaction-form-section');
+            if (formSection) {
+                formSection.style.display = 'none';
+            }
+            // Reset the form
+            const form = document.getElementById('transaction-form');
+            if (form) {
+                form.reset();
+                // Reset date to today
+                const dateField = document.getElementById('transaction-date');
+                if (dateField) {
+                    dateField.value = new Date().toISOString().split('T')[0];
+                }
+            }
+            // Cancel any ongoing voice input
+            if (window.voiceInput && window.voiceInput.listening) {
+                window.voiceInput.stopListening();
             }
         });
     }
@@ -819,6 +865,10 @@ async function addLinkedTransaction(fromTransactionData, toAccountValue, appStat
             const transferGroup = document.getElementById("transfer-account-group");
             if (transferGroup) transferGroup.style.display = "none";
             
+            // Hide the transaction form section after successful submission
+            const formSection = document.querySelector('.transaction-form-section');
+            if (formSection) formSection.style.display = 'none';
+            
             // Reset account label
             const accountLabel = document.querySelector('label[for="transaction-account"]');
             if (accountLabel) accountLabel.textContent = "Account";
@@ -917,6 +967,10 @@ async function addNewTransaction(transactionData, appState, onUpdate) {
             if (debtGroup) debtGroup.style.display = "none";
             const transferGroup = document.getElementById("transfer-account-group");
             if (transferGroup) transferGroup.style.display = "none";
+            
+            // Hide the transaction form section after successful submission
+            const formSection = document.querySelector('.transaction-form-section');
+            if (formSection) formSection.style.display = 'none';
             
             // Reset account label
             const accountLabel = document.querySelector('label[for="transaction-account"]');

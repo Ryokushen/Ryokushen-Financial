@@ -193,10 +193,22 @@ export class VoiceNavigation {
     async executeAction(action, actionType) {
         switch (action) {
             case 'openTransactionForm':
-                // Focus on the transaction form
+                // First, show the transaction form section
+                const formSection = document.querySelector('.transaction-form-section');
+                if (formSection) {
+                    formSection.style.display = 'block';
+                }
+                
+                // Then focus on the transaction form
                 const transactionForm = document.getElementById('transaction-form');
                 if (transactionForm) {
                     transactionForm.scrollIntoView({ behavior: 'smooth' });
+                    
+                    // Set today's date if not already set
+                    const dateField = document.getElementById('transaction-date');
+                    if (dateField && !dateField.value) {
+                        dateField.value = new Date().toISOString().split('T')[0];
+                    }
                     
                     // Focus on first input field
                     const firstInput = transactionForm.querySelector('input, select');
