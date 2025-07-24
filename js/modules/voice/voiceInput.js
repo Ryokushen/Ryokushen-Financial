@@ -6,6 +6,7 @@ import { SpeechRecognitionWrapper } from './speechRecognition.js';
 import { VoiceFeedback } from './voiceFeedback.js';
 import { TransactionExtractor } from './transactionExtractor.js';
 import { SmartFormFiller } from './smartFormFiller.js';
+import { ConfirmationDialog } from './confirmationDialog.js';
 
 /**
  * VoiceInput - Main manager for voice input functionality
@@ -29,6 +30,7 @@ export class VoiceInput {
         this.smartMode = true; // Enable smart parsing by default
         this.transactionExtractor = new TransactionExtractor();
         this.formFiller = new SmartFormFiller();
+        this.confirmationDialog = new ConfirmationDialog();
         this.callbacks = {
             onResult: null,
             onError: null,
@@ -169,25 +171,60 @@ export class VoiceInput {
             
             // Extract transaction data
             const extractedData = this.transactionExtractor.extractTransaction(transcript);
+            extractedData.originalText = transcript;
             
             // Validate extraction
             const validation = this.transactionExtractor.validateExtraction(extractedData);
             
             if (extractedData.confidence > 30) {
-                // High enough confidence - auto-fill form
-                const fillResult = await this.formFiller.fillForm(extractedData, {
-                    showConfirmation: true,
-                    highlightFields: true,
-                    announceChanges: true
+                // Prepare suggestions
+                const suggestions = this.formFiller.prepareSuggestions(extractedData);
+                
+                // Show confirmation dialog
+                this.confirmationDialog.show(extractedData, suggestions, {
+                    onConfirm: async (formData, allowEdit) => {
+                        // Update extracted data with confirmed values
+                        const confirmedData = {
+                            ...extractedData,
+                            amount: parseFloat(formData.amount) || extractedData.amount,
+                            category: formData.category || extractedData.category,
+                            description: formData.description || extractedData.description,
+                            date: formData.date || extractedData.date
+                        };
+                        
+                        // Fill form with confirmed data
+                        const fillResult = await this.formFiller.fillForm(confirmedData, {
+                            showConfirmation: false, // Already confirmed
+                            highlightFields: true,
+                            announceChanges: true
+                        });
+                        
+                        if (fillResult.success && this.callbacks.onSmartParsed) {
+                            this.callbacks.onSmartParsed({
+                                extractedData: confirmedData,
+                                validation,
+                                fillResult,
+                                userConfirmed: true
+                            });
+                        }
+                        
+                        // If user wants to continue editing, focus on first field
+                        if (allowEdit) {
+                            const amountField = document.getElementById('transaction-amount');
+                            if (amountField) {
+                                amountField.focus();
+                            }
+                        }
+                    },
+                    onCancel: () => {
+                        debug.log('User cancelled voice transaction confirmation');
+                        // Optionally fill description with the transcript
+                        if (this.currentTarget && this.currentTarget.id === 'transaction-description') {
+                            this.updateTargetInput(transcript);
+                        }
+                    }
                 });
                 
-                if (fillResult.success && this.callbacks.onSmartParsed) {
-                    this.callbacks.onSmartParsed({
-                        extractedData,
-                        validation,
-                        fillResult
-                    });
-                }
             } else {
                 // Low confidence - fallback to basic description filling
                 debug.log('Low confidence extraction, falling back to basic mode');

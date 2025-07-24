@@ -315,5 +315,18 @@ The voice command system is implemented across multiple modules:
 - `voiceNavigation.js`: Navigation and action handling
 - `globalVoiceInterface.js`: Global voice button and coordination
 - `voiceResponseSystem.js`: Visual feedback system
+- `confirmationDialog.js`: Visual confirmation for voice-parsed transactions
 - `nlpParser.js`: Natural language processing for transaction input
 - `speechRecognition.js`: Core speech recognition functionality
+
+### Voice Transaction Input Features
+
+When using voice input for transactions, the system provides:
+- **Smart Parsing**: Automatically extracts amount, category, description, and date from natural speech
+- **Visual Confirmation Dialog**: Before applying parsed data to the form:
+  - Shows the original voice input
+  - Displays confidence level percentage
+  - Allows editing of extracted values
+  - Highlights any missing required fields
+  - Options to "Apply" directly or "Edit & Apply" for further modifications
+- **Fallback Mode**: Low-confidence inputs fall back to simple text entry

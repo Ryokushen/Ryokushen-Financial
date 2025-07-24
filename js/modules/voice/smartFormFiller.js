@@ -35,7 +35,6 @@ export class SmartFormFiller {
         debug.log('Filling form with extracted data:', extractedData);
         
         const {
-            showConfirmation = true,
             highlightFields = true,
             announceChanges = true
         } = options;
@@ -50,10 +49,8 @@ export class SmartFormFiller {
             // Handle special cases (debt transactions, etc.)
             this.handleSpecialCases(extractedData);
             
-            // Show confirmation if requested
-            if (showConfirmation && this.filledFields.size > 0) {
-                this.showConfirmationDialog(extractedData, suggestions);
-            }
+            // Note: Confirmation dialog is now handled in voiceInput.js
+            // before this method is called
             
             // Announce changes for accessibility
             if (announceChanges) {
@@ -244,80 +241,6 @@ export class SmartFormFiller {
         }, 3000);
     }
 
-    /**
-     * Show confirmation dialog for extracted data
-     */
-    showConfirmationDialog(extractedData, suggestions) {
-        const confidence = extractedData.confidence || 0;
-        const fieldsText = Array.from(this.filledFields).join(', ');
-        
-        // Create confirmation message
-        let message = `Voice extracted: `;
-        const parts = [];
-        
-        if (suggestions.amount) parts.push(`$${suggestions.amount}`);
-        if (suggestions.category) parts.push(suggestions.category);
-        if (suggestions.description) parts.push(`"${suggestions.description}"`);
-        
-        message += parts.join(' for ');
-        message += ` (${confidence}% confidence)`;
-
-        // Show as a temporary status message
-        this.showTemporaryMessage(message, 'success');
-        
-        debug.log('Confirmation shown:', message);
-    }
-
-    /**
-     * Show temporary message to user
-     */
-    showTemporaryMessage(message, type = 'info') {
-        // Create or get message container
-        let container = document.getElementById('voice-temp-message');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'voice-temp-message';
-            container.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                z-index: 1000;
-                padding: 12px 20px;
-                border-radius: 6px;
-                font-weight: bold;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-                transition: all 0.3s ease;
-            `;
-            document.body.appendChild(container);
-        }
-
-        // Set message and styling
-        container.textContent = message;
-        container.className = `voice-message-${type}`;
-        
-        // Style based on type
-        const styles = {
-            success: 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;',
-            warning: 'background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;',
-            error: 'background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;',
-            info: 'background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb;'
-        };
-        
-        container.style.cssText += styles[type] || styles.info;
-        container.style.display = 'block';
-
-        // Auto-hide after delay
-        setTimeout(() => {
-            if (container.parentNode) {
-                container.style.opacity = '0';
-                setTimeout(() => {
-                    if (container.parentNode) {
-                        container.parentNode.removeChild(container);
-                    }
-                }, 300);
-            }
-        }, 4000);
-    }
 
     /**
      * Announce filled fields for accessibility
