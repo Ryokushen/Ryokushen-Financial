@@ -8,6 +8,7 @@ import {
     registerBiometric,
     clearBiometricRegistration 
 } from './biometricAuth.js';
+import { eventManager } from './eventManager.js';
 
 // Centralized timing configuration for privacy operations
 const PRIVACY_TIMING = {
@@ -148,7 +149,7 @@ class PrivacyManager {
     
     // Setup keyboard shortcuts
     setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
+        eventManager.addEventListener(document, 'keydown', (e) => {
             // Ctrl/Cmd + Shift + P for panic mode
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'P') {
                 e.preventDefault();
@@ -282,13 +283,13 @@ class PrivacyManager {
             };
             
             // Event listeners
-            submitBtn.addEventListener('click', handleSubmit);
-            cancelBtn.addEventListener('click', handleCancel);
-            closeBtn.addEventListener('click', handleCancel);
-            input.addEventListener('keypress', (e) => {
+            eventManager.addEventListener(submitBtn, 'click', handleSubmit);
+            eventManager.addEventListener(cancelBtn, 'click', handleCancel);
+            eventManager.addEventListener(closeBtn, 'click', handleCancel);
+            eventManager.addEventListener(input, 'keypress', (e) => {
                 if (e.key === 'Enter') handleSubmit();
             });
-            overlay.addEventListener('click', (e) => {
+            eventManager.addEventListener(overlay, 'click', (e) => {
                 if (e.target === overlay) handleCancel();
             });
             
@@ -406,7 +407,7 @@ class PrivacyManager {
                 });
                 
                 // Add click handler for temporary reveal
-                el.addEventListener('click', this.blurredElements.get(el).handler);
+                eventManager.addEventListener(el, 'click', this.blurredElements.get(el).handler);
                 el.style.cursor = 'pointer';
                 el.setAttribute('title', 'Click to reveal temporarily');
             }
