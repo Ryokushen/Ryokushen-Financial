@@ -57,6 +57,12 @@ function createDebtHealthGauge({ appData, CHART_COLORS }) {
     const ctx = document.getElementById("debtHealthGauge").getContext("2d");
     if (!ctx) return;
 
+    // Ensure any existing chart on this canvas is destroyed first
+    const existingChart = Chart.getChart("debtHealthGauge");
+    if (existingChart) {
+        existingChart.destroy();
+    }
+
     const dti = calculateDebtToIncomeRatio(appData);
 
     // Determine color based on DTI value
@@ -294,6 +300,12 @@ function createExpenseCategoryChart({ appData, CHART_COLORS }) {
     const ctx = document.getElementById("expenseCategoryChart").getContext("2d");
     if (!ctx) return;
 
+    // Ensure any existing chart on this canvas is destroyed first
+    const existingChart = Chart.getChart("expenseCategoryChart");
+    if (existingChart) {
+        existingChart.destroy();
+    }
+
     const expenseData = {};
 
     appData.transactions
@@ -341,6 +353,12 @@ function createExpenseCategoryChart({ appData, CHART_COLORS }) {
 function createCashFlowChart({ appData, CHART_COLORS }) {
     const ctx = document.getElementById("cashFlowChart").getContext("2d");
     if (!ctx) return;
+
+    // Ensure any existing chart on this canvas is destroyed first
+    const existingChart = Chart.getChart("cashFlowChart");
+    if (existingChart) {
+        existingChart.destroy();
+    }
 
     const cashAccountIds = appData.cashAccounts.map(account => account.id);
     const months = [];
@@ -408,6 +426,12 @@ function createAssetsDebtChart({ appData, CHART_COLORS }) {
     const ctx = document.getElementById("assetsDebtChart").getContext("2d");
     if (!ctx) return;
 
+    // Ensure any existing chart on this canvas is destroyed first
+    const existingChart = Chart.getChart("assetsDebtChart");
+    if (existingChart) {
+        existingChart.destroy();
+    }
+
     const totalCash = appData.cashAccounts.reduce((sum, account) => sum + (account.balance || 0), 0);
     const totalInvestments = appData.investmentAccounts.reduce((sum, account) => sum + account.balance, 0);
     const totalDebt = appData.debtAccounts.reduce((sum, account) => sum + account.balance, 0);
@@ -451,6 +475,12 @@ function createAssetsDebtChart({ appData, CHART_COLORS }) {
 function createDebtBreakdownChart({ appData, CHART_COLORS }) {
     const ctx = document.getElementById("debt-breakdown-chart")?.getContext("2d");
     if (!ctx) return;
+
+    // Ensure any existing chart on this canvas is destroyed first
+    const existingChart = Chart.getChart("debt-breakdown-chart");
+    if (existingChart) {
+        existingChart.destroy();
+    }
 
     // Group debts by type
     const debtByType = appData.debtAccounts.reduce((acc, debt) => {
@@ -502,6 +532,12 @@ function createDebtBreakdownChart({ appData, CHART_COLORS }) {
 function createPayoffTimelineChart({ appData, CHART_COLORS }) {
     const ctx = document.getElementById("payoff-timeline-chart")?.getContext("2d");
     if (!ctx) return;
+
+    // Ensure any existing chart on this canvas is destroyed first
+    const existingChart = Chart.getChart("payoff-timeline-chart");
+    if (existingChart) {
+        existingChart.destroy();
+    }
 
     // Get current strategy and extra payment from UI if available
     const strategy = document.getElementById('debt-strategy-select')?.value || 'avalanche';
@@ -576,6 +612,12 @@ function createInterestAnalysisChart({ appData, CHART_COLORS }) {
     const ctx = document.getElementById("interest-analysis-chart")?.getContext("2d");
     if (!ctx) return;
 
+    // Ensure any existing chart on this canvas is destroyed first
+    const existingChart = Chart.getChart("interest-analysis-chart");
+    if (existingChart) {
+        existingChart.destroy();
+    }
+
     // Calculate monthly interest for each debt
     const debtLabels = appData.debtAccounts.map(debt => debt.name);
     const monthlyInterestData = appData.debtAccounts.map(debt => {
@@ -632,6 +674,12 @@ function createInterestAnalysisChart({ appData, CHART_COLORS }) {
 function createCreditUtilizationChart({ appData, CHART_COLORS }) {
     const ctx = document.getElementById("credit-utilization-chart")?.getContext("2d");
     if (!ctx) return;
+
+    // Ensure any existing chart on this canvas is destroyed first
+    const existingChart = Chart.getChart("credit-utilization-chart");
+    if (existingChart) {
+        existingChart.destroy();
+    }
 
     const utilization = DebtStrategy.calculateCreditUtilization(appData.debtAccounts);
     

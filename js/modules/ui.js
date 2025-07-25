@@ -109,10 +109,7 @@ export function switchTab(tabName, appState) {
         Savings.renderSavingsGoals(appState);
     } else if (tabName === "debt") {
         Debt.renderDebtAccounts(appState);
-        // Create debt-specific charts when switching to debt tab
-        if (window.updateDebtCharts) {
-            window.updateDebtCharts(appState);
-        }
+        // Note: Debt charts are created by createCharts() in charts.js
     } else if (tabName === "recurring") {
         Recurring.renderRecurringBills(appState);
     } else if (tabName === "settings") {
