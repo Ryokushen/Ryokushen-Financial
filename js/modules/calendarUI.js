@@ -6,6 +6,7 @@ import { isPrivacyMode } from './privacy.js'
 import { openModal, closeModal, showError } from './ui.js'
 import { paySchedule } from './paySchedule.js'
 import { announceToScreenReader } from './ui.js'
+import { eventManager } from './eventManager.js'
 
 export const calendarUI = {
   container: null,
@@ -34,7 +35,7 @@ export const calendarUI = {
     let isNavigating = false
     
     // Navigation controls
-    this.container.addEventListener('click', (e) => {
+    eventManager.addEventListener(this.container, 'click', (e) => {
       // Handle navigation buttons
       if (e.target.classList.contains('calendar-prev') || e.target.closest('.calendar-prev')) {
         e.preventDefault()
@@ -80,7 +81,8 @@ export const calendarUI = {
     })
 
     // View toggle
-    document.getElementById('calendar-view-toggle')?.addEventListener('change', (e) => {
+    const calendarViewToggle = document.getElementById('calendar-view-toggle')
+    if (calendarViewToggle) eventManager.addEventListener(calendarViewToggle, 'change', (e) => {
       this.toggleView(e.target.value)
     })
   },
@@ -437,27 +439,19 @@ export const calendarUI = {
     const cancelBtn = document.getElementById('cancel-pay-schedule')
     const modal = document.getElementById('pay-schedule-modal')
     
-    // Remove existing event listeners to prevent duplicates
-    if (this._payScheduleListeners) {
-      this._payScheduleListeners.forEach(({ element, event, handler }) => {
-        element.removeEventListener(event, handler)
-      })
-    }
-    this._payScheduleListeners = []
+    // Note: EventManager automatically prevents duplicates, so we don't need to track listeners manually
     
     // Close button handler
     const closeBtn = modal.querySelector('.modal-close')
     const closeHandler = () => this.closePayScheduleModal()
     if (closeBtn) {
-      closeBtn.addEventListener('click', closeHandler)
-      this._payScheduleListeners.push({ element: closeBtn, event: 'click', handler: closeHandler })
+      eventManager.addEventListener(closeBtn, 'click', closeHandler)
     }
     
     // Cancel button handler
     const cancelHandler = () => this.closePayScheduleModal()
     if (cancelBtn) {
-      cancelBtn.addEventListener('click', cancelHandler)
-      this._payScheduleListeners.push({ element: cancelBtn, event: 'click', handler: cancelHandler })
+      eventManager.addEventListener(cancelBtn, 'click', cancelHandler)
     }
     
     // Frequency change handler
@@ -476,8 +470,7 @@ export const calendarUI = {
       }
     }
     if (frequencySelect) {
-      frequencySelect.addEventListener('change', frequencyHandler)
-      this._payScheduleListeners.push({ element: frequencySelect, event: 'change', handler: frequencyHandler })
+      eventManager.addEventListener(frequencySelect, 'change', frequencyHandler)
     }
     
     // Form submit handler
@@ -486,8 +479,7 @@ export const calendarUI = {
       await this.savePaySchedule()
     }
     if (form) {
-      form.addEventListener('submit', submitHandler)
-      this._payScheduleListeners.push({ element: form, event: 'submit', handler: submitHandler })
+      eventManager.addEventListener(form, 'submit', submitHandler)
     }
   },
 
