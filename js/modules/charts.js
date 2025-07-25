@@ -124,55 +124,7 @@ function createDebtHealthGauge({ appData, CHART_COLORS }) {
     chartInstances.debtHealthGauge = chart;
 }
 
-function createInvestmentAllocationChart({ appData, CHART_COLORS }) {
-    const ctx = document.getElementById("investmentAllocation").getContext("2d");
-    if (!ctx) return;
-
-    const allocationData = appData.investmentAccounts.reduce((acc, account) => {
-        const type = account.accountType || 'Other';
-        if (!acc[type]) {
-            acc[type] = 0;
-        }
-        acc[type] += account.balance;
-        return acc;
-    }, {});
-
-    const labels = Object.keys(allocationData);
-    const data = Object.values(allocationData);
-
-    chartInstances.investmentAllocation = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Value',
-                data: data,
-                backgroundColor: CHART_COLORS,
-                borderColor: 'var(--color-surface-translucent)',
-                borderWidth: 2,
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            return privacyFormatters.currencyTooltip(label, context.parsed, true, total);
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
+// Function removed - investmentAllocation canvas element doesn't exist in HTML
 
 
 // Track if privacy mode has changed
@@ -222,8 +174,7 @@ function createChartsInternal(appState) {
         if (activeTabId === 'dashboard') {
             // Dashboard charts only
             updateOrCreateChart('debtHealthGauge', () => createDebtHealthGauge({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
-            updateOrCreateChart('investmentAllocation', () => createInvestmentAllocationChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
-            updateOrCreateChart('netWorthChart', () => createNetWorthChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
+            // Removed calls to missing chart functions (investmentAllocation and netWorthChart)
             updateOrCreateChart('expenseCategoryChart', () => createExpenseCategoryChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
             updateOrCreateChart('cashFlowChart', () => createCashFlowChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
             updateOrCreateChart('assetsDebtChart', () => createAssetsDebtChart({ appData: appState.appData, CHART_COLORS: appState.CHART_COLORS }), appState);
@@ -269,8 +220,7 @@ function updateOrCreateChart(chartName, createFn, appState) {
 function getCanvasIdForChart(chartName) {
     const mapping = {
         'debtHealthGauge': 'debtHealthGauge',
-        'investmentAllocation': 'investmentAllocation',
-        'netWorthChart': 'netWorthChart',
+        // Removed mappings for missing charts (investmentAllocation and netWorthChart)
         'expenseCategoryChart': 'expenseCategoryChart',
         'cashFlowChart': 'cashFlowChart',
         'assetsDebtChart': 'assetsDebtChart',
@@ -306,16 +256,7 @@ function updateChartData(chartName, appState) {
             chart.data.datasets[0].backgroundColor[0] = needleColor;
             break;
             
-        case 'investmentAllocation':
-            const allocationData = appData.investmentAccounts.reduce((acc, account) => {
-                const type = account.accountType || 'Other';
-                if (!acc[type]) acc[type] = 0;
-                acc[type] += account.balance;
-                return acc;
-            }, {});
-            chart.data.labels = Object.keys(allocationData);
-            chart.data.datasets[0].data = Object.values(allocationData);
-            break;
+        // Removed case for investmentAllocation - canvas element doesn't exist
             
         case 'expenseCategoryChart':
             const expenseData = {};
@@ -346,73 +287,8 @@ function updateChartData(chartName, appState) {
     chart.update('none'); // 'none' animation mode for better performance
 }
 
-function createNetWorthChart({ appData, CHART_COLORS }) {
-    const ctx = document.getElementById("netWorthChart").getContext("2d");
-    if (!ctx) return;
-
-    // Calculate total investments and debt first (your addition—good!)
-    const totalInvestments = appData.investmentAccounts.reduce((sum, account) => sum + account.balance, 0);
-    const totalDebt = appData.debtAccounts.reduce((sum, account) => sum + account.balance, 0);
-
-    const cashAccountIds = appData.cashAccounts.map(account => account.id);
-    const months = [];
-    const netWorthData = [];
-    const sortedTransactions = [...appData.transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
-    let runningCash = 0;
-
-    for (let i = 5; i >= 0; i--) {
-        const date = new Date();
-        date.setMonth(date.getMonth() - i, 1);  // Start of month
-        const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);  // End of month
-
-        months.push(date.toLocaleDateString("en-US", { month: "short", year: "numeric" }));
-
-        // UPDATE: Compute full cumulative up to endDate (remove - runningCash for true accumulation)
-        runningCash = sortedTransactions
-            .filter(t => new Date(t.date) <= endDate && cashAccountIds.includes(t.account_id))
-            .reduce((sum, t) => sum + t.amount, 0);
-
-        // UPDATE: Use runningCash instead of monthCash
-        netWorthData.push(runningCash + totalInvestments - totalDebt);
-    }
-
-    chartInstances.netWorthChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: months,
-            datasets: [{
-                label: 'Net Worth',
-                data: netWorthData,
-                backgroundColor: 'rgba(31, 184, 205, 0.2)',
-                borderColor: 'rgba(31, 184, 205, 1)',
-                borderWidth: 2,
-                tension: 0.4,
-                fill: true,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const privacyEnabled = isPrivacyMode();
-                            return privacyFormatters.currencyTooltip('Net Worth', context.parsed.y);
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    ticks: {
-                        callback: privacyFormatters.axisTick
-                    }
-                }
-            }
-        }
-    });
-}
+// Function removed - netWorthChart canvas element doesn't exist in HTML
+// The dashboard uses mainDashboardChart instead for net worth visualization
 
 function createExpenseCategoryChart({ appData, CHART_COLORS }) {
     const ctx = document.getElementById("expenseCategoryChart").getContext("2d");
