@@ -1,6 +1,7 @@
 // js/modules/validation.js
 import { showError } from './ui.js';
 import { debug } from './debug.js';
+import { eventManager } from './eventManager.js';
 
 // Constants for validation limits
 const MAX_MONEY_AMOUNT = 999999999999.99; // ~1 trillion
@@ -497,7 +498,7 @@ export function setupRealtimeValidation(formId, validationSchema) {
         const field = form.querySelector(`[name="${fieldName}"], #${fieldName}`);
         if (!field) return;
         
-        field.addEventListener('blur', () => {
+        eventManager.addEventListener(field, 'blur', () => {
             const error = validateField(field.value, validationSchema[fieldName]);
             if (error) {
                 showFieldError(field.id || fieldName, error);
@@ -506,7 +507,7 @@ export function setupRealtimeValidation(formId, validationSchema) {
             }
         });
         
-        field.addEventListener('input', () => {
+        eventManager.addEventListener(field, 'input', () => {
             // Clear error on input
             clearFieldError(field.id || fieldName);
         });
