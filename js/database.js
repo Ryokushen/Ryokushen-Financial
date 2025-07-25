@@ -660,6 +660,73 @@ class FinancialDatabase {
             return true;
         } catch (error) { this.handleError('deletePaySchedule', error); }
     }
+
+    // --- BATCH OPERATIONS ---
+    /**
+     * Batch update holdings
+     * @param {Array} updates - Array of {id, updates} objects
+     * @returns {Promise<Array>} Array of results with success/error status for each update
+     */
+    async batchUpdateHoldings(updates) {
+        const results = [];
+        
+        // Process updates in parallel for better performance
+        const updatePromises = updates.map(async (update, index) => {
+            try {
+                const data = await this.updateHolding(update.id, update.updates);
+                results[index] = { success: true, data };
+            } catch (error) {
+                results[index] = { success: false, error };
+            }
+        });
+        
+        await Promise.all(updatePromises);
+        return results;
+    }
+
+    /**
+     * Batch update savings goals
+     * @param {Array} updates - Array of {id, updates} objects
+     * @returns {Promise<Array>} Array of results with success/error status for each update
+     */
+    async batchUpdateSavingsGoals(updates) {
+        const results = [];
+        
+        // Process updates in parallel for better performance
+        const updatePromises = updates.map(async (update, index) => {
+            try {
+                const data = await this.updateSavingsGoal(update.id, update.updates);
+                results[index] = { success: true, data };
+            } catch (error) {
+                results[index] = { success: false, error };
+            }
+        });
+        
+        await Promise.all(updatePromises);
+        return results;
+    }
+
+    /**
+     * Batch update transactions
+     * @param {Array} updates - Array of {id, updates} objects
+     * @returns {Promise<Array>} Array of results with success/error status for each update
+     */
+    async batchUpdateTransactions(updates) {
+        const results = [];
+        
+        // Process updates in parallel for better performance
+        const updatePromises = updates.map(async (update, index) => {
+            try {
+                const data = await this.updateTransaction(update.id, update.updates);
+                results[index] = { success: true, data };
+            } catch (error) {
+                results[index] = { success: false, error };
+            }
+        });
+        
+        await Promise.all(updatePromises);
+        return results;
+    }
 }
 
 const db = new FinancialDatabase();

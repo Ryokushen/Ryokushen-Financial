@@ -341,13 +341,9 @@ import { calendar } from './modules/calendar.js';
                 btn.textContent = 'Sending...';
                 
                 try {
-                    const user = supabaseAuth.getUser();
-                    const { error } = await supabaseAuth.supabase.auth.resend({
-                        type: 'signup',
-                        email: user.email,
-                    });
+                    const result = await supabaseAuth.resendVerificationEmail();
                     
-                    if (error) throw error;
+                    if (!result.success) throw new Error(result.message);
                     
                     btn.textContent = 'Email Sent!';
                     setTimeout(() => {

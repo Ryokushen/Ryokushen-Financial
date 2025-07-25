@@ -90,46 +90,22 @@ class BatchOperationManager {
      */
     async batchUpdateHoldings(operations) {
         const db = (await import('../database.js')).default;
-        const supabase = db.supabase;
         
-        // Process updates individually but in a single batch
-        const results = [];
-        const errors = [];
+        // Convert operations to the format expected by database.js
+        const updates = operations.map(op => ({
+            id: op.data.id,
+            updates: op.data.updates
+        }));
         
-        // Use Promise.all to update all holdings in parallel
-        const updatePromises = operations.map(async (op, index) => {
-            try {
-                const { data, error } = await supabase
-                    .from('holdings')
-                    .update({
-                        current_price: op.data.updates.current_price,
-                        value: op.data.updates.value
-                    })
-                    .eq('id', op.data.id)
-                    .select()
-                    .single();
-                    
-                if (error) {
-                    errors[index] = error;
-                    return null;
-                }
-                
-                results[index] = data;
-                return data;
-            } catch (error) {
-                errors[index] = error;
-                return null;
-            }
-        });
-        
-        await Promise.all(updatePromises);
+        // Use the new batch update method
+        const results = await db.batchUpdateHoldings(updates);
         
         // Resolve/reject operations based on results
         operations.forEach((op, index) => {
-            if (errors[index]) {
-                op.reject(errors[index]);
+            if (results[index].success) {
+                op.resolve(results[index].data);
             } else {
-                op.resolve(results[index]);
+                op.reject(results[index].error);
             }
         });
     }
@@ -139,43 +115,22 @@ class BatchOperationManager {
      */
     async batchUpdateSavingsGoals(operations) {
         const db = (await import('../database.js')).default;
-        const supabase = db.supabase;
         
-        // Process updates individually but in a single batch
-        const results = [];
-        const errors = [];
+        // Convert operations to the format expected by database.js
+        const updates = operations.map(op => ({
+            id: op.data.id,
+            updates: op.data.updates
+        }));
         
-        // Use Promise.all to update all savings goals in parallel
-        const updatePromises = operations.map(async (op, index) => {
-            try {
-                const { data, error } = await supabase
-                    .from('savings_goals')
-                    .update(op.data.updates)
-                    .eq('id', op.data.id)
-                    .select()
-                    .single();
-                    
-                if (error) {
-                    errors[index] = error;
-                    return null;
-                }
-                
-                results[index] = data;
-                return data;
-            } catch (error) {
-                errors[index] = error;
-                return null;
-            }
-        });
-        
-        await Promise.all(updatePromises);
+        // Use the new batch update method
+        const results = await db.batchUpdateSavingsGoals(updates);
         
         // Resolve/reject operations based on results
         operations.forEach((op, index) => {
-            if (errors[index]) {
-                op.reject(errors[index]);
+            if (results[index].success) {
+                op.resolve(results[index].data);
             } else {
-                op.resolve(results[index]);
+                op.reject(results[index].error);
             }
         });
     }
@@ -185,43 +140,22 @@ class BatchOperationManager {
      */
     async batchUpdateTransactions(operations) {
         const db = (await import('../database.js')).default;
-        const supabase = db.supabase;
         
-        // Process updates individually but in a single batch
-        const results = [];
-        const errors = [];
+        // Convert operations to the format expected by database.js
+        const updates = operations.map(op => ({
+            id: op.data.id,
+            updates: op.data.updates
+        }));
         
-        // Use Promise.all to update all transactions in parallel
-        const updatePromises = operations.map(async (op, index) => {
-            try {
-                const { data, error } = await supabase
-                    .from('transactions')
-                    .update(op.data.updates)
-                    .eq('id', op.data.id)
-                    .select()
-                    .single();
-                    
-                if (error) {
-                    errors[index] = error;
-                    return null;
-                }
-                
-                results[index] = data;
-                return data;
-            } catch (error) {
-                errors[index] = error;
-                return null;
-            }
-        });
-        
-        await Promise.all(updatePromises);
+        // Use the new batch update method
+        const results = await db.batchUpdateTransactions(updates);
         
         // Resolve/reject operations based on results
         operations.forEach((op, index) => {
-            if (errors[index]) {
-                op.reject(errors[index]);
+            if (results[index].success) {
+                op.resolve(results[index].data);
             } else {
-                op.resolve(results[index]);
+                op.reject(results[index].error);
             }
         });
     }

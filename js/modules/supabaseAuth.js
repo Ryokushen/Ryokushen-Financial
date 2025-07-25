@@ -5,7 +5,7 @@ class SupabaseAuthManager {
     constructor() {
         this.user = null;
         this.session = null;
-        this.supabase = window.supabaseClient;
+        this._supabase = window.supabaseClient; // Private property - use methods instead of direct access
         this.initialized = false;
         this.previousUserId = null;
         this.initPromise = this.initializeAuth();
@@ -20,7 +20,7 @@ class SupabaseAuthManager {
             this.handlePasswordReset();
             
             // Get initial session
-            const { data: { session } } = await this.supabase.auth.getSession();
+            const { data: { session } } = await this._supabase.auth.getSession();
             this.session = session;
             this.user = session?.user || null;
             this.initialized = true;
@@ -29,7 +29,7 @@ class SupabaseAuthManager {
             this.previousUserId = this.user?.id || null;
 
             // Listen for auth changes
-            this.supabase.auth.onAuthStateChange((event, session) => {
+            this._supabase.auth.onAuthStateChange((event, session) => {
                 const currentUserId = session?.user?.id || null;
                 const wasSignedIn = !!this.previousUserId;
                 const isSignedIn = !!currentUserId;
@@ -302,7 +302,7 @@ class SupabaseAuthManager {
         }
         
         try {
-            const { error } = await this.supabase.auth.updateUser({
+            const { error } = await this._supabase.auth.updateUser({
                 password: newPassword
             });
             
@@ -328,7 +328,7 @@ class SupabaseAuthManager {
         try {
             // Use window.location.origin to support both local and production environments
             const baseUrl = window.location.origin;
-            const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
+            const { error } = await this._supabase.auth.resetPasswordForEmail(email, {
                 redirectTo: `${baseUrl}/#recovery`,
             });
             
@@ -337,6 +337,29 @@ class SupabaseAuthManager {
             return { success: true, message: 'Password reset email sent! Check your inbox.' };
         } catch (error) {
             return { success: false, message: error.message || 'Failed to send reset email' };
+        }
+    }
+
+    /**
+     * Resend verification email
+     */
+    async resendVerificationEmail() {
+        try {
+            const user = this.getUser();
+            if (!user || !user.email) {
+                throw new Error('No user email found');
+            }
+            
+            const { error } = await this._supabase.auth.resend({
+                type: 'signup',
+                email: user.email,
+            });
+            
+            if (error) throw error;
+            
+            return { success: true, message: 'Verification email sent! Check your inbox.' };
+        } catch (error) {
+            return { success: false, message: error.message || 'Failed to send verification email' };
         }
     }
 
@@ -680,7 +703,7 @@ class SupabaseAuthManager {
         }
         
         try {
-            const { data, error } = await this.supabase.auth.signInWithPassword({
+            const { data, error } = await this._supabase.auth.signInWithPassword({
                 email,
                 password
             });
@@ -719,7 +742,7 @@ class SupabaseAuthManager {
         }
         
         try {
-            const { data, error } = await this.supabase.auth.signUp({
+            const { data, error } = await this._supabase.auth.signUp({
                 email,
                 password
             });
@@ -745,7 +768,7 @@ class SupabaseAuthManager {
         }
         
         try {
-            const { error } = await this.supabase.auth.signInWithOtp({
+            const { error } = await this._supabase.auth.signInWithOtp({
                 email,
                 options: {
                     emailRedirectTo: 'https://ryokushen-financial.netlify.app'
@@ -766,7 +789,7 @@ class SupabaseAuthManager {
      */
     async logout() {
         try {
-            await this.supabase.auth.signOut();
+            await this._supabase.auth.signOut();
         } catch (error) {
             debug.error('Logout error:', error);
         }
