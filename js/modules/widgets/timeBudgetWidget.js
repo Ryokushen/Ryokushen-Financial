@@ -8,6 +8,7 @@ import { formatCurrency, escapeHtml } from '../utils.js';
 import { debug } from '../debug.js';
 import { sumMoney } from '../financialMath.js';
 import { switchTab } from '../ui.js';
+import { eventManager } from '../eventManager.js';
 
 export class TimeBudgetWidget {
     constructor(containerId) {
@@ -32,12 +33,12 @@ export class TimeBudgetWidget {
         this.startAutoUpdate();
         
         // Listen for wage config updates
-        window.addEventListener('wage-config-updated', () => this.render());
+        eventManager.addEventListener(window, 'wage-config-updated', () => this.render());
         
         // Listen for transaction updates
-        window.addEventListener('transaction-added', () => this.render());
-        window.addEventListener('transaction-updated', () => this.render());
-        window.addEventListener('transaction-deleted', () => this.render());
+        eventManager.addEventListener(window, 'transaction-added', () => this.render());
+        eventManager.addEventListener(window, 'transaction-updated', () => this.render());
+        eventManager.addEventListener(window, 'transaction-deleted', () => this.render());
     }
 
     /**
@@ -212,7 +213,7 @@ export class TimeBudgetWidget {
     attachEventListeners() {
         const settingsBtn = this.container.querySelector('.go-to-settings-btn');
         if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => {
+            eventManager.addEventListener(settingsBtn, 'click', () => {
                 switchTab('settings', this.appData);
             });
         }
