@@ -5,6 +5,7 @@ import { showError, announceToScreenReader, openModal, closeModal } from './ui.j
 import { debug } from './debug.js';
 import { subtractMoney, addMoney, moneyGreaterThan, moneyLessThan, moneyEquals } from './financialMath.js';
 import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, ValidationRules, CrossFieldValidators, validateFormWithCrossFields } from './validation.js';
+import { eventManager } from './eventManager.js';
 
 function mapSavingsGoal(goal) {
     return {
@@ -19,16 +20,26 @@ function mapSavingsGoal(goal) {
 }
 
 export function setupEventListeners(appState, onUpdate) {
-    document.getElementById("add-goal-btn")?.addEventListener("click", () => openGoalModal(appState.appData));
-    document.getElementById("close-goal-modal")?.addEventListener("click", () => closeModal('goal-modal'));
-    document.getElementById("cancel-goal-btn")?.addEventListener("click", () => closeModal('goal-modal'));
-    document.getElementById("goal-form")?.addEventListener("submit", (e) => handleGoalSubmit(e, appState, onUpdate));
+    // Cache DOM elements
+    const addGoalBtn = document.getElementById("add-goal-btn");
+    const closeGoalModalBtn = document.getElementById("close-goal-modal");
+    const cancelGoalBtn = document.getElementById("cancel-goal-btn");
+    const goalForm = document.getElementById("goal-form");
+    const closeContributionModalBtn = document.getElementById("close-contribution-modal");
+    const cancelContributionBtn = document.getElementById("cancel-contribution-btn");
+    const contributionForm = document.getElementById("contribution-form");
+    const savingsGoalsList = document.getElementById("savings-goals-list");
+    
+    if (addGoalBtn) eventManager.addEventListener(addGoalBtn, "click", () => openGoalModal(appState.appData));
+    if (closeGoalModalBtn) eventManager.addEventListener(closeGoalModalBtn, "click", () => closeModal('goal-modal'));
+    if (cancelGoalBtn) eventManager.addEventListener(cancelGoalBtn, "click", () => closeModal('goal-modal'));
+    if (goalForm) eventManager.addEventListener(goalForm, "submit", (e) => handleGoalSubmit(e, appState, onUpdate));
 
-    document.getElementById("close-contribution-modal")?.addEventListener("click", () => closeModal('contribution-modal'));
-    document.getElementById("cancel-contribution-btn")?.addEventListener("click", () => closeModal('contribution-modal'));
-    document.getElementById("contribution-form")?.addEventListener("submit", (e) => handleContributionSubmit(e, appState, onUpdate));
+    if (closeContributionModalBtn) eventManager.addEventListener(closeContributionModalBtn, "click", () => closeModal('contribution-modal'));
+    if (cancelContributionBtn) eventManager.addEventListener(cancelContributionBtn, "click", () => closeModal('contribution-modal'));
+    if (contributionForm) eventManager.addEventListener(contributionForm, "submit", (e) => handleContributionSubmit(e, appState, onUpdate));
 
-    document.getElementById("savings-goals-list")?.addEventListener('click', event => {
+    if (savingsGoalsList) eventManager.addEventListener(savingsGoalsList, 'click', event => {
         const target = event.target;
         const card = target.closest('.goal-card');
         if (!card) return;

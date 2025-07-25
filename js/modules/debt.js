@@ -4,6 +4,7 @@ import { safeParseFloat, escapeHtml, formatCurrency, formatDate, getDueDateClass
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
 import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, CrossFieldValidators, validateFormWithCrossFields, validateWithAsyncRules, AsyncValidators } from './validation.js';
 import { DebtStrategy } from './debtStrategy.js';
+import { eventManager } from './eventManager.js';
 
 function openDebtModal(appData, debtId = null) {
     const modalData = { debtId };
@@ -550,12 +551,22 @@ function calculateAndDisplayPayoff(appState) {
 }
 
 export function setupEventListeners(appState, onUpdate) {
-    document.getElementById("add-debt-btn")?.addEventListener("click", () => openDebtModal(appState.appData));
-    document.getElementById("close-debt-modal")?.addEventListener("click", () => closeModal('debt-modal'));
-    document.getElementById("cancel-debt-btn")?.addEventListener("click", () => closeModal('debt-modal'));
-    document.getElementById("debt-form")?.addEventListener("submit", (e) => handleDebtSubmit(e, appState, onUpdate));
+    // Cache DOM elements
+    const addDebtBtn = document.getElementById("add-debt-btn");
+    const closeDebtModalBtn = document.getElementById("close-debt-modal");
+    const cancelDebtBtn = document.getElementById("cancel-debt-btn");
+    const debtForm = document.getElementById("debt-form");
+    const debtAccountsList = document.getElementById("debt-accounts-list");
+    const calculatePayoffBtn = document.getElementById("calculate-payoff-btn");
+    const debtStrategySelect = document.getElementById("debt-strategy-select");
+    const extraPaymentAmount = document.getElementById("extra-payment-amount");
+    
+    if (addDebtBtn) eventManager.addEventListener(addDebtBtn, "click", () => openDebtModal(appState.appData));
+    if (closeDebtModalBtn) eventManager.addEventListener(closeDebtModalBtn, "click", () => closeModal('debt-modal'));
+    if (cancelDebtBtn) eventManager.addEventListener(cancelDebtBtn, "click", () => closeModal('debt-modal'));
+    if (debtForm) eventManager.addEventListener(debtForm, "submit", (e) => handleDebtSubmit(e, appState, onUpdate));
 
-    document.getElementById("debt-accounts-list")?.addEventListener('click', (event) => {
+    if (debtAccountsList) eventManager.addEventListener(debtAccountsList, 'click', (event) => {
         const target = event.target;
         const id = parseInt(target.getAttribute('data-id'));
         if (!id) return;
@@ -571,13 +582,13 @@ export function setupEventListeners(appState, onUpdate) {
     });
     
     // Payoff calculation event listeners
-    document.getElementById("calculate-payoff-btn")?.addEventListener("click", () => calculateAndDisplayPayoff(appState));
-    document.getElementById("debt-strategy-select")?.addEventListener("change", () => {
+    if (calculatePayoffBtn) eventManager.addEventListener(calculatePayoffBtn, "click", () => calculateAndDisplayPayoff(appState));
+    if (debtStrategySelect) eventManager.addEventListener(debtStrategySelect, "change", () => {
         if (document.getElementById('payoff-results').style.display !== 'none') {
             calculateAndDisplayPayoff(appState);
         }
     });
-    document.getElementById("extra-payment-amount")?.addEventListener("input", () => {
+    if (extraPaymentAmount) eventManager.addEventListener(extraPaymentAmount, "input", () => {
         if (document.getElementById('payoff-results').style.display !== 'none') {
             calculateAndDisplayPayoff(appState);
         }
