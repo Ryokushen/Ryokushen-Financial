@@ -115,6 +115,15 @@ export function switchTab(tabName, appState) {
         }
     } else if (tabName === "recurring") {
         Recurring.renderRecurringBills(appState);
+    } else if (tabName === "settings") {
+        // Initialize privacy settings when switching to settings tab
+        import('./privacySettings.js').then(module => {
+            if (module.initializePrivacySettings) {
+                setTimeout(() => module.initializePrivacySettings(), 100);
+            }
+        }).catch(error => {
+            debug.error('Failed to load privacy settings module:', error);
+        });
     }
     
     // Reapply privacy mode after rendering new content

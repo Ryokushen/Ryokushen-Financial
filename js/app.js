@@ -492,14 +492,6 @@ import { eventManager } from './modules/eventManager.js';
         // Initialize transaction time preview
         initializeTransactionTimePreview();
         
-        // Initialize privacy settings when settings tab is clicked
-        const settingsTabBtn = document.getElementById('settings-tab-btn');
-        if (settingsTabBtn) {
-            eventManager.addEventListener(settingsTabBtn, 'click', () => {
-                setTimeout(() => initializePrivacySettings(), 100);
-            });
-        }
-        
         // Expose timeBudgets globally for debugging (only in development)
         if (window.location.hostname === 'localhost' || window.location.protocol === 'file:') {
             window.timeBudgets = timeBudgets;
