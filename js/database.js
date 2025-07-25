@@ -1,4 +1,6 @@
 // js/database.js
+import { debug } from './modules/debug.js';
+
 class FinancialDatabase {
     constructor() {
         if (!window.supabaseClient) {
@@ -9,7 +11,7 @@ class FinancialDatabase {
 
     // Helper method for error handling
     handleError(operation, error) {
-        console.error(`Database operation failed: ${operation}`, error);
+        debug.error(`Database operation failed: ${operation}`, error);
         throw new Error(`Database operation failed: ${operation} - ${error.message}`);
     }
 
@@ -61,7 +63,7 @@ class FinancialDatabase {
                 
                 // Exponential backoff: 1s, 2s, 4s
                 const delay = Math.pow(2, attempt - 1) * 1000;
-                console.warn(`${operationName} failed (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`, error);
+                debug.warn(`${operationName} failed (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`, error);
                 await new Promise(resolve => setTimeout(resolve, delay));
             }
         }
@@ -140,12 +142,12 @@ class FinancialDatabase {
 
             if (transactionResult.status === 'rejected') {
                 failedOperations.push('transactions');
-                console.error('Failed to delete transactions:', transactionResult.reason);
+                debug.error('Failed to delete transactions:', transactionResult.reason);
             }
 
             if (recurringBillResult.status === 'rejected') {
                 failedOperations.push('recurring bills');
-                console.error('Failed to update recurring bills:', recurringBillResult.reason);
+                debug.error('Failed to update recurring bills:', recurringBillResult.reason);
             }
 
             // If any related operations failed, don't proceed with account deletion
@@ -161,7 +163,7 @@ class FinancialDatabase {
 
             if (accountError) {
                 // Account deletion failed - attempt to restore data
-                console.error('Account deletion failed, attempting to restore related data...');
+                debug.error('Account deletion failed, attempting to restore related data...');
                 
                 const restorePromises = [];
 
@@ -169,8 +171,8 @@ class FinancialDatabase {
                 if (transactionResult.status === 'fulfilled' && transactionsToDelete && transactionsToDelete.length > 0) {
                     restorePromises.push(
                         this.supabase.from('transactions').insert(transactionsToDelete)
-                            .then(() => console.log('Transactions restored successfully'))
-                            .catch(err => console.error('Failed to restore transactions:', err))
+                            .then(() => debug.log('Transactions restored successfully'))
+                            .catch(err => debug.error('Failed to restore transactions:', err))
                     );
                 }
 

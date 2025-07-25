@@ -194,7 +194,7 @@ class SmartRules {
     const result = await ruleEngine.process(transaction, this.rules)
     
     if (result.matched) {
-      console.log(`SmartRules: Rule "${result.rule.name}" matched for transaction:`, transaction.description)
+      debug.log(`SmartRules: Rule "${result.rule.name}" matched for transaction:`, transaction.description)
       
       // No need to update statistics - they're calculated dynamically now
       
@@ -213,7 +213,7 @@ class SmartRules {
 
   async applyRulesToExistingTransactions(transactionIds = null, forceProcess = false) {
     try {
-      console.log(`SmartRules: Applying rules to existing transactions (forceProcess: ${forceProcess})`)
+      debug.log(`SmartRules: Applying rules to existing transactions (forceProcess: ${forceProcess})`)
       
       // Get transactions using the database method
       let transactions = await database.getTransactions()
@@ -223,7 +223,7 @@ class SmartRules {
         transactions = transactions.filter(t => transactionIds.includes(t.id))
       }
       
-      console.log(`SmartRules: Found ${transactions.length} transactions to process`)
+      debug.log(`SmartRules: Found ${transactions.length} transactions to process`)
       
       let processed = 0
       let matched = 0
@@ -243,7 +243,7 @@ class SmartRules {
         }
       }
       
-      console.log(`SmartRules: Processing complete - Processed: ${processed}, Matched: ${matched}, Skipped: ${skipped}`)
+      debug.log(`SmartRules: Processing complete - Processed: ${processed}, Matched: ${matched}, Skipped: ${skipped})`)
       
       return { 
         processed, 

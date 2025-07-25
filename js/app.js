@@ -24,6 +24,7 @@ import { initializeTransactionTimePreview } from './modules/transactionTimePrevi
 import { initializePrivacySettings } from './modules/privacySettings.js';
 import { initRulesUI } from './modules/rulesUI.js';
 import { calendar } from './modules/calendar.js';
+import { eventManager } from './modules/eventManager.js';
 
 // Initialize app after auth is ready
 (async function initApp() {
@@ -75,30 +76,30 @@ import { calendar } from './modules/calendar.js';
     let globalVoiceInterface = null;
 
     // Global error handlers
-    window.addEventListener('unhandledrejection', event => {
+    eventManager.addEventListener(window, 'unhandledrejection', event => {
         debug.error('Unhandled promise rejection:', event.reason);
         showError('An unexpected error occurred. Please refresh the page if issues persist.');
         event.preventDefault();
     });
 
-    window.addEventListener('error', event => {
+    eventManager.addEventListener(window, 'error', event => {
         debug.error('Global error:', event.error);
         showError('An unexpected error occurred. Please refresh the page if issues persist.');
         event.preventDefault();
     });
 
     // Network status handlers
-    window.addEventListener('online', () => {
+    eventManager.addEventListener(window, 'online', () => {
         const banner = document.getElementById('offline-banner');
         if (banner) banner.style.display = 'none';
         announceToScreenReader('Connection restored');
     });
 
-    window.addEventListener('offline', () => {
+    eventManager.addEventListener(window, 'offline', () => {
         showError('No internet connection. Some features may not work.');
     });
 
-    document.addEventListener("DOMContentLoaded", async () => {
+    eventManager.addEventListener(document, "DOMContentLoaded", async () => {
         try {
             // Add user info and logout button to header
             addUserInfoToHeader();
@@ -334,32 +335,34 @@ import { calendar } from './modules/calendar.js';
             document.body.insertBefore(banner, document.body.firstChild);
             
             // Add resend handler
-            document.getElementById('resend-verification').addEventListener('click', async () => {
-                const btn = document.getElementById('resend-verification');
-                const originalText = btn.textContent;
-                btn.disabled = true;
-                btn.textContent = 'Sending...';
-                
-                try {
-                    const result = await supabaseAuth.resendVerificationEmail();
+            const resendBtn = document.getElementById('resend-verification');
+            if (resendBtn) {
+                eventManager.addEventListener(resendBtn, 'click', async () => {
+                    const btn = document.getElementById('resend-verification');
+                    const originalText = btn.textContent;
+                    btn.disabled = true;
+                    btn.textContent = 'Sending...';
                     
-                    if (!result.success) throw new Error(result.message);
-                    
-                    btn.textContent = 'Email Sent!';
-                    setTimeout(() => {
-                        btn.textContent = originalText;
-                        btn.disabled = false;
-                    }, 3000);
-                } catch (error) {
-                    console.error('Failed to resend verification email:', error);
-                    btn.textContent = 'Failed';
-                    setTimeout(() => {
-                        btn.textContent = originalText;
-                        btn.disabled = false;
-                    }, 3000);
-                }
-            });
-        }
+                    try {
+                        const result = await supabaseAuth.resendVerificationEmail();
+                        
+                        if (!result.success) throw new Error(result.message);
+                        
+                        btn.textContent = 'Email Sent!';
+                        setTimeout(() => {
+                            btn.textContent = originalText;
+                            btn.disabled = false;
+                        }, 3000);
+                    } catch (error) {
+                        debug.error('Failed to resend verification email:', error);
+                        btn.textContent = 'Failed';
+                        setTimeout(() => {
+                            btn.textContent = originalText;
+                            btn.disabled = false;
+                        }, 3000);
+                    }
+                });
+            }
     }
 
     // Function to add user info and logout button to header
@@ -377,7 +380,7 @@ import { calendar } from './modules/calendar.js';
         
         // Setup logout button if it exists
         if (logoutBtn) {
-            logoutBtn.addEventListener('click', async () => {
+            eventManager.addEventListener(logoutBtn, 'click', async () => {
                 try {
                     await supabaseAuth.logout();
                     window.location.reload();
@@ -388,11 +391,14 @@ import { calendar } from './modules/calendar.js';
         }
         
         // Add logout handler
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            if (confirm('Are you sure you want to logout?')) {
-                supabaseAuth.logout();
-            }
-        });
+        const logoutButton = document.getElementById('logout-btn');
+        if (logoutButton) {
+            eventManager.addEventListener(logoutButton, 'click', () => {
+                if (confirm('Are you sure you want to logout?')) {
+                    supabaseAuth.logout();
+                }
+            });
+        }
     }
 
     // Optimized account balance calculation with better data structures
@@ -449,7 +455,7 @@ import { calendar } from './modules/calendar.js';
         };
 
         // Prevent unwanted scrolling on body clicks
-        document.addEventListener('click', (e) => {
+        eventManager.addEventListener(document, 'click', (e) => {
             // If clicking on body or non-interactive elements
             if (e.target === document.body || 
                 (!e.target.closest('button, a, input, select, textarea, [role="button"], .clickable, label'))) {
@@ -462,13 +468,15 @@ import { calendar } from './modules/calendar.js';
         }, true);
 
         document.querySelectorAll(".tab-btn").forEach(button => {
-            button.addEventListener("click", function () { switchTab(this.getAttribute("data-tab"), appState); });
+            eventManager.addEventListener(button, "click", function () { 
+                switchTab(this.getAttribute("data-tab"), appState); 
+            });
         });
         
         // Add voice button event listener
         const voiceBtn = document.getElementById('voice-command-btn');
         if (voiceBtn) {
-            voiceBtn.addEventListener('click', () => {
+            eventManager.addEventListener(voiceBtn, 'click', () => {
                 if (window.globalVoiceInterface) {
                     window.globalVoiceInterface.handleVoiceButtonClick();
                 } else {
@@ -484,9 +492,12 @@ import { calendar } from './modules/calendar.js';
         initializeTransactionTimePreview();
         
         // Initialize privacy settings when settings tab is clicked
-        document.getElementById('settings-tab-btn')?.addEventListener('click', () => {
-            setTimeout(() => initializePrivacySettings(), 100);
-        });
+        const settingsTabBtn = document.getElementById('settings-tab-btn');
+        if (settingsTabBtn) {
+            eventManager.addEventListener(settingsTabBtn, 'click', () => {
+                setTimeout(() => initializePrivacySettings(), 100);
+            });
+        }
         
         // Expose timeBudgets globally for debugging (only in development)
         if (window.location.hostname === 'localhost' || window.location.protocol === 'file:') {
@@ -510,14 +521,14 @@ import { calendar } from './modules/calendar.js';
         // Setup privacy mode event listeners
         const privacyToggleBtn = document.getElementById('privacy-toggle-btn');
         if (privacyToggleBtn) {
-            privacyToggleBtn.addEventListener('click', async () => {
+            eventManager.addEventListener(privacyToggleBtn, 'click', async () => {
                 await togglePrivacyMode();
             });
         }
         
         const panicButton = document.getElementById('panic-button');
         if (panicButton) {
-            panicButton.addEventListener('click', () => {
+            eventManager.addEventListener(panicButton, 'click', () => {
                 enablePanicMode();
             });
         }
@@ -722,4 +733,33 @@ import { calendar } from './modules/calendar.js';
         localStorage.setItem(migrationKey, 'completed');
         debug.log(`Credit card sign migration completed. Updated ${migratedCount} transactions.`);
     }
+    
+    // Export cleanup function for testing and memory management
+    window.cleanupApp = () => {
+        debug.log('Starting app cleanup...');
+        
+        // Remove all event listeners
+        eventManager.removeAllListeners();
+        
+        // Call module cleanup functions if they exist
+        if (typeof Accounts.cleanup === 'function') Accounts.cleanup();
+        if (typeof Transactions.cleanup === 'function') Transactions.cleanup();
+        if (typeof Investments.cleanup === 'function') Investments.cleanup();
+        if (typeof Debt.cleanup === 'function') Debt.cleanup();
+        if (typeof Recurring.cleanup === 'function') Recurring.cleanup();
+        if (typeof Savings.cleanup === 'function') Savings.cleanup();
+        
+        // Clear app state
+        appState.appData = {
+            transactions: [],
+            cashAccounts: [],
+            investmentAccounts: [],
+            debtAccounts: [],
+            recurringBills: [],
+            savingsGoals: []
+        };
+        appState.balanceCache.clear();
+        
+        debug.log('App cleanup completed');
+    };
 })(); // Close the async IIFE

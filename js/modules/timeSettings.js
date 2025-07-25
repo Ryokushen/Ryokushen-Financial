@@ -11,8 +11,8 @@ import { debug } from './debug.js';
  * Show a success message to the user
  */
 function showMessage(message, type = 'info') {
-    // For now, use console log - can be enhanced later
-    console.log(`[${type.toUpperCase()}] ${message}`);
+    // For now, use debug log - can be enhanced later
+    debug.log(`[${type.toUpperCase()}] ${message}`);
     
     // Could also show a temporary UI element
     const messageEl = document.createElement('div');

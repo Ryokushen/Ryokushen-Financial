@@ -295,7 +295,7 @@ export function setupEventListeners(appState, onUpdate) {
 
     // Cancel edit button
     document.getElementById("cancel-edit-btn")?.addEventListener('click', () => {
-        console.log('Cancel edit button clicked');
+        debug.log('Cancel edit button clicked');
         cancelEdit();
     });
 
@@ -530,7 +530,7 @@ function editTransaction(id, appState) {
 }
 
 function cancelEdit() {
-    console.log('cancelEdit called');
+    debug.log('cancelEdit called');
     editingTransactionId = null;
     originalTransaction = null;
 
@@ -602,7 +602,7 @@ function showCancelButton() {
         
         // Add event listener to the newly created button
         cancelBtn.addEventListener('click', () => {
-            console.log('Cancel edit button clicked (from dynamic creation)');
+            debug.log('Cancel edit button clicked (from dynamic creation)');
             cancelEdit();
         });
     }
@@ -1226,7 +1226,7 @@ async function updateDebtAccountBalance(debtAccountId, amount, appState) {
         const newBalance = addMoney(oldBalance, balanceChange);
         
         // Enhanced debugging to track the issue
-        console.log('Credit Card Balance Update Debug:', {
+        debug.log('Credit Card Balance Update Debug:', {
             accountId: debtAccountId,
             accountName: debtAccount.name,
             transactionAmount: amount,
