@@ -1,6 +1,7 @@
 // js/modules/voice/confirmationDialog.js - Voice Input Confirmation Dialog
 
 import { debug } from '../debug.js';
+import { eventManager } from '../eventManager.js';
 
 /**
  * Confirmation Dialog for Voice-Parsed Transactions
@@ -341,32 +342,47 @@ export class ConfirmationDialog {
      */
     setupEventListeners() {
         // Close button
-        this.dialog.querySelector('.voice-confirmation-close').addEventListener('click', () => {
-            this.hide();
-        });
+        const closeBtn = this.dialog.querySelector('.voice-confirmation-close');
+        if (closeBtn) {
+            eventManager.addEventListener(closeBtn, 'click', () => {
+                this.hide();
+            });
+        }
 
         // Overlay click to close
-        this.dialog.querySelector('.voice-confirmation-overlay').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                this.hide();
-            }
-        });
+        const overlay = this.dialog.querySelector('.voice-confirmation-overlay');
+        if (overlay) {
+            eventManager.addEventListener(overlay, 'click', (e) => {
+                if (e.target === e.currentTarget) {
+                    this.hide();
+                }
+            });
+        }
 
         // Footer buttons
-        this.dialog.querySelector('#voice-confirm-apply').addEventListener('click', () => {
-            this.handleApply(false);
-        });
+        const applyBtn = this.dialog.querySelector('#voice-confirm-apply');
+        if (applyBtn) {
+            eventManager.addEventListener(applyBtn, 'click', () => {
+                this.handleApply(false);
+            });
+        }
 
-        this.dialog.querySelector('#voice-confirm-edit').addEventListener('click', () => {
-            this.handleApply(true);
-        });
+        const editBtn = this.dialog.querySelector('#voice-confirm-edit');
+        if (editBtn) {
+            eventManager.addEventListener(editBtn, 'click', () => {
+                this.handleApply(true);
+            });
+        }
 
-        this.dialog.querySelector('#voice-confirm-cancel').addEventListener('click', () => {
-            this.hide();
-        });
+        const cancelBtn = this.dialog.querySelector('#voice-confirm-cancel');
+        if (cancelBtn) {
+            eventManager.addEventListener(cancelBtn, 'click', () => {
+                this.hide();
+            });
+        }
 
         // Escape key to close
-        document.addEventListener('keydown', this.handleKeyDown.bind(this));
+        eventManager.addEventListener(document, 'keydown', this.handleKeyDown.bind(this));
     }
 
     /**
@@ -490,7 +506,7 @@ export class ConfirmationDialog {
      */
     hide() {
         if (this.dialog) {
-            document.removeEventListener('keydown', this.handleKeyDown.bind(this));
+            // EventManager will handle cleanup of event listeners when the DOM element is removed
             if (this.dialog.parentNode) {
                 this.dialog.parentNode.removeChild(this.dialog);
             }
