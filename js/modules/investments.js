@@ -10,6 +10,7 @@ import { debug } from './debug.js';
 import { sumMoney, multiplyMoney } from './financialMath.js';
 import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, validateWithAsyncRules, AsyncValidators } from './validation.js';
 import { InvestmentCalculators } from './investmentCalculators.js';
+import { eventManager } from './eventManager.js';
 
 // Initialize holdings updater (will be set with appState later)
 let holdingsUpdater = null;
@@ -598,18 +599,27 @@ export function setupEventListeners(appState, onUpdate) {
     holdingsUpdater = new HoldingsUpdater(appState, stockApiService);
 
     // Add a DIRECT event listener for the update prices button
-    document.addEventListener('click', event => {
+    eventManager.addEventListener(document, 'click', event => {
         if (event.target.id === 'update-all-prices-btn') {
             updateAllStockPrices(appState, onUpdate);
         }
     });
 
-    document.getElementById("add-investment-account-btn")?.addEventListener("click", () => openInvestmentAccountModal(appState.appData));
-    document.getElementById("close-investment-account-modal")?.addEventListener("click", () => closeModal('investment-account-modal'));
-    document.getElementById("cancel-investment-account-btn")?.addEventListener("click", () => closeModal('investment-account-modal'));
-    document.getElementById("investment-account-form")?.addEventListener("submit", (e) => handleInvestmentAccountSubmit(e, appState, onUpdate));
+    const addInvestmentBtn = document.getElementById("add-investment-account-btn");
+    if (addInvestmentBtn) eventManager.addEventListener(addInvestmentBtn, "click", () => openInvestmentAccountModal(appState.appData));
+    
+    const closeInvestmentModalBtn = document.getElementById("close-investment-account-modal");
+    if (closeInvestmentModalBtn) eventManager.addEventListener(closeInvestmentModalBtn, "click", () => closeModal('investment-account-modal'));
+    
+    const cancelInvestmentBtn = document.getElementById("cancel-investment-account-btn");
+    if (cancelInvestmentBtn) eventManager.addEventListener(cancelInvestmentBtn, "click", () => closeModal('investment-account-modal'));
+    
+    const investmentForm = document.getElementById("investment-account-form");
+    if (investmentForm) eventManager.addEventListener(investmentForm, "submit", (e) => handleInvestmentAccountSubmit(e, appState, onUpdate));
 
-    document.getElementById("investment-accounts-list")?.addEventListener('click', event => {
+    const investmentAccountsList = document.getElementById("investment-accounts-list");
+    if (investmentAccountsList) {
+        eventManager.addEventListener(investmentAccountsList, 'click', event => {
         const target = event.target;
         
         // Prevent header click from triggering button actions
@@ -639,21 +649,37 @@ export function setupEventListeners(appState, onUpdate) {
             const symbol = target.getAttribute('data-symbol');
             updateSingleHolding(symbol, appState, onUpdate);
         }
-    });
+        });
+    }
 
-    document.getElementById("close-holding-modal")?.addEventListener("click", () => closeModal('holding-modal'));
-    document.getElementById("cancel-holding-btn")?.addEventListener("click", () => closeModal('holding-modal'));
-    document.getElementById("holding-form")?.addEventListener("submit", (e) => handleHoldingSubmit(e, appState, onUpdate));
+    const closeHoldingModalBtn = document.getElementById("close-holding-modal");
+    if (closeHoldingModalBtn) eventManager.addEventListener(closeHoldingModalBtn, "click", () => closeModal('holding-modal'));
+    
+    const cancelHoldingBtn = document.getElementById("cancel-holding-btn");
+    if (cancelHoldingBtn) eventManager.addEventListener(cancelHoldingBtn, "click", () => closeModal('holding-modal'));
+    
+    const holdingForm = document.getElementById("holding-form");
+    if (holdingForm) eventManager.addEventListener(holdingForm, "submit", (e) => handleHoldingSubmit(e, appState, onUpdate));
 
     // Auto-calculate holding value
-    document.getElementById('holding-shares')?.addEventListener('input', updateHoldingValue);
-    document.getElementById('holding-price')?.addEventListener('input', updateHoldingValue);
+    const holdingShares = document.getElementById('holding-shares');
+    if (holdingShares) eventManager.addEventListener(holdingShares, 'input', updateHoldingValue);
+    
+    const holdingPrice = document.getElementById('holding-price');
+    if (holdingPrice) eventManager.addEventListener(holdingPrice, 'input', updateHoldingValue);
     
     // Investment calculator event listeners
-    document.getElementById('calculator-type')?.addEventListener('change', handleCalculatorTypeChange);
-    document.getElementById('calculate-contribution-btn')?.addEventListener('click', () => calculateExtraContribution(appState));
-    document.getElementById('calculate-retirement-btn')?.addEventListener('click', () => calculateRetirementGoal(appState));
-    document.getElementById('calculate-growth-btn')?.addEventListener('click', () => calculatePortfolioGrowth(appState));
+    const calculatorType = document.getElementById('calculator-type');
+    if (calculatorType) eventManager.addEventListener(calculatorType, 'change', handleCalculatorTypeChange);
+    
+    const calculateContributionBtn = document.getElementById('calculate-contribution-btn');
+    if (calculateContributionBtn) eventManager.addEventListener(calculateContributionBtn, 'click', () => calculateExtraContribution(appState));
+    
+    const calculateRetirementBtn = document.getElementById('calculate-retirement-btn');
+    if (calculateRetirementBtn) eventManager.addEventListener(calculateRetirementBtn, 'click', () => calculateRetirementGoal(appState));
+    
+    const calculateGrowthBtn = document.getElementById('calculate-growth-btn');
+    if (calculateGrowthBtn) eventManager.addEventListener(calculateGrowthBtn, 'click', () => calculatePortfolioGrowth(appState));
 }
 
 const updateHoldingValue = debounce(function() {
