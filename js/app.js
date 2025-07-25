@@ -363,6 +363,7 @@ import { eventManager } from './modules/eventManager.js';
                     }
                 });
             }
+        }
     }
 
     // Function to add user info and logout button to header
