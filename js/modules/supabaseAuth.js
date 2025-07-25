@@ -1,5 +1,6 @@
 // js/modules/supabaseAuth.js - Supabase Authentication Module
 import { debug } from './debug.js';
+import { eventManager } from './eventManager.js';
 
 class SupabaseAuthManager {
     constructor() {
@@ -267,11 +268,12 @@ class SupabaseAuthManager {
         `;
         
         // Add event handler
-        document.getElementById('reset-password-btn').addEventListener('click', () => this.updatePassword());
+        const resetBtn = document.getElementById('reset-password-btn');
+        if (resetBtn) eventManager.addEventListener(resetBtn, 'click', () => this.updatePassword());
         
         // Enter key handling
         document.querySelectorAll('input').forEach(input => {
-            input.addEventListener('keypress', (e) => {
+            eventManager.addEventListener(input, 'keypress', (e) => {
                 if (e.key === 'Enter') {
                     this.updatePassword();
                 }
@@ -639,7 +641,7 @@ class SupabaseAuthManager {
     attachAuthHandlers() {
         // Tab switching
         document.querySelectorAll('.auth-tab').forEach(tab => {
-            tab.addEventListener('click', (e) => {
+            eventManager.addEventListener(tab, 'click', (e) => {
                 document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
                 
@@ -650,16 +652,20 @@ class SupabaseAuthManager {
         });
 
         // Login
-        document.getElementById('login-btn').addEventListener('click', () => this.handleLogin());
+        const loginBtn = document.getElementById('login-btn');
+        if (loginBtn) eventManager.addEventListener(loginBtn, 'click', () => this.handleLogin());
         
         // Sign up
-        document.getElementById('signup-btn').addEventListener('click', () => this.handleSignup());
+        const signupBtn = document.getElementById('signup-btn');
+        if (signupBtn) eventManager.addEventListener(signupBtn, 'click', () => this.handleSignup());
         
         // Magic link
-        document.getElementById('magic-link-btn').addEventListener('click', () => this.handleMagicLink());
+        const magicLinkBtn = document.getElementById('magic-link-btn');
+        if (magicLinkBtn) eventManager.addEventListener(magicLinkBtn, 'click', () => this.handleMagicLink());
         
         // Forgot password
-        document.getElementById('forgot-password-link')?.addEventListener('click', (e) => {
+        const forgotPasswordLink = document.getElementById('forgot-password-link');
+        if (forgotPasswordLink) eventManager.addEventListener(forgotPasswordLink, 'click', (e) => {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
             if (email) {
@@ -677,7 +683,7 @@ class SupabaseAuthManager {
         
         // Enter key handling
         document.querySelectorAll('input').forEach(input => {
-            input.addEventListener('keypress', (e) => {
+            eventManager.addEventListener(input, 'keypress', (e) => {
                 if (e.key === 'Enter') {
                     const activeForm = document.querySelector('.auth-form.active');
                     if (activeForm.id === 'login-form') {
