@@ -2,6 +2,7 @@
 
 import { domCache } from './domCache.js';
 import { debug } from './debug.js';
+import { eventManager } from './eventManager.js';
 
 /**
  * Centralized Modal Manager
@@ -53,15 +54,15 @@ class ModalManager {
         };
         
         // Listen for custom close-modal events from formUtils
-        window.addEventListener('close-modal', (e) => {
+        eventManager.addEventListener(window, 'close-modal', (e) => {
             if (e.detail && e.detail.modalId) {
                 this.close(e.detail.modalId);
             }
         });
         
         // Setup global event listeners with bound handlers
-        document.addEventListener('keydown', this.boundHandlers.keydown);
-        document.addEventListener('click', this.boundHandlers.click);
+        eventManager.addEventListener(document, 'keydown', this.boundHandlers.keydown);
+        eventManager.addEventListener(document, 'click', this.boundHandlers.click);
         
         this.initialized = true;
     }
@@ -109,7 +110,7 @@ class ModalManager {
                 e.preventDefault();
                 this.close(modalId);
             };
-            btn.addEventListener('click', closeHandler);
+            eventManager.addEventListener(btn, 'click', closeHandler);
             modalListeners.push({ element: btn, event: 'click', handler: closeHandler });
         });
         
@@ -121,7 +122,7 @@ class ModalManager {
                     e.preventDefault();
                     await config.onSubmit(e);
                 };
-                form.addEventListener('submit', submitHandler);
+                eventManager.addEventListener(form, 'submit', submitHandler);
                 modalListeners.push({ element: form, event: 'submit', handler: submitHandler });
             }
         }
@@ -264,13 +265,8 @@ class ModalManager {
      * Destroy the modal manager and clean up all event listeners
      */
     destroy() {
-        // Remove global event listeners
-        if (this.boundHandlers.keydown) {
-            document.removeEventListener('keydown', this.boundHandlers.keydown);
-        }
-        if (this.boundHandlers.click) {
-            document.removeEventListener('click', this.boundHandlers.click);
-        }
+        // Note: eventManager will handle removal of all event listeners automatically
+        // when eventManager.removeAllListeners() is called from app cleanup
         
         // Clean up all modal-specific event listeners
         this.eventListeners.forEach((listeners, modalId) => {

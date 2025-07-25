@@ -10,55 +10,13 @@ import { dataIndex } from './dataIndex.js';
 import { debounce } from './performanceUtils.js';
 import { populateFormFromData, extractFormData } from './formUtils.js';
 import { timeBudgets } from './timeBudgets.js';
+import { eventManager } from './eventManager.js';
+import { getCategoryIcon } from './categories.js';
 
 let currentCategoryFilter = "";
 let editingTransactionId = null;
 let originalTransaction = null;
 let appStateReference = null;
-
-// Store event listener references for cleanup
-const eventListeners = new Map();
-
-// Get icon for transaction category
-export function getCategoryIcon(category, isIncome = false) {
-    if (isIncome || category === 'Income') {
-        return '💵'; // Money with wings for income
-    }
-    
-    const icons = {
-        'Groceries': '🛒',
-        'Dining': '🍴',
-        'Transportation': '🚗',
-        'Entertainment': '🎭',
-        'Shopping': '🛍️',
-        'Healthcare': '🏥',
-        'Bills': '💳',
-        'Housing': '🏠',
-        'Debt': '💳',
-        'Payment': '💸',
-        'Savings': '💰',
-        'Investment': '📈',
-        'Education': '🎓',
-        'Travel': '✈️',
-        'Gifts': '🎁',
-        'Insurance': '🛡️',
-        'Taxes': '📜',
-        'ATM/Cash': '💵',
-        'Fees': '💸',
-        'Business': '💼',
-        'Childcare': '👶',
-        'Pet Care': '🐶',
-        'Personal Care': '💇',
-        'Home Improvement': '🔨',
-        'Professional Services': '👩‍💼',
-        'Interest': '💹',
-        'Transfer': '🔄',
-        'Misc': '📊',
-        'Uncategorized': '📦'
-    };
-    
-    return icons[category] || '💼';
-}
 
 // Function to populate the transfer-to-account dropdown
 function populateTransferToAccount(type, excludeAccount = null) {
@@ -105,8 +63,6 @@ function populateTransferToAccount(type, excludeAccount = null) {
 }
 
 export function setupEventListeners(appState, onUpdate) {
-    // Clean up any existing listeners first
-    cleanupEventListeners();
     
     // Store reference to appState for use in other functions
     appStateReference = appState;
@@ -114,7 +70,7 @@ export function setupEventListeners(appState, onUpdate) {
     // Add transaction button for enhanced table
     const addTransactionBtn = document.getElementById('add-transaction-btn');
     if (addTransactionBtn) {
-        addTransactionBtn.addEventListener('click', () => {
+        eventManager.addEventListener(addTransactionBtn, 'click', () => {
             // Show the transaction form modal
             const formSection = document.querySelector('.transaction-form-section');
             if (formSection) {
@@ -132,7 +88,7 @@ export function setupEventListeners(appState, onUpdate) {
     // Voice add transaction button
     const voiceAddTransactionBtn = document.getElementById('voice-add-transaction-btn');
     if (voiceAddTransactionBtn) {
-        voiceAddTransactionBtn.addEventListener('click', () => {
+        eventManager.addEventListener(voiceAddTransactionBtn, 'click', () => {
             // First, show the transaction form
             const formSection = document.querySelector('.transaction-form-section');
             if (formSection) {
@@ -166,7 +122,7 @@ export function setupEventListeners(appState, onUpdate) {
     // Cancel transaction button
     const cancelTransactionBtn = document.getElementById('cancel-transaction-btn');
     if (cancelTransactionBtn) {
-        cancelTransactionBtn.addEventListener('click', () => {
+        eventManager.addEventListener(cancelTransactionBtn, 'click', () => {
             const formSection = document.querySelector('.transaction-form-section');
             if (formSection) {
                 formSection.style.display = 'none';
@@ -192,8 +148,7 @@ export function setupEventListeners(appState, onUpdate) {
     const addEventListener = (elementId, event, handler) => {
         const element = document.getElementById(elementId);
         if (element) {
-            element.addEventListener(event, handler);
-            eventListeners.set(`${elementId}_${event}`, { element, event, handler });
+            eventManager.addEventListener(element, event, handler);
         }
     };
     
@@ -202,7 +157,9 @@ export function setupEventListeners(appState, onUpdate) {
     addEventListener("transaction-form", "submit", transactionSubmitHandler);
     
     // Add account change listener
-    document.getElementById("transaction-account")?.addEventListener("change", function () {
+    const transactionAccount = document.getElementById("transaction-account");
+    if (transactionAccount) {
+        eventManager.addEventListener(transactionAccount, "change", function () {
         const categoryValue = document.getElementById("transaction-category")?.value;
         
         // Warn about Debt category with credit cards
@@ -221,9 +178,12 @@ export function setupEventListeners(appState, onUpdate) {
             showError("For payments, please select a cash account as the source. Credit card accounts cannot be used to pay other debts.");
             this.value = ""; // Reset the selection
         }
-    });
+        });
+    }
 
-    document.getElementById("transaction-category")?.addEventListener("change", function () {
+    const transactionCategory = document.getElementById("transaction-category");
+    if (transactionCategory) {
+        eventManager.addEventListener(transactionCategory, "change", function () {
         const debtGroup = document.getElementById("debt-account-group");
         const transferGroup = document.getElementById("transfer-account-group");
         const accountLabel = document.querySelector('label[for="transaction-account"]');
@@ -264,7 +224,8 @@ export function setupEventListeners(appState, onUpdate) {
             showError("For credit card transactions, please use a regular category instead of 'Debt'. For payments, use the 'Payment' category. The 'Debt' category is for non-account debt payments.");
             this.value = ""; // Reset the category
         }
-    });
+        });
+    }
 
     // Debounced filter handler for better performance
     const debouncedFilter = debounce((e) => {
@@ -272,9 +233,14 @@ export function setupEventListeners(appState, onUpdate) {
         renderTransactions(appState, currentCategoryFilter);
     }, 300);
     
-    document.getElementById("filter-category")?.addEventListener("change", debouncedFilter);
+    const filterCategory = document.getElementById("filter-category");
+    if (filterCategory) {
+        eventManager.addEventListener(filterCategory, "change", debouncedFilter);
+    }
 
-    document.getElementById("transactions-table-body")?.addEventListener('click', (event) => {
+    const transactionsTableBody = document.getElementById("transactions-table-body");
+    if (transactionsTableBody) {
+        eventManager.addEventListener(transactionsTableBody, 'click', (event) => {
         const dataId = event.target.getAttribute('data-id');
         if (!dataId) return; // Skip if no data-id attribute
         
@@ -291,19 +257,23 @@ export function setupEventListeners(appState, onUpdate) {
             event.stopPropagation();
             editTransaction(transactionId, appState);
         }
-    });
+        });
+    }
 
     // Cancel edit button
-    document.getElementById("cancel-edit-btn")?.addEventListener('click', () => {
+    const cancelEditBtn = document.getElementById("cancel-edit-btn");
+    if (cancelEditBtn) {
+        eventManager.addEventListener(cancelEditBtn, 'click', () => {
         debug.log('Cancel edit button clicked');
         cancelEdit();
-    });
+        });
+    }
 
     // Voice input button
     setupVoiceInput();
     
     // Listen for transaction categorization from Smart Rules
-    window.addEventListener('transaction:categorized', (event) => {
+    eventManager.addEventListener(window, 'transaction:categorized', (event) => {
         if (event.detail && event.detail.transactionId) {
             const { transactionId, newCategory } = event.detail;
             
@@ -321,7 +291,7 @@ export function setupEventListeners(appState, onUpdate) {
     });
     
     // Listen for request to refresh all transactions
-    window.addEventListener('transactions:refresh', async () => {
+    eventManager.addEventListener(window, 'transactions:refresh', async () => {
         try {
             // Reload transactions from database
             const freshTransactions = await db.getTransactions();
@@ -346,7 +316,7 @@ async function setupVoiceInput() {
     // Lazy load voice module only when needed
     let voiceInput = null;
     
-    voiceButton.addEventListener('click', async () => {
+    eventManager.addEventListener(voiceButton, 'click', async () => {
         try {
             // Load voice module on first use
             if (!voiceInput) {
@@ -601,7 +571,7 @@ function showCancelButton() {
         submitBtn.parentNode.insertBefore(cancelBtn, submitBtn.nextSibling);
         
         // Add event listener to the newly created button
-        cancelBtn.addEventListener('click', () => {
+        eventManager.addEventListener(cancelBtn, 'click', () => {
             debug.log('Cancel edit button clicked (from dynamic creation)');
             cancelEdit();
         });
@@ -1557,7 +1527,7 @@ function renderTransactionsVirtual(tbody, transactions, appState) {
         // Add scroll listener with throttling
         import('./utils.js').then(module => {
             const { throttle } = module;
-            container.addEventListener('scroll', throttle(() => {
+            eventManager.addEventListener(container, 'scroll', throttle(() => {
                 const scrollTop = container.scrollTop;
                 const rowHeight = 40;
                 const newStartIndex = Math.floor(scrollTop / rowHeight);
@@ -1570,7 +1540,7 @@ function renderTransactionsVirtual(tbody, transactions, appState) {
         }).catch(error => {
             debug.error('Failed to load utils module for virtual scrolling:', error);
             // Fallback: Add scroll listener without throttling
-            container.addEventListener('scroll', () => {
+            eventManager.addEventListener(container, 'scroll', () => {
                 const scrollTop = container.scrollTop;
                 const rowHeight = 40;
                 const newStartIndex = Math.floor(scrollTop / rowHeight);
@@ -1687,11 +1657,8 @@ function createTransactionRow(t, appData) {
 }
 
 // Cleanup function to remove all event listeners
-export function cleanupEventListeners() {
-    eventListeners.forEach(({ element, event, handler }) => {
-        element.removeEventListener(event, handler);
-    });
-    eventListeners.clear();
+export function cleanup() {
+    // Note: eventManager handles all listener cleanup automatically
     
     // Clear module-level state
     currentCategoryFilter = "";
@@ -1699,5 +1666,5 @@ export function cleanupEventListeners() {
     originalTransaction = null;
     appStateReference = null;
     
-    debug.log('Transaction event listeners cleaned up');
+    debug.log('Transaction module cleaned up');
 }

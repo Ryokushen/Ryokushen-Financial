@@ -4,9 +4,13 @@ import { formatCurrency, escapeHtml, safeParseFloat } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
 import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, validateWithAsyncRules, AsyncValidators } from './validation.js';
 import { setupModalEventListeners, createFormSubmitHandler, populateFormFromData, displayValidationErrors } from './formUtils.js';
+import { eventManager } from './eventManager.js';
 
 export function setupEventListeners(appState, onUpdate) {
-    document.getElementById("add-cash-account-btn")?.addEventListener("click", () => openCashAccountModal(appState.appData));
+    const addCashAccountBtn = document.getElementById("add-cash-account-btn");
+    if (addCashAccountBtn) {
+        eventManager.addEventListener(addCashAccountBtn, "click", () => openCashAccountModal(appState.appData));
+    }
     
     // Use the new modal event listener utility
     setupModalEventListeners('cash-account-modal', {
@@ -203,7 +207,7 @@ export function renderCashAccounts(appState) {
         }).join('');
         
         // Also update event listeners for the grid
-        accountsGrid.addEventListener('click', (event) => {
+        eventManager.addEventListener(accountsGrid, 'click', (event) => {
             const target = event.target;
             const card = target.closest('.account-card');
             if (!card) return;
@@ -270,4 +274,9 @@ export function populateAccountDropdowns(appData) {
             if (currentValue) select.value = currentValue;
         }
     });
+}
+// Cleanup function for accounts module
+export function cleanup() {
+    // Note: eventManager handles all listener cleanup automatically
+    // Module-specific cleanup can be added here if needed
 }
