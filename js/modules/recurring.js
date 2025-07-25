@@ -6,24 +6,33 @@ import { debug } from './debug.js';
 import { subtractMoney, addMoney } from './financialMath.js';
 import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, CrossFieldValidators, validateFormWithCrossFields } from './validation.js';
 import { calendarUI } from './calendarUI.js';
+import { eventManager } from './eventManager.js';
 
 export function setupEventListeners(appState, onUpdate) {
-    document.getElementById("add-recurring-btn")?.addEventListener("click", () => openRecurringModal(appState.appData));
-    document.getElementById("close-recurring-modal")?.addEventListener("click", () => closeModal('recurring-modal'));
-    document.getElementById("cancel-recurring-btn")?.addEventListener("click", () => closeModal('recurring-modal'));
-    document.getElementById("recurring-form")?.addEventListener("submit", (e) => handleRecurringSubmit(e, appState, onUpdate));
+    // Cache DOM elements
+    const addRecurringBtn = document.getElementById("add-recurring-btn");
+    const closeRecurringModalBtn = document.getElementById("close-recurring-modal");
+    const cancelRecurringBtn = document.getElementById("cancel-recurring-btn");
+    const recurringForm = document.getElementById("recurring-form");
+    const recurringPaymentMethod = document.getElementById("recurring-payment-method");
+    const calendarViewToggle = document.getElementById('calendar-view-toggle');
+    
+    if (addRecurringBtn) eventManager.addEventListener(addRecurringBtn, "click", () => openRecurringModal(appState.appData));
+    if (closeRecurringModalBtn) eventManager.addEventListener(closeRecurringModalBtn, "click", () => closeModal('recurring-modal'));
+    if (cancelRecurringBtn) eventManager.addEventListener(cancelRecurringBtn, "click", () => closeModal('recurring-modal'));
+    if (recurringForm) eventManager.addEventListener(recurringForm, "submit", (e) => handleRecurringSubmit(e, appState, onUpdate));
     
     // Calendar integration
     setupCalendarEventListeners(appState, onUpdate);
 
     // NEW: Payment method change handler
-    document.getElementById("recurring-payment-method")?.addEventListener("change", function () {
+    if (recurringPaymentMethod) eventManager.addEventListener(recurringPaymentMethod, "change", function () {
         togglePaymentMethodFields();
     });
 
     
     // View toggle for calendar/list view
-    document.getElementById('calendar-view-toggle')?.addEventListener('change', (e) => {
+    if (calendarViewToggle) eventManager.addEventListener(calendarViewToggle, 'change', (e) => {
         toggleCalendarView(e.target.value, appState);
     });
 }
@@ -31,14 +40,14 @@ export function setupEventListeners(appState, onUpdate) {
 // Setup calendar-specific event listeners
 function setupCalendarEventListeners(appState, onUpdate) {
     // Listen for calendar data requests
-    window.addEventListener('calendar:needsData', () => {
+    eventManager.addEventListener(window, 'calendar:needsData', () => {
         if (appState.appData.recurringBills) {
             calendarUI.updateData(appState.appData.recurringBills);
         }
     });
     
     // Listen for pay bill events from calendar
-    window.addEventListener('calendar:payBill', (e) => {
+    eventManager.addEventListener(window, 'calendar:payBill', (e) => {
         if (e.detail && e.detail.billId) {
             payRecurringBill(e.detail.billId, appState, onUpdate);
         }
@@ -558,7 +567,7 @@ function renderBillsCardGrid(appState) {
     }).join('');
     
     // Add event listeners for the grid
-    billsGrid.addEventListener('click', (event) => {
+    eventManager.addEventListener(billsGrid, 'click', (event) => {
         const target = event.target;
         const card = target.closest('.bill-card');
         if (!card) return;

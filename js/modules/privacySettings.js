@@ -13,6 +13,7 @@ import {
     setMasterPassword,
     hasMasterPassword
 } from './privacy.js';
+import { eventManager } from './eventManager.js';
 
 class PrivacySettingsManager {
     constructor() {
@@ -152,19 +153,19 @@ class PrivacySettingsManager {
         const changePasswordBtn = document.getElementById('change-master-password-btn');
 
         if (setupBtn) {
-            setupBtn.addEventListener('click', () => this.handleSetupBiometric());
+            eventManager.addEventListener(setupBtn, 'click', () => this.handleSetupBiometric());
         }
 
         if (disableBtn) {
-            disableBtn.addEventListener('click', () => this.handleDisableBiometric());
+            eventManager.addEventListener(disableBtn, 'click', () => this.handleDisableBiometric());
         }
 
         if (setPasswordBtn) {
-            setPasswordBtn.addEventListener('click', () => this.handleSetMasterPassword());
+            eventManager.addEventListener(setPasswordBtn, 'click', () => this.handleSetMasterPassword());
         }
 
         if (changePasswordBtn) {
-            changePasswordBtn.addEventListener('click', () => this.handleChangeMasterPassword());
+            eventManager.addEventListener(changePasswordBtn, 'click', () => this.handleChangeMasterPassword());
         }
     }
 
@@ -311,18 +312,18 @@ class PrivacySettingsManager {
             };
 
             // Event listeners
-            submitBtn.addEventListener('click', handleSubmit);
-            cancelBtn.addEventListener('click', handleCancel);
-            closeBtn.addEventListener('click', handleCancel);
+            eventManager.addEventListener(submitBtn, 'click', handleSubmit);
+            eventManager.addEventListener(cancelBtn, 'click', handleCancel);
+            eventManager.addEventListener(closeBtn, 'click', handleCancel);
             
             // Enter key handling
             [newPasswordInput, confirmPasswordInput].forEach(input => {
-                input.addEventListener('keypress', (e) => {
+                eventManager.addEventListener(input, 'keypress', (e) => {
                     if (e.key === 'Enter') handleSubmit();
                 });
             });
 
-            modal.addEventListener('click', (e) => {
+            eventManager.addEventListener(modal, 'click', (e) => {
                 if (e.target === modal) handleCancel();
             });
 
