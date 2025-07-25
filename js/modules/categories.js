@@ -159,3 +159,41 @@ export function getCategoryColor(category) {
   
   return colorMap[category] || '#6b7280' // Default gray
 }
+
+// Populate a specific category dropdown
+export function populateCategoryDropdown(selectId, selectedCategory = '', includeEmpty = true) {
+  const selectElement = document.getElementById(selectId)
+  if (selectElement) {
+    renderCategoryOptions(selectElement, selectedCategory, includeEmpty)
+  }
+}
+
+// Populate all category dropdowns on the page
+export function populateAllCategoryDropdowns() {
+  // Transaction form category dropdown
+  populateCategoryDropdown('transaction-category', '', true)
+  
+  // Filter dropdown
+  populateCategoryDropdown('filter-category', '', true)
+  
+  // Recurring bills category dropdown
+  populateCategoryDropdown('recurring-category', '', true)
+  
+  // Any other category dropdowns that might exist
+  const allCategorySelects = document.querySelectorAll('select[data-category-dropdown]')
+  allCategorySelects.forEach(select => {
+    if (!select.id || !['transaction-category', 'filter-category', 'recurring-category'].includes(select.id)) {
+      renderCategoryOptions(select, '', true)
+    }
+  })
+}
+
+// Get categories grouped by type
+export function getCategoryGroups() {
+  return {
+    income: getIncomeCategories(),
+    expense: getExpenseCategories(),
+    special: getSpecialCategories(),
+    all: categories
+  }
+}
