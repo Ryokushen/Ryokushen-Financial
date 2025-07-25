@@ -3,6 +3,7 @@ import { debug } from './debug.js'
 import { formatDate, formatCurrency } from './utils.js'
 import { getNextDueDate } from './utils.js'
 import { paySchedule } from './paySchedule.js'
+import { eventManager } from './eventManager.js'
 
 export class Calendar {
   constructor() {
@@ -22,9 +23,9 @@ export class Calendar {
 
   setupEventListeners() {
     // Listen for data updates
-    window.addEventListener('recurring:updated', () => this.refreshEvents())
-    window.addEventListener('recurring:deleted', () => this.refreshEvents())
-    window.addEventListener('transaction:added', () => this.refreshEvents())
+    eventManager.addEventListener(window, 'recurring:updated', () => this.refreshEvents())
+    eventManager.addEventListener(window, 'recurring:deleted', () => this.refreshEvents())
+    eventManager.addEventListener(window, 'transaction:added', () => this.refreshEvents())
   }
 
   setMonth(month, year) {
