@@ -3,6 +3,7 @@
  */
 
 import { debug } from './debug.js';
+import { eventManager } from './eventManager.js';
 
 /**
  * Extract form data from a form element
@@ -137,7 +138,7 @@ export function setupModalEventListeners(modalId, handlers = {}) {
     // Close button
     const closeBtn = document.getElementById(`close-${modalName}-modal`);
     if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
+        eventManager.addEventListener(closeBtn, 'click', () => {
             if (handlers.onClose) handlers.onClose();
             closeModal(modalId);
         });
@@ -146,7 +147,7 @@ export function setupModalEventListeners(modalId, handlers = {}) {
     // Cancel button
     const cancelBtn = document.getElementById(`cancel-${modalName}-btn`);
     if (cancelBtn) {
-        cancelBtn.addEventListener('click', () => {
+        eventManager.addEventListener(cancelBtn, 'click', () => {
             if (handlers.onCancel) handlers.onCancel();
             closeModal(modalId);
         });
@@ -155,7 +156,7 @@ export function setupModalEventListeners(modalId, handlers = {}) {
     // Form submission
     const form = document.getElementById(`${modalName}-form`);
     if (form && handlers.onSubmit) {
-        form.addEventListener('submit', async (e) => {
+        eventManager.addEventListener(form, 'submit', async (e) => {
             e.preventDefault();
             await handlers.onSubmit(e);
         });
