@@ -4,6 +4,7 @@ import { escapeHtml } from './utils.js'
 import { openModal, closeModal, showError, announceToScreenReader } from './ui.js'
 import { smartRules } from './smartRules.js'
 import { getTemplateCategories, getTemplatesByCategory, createRuleFromTemplate } from './ruleTemplates.js'
+import { eventManager } from './eventManager.js'
 
 export const ruleTemplatesUI = {
   initialized: false,
@@ -24,24 +25,25 @@ export const ruleTemplatesUI = {
     // Template button in rules UI
     const templateBtn = document.getElementById('use-template-btn')
     if (templateBtn) {
-      templateBtn.addEventListener('click', () => this.openTemplateModal())
+      eventManager.addEventListener(templateBtn, 'click', () => this.openTemplateModal())
     }
     
     // Template modal events
     const modal = document.getElementById('rule-template-modal')
     if (modal) {
-      modal.querySelector('.modal-close')?.addEventListener('click', () => {
-        this.closeTemplateModal()
-      })
+      const closeBtn = modal.querySelector('.modal-close')
+      if (closeBtn) {
+        eventManager.addEventListener(closeBtn, 'click', () => this.closeTemplateModal())
+      }
       
       const cancelBtn = modal.querySelector('#cancel-template')
       if (cancelBtn) {
-        cancelBtn.addEventListener('click', () => this.closeTemplateModal())
+        eventManager.addEventListener(cancelBtn, 'click', () => this.closeTemplateModal())
       }
       
       const useBtn = modal.querySelector('#use-template')
       if (useBtn) {
-        useBtn.addEventListener('click', () => this.useSelectedTemplate())
+        eventManager.addEventListener(useBtn, 'click', () => this.useSelectedTemplate())
       }
     }
   },
@@ -106,7 +108,7 @@ export const ruleTemplatesUI = {
     
     // Add click handlers
     container.querySelectorAll('.template-category').forEach(el => {
-      el.addEventListener('click', () => {
+      eventManager.addEventListener(el, 'click', () => {
         const categoryId = el.dataset.category
         this.selectCategory(categoryId)
       })
@@ -160,7 +162,7 @@ export const ruleTemplatesUI = {
     
     // Add click handlers
     container.querySelectorAll('.template-item').forEach(el => {
-      el.addEventListener('click', () => {
+      eventManager.addEventListener(el, 'click', () => {
         const templateId = el.dataset.template
         this.selectTemplate(templateId)
       })
