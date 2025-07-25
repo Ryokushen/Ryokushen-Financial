@@ -5,6 +5,7 @@ import { showError, showSuccess, openModal, closeModal, announceToScreenReader }
 import { debug } from './debug.js'
 import { categories } from './categories.js'
 import database from '../database.js'
+import { eventManager } from './eventManager.js'
 
 export const rulesUI = {
   currentEditingRule: null,
@@ -16,30 +17,32 @@ export const rulesUI = {
     this.updateSummary()
     
     // Listen for rule updates
-    window.addEventListener('rule:created', () => this.refresh())
-    window.addEventListener('rule:updated', () => this.refresh())
-    window.addEventListener('rule:deleted', () => this.refresh())
-    window.addEventListener('rule:matched', (event) => {
+    eventManager.addEventListener(window, 'rule:created', () => this.refresh())
+    eventManager.addEventListener(window, 'rule:updated', () => this.refresh())
+    eventManager.addEventListener(window, 'rule:deleted', () => this.refresh())
+    eventManager.addEventListener(window, 'rule:matched', (event) => {
       if (event.detail) this.handleRuleMatch(event.detail)
     })
     
     // Listen for transaction changes to update statistics
-    window.addEventListener('transaction:deleted', () => {
+    eventManager.addEventListener(window, 'transaction:deleted', () => {
       this.updateSummary() // Refresh statistics when transactions are deleted
     })
-    window.addEventListener('transaction:categorized', () => {
+    eventManager.addEventListener(window, 'transaction:categorized', () => {
       this.updateSummary() // Refresh statistics when transactions are categorized
     })
   },
 
   setupEventListeners() {
     // Add rule button
-    document.getElementById('add-rule-btn')?.addEventListener('click', () => {
+    const addRuleBtn = document.getElementById('add-rule-btn')
+    if (addRuleBtn) eventManager.addEventListener(addRuleBtn, 'click', () => {
       this.openRuleModal()
     })
     
     // Reprocess all transactions button
-    document.getElementById('reprocess-all-btn')?.addEventListener('click', async () => {
+    const reprocessBtn = document.getElementById('reprocess-all-btn')
+    if (reprocessBtn) eventManager.addEventListener(reprocessBtn, 'click', async () => {
       if (confirm('This will apply all active rules to ALL transactions, including already categorized ones. Continue?')) {
         try {
           announceToScreenReader('Processing all transactions...')
@@ -71,36 +74,43 @@ export const rulesUI = {
     })
 
     // Modal controls
-    document.getElementById('close-rule-modal')?.addEventListener('click', () => {
+    const closeRuleModalBtn = document.getElementById('close-rule-modal')
+    if (closeRuleModalBtn) eventManager.addEventListener(closeRuleModalBtn, 'click', () => {
       closeModal('rule-modal')
     })
     
-    document.getElementById('cancel-rule-btn')?.addEventListener('click', () => {
+    const cancelRuleBtn = document.getElementById('cancel-rule-btn')
+    if (cancelRuleBtn) eventManager.addEventListener(cancelRuleBtn, 'click', () => {
       closeModal('rule-modal')
     })
 
     // Form submission
-    document.getElementById('rule-form')?.addEventListener('submit', (e) => {
+    const ruleForm = document.getElementById('rule-form')
+    if (ruleForm) eventManager.addEventListener(ruleForm, 'submit', (e) => {
       this.handleRuleSubmit(e)
     })
 
     // Apply rules button
-    document.getElementById('apply-rules-btn')?.addEventListener('click', () => {
+    const applyRulesBtn = document.getElementById('apply-rules-btn')
+    if (applyRulesBtn) eventManager.addEventListener(applyRulesBtn, 'click', () => {
       this.applyRulesToExisting()
     })
 
     // Field change handler for dynamic operators
-    document.querySelector('.condition-field')?.addEventListener('change', (e) => {
+    const conditionField = document.querySelector('.condition-field')
+    if (conditionField) eventManager.addEventListener(conditionField, 'change', (e) => {
       this.updateOperatorOptions(e.target)
     })
 
     // Action type change handler
-    document.getElementById('rule-action-type')?.addEventListener('change', (e) => {
+    const ruleActionType = document.getElementById('rule-action-type')
+    if (ruleActionType) eventManager.addEventListener(ruleActionType, 'change', (e) => {
       this.updateActionValueInput(e.target.value)
     })
 
     // Rule list delegation
-    document.getElementById('rules-list-container')?.addEventListener('click', (e) => {
+    const rulesListContainer = document.getElementById('rules-list-container')
+    if (rulesListContainer) eventManager.addEventListener(rulesListContainer, 'click', (e) => {
       if (e.target.classList.contains('rule-toggle-switch')) {
         const ruleId = e.target.closest('.rule-item').dataset.ruleId
         this.toggleRule(ruleId, e.target.checked)
