@@ -25,6 +25,7 @@ import { initializePrivacySettings } from './modules/privacySettings.js';
 import { initRulesUI } from './modules/rulesUI.js';
 import { calendar } from './modules/calendar.js';
 import { eventManager } from './modules/eventManager.js';
+import { populateAllCategoryDropdowns } from './modules/categories.js';
 
 // Initialize app after auth is ready
 (async function initApp() {
@@ -120,6 +121,9 @@ import { eventManager } from './modules/eventManager.js';
         
         // Initialize privacy manager now that DOM is ready
         privacyManager.init();
+        
+        // Populate all category dropdowns with dynamic data
+        populateAllCategoryDropdowns();
         
         await loadAllData();
         

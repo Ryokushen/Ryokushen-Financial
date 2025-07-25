@@ -170,20 +170,47 @@ export function populateCategoryDropdown(selectId, selectedCategory = '', includ
 
 // Populate all category dropdowns on the page
 export function populateAllCategoryDropdowns() {
-  // Transaction form category dropdown
-  populateCategoryDropdown('transaction-category', '', true)
+  // Transaction form category dropdown - preserve current selection
+  const transactionSelect = document.getElementById('transaction-category')
+  if (transactionSelect) {
+    const currentValue = transactionSelect.value
+    renderCategoryOptions(transactionSelect, currentValue || 'Uncategorized', false)
+  }
   
-  // Filter dropdown
-  populateCategoryDropdown('filter-category', '', true)
+  // Filter dropdown - preserve current selection
+  const filterSelect = document.getElementById('filter-category')
+  if (filterSelect) {
+    const currentValue = filterSelect.value
+    // Clear and rebuild
+    filterSelect.innerHTML = ''
+    // Add "All Categories" option first
+    const allOption = document.createElement('option')
+    allOption.value = ''
+    allOption.textContent = '— All Categories —'
+    filterSelect.appendChild(allOption)
+    // Add all category options
+    categories.forEach(category => {
+      const option = document.createElement('option')
+      option.value = category
+      option.textContent = `${getCategoryIcon(category)} ${category}`
+      option.selected = category === currentValue
+      filterSelect.appendChild(option)
+    })
+  }
   
-  // Recurring bills category dropdown
-  populateCategoryDropdown('recurring-category', '', true)
+  // Recurring bills category dropdown - preserve current selection
+  const recurringSelect = document.getElementById('recurring-category')
+  if (recurringSelect) {
+    const currentValue = recurringSelect.value
+    renderCategoryOptions(recurringSelect, currentValue, true)
+  }
   
   // Any other category dropdowns that might exist
   const allCategorySelects = document.querySelectorAll('select[data-category-dropdown]')
   allCategorySelects.forEach(select => {
     if (!select.id || !['transaction-category', 'filter-category', 'recurring-category'].includes(select.id)) {
-      renderCategoryOptions(select, '', true)
+      const currentValue = select.value
+      renderCategoryOptions(select, currentValue, true)
     }
   })
 }
