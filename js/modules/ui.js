@@ -12,6 +12,7 @@ import { updateDashboard } from './dashboard.js'; // Import from dashboard modul
 import { modalManager } from './modalManager.js';
 import { debug } from './debug.js';
 import { reapplyPrivacy } from './privacy.js';
+import { eventManager } from './eventManager.js';
 
 
 export function announceToScreenReader(message) {
@@ -49,7 +50,7 @@ export function showSuccess(message) {
 }
 
 // Listen for custom show-error events from formUtils
-window.addEventListener('show-error', (e) => {
+eventManager.addEventListener(window, 'show-error', (e) => {
     if (e.detail && e.detail.message) {
         showError(e.detail.message);
     }
