@@ -284,6 +284,44 @@
             <div id="transactions" class="tab-content" role="region" aria-labelledby="transactions-tab-btn">
                 <div class="transactions-header">
                     <h2 class="section-title">Recent Transactions</h2>
+                    <div class="transaction-filters">
+                        <select id="filter-category" class="form-control" aria-label="Filter by category">
+                            <option value="">— All Categories —</option>
+                            <option value="Uncategorized">Uncategorized</option>
+                            <option value="ATM/Cash">ATM/Cash</option>
+                            <option value="Bills">Bills</option>
+                            <option value="Business">Business</option>
+                            <option value="Childcare">Childcare</option>
+                            <option value="Debt">Debt</option>
+                            <option value="Dining">Dining</option>
+                            <option value="Education">Education</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Fees">Fees</option>
+                            <option value="Gifts">Gifts</option>
+                            <option value="Groceries">Groceries</option>
+                            <option value="Healthcare">Healthcare</option>
+                            <option value="Home Improvement">Home Improvement</option>
+                            <option value="Housing">Housing</option>
+                            <option value="Income">Income</option>
+                            <option value="Insurance">Insurance</option>
+                            <option value="Interest">Interest</option>
+                            <option value="Investment">Investment</option>
+                            <option value="Misc">Misc</option>
+                            <option value="Payment">Payment</option>
+                            <option value="Personal Care">Personal Care</option>
+                            <option value="Pet Care">Pet Care</option>
+                            <option value="Professional Services">Professional Services</option>
+                            <option value="Savings">Savings</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Subscriptions">Subscriptions</option>
+                            <option value="Taxes">Taxes</option>
+                            <option value="Technology">Technology</option>
+                            <option value="Transfer">Transfer</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Utilities">Utilities</option>
+                        </select>
+                    </div>
                     <div style="display: flex; gap: var(--space-2);">
                         <button class="btn btn--primary" id="add-transaction-btn">Add Transaction</button>
                         <button class="btn btn--secondary" id="voice-add-transaction-btn" title="Add transaction by voice">
@@ -413,71 +451,6 @@
                                     <button type="submit" class="btn btn--primary">Add Transaction</button>
                                 </div>
                             </form>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="transactions-list">
-                    <div class="card">
-                        <div class="card__header">
-                            <h3>Transaction History</h3>
-                            <div class="transaction-filters">
-                                <select id="filter-category" class="form-control" aria-label="Filter by category">
-                                    <option value="">— All Categories —</option>
-                                    <option value="Uncategorized">Uncategorized</option>
-                                    <option value="ATM/Cash">ATM/Cash</option>
-                                    <option value="Bills">Bills</option>
-                                    <option value="Business">Business</option>
-                                    <option value="Childcare">Childcare</option>
-                                    <option value="Debt">Debt</option>
-                                    <option value="Dining">Dining</option>
-                                    <option value="Education">Education</option>
-                                    <option value="Entertainment">Entertainment</option>
-                                    <option value="Fees">Fees</option>
-                                    <option value="Gifts">Gifts</option>
-                                    <option value="Groceries">Groceries</option>
-                                    <option value="Healthcare">Healthcare</option>
-                                    <option value="Home Improvement">Home Improvement</option>
-                                    <option value="Housing">Housing</option>
-                                    <option value="Income">Income</option>
-                                    <option value="Insurance">Insurance</option>
-                                    <option value="Interest">Interest</option>
-                                    <option value="Investment">Investment</option>
-                                    <option value="Misc">Misc</option>
-                                    <option value="Payment">Payment</option>
-                                    <option value="Personal Care">Personal Care</option>
-                                    <option value="Pet Care">Pet Care</option>
-                                    <option value="Professional Services">Professional Services</option>
-                                    <option value="Savings">Savings</option>
-                                    <option value="Shopping">Shopping</option>
-                                    <option value="Subscriptions">Subscriptions</option>
-                                    <option value="Taxes">Taxes</option>
-                                    <option value="Technology">Technology</option>
-                                    <option value="Transfer">Transfer</option>
-                                    <option value="Transportation">Transportation</option>
-                                    <option value="Travel">Travel</option>
-                                    <option value="Utilities">Utilities</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="card__body">
-                            <div class="transaction-table">
-                                <table id="transactions-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Account</th>
-                                            <th>Category</th>
-                                            <th>Description</th>
-                                            <th>Amount</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="transactions-table-body">
-                                    </tbody>
-                                </table>
-                            </div>
                         </div>
                     </div>
                 </div>

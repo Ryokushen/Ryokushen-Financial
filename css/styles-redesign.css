@@ -1677,6 +1677,24 @@ tr:hover td {
   margin: 0;
 }
 
+/* Transaction header with filter */
+.transactions-header {
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.transaction-filters {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.transaction-filters select {
+  width: 100%;
+}
+
 /* ===== CARD GRID LAYOUT (Accounts & Bills) ===== */
 .card-grid {
   display: grid;
