@@ -6,7 +6,7 @@ import * as Accounts from './accounts.js';
 import * as Debt from './debt.js';
 import { addMoney, subtractMoney, sumMoney, convertToMonthlyPrecise } from './financialMath.js';
 import { TimeBudgetWidget } from './widgets/timeBudgetWidget.js';
-import { getCategoryIcon } from './transactions.js';
+import { getCategoryIcon } from './categories.js';
 
 // Initialize time budget widget
 let timeBudgetWidget = null;
