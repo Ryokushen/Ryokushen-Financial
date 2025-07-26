@@ -1121,6 +1121,772 @@ class TransactionManager {
         
         debug.log('TransactionManager: Restored from checkpoint', checkpoint.id);
     }
+
+    // ========== BATCH OPERATIONS ==========
+
+    /**
+     * Add multiple transactions in batch
+     * @param {Array} transactionsData - Array of transaction data objects
+     * @param {Object} options - Batch operation options
+     * @returns {Promise<Object>} Batch operation result
+     */
+    async addMultipleTransactions(transactionsData, options = {}) {
+        const batchId = Date.now();
+        const results = {
+            successful: [],
+            failed: [],
+            totalProcessed: 0,
+            totalSuccess: 0,
+            totalFailed: 0
+        };
+        
+        // Default options
+        const batchOptions = {
+            stopOnError: false,
+            batchSize: this.batchSize,
+            delayBetweenBatches: this.batchDelay,
+            validateAll: true,
+            rollbackOnFailure: false,
+            ...options
+        };
+        
+        debug.log(`TransactionManager: Starting batch add of ${transactionsData.length} transactions`);
+        
+        // Validate all transactions first if requested
+        if (batchOptions.validateAll) {
+            const validationResults = transactionsData.map((data, index) => ({
+                index,
+                data,
+                validation: this.validateTransaction(this.prepareTransactionData(data))
+            }));
+            
+            const invalidTransactions = validationResults.filter(r => !r.validation.valid);
+            if (invalidTransactions.length > 0 && this.strictMode) {
+                debug.error(`Batch validation failed: ${invalidTransactions.length} invalid transactions`);
+                return {
+                    ...results,
+                    failed: invalidTransactions.map(r => ({
+                        index: r.index,
+                        data: r.data,
+                        error: r.validation.errors
+                    })),
+                    totalFailed: invalidTransactions.length,
+                    error: 'Validation failed for one or more transactions'
+                };
+            }
+        }
+        
+        // Process in batches
+        const savedTransactions = [];
+        try {
+            for (let i = 0; i < transactionsData.length; i += batchOptions.batchSize) {
+                const batch = transactionsData.slice(i, i + batchOptions.batchSize);
+                
+                // Process batch
+                const batchPromises = batch.map(async (data, batchIndex) => {
+                    const globalIndex = i + batchIndex;
+                    try {
+                        const transaction = await this.addTransaction(data, { batchEvents: true });
+                        results.successful.push({
+                            index: globalIndex,
+                            transaction
+                        });
+                        savedTransactions.push(transaction);
+                        results.totalSuccess++;
+                        return { success: true, transaction };
+                    } catch (error) {
+                        results.failed.push({
+                            index: globalIndex,
+                            data,
+                            error: error.message
+                        });
+                        results.totalFailed++;
+                        
+                        if (batchOptions.stopOnError) {
+                            throw new Error(`Batch stopped at index ${globalIndex}: ${error.message}`);
+                        }
+                        
+                        return { success: false, error };
+                    }
+                });
+                
+                // Wait for batch to complete
+                await Promise.all(batchPromises);
+                results.totalProcessed = i + batch.length;
+                
+                // Add delay between batches
+                if (i + batchOptions.batchSize < transactionsData.length) {
+                    await new Promise(resolve => setTimeout(resolve, batchOptions.delayBetweenBatches));
+                }
+            }
+            
+            // Flush events and dispatch batch complete event
+            this.flushEventQueue();
+            window.dispatchEvent(new CustomEvent('transactions:batchAdded', {
+                detail: {
+                    batchId,
+                    results,
+                    transactions: savedTransactions
+                }
+            }));
+            
+            debug.log(`Batch add complete: ${results.totalSuccess} succeeded, ${results.totalFailed} failed`);
+            
+        } catch (error) {
+            debug.error('Batch add operation failed:', error);
+            
+            // Rollback if requested
+            if (batchOptions.rollbackOnFailure && savedTransactions.length > 0) {
+                debug.log('Rolling back successful transactions...');
+                for (const transaction of savedTransactions) {
+                    try {
+                        await this.deleteTransaction(transaction.id, { batchEvents: true });
+                    } catch (rollbackError) {
+                        debug.error('Rollback failed for transaction:', transaction.id, rollbackError);
+                    }
+                }
+                this.flushEventQueue();
+            }
+            
+            results.error = error.message;
+        }
+        
+        return results;
+    }
+
+    /**
+     * Update multiple transactions in batch
+     * @param {Array} updates - Array of {id, updates} objects
+     * @param {Object} options - Batch operation options
+     * @returns {Promise<Object>} Batch operation result
+     */
+    async updateMultipleTransactions(updates, options = {}) {
+        const batchId = Date.now();
+        const results = {
+            successful: [],
+            failed: [],
+            totalProcessed: 0,
+            totalSuccess: 0,
+            totalFailed: 0
+        };
+        
+        const batchOptions = {
+            stopOnError: false,
+            batchSize: this.batchSize,
+            delayBetweenBatches: this.batchDelay,
+            ...options
+        };
+        
+        debug.log(`TransactionManager: Starting batch update of ${updates.length} transactions`);
+        
+        // Store original states for potential rollback
+        const originalStates = new Map();
+        
+        try {
+            // First, fetch all originals
+            for (const update of updates) {
+                const original = await this.getTransaction(update.id);
+                if (original) {
+                    originalStates.set(update.id, original);
+                }
+            }
+            
+            // Process in batches
+            for (let i = 0; i < updates.length; i += batchOptions.batchSize) {
+                const batch = updates.slice(i, i + batchOptions.batchSize);
+                
+                const batchPromises = batch.map(async (update, batchIndex) => {
+                    const globalIndex = i + batchIndex;
+                    try {
+                        if (!originalStates.has(update.id)) {
+                            throw new Error(`Transaction ${update.id} not found`);
+                        }
+                        
+                        const updatedTransaction = await this.updateTransaction(
+                            update.id, 
+                            update.updates, 
+                            { batchEvents: true }
+                        );
+                        
+                        results.successful.push({
+                            index: globalIndex,
+                            transaction: updatedTransaction
+                        });
+                        results.totalSuccess++;
+                        return { success: true, transaction: updatedTransaction };
+                        
+                    } catch (error) {
+                        results.failed.push({
+                            index: globalIndex,
+                            id: update.id,
+                            updates: update.updates,
+                            error: error.message
+                        });
+                        results.totalFailed++;
+                        
+                        if (batchOptions.stopOnError) {
+                            throw new Error(`Batch stopped at index ${globalIndex}: ${error.message}`);
+                        }
+                        
+                        return { success: false, error };
+                    }
+                });
+                
+                await Promise.all(batchPromises);
+                results.totalProcessed = i + batch.length;
+                
+                if (i + batchOptions.batchSize < updates.length) {
+                    await new Promise(resolve => setTimeout(resolve, batchOptions.delayBetweenBatches));
+                }
+            }
+            
+            // Flush events
+            this.flushEventQueue();
+            window.dispatchEvent(new CustomEvent('transactions:batchUpdated', {
+                detail: {
+                    batchId,
+                    results,
+                    originalStates: Array.from(originalStates.values())
+                }
+            }));
+            
+            debug.log(`Batch update complete: ${results.totalSuccess} succeeded, ${results.totalFailed} failed`);
+            
+        } catch (error) {
+            debug.error('Batch update operation failed:', error);
+            results.error = error.message;
+        }
+        
+        return results;
+    }
+
+    /**
+     * Delete multiple transactions in batch
+     * @param {Array} transactionIds - Array of transaction IDs
+     * @param {Object} options - Batch operation options
+     * @returns {Promise<Object>} Batch operation result
+     */
+    async deleteMultipleTransactions(transactionIds, options = {}) {
+        const batchId = Date.now();
+        const results = {
+            successful: [],
+            failed: [],
+            totalProcessed: 0,
+            totalSuccess: 0,
+            totalFailed: 0
+        };
+        
+        const batchOptions = {
+            stopOnError: false,
+            batchSize: this.batchSize,
+            delayBetweenBatches: this.batchDelay,
+            preserveBackup: true,
+            ...options
+        };
+        
+        debug.log(`TransactionManager: Starting batch delete of ${transactionIds.length} transactions`);
+        
+        // Store deleted transactions for potential recovery
+        const deletedTransactions = new Map();
+        
+        try {
+            // First, backup all transactions if requested
+            if (batchOptions.preserveBackup) {
+                for (const id of transactionIds) {
+                    const transaction = await this.getTransaction(id);
+                    if (transaction) {
+                        deletedTransactions.set(id, transaction);
+                    }
+                }
+            }
+            
+            // Process in batches
+            for (let i = 0; i < transactionIds.length; i += batchOptions.batchSize) {
+                const batch = transactionIds.slice(i, i + batchOptions.batchSize);
+                
+                const batchPromises = batch.map(async (id, batchIndex) => {
+                    const globalIndex = i + batchIndex;
+                    try {
+                        await this.deleteTransaction(id, { batchEvents: true });
+                        
+                        results.successful.push({
+                            index: globalIndex,
+                            id,
+                            transaction: deletedTransactions.get(id)
+                        });
+                        results.totalSuccess++;
+                        return { success: true, id };
+                        
+                    } catch (error) {
+                        results.failed.push({
+                            index: globalIndex,
+                            id,
+                            error: error.message
+                        });
+                        results.totalFailed++;
+                        
+                        if (batchOptions.stopOnError) {
+                            throw new Error(`Batch stopped at index ${globalIndex}: ${error.message}`);
+                        }
+                        
+                        return { success: false, error };
+                    }
+                });
+                
+                await Promise.all(batchPromises);
+                results.totalProcessed = i + batch.length;
+                
+                if (i + batchOptions.batchSize < transactionIds.length) {
+                    await new Promise(resolve => setTimeout(resolve, batchOptions.delayBetweenBatches));
+                }
+            }
+            
+            // Flush events
+            this.flushEventQueue();
+            window.dispatchEvent(new CustomEvent('transactions:batchDeleted', {
+                detail: {
+                    batchId,
+                    results,
+                    deletedTransactions: Array.from(deletedTransactions.values())
+                }
+            }));
+            
+            debug.log(`Batch delete complete: ${results.totalSuccess} succeeded, ${results.totalFailed} failed`);
+            
+        } catch (error) {
+            debug.error('Batch delete operation failed:', error);
+            results.error = error.message;
+        }
+        
+        // Store backup for potential recovery
+        if (batchOptions.preserveBackup && deletedTransactions.size > 0) {
+            results.backup = Array.from(deletedTransactions.values());
+        }
+        
+        return results;
+    }
+
+    /**
+     * Process transactions with a custom operation
+     * @param {Array} items - Array of items to process
+     * @param {Function} operation - Async operation to perform on each item
+     * @param {Object} options - Batch operation options
+     * @returns {Promise<Object>} Batch operation result
+     */
+    async batchProcess(items, operation, options = {}) {
+        const batchId = Date.now();
+        const results = {
+            successful: [],
+            failed: [],
+            totalProcessed: 0,
+            totalSuccess: 0,
+            totalFailed: 0
+        };
+        
+        const batchOptions = {
+            stopOnError: false,
+            batchSize: this.batchSize,
+            delayBetweenBatches: this.batchDelay,
+            operationName: 'custom',
+            ...options
+        };
+        
+        debug.log(`TransactionManager: Starting batch ${batchOptions.operationName} of ${items.length} items`);
+        
+        try {
+            for (let i = 0; i < items.length; i += batchOptions.batchSize) {
+                const batch = items.slice(i, i + batchOptions.batchSize);
+                
+                const batchPromises = batch.map(async (item, batchIndex) => {
+                    const globalIndex = i + batchIndex;
+                    try {
+                        const result = await operation(item, globalIndex);
+                        
+                        results.successful.push({
+                            index: globalIndex,
+                            item,
+                            result
+                        });
+                        results.totalSuccess++;
+                        return { success: true, result };
+                        
+                    } catch (error) {
+                        results.failed.push({
+                            index: globalIndex,
+                            item,
+                            error: error.message
+                        });
+                        results.totalFailed++;
+                        
+                        if (batchOptions.stopOnError) {
+                            throw new Error(`Batch stopped at index ${globalIndex}: ${error.message}`);
+                        }
+                        
+                        return { success: false, error };
+                    }
+                });
+                
+                await Promise.all(batchPromises);
+                results.totalProcessed = i + batch.length;
+                
+                // Progress callback
+                if (batchOptions.onProgress) {
+                    batchOptions.onProgress({
+                        processed: results.totalProcessed,
+                        total: items.length,
+                        percentage: (results.totalProcessed / items.length) * 100
+                    });
+                }
+                
+                if (i + batchOptions.batchSize < items.length) {
+                    await new Promise(resolve => setTimeout(resolve, batchOptions.delayBetweenBatches));
+                }
+            }
+            
+            debug.log(`Batch ${batchOptions.operationName} complete: ${results.totalSuccess} succeeded, ${results.totalFailed} failed`);
+            
+        } catch (error) {
+            debug.error(`Batch ${batchOptions.operationName} operation failed:`, error);
+            results.error = error.message;
+        }
+        
+        return results;
+    }
+
+    /**
+     * Import transactions from external data
+     * @param {Array} importData - Array of transaction data to import
+     * @param {Object} options - Import options
+     * @returns {Promise<Object>} Import result
+     */
+    async importTransactions(importData, options = {}) {
+        const importOptions = {
+            duplicateCheck: true,
+            transformFunction: null,
+            categoryMapping: null,
+            accountMapping: null,
+            ...options
+        };
+        
+        debug.log(`TransactionManager: Importing ${importData.length} transactions`);
+        
+        // Transform data if function provided
+        let transformedData = importData;
+        if (importOptions.transformFunction) {
+            transformedData = importData.map(importOptions.transformFunction);
+        }
+        
+        // Apply category mapping if provided
+        if (importOptions.categoryMapping) {
+            transformedData = transformedData.map(data => ({
+                ...data,
+                category: importOptions.categoryMapping[data.category] || data.category
+            }));
+        }
+        
+        // Apply account mapping if provided
+        if (importOptions.accountMapping) {
+            transformedData = transformedData.map(data => ({
+                ...data,
+                account_id: importOptions.accountMapping[data.account_id] || data.account_id
+            }));
+        }
+        
+        // Check for duplicates if requested
+        if (importOptions.duplicateCheck) {
+            const existingTransactions = await this.getTransactions();
+            const duplicates = [];
+            
+            transformedData = transformedData.filter(data => {
+                const isDuplicate = existingTransactions.some(existing => 
+                    existing.date === data.date &&
+                    existing.amount === data.amount &&
+                    existing.description === data.description
+                );
+                
+                if (isDuplicate) {
+                    duplicates.push(data);
+                }
+                
+                return !isDuplicate;
+            });
+            
+            if (duplicates.length > 0) {
+                debug.log(`Found ${duplicates.length} duplicate transactions, skipping`);
+            }
+        }
+        
+        // Import using batch add
+        const result = await this.addMultipleTransactions(transformedData, {
+            ...options,
+            operationName: 'import'
+        });
+        
+        // Add import metadata to result
+        result.importMetadata = {
+            originalCount: importData.length,
+            transformedCount: transformedData.length,
+            duplicatesSkipped: importData.length - transformedData.length
+        };
+        
+        window.dispatchEvent(new CustomEvent('transactions:imported', {
+            detail: result
+        }));
+        
+        return result;
+    }
+
+    // ========== ADDITIONAL UTILITY METHODS ==========
+
+    /**
+     * Search transactions with advanced filtering
+     * @param {Object} searchCriteria - Search criteria
+     * @returns {Promise<Array>} Matching transactions
+     */
+    async searchTransactions(searchCriteria) {
+        const {
+            query,
+            dateFrom,
+            dateTo,
+            amountMin,
+            amountMax,
+            categories,
+            accounts,
+            cleared,
+            sortBy = 'date',
+            sortOrder = 'desc',
+            limit,
+            offset = 0
+        } = searchCriteria;
+        
+        // Get all transactions with basic filters
+        let transactions = await this.getTransactions({
+            dateFrom,
+            dateTo,
+            cleared
+        });
+        
+        // Apply text search if query provided
+        if (query) {
+            const searchQuery = query.toLowerCase();
+            transactions = transactions.filter(t => 
+                t.description.toLowerCase().includes(searchQuery) ||
+                t.category.toLowerCase().includes(searchQuery) ||
+                (t.notes && t.notes.toLowerCase().includes(searchQuery))
+            );
+        }
+        
+        // Apply amount range filter
+        if (amountMin !== undefined) {
+            transactions = transactions.filter(t => Math.abs(t.amount) >= amountMin);
+        }
+        if (amountMax !== undefined) {
+            transactions = transactions.filter(t => Math.abs(t.amount) <= amountMax);
+        }
+        
+        // Apply category filter
+        if (categories && categories.length > 0) {
+            transactions = transactions.filter(t => categories.includes(t.category));
+        }
+        
+        // Apply account filter
+        if (accounts && accounts.length > 0) {
+            transactions = transactions.filter(t => 
+                accounts.includes(t.account_id) || 
+                accounts.includes(t.debt_account_id)
+            );
+        }
+        
+        // Sort results
+        transactions.sort((a, b) => {
+            let compareValue = 0;
+            
+            switch (sortBy) {
+                case 'date':
+                    compareValue = new Date(a.date) - new Date(b.date);
+                    break;
+                case 'amount':
+                    compareValue = a.amount - b.amount;
+                    break;
+                case 'description':
+                    compareValue = a.description.localeCompare(b.description);
+                    break;
+                case 'category':
+                    compareValue = a.category.localeCompare(b.category);
+                    break;
+                default:
+                    compareValue = new Date(a.date) - new Date(b.date);
+            }
+            
+            return sortOrder === 'desc' ? -compareValue : compareValue;
+        });
+        
+        // Apply pagination
+        if (limit) {
+            transactions = transactions.slice(offset, offset + limit);
+        }
+        
+        return transactions;
+    }
+
+    /**
+     * Get transaction statistics
+     * @param {Object} options - Statistics options
+     * @returns {Promise<Object>} Transaction statistics
+     */
+    async getTransactionStatistics(options = {}) {
+        const { dateFrom, dateTo, groupBy = 'category' } = options;
+        
+        const transactions = await this.getTransactions({ dateFrom, dateTo });
+        
+        const stats = {
+            totalTransactions: transactions.length,
+            totalIncome: 0,
+            totalExpenses: 0,
+            netAmount: 0,
+            averageTransaction: 0,
+            largestIncome: 0,
+            largestExpense: 0,
+            categoryCounts: {},
+            categoryTotals: {},
+            monthlyTotals: {},
+            dailyAverages: {}
+        };
+        
+        // Calculate basic statistics
+        transactions.forEach(t => {
+            const amount = t.amount;
+            
+            if (amount > 0) {
+                stats.totalIncome += amount;
+                stats.largestIncome = Math.max(stats.largestIncome, amount);
+            } else {
+                stats.totalExpenses += Math.abs(amount);
+                stats.largestExpense = Math.max(stats.largestExpense, Math.abs(amount));
+            }
+            
+            // Category statistics
+            if (!stats.categoryCounts[t.category]) {
+                stats.categoryCounts[t.category] = 0;
+                stats.categoryTotals[t.category] = 0;
+            }
+            stats.categoryCounts[t.category]++;
+            stats.categoryTotals[t.category] += amount;
+            
+            // Monthly statistics
+            const monthKey = t.date.substring(0, 7); // YYYY-MM
+            if (!stats.monthlyTotals[monthKey]) {
+                stats.monthlyTotals[monthKey] = { income: 0, expenses: 0, net: 0 };
+            }
+            if (amount > 0) {
+                stats.monthlyTotals[monthKey].income += amount;
+            } else {
+                stats.monthlyTotals[monthKey].expenses += Math.abs(amount);
+            }
+            stats.monthlyTotals[monthKey].net += amount;
+        });
+        
+        // Calculate derived statistics
+        stats.netAmount = stats.totalIncome - stats.totalExpenses;
+        stats.averageTransaction = stats.totalTransactions > 0 
+            ? stats.netAmount / stats.totalTransactions 
+            : 0;
+        
+        // Calculate daily averages
+        if (dateFrom && dateTo) {
+            const days = Math.ceil((new Date(dateTo) - new Date(dateFrom)) / (1000 * 60 * 60 * 24));
+            stats.dailyAverages = {
+                income: stats.totalIncome / days,
+                expenses: stats.totalExpenses / days,
+                net: stats.netAmount / days
+            };
+        }
+        
+        return stats;
+    }
+
+    /**
+     * Export transactions to various formats
+     * @param {Array} transactions - Transactions to export
+     * @param {string} format - Export format (csv, json, qif)
+     * @returns {string} Exported data
+     */
+    exportTransactions(transactions, format = 'csv') {
+        switch (format.toLowerCase()) {
+            case 'csv':
+                return this.exportToCSV(transactions);
+            case 'json':
+                return this.exportToJSON(transactions);
+            case 'qif':
+                return this.exportToQIF(transactions);
+            default:
+                throw new Error(`Unsupported export format: ${format}`);
+        }
+    }
+
+    /**
+     * Export to CSV format
+     */
+    exportToCSV(transactions) {
+        const headers = ['Date', 'Description', 'Category', 'Amount', 'Account', 'Cleared'];
+        const rows = transactions.map(t => [
+            t.date,
+            `"${t.description.replace(/"/g, '""')}"`,
+            t.category,
+            t.amount,
+            t.account_name || 'N/A',
+            t.cleared ? 'Yes' : 'No'
+        ]);
+        
+        return [headers, ...rows].map(row => row.join(',')).join('\n');
+    }
+
+    /**
+     * Export to JSON format
+     */
+    exportToJSON(transactions) {
+        return JSON.stringify(transactions, null, 2);
+    }
+
+    /**
+     * Export to QIF format
+     */
+    exportToQIF(transactions) {
+        let qif = '!Type:Bank\n';
+        
+        transactions.forEach(t => {
+            qif += `D${t.date}\n`;
+            qif += `T${t.amount}\n`;
+            qif += `P${t.description}\n`;
+            qif += `L${t.category}\n`;
+            if (t.cleared) qif += 'C*\n';
+            qif += '^\n';
+        });
+        
+        return qif;
+    }
+
+    /**
+     * Cleanup method
+     */
+    cleanup() {
+        // Clear cache
+        this.clearCache();
+        
+        // Clear pending operations
+        this.pendingOperations.clear();
+        
+        // Clear event queue
+        if (this.eventBatchTimeout) {
+            clearTimeout(this.eventBatchTimeout);
+        }
+        this.eventQueue = [];
+        
+        // Reset metrics
+        this.resetMetrics();
+        
+        debug.log('TransactionManager: Cleanup complete');
+    }
 }
 
 // Create and export singleton instance
