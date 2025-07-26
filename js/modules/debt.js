@@ -69,20 +69,6 @@ async function handleDebtSubmit(event, appState, onUpdate) {
             notes: document.getElementById("debt-notes").value || ""
         };
         
-        console.log("Raw form values:", {
-            name: document.getElementById("debt-name").value,
-            type: document.getElementById("debt-type").value,
-            institution: document.getElementById("debt-institution").value,
-            balance: document.getElementById("debt-balance").value,
-            interestRate: document.getElementById("debt-interest-rate").value,
-            minimumPayment: document.getElementById("debt-minimum-payment").value,
-            dueDate: document.getElementById("debt-due-date").value,
-            creditLimit: document.getElementById("debt-credit-limit").value,
-            notes: document.getElementById("debt-notes").value
-        });
-        
-        // Debug log to see what values we're validating
-        debug.log('Debt form data:', debtData);
         
         // Validate form data with cross-field validation and async validation
         const asyncValidators = {
@@ -95,8 +81,6 @@ async function handleDebtSubmit(event, appState, onUpdate) {
             asyncValidators
         );
         
-        debug.log('Validation errors:', errors);
-        
         // Also check cross-field validation
         const crossFieldErrors = CrossFieldValidators.debtAccount ? CrossFieldValidators.debtAccount(debtData) : {};
         Object.assign(errors, crossFieldErrors);
@@ -105,17 +89,13 @@ async function handleDebtSubmit(event, appState, onUpdate) {
         if (hasErrors || hasCrossFieldErrors) {
             // Show field-level errors
             Object.entries(errors).forEach(([field, error]) => {
-                console.error(`Validation error for field '${field}':`, error);
                 showFieldError(`debt-${field}`, error);
             });
-            console.error("All validation errors:", errors);
-            console.error("Form data that failed validation:", debtData);
             showError("Please correct the errors in the form.");
             return;
         }
 
         if (debtId) {
-            debug.log('Updating debt account:', debtId, debtData);
             const savedDebt = await db.updateDebtAccount(debtId, debtData);
             const index = appState.appData.debtAccounts.findIndex(d => d.id === debtId);
             if (index > -1) {
@@ -123,7 +103,6 @@ async function handleDebtSubmit(event, appState, onUpdate) {
                 appState.appData.debtAccounts[index] = savedDebt;
             }
         } else {
-            debug.log('Adding new debt account:', debtData);
             const savedDebt = await db.addDebtAccount(debtData);
             appState.appData.debtAccounts.push(savedDebt);
         }

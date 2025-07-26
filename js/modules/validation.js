@@ -437,7 +437,9 @@ export const CrossFieldValidators = {
         const errors = {};
         
         // Check if minimum payment exceeds balance (allow 0/0 for paid-off accounts)
-        if (formData.minimumPayment > formData.balance) {
+        // For low balances (under $25), allow minimum payment to exceed balance
+        // since credit cards often have minimum payment requirements
+        if (formData.minimumPayment > formData.balance && formData.balance > 25) {
             errors.minimumPayment = 'Minimum payment cannot exceed current balance';
         }
         
