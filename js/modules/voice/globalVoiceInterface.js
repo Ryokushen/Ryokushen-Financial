@@ -7,6 +7,7 @@ import { VoiceAnalytics } from './voiceAnalytics.js';
 import { VoiceNavigation } from './voiceNavigation.js';
 import { VoiceResponseSystem } from './voiceResponseSystem.js';
 import { voiceInput } from './voiceInput.js';
+import { eventManager } from '../eventManager.js';
 
 /**
  * Global Voice Interface - Central coordinator for all voice command functionality
@@ -216,11 +217,11 @@ export class GlobalVoiceInterface {
      */
     setupEventListeners() {
         if (this.voiceButton) {
-            this.voiceButton.addEventListener('click', this.handleVoiceButtonClick.bind(this));
+            eventManager.addEventListener(this.voiceButton, 'click', this.handleVoiceButtonClick.bind(this));
         }
 
         // Keyboard shortcut (Ctrl/Cmd + K)
-        document.addEventListener('keydown', (e) => {
+        eventManager.addEventListener(document, 'keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k' && !e.shiftKey) {
                 e.preventDefault();
                 this.toggleVoiceCommand();
