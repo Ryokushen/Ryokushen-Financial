@@ -86,6 +86,12 @@ class TransactionImport {
             eventManager.addEventListener(cancelBtn, 'click', () => this.closeModal());
         }
         
+        // Close button (X)
+        const closeBtn = this.modal.querySelector('.modal-close');
+        if (closeBtn) {
+            eventManager.addEventListener(closeBtn, 'click', () => this.closeModal());
+        }
+        
         if (backBtn) {
             eventManager.addEventListener(backBtn, 'click', () => this.previousStep());
         }
