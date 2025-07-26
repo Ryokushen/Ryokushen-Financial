@@ -1478,7 +1478,20 @@ class TransactionManager {
                 const batchPromises = batch.map(async (id, batchIndex) => {
                     const globalIndex = i + batchIndex;
                     try {
-                        await this.deleteTransaction(id, { batchEvents: true });
+                        // Check if this is a credit card transaction that needs balance reversal
+                        const transaction = deletedTransactions.get(id);
+                        if (transaction && transaction.debt_account_id) {
+                            // Credit card transaction - use atomic balance reversal
+                            const balanceReversals = [{
+                                accountType: 'debt',
+                                accountId: transaction.debt_account_id,
+                                amount: transaction.amount
+                            }];
+                            await this.deleteTransactionWithBalanceReversal(id, balanceReversals);
+                        } else {
+                            // Regular transaction or cash account transaction
+                            await this.deleteTransaction(id, { batchEvents: true });
+                        }
                         
                         results.successful.push({
                             index: globalIndex,

@@ -639,6 +639,11 @@ import { populateAllCategoryDropdowns } from './modules/categories.js';
         eventManager.addEventListener(window, 'transaction:updated', onUpdate);
         eventManager.addEventListener(window, 'transaction:deleted', onUpdate);
         
+        // Also listen for batch events from bulk operations
+        eventManager.addEventListener(window, 'transaction:added:batch', onUpdate);
+        eventManager.addEventListener(window, 'transaction:updated:batch', onUpdate);
+        eventManager.addEventListener(window, 'transaction:deleted:batch', onUpdate);
+        
         // Add privacy listener to reapply on data updates
         privacyManager.addListener(() => {
             // First, reapply privacy mode to blur/unblur elements
