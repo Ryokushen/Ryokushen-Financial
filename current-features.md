@@ -25,13 +25,20 @@
 
 ### 💸 Transaction Management
 **Status**: ✅ Full UI Implementation
-**Module**: transactions.js, transactionManager.js
+**Module**: transactions.js, transactionManager.js, bulkOperations.js
 **Features**:
 - Centralized transaction handling via TransactionManager
 - Atomic operations with automatic rollback
 - 5-minute caching with LRU eviction
 - Transaction import wizard (CSV, QFX, QIF)
-- Bulk operations support
+- **Bulk Operations UI** (NEW - January 26, 2025):
+  - Multi-select transactions with checkboxes
+  - Select all/none functionality
+  - Bulk categorization with progress tracking
+  - Bulk deletion with confirmation
+  - Bulk export to CSV
+  - Progress modals for long operations
+  - Privacy mode compatible
 - Smart categorization
 **Voice Commands**: "Add expense", "Show recent transactions"
 

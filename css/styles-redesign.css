@@ -3098,3 +3098,200 @@ label.feature-label {
 #file-info strong {
   color: var(--text-primary);
 }
+
+/* ===================================================================
+   Bulk Operations Styles
+   =================================================================== */
+
+.bulk-operations-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  margin: var(--space-4) 0;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bulk-operations-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.bulk-select-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  user-select: none;
+}
+
+#selected-count {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.bulk-operations-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+#bulk-action-select {
+  min-width: 150px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+#bulk-action-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Checkbox column styles */
+.table-checkbox-column {
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.table-header.bulk-selectable {
+  grid-template-columns: 40px 2fr 120px 100px 100px 100px;
+}
+
+.table-row.bulk-selectable {
+  grid-template-columns: 40px 2fr 120px 100px 100px 100px;
+}
+
+.transaction-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+  margin: 0;
+}
+
+.transaction-checkbox:checked {
+  transform: scale(1.1);
+}
+
+.table-row.selected {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.table-row.selected:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+/* Bulk action modal styles */
+.bulk-action-modal {
+  max-width: 500px;
+}
+
+.bulk-action-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.bulk-category-select {
+  width: 100%;
+  padding: var(--space-3);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+}
+
+.bulk-action-summary {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.bulk-action-summary strong {
+  color: var(--color-primary);
+}
+
+/* Progress modal for bulk operations */
+.bulk-progress-modal {
+  text-align: center;
+}
+
+.bulk-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--glass-bg);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin: var(--space-4) 0;
+}
+
+.bulk-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  transition: width 0.3s ease;
+  border-radius: var(--radius-full);
+}
+
+.bulk-progress-text {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .bulk-operations-toolbar {
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+  
+  .bulk-operations-left,
+  .bulk-operations-actions {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  #bulk-action-select {
+    flex: 1;
+  }
+  
+  .table-header.bulk-selectable,
+  .table-row.bulk-selectable {
+    grid-template-columns: 40px 1fr auto;
+  }
+  
+  .table-header.bulk-selectable > div:nth-child(4),
+  .table-header.bulk-selectable > div:nth-child(5),
+  .table-row.bulk-selectable > div:nth-child(4),
+  .table-row.bulk-selectable > div:nth-child(5) {
+    display: none;
+  }
+}

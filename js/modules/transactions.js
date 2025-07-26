@@ -1309,7 +1309,10 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
         }
         
         return `
-        <div class="table-row ${isEditing ? 'editing' : ''}">
+        <div class="table-row bulk-selectable ${isEditing ? 'editing' : ''}" data-transaction-id="${t.id}">
+            <div class="table-checkbox-column">
+                <input type="checkbox" class="transaction-checkbox" data-id="${t.id}" aria-label="Select transaction">
+            </div>
             <div class="table-transaction">
                 <div class="table-icon">${categoryIcon}</div>
                 <div>

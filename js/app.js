@@ -230,6 +230,10 @@ import { populateAllCategoryDropdowns } from './modules/categories.js';
         // Initialize transaction import UI
         const { transactionImport } = await import('./modules/transactionImport.js');
         transactionImport.init();
+        
+        // Initialize bulk operations UI
+        const { bulkOperationsUI } = await import('./modules/bulkOperations.js');
+        bulkOperationsUI.init();
 
         calculateAccountBalances();
 

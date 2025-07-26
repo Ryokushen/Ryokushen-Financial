@@ -311,8 +311,29 @@
                     </div>
                 </div>
                 
+                <!-- Bulk Operations Toolbar -->
+                <div id="bulk-operations-toolbar" class="bulk-operations-toolbar" style="display: none;">
+                    <div class="bulk-operations-left">
+                        <input type="checkbox" id="select-all-transactions" class="form-checkbox">
+                        <label for="select-all-transactions" class="bulk-select-label">
+                            <span id="selected-count">0</span> selected
+                        </label>
+                    </div>
+                    <div class="bulk-operations-actions">
+                        <select id="bulk-action-select" class="form-select" disabled>
+                            <option value="">Choose bulk action...</option>
+                            <option value="categorize">Categorize</option>
+                            <option value="delete">Delete</option>
+                            <option value="export">Export</option>
+                        </select>
+                        <button id="apply-bulk-action" class="btn btn--secondary" disabled>Apply</button>
+                        <button id="cancel-bulk-selection" class="btn btn--ghost">Cancel</button>
+                    </div>
+                </div>
+                
                 <div class="enhanced-table" id="transactions-table">
-                    <div class="table-header">
+                    <div class="table-header bulk-selectable">
+                        <div class="table-checkbox-column"></div>
                         <div>Transaction</div>
                         <div>Amount</div>
                         <div>Date</div>
