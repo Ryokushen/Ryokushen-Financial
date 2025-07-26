@@ -826,8 +826,9 @@ class TransactionManager {
                     
                     originalBalances.set(`${accountType}_${accountId}`, originalBalance);
                     
-                    // Apply balance update
-                    const newBalance = addMoney(originalBalance, amount);
+                    // Apply balance update with sign convention for debt accounts
+                    // Purchases (negative amounts) increase debt, payments (positive amounts) decrease debt
+                    const newBalance = addMoney(originalBalance, -amount);
                     await database.updateDebtBalance(accountId, newBalance);
                     
                     debug.log(`Balance updated: ${accountType}_${accountId} from ${originalBalance} to ${newBalance}`);
@@ -924,13 +925,15 @@ class TransactionManager {
                     
                     originalBalances.set(`${accountType}_${accountId}`, currentBalance);
                     
-                    // Apply adjustment (reverse old + apply new)
+                    // Apply adjustment (reverse old + apply new) with debt sign convention
                     let newBalance = currentBalance;
                     if (reverseAmount !== undefined) {
-                        newBalance = subtractMoney(newBalance, reverseAmount);
+                        // Reverse the original: if original was -amount, reverse with +amount
+                        newBalance = addMoney(newBalance, reverseAmount);
                     }
                     if (applyAmount !== undefined) {
-                        newBalance = addMoney(newBalance, applyAmount);
+                        // Apply new with sign convention
+                        newBalance = addMoney(newBalance, -applyAmount);
                     }
                     
                     // Update balance

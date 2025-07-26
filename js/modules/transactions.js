@@ -931,17 +931,18 @@ async function addNewTransaction(transactionData, appState, onUpdate) {
         
         // Update local balance states
         if (newTransaction.account_id) {
-            const account = appState.appData.cashAccounts.find(a => a.id === newTransaction.account_id);
-            if (account) {
-                account.balance = addMoney(account.balance || 0, newTransaction.amount);
-            }
+            // Cash account balances are calculated, not stored - will be updated by onUpdate()
         }
         
         if (newTransaction.debt_account_id) {
-            const debtAccount = appState.appData.debtAccounts.find(d => d.id === newTransaction.debt_account_id);
-            if (debtAccount) {
-                // For debt accounts, negate the amount
-                debtAccount.balance = addMoney(debtAccount.balance || 0, -newTransaction.amount);
+            // Debt account balance was already updated in database by TransactionManager
+            // Fetch the updated balance from database to sync local state
+            const updatedAccount = await db.getDebtAccountById(newTransaction.debt_account_id);
+            if (updatedAccount) {
+                const debtAccount = appState.appData.debtAccounts.find(d => d.id === newTransaction.debt_account_id);
+                if (debtAccount) {
+                    debtAccount.balance = updatedAccount.balance;
+                }
             }
         }
         
@@ -1050,34 +1051,18 @@ async function updateTransaction(id, newTransactionData, appState, onUpdate) {
             balanceAdjustments
         );
         
-        // Update app state balances
+        // Sync debt account balances from database after TransactionManager updates
         for (const adjustment of balanceAdjustments) {
-            if (adjustment.accountType === 'cash') {
-                const account = appState.appData.cashAccounts.find(a => a.id === adjustment.accountId);
-                if (account) {
-                    let newBalance = account.balance || 0;
-                    if (adjustment.reverseAmount !== undefined) {
-                        newBalance = subtractMoney(newBalance, adjustment.reverseAmount);
+            if (adjustment.accountType === 'debt') {
+                const updatedAccount = await db.getDebtAccountById(adjustment.accountId);
+                if (updatedAccount) {
+                    const debtAccount = appState.appData.debtAccounts.find(d => d.id === adjustment.accountId);
+                    if (debtAccount) {
+                        debtAccount.balance = updatedAccount.balance;
                     }
-                    if (adjustment.applyAmount !== undefined) {
-                        newBalance = addMoney(newBalance, adjustment.applyAmount);
-                    }
-                    account.balance = newBalance;
-                }
-            } else if (adjustment.accountType === 'debt') {
-                const debtAccount = appState.appData.debtAccounts.find(d => d.id === adjustment.accountId);
-                if (debtAccount) {
-                    let newBalance = debtAccount.balance || 0;
-                    // For debt accounts, amounts are negated
-                    if (adjustment.reverseAmount !== undefined) {
-                        newBalance = subtractMoney(newBalance, -adjustment.reverseAmount);
-                    }
-                    if (adjustment.applyAmount !== undefined) {
-                        newBalance = addMoney(newBalance, -adjustment.applyAmount);
-                    }
-                    debtAccount.balance = newBalance;
                 }
             }
+            // Cash account balances will be recalculated by onUpdate()
         }
         
         // Update transaction in app state
@@ -1389,6 +1374,17 @@ async function deleteTransaction(id, appState, onUpdate) {
             // Balance updates are handled by:
             // - TransactionManager for debt accounts (stored balances)
             // - calculateAccountBalances() via onUpdate() for cash accounts (calculated balances)
+            
+            // Sync debt account balance from database to ensure UI shows correct value
+            if (transactionToDelete.debt_account_id) {
+                const updatedAccount = await db.getDebtAccountById(transactionToDelete.debt_account_id);
+                if (updatedAccount) {
+                    const debtAccount = appState.appData.debtAccounts.find(d => d.id === transactionToDelete.debt_account_id);
+                    if (debtAccount) {
+                        debtAccount.balance = updatedAccount.balance;
+                    }
+                }
+            }
 
             // Cancel edit if we're deleting the transaction being edited
             if (editingTransactionId === id) {
