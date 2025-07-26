@@ -639,10 +639,16 @@ import { populateAllCategoryDropdowns } from './modules/categories.js';
         eventManager.addEventListener(window, 'transaction:updated', onUpdate);
         eventManager.addEventListener(window, 'transaction:deleted', onUpdate);
         
-        // Also listen for batch events from bulk operations
-        eventManager.addEventListener(window, 'transaction:added:batch', onUpdate);
-        eventManager.addEventListener(window, 'transaction:updated:batch', onUpdate);
-        eventManager.addEventListener(window, 'transaction:deleted:batch', onUpdate);
+        // Listen for bulk transaction events and reload data from database
+        const onBulkUpdate = async () => {
+            // Reload all data from database to sync with bulk changes
+            await loadAllData();
+            onUpdate();
+        };
+        
+        eventManager.addEventListener(window, 'transactions:batchAdded', onBulkUpdate);
+        eventManager.addEventListener(window, 'transactions:batchUpdated', onBulkUpdate);
+        eventManager.addEventListener(window, 'transactions:batchDeleted', onBulkUpdate);
         
         // Add privacy listener to reapply on data updates
         privacyManager.addListener(() => {
