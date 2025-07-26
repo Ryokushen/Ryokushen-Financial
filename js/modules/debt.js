@@ -22,7 +22,17 @@ function openDebtModal(appData, debtId = null) {
                 // Handle both camelCase and snake_case for compatibility
                 document.getElementById("debt-interest-rate").value = debt.interestRate || debt.interest_rate || "";
                 document.getElementById("debt-minimum-payment").value = debt.minimumPayment || debt.minimum_payment || "";
-                document.getElementById("debt-due-date").value = debt.dueDate || debt.due_date || "";
+                
+                // Format date for HTML date input (expects YYYY-MM-DD)
+                const dueDate = debt.dueDate || debt.due_date || "";
+                if (dueDate) {
+                    // If date includes time, extract just the date part
+                    const dateOnly = dueDate.split('T')[0];
+                    document.getElementById("debt-due-date").value = dateOnly;
+                } else {
+                    document.getElementById("debt-due-date").value = "";
+                }
+                
                 document.getElementById("debt-credit-limit").value = debt.creditLimit || debt.credit_limit || "";
                 document.getElementById("debt-notes").value = debt.notes || "";
             }, 0);
@@ -44,7 +54,8 @@ async function handleDebtSubmit(event, appState, onUpdate) {
     clearFormErrors('debt-form');
     
     try {
-        const debtId = document.getElementById("debt-id").value;
+        const debtIdValue = document.getElementById("debt-id").value;
+        const debtId = debtIdValue ? parseInt(debtIdValue) : null;
         const debtData = {
             name: document.getElementById("debt-name").value,
             type: document.getElementById("debt-type").value,
@@ -62,7 +73,7 @@ async function handleDebtSubmit(event, appState, onUpdate) {
         
         // Validate form data with cross-field validation and async validation
         const asyncValidators = {
-            name: AsyncValidators.uniqueDebtAccountName(appState.appData.debtAccounts, debtId ? parseInt(debtId) : null)
+            name: AsyncValidators.uniqueDebtAccountName(appState.appData.debtAccounts, debtId)
         };
         
         const { errors, hasErrors } = await validateWithAsyncRules(
@@ -88,19 +99,25 @@ async function handleDebtSubmit(event, appState, onUpdate) {
         }
 
         if (debtId) {
-            const savedDebt = await db.updateDebtAccount(parseInt(debtId), debtData);
-            const index = appState.appData.debtAccounts.findIndex(d => d.id === parseInt(debtId));
-            if (index > -1) appState.appData.debtAccounts[index] = { id: savedDebt.id, ...debtData };
+            debug.log('Updating debt account:', debtId, debtData);
+            const savedDebt = await db.updateDebtAccount(debtId, debtData);
+            const index = appState.appData.debtAccounts.findIndex(d => d.id === debtId);
+            if (index > -1) {
+                // Update local state with the saved data (which has snake_case fields)
+                appState.appData.debtAccounts[index] = savedDebt;
+            }
         } else {
+            debug.log('Adding new debt account:', debtData);
             const savedDebt = await db.addDebtAccount(debtData);
-            appState.appData.debtAccounts.push({ id: savedDebt.id, ...debtData });
+            appState.appData.debtAccounts.push(savedDebt);
         }
         
         closeModal('debt-modal');
         await onUpdate();
         announceToScreenReader("Debt account saved successfully");
     } catch (error) {
-        showError("Failed to save debt account.");
+        debug.error("Error saving debt account:", error);
+        showError("Failed to save debt account: " + error.message);
     }
 }
 
