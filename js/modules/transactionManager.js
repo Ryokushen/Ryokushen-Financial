@@ -2974,6 +2974,197 @@ class TransactionManager {
     }
 
     /**
+     * Search with complex query object supporting AND/OR conditions
+     * @param {Object} query - Complex query object
+     * @param {Array} query.and - Array of conditions that must all match (AND)
+     * @param {Array} query.or - Array of conditions where at least one must match (OR)
+     * @param {Object} query.not - Conditions that must NOT match
+     * @param {string} query.sortBy - Sort field
+     * @param {string} query.sortOrder - Sort order
+     * @param {number} query.limit - Result limit
+     * @returns {Promise<Array>} Matching transactions
+     * 
+     * @example
+     * searchWithQuery({
+     *   and: [
+     *     { field: 'category', operator: 'equals', value: 'Food' },
+     *     { field: 'amount', operator: 'between', value: [10, 50] }
+     *   ],
+     *   or: [
+     *     { field: 'description', operator: 'contains', value: 'coffee' },
+     *     { field: 'description', operator: 'contains', value: 'lunch' }
+     *   ]
+     * })
+     */
+    async searchWithQuery(query) {
+        try {
+            const {
+                and = [],
+                or = [],
+                not = null,
+                sortBy = 'date',
+                sortOrder = 'desc',
+                limit = 100
+            } = query;
+            
+            debug.log('Executing complex query:', query);
+            
+            // Get all transactions
+            const transactions = await database.getTransactions();
+            
+            // Filter transactions based on complex conditions
+            const filtered = transactions.filter(transaction => {
+                // Check AND conditions - all must match
+                const andMatch = and.length === 0 || and.every(condition => 
+                    this.evaluateCondition(transaction, condition)
+                );
+                
+                // Check OR conditions - at least one must match
+                const orMatch = or.length === 0 || or.some(condition => 
+                    this.evaluateCondition(transaction, condition)
+                );
+                
+                // Check NOT conditions - none must match
+                const notMatch = !not || !this.evaluateCondition(transaction, not);
+                
+                return andMatch && orMatch && notMatch;
+            });
+            
+            // Sort results
+            filtered.sort((a, b) => {
+                let compareValue = 0;
+                
+                switch (sortBy) {
+                    case 'amount':
+                        compareValue = Math.abs(parseFloat(a.amount)) - Math.abs(parseFloat(b.amount));
+                        break;
+                    case 'description':
+                        compareValue = (a.description || '').localeCompare(b.description || '');
+                        break;
+                    case 'date':
+                    default:
+                        compareValue = new Date(a.date) - new Date(b.date);
+                        break;
+                }
+                
+                return sortOrder === 'asc' ? compareValue : -compareValue;
+            });
+            
+            // Apply limit
+            const results = filtered.slice(0, limit);
+            
+            debug.log(`Complex query found ${results.length} results`);
+            
+            return results;
+            
+        } catch (error) {
+            debug.error('Complex query failed', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Evaluate a single condition against a transaction
+     * @private
+     */
+    evaluateCondition(transaction, condition) {
+        const { field, operator, value } = condition;
+        
+        // Get the field value from the transaction
+        let fieldValue = transaction[field];
+        
+        // Handle special fields
+        if (field === 'amount') {
+            fieldValue = parseFloat(fieldValue);
+        } else if (field === 'date') {
+            fieldValue = new Date(fieldValue);
+        }
+        
+        // Evaluate based on operator
+        switch (operator) {
+            case 'equals':
+            case '=':
+                return fieldValue === value;
+                
+            case 'notEquals':
+            case '!=':
+                return fieldValue !== value;
+                
+            case 'contains':
+                return fieldValue && 
+                       typeof fieldValue === 'string' && 
+                       fieldValue.toLowerCase().includes(value.toLowerCase());
+                
+            case 'notContains':
+                return !fieldValue || 
+                       typeof fieldValue !== 'string' || 
+                       !fieldValue.toLowerCase().includes(value.toLowerCase());
+                
+            case 'startsWith':
+                return fieldValue && 
+                       typeof fieldValue === 'string' && 
+                       fieldValue.toLowerCase().startsWith(value.toLowerCase());
+                
+            case 'endsWith':
+                return fieldValue && 
+                       typeof fieldValue === 'string' && 
+                       fieldValue.toLowerCase().endsWith(value.toLowerCase());
+                
+            case 'greaterThan':
+            case '>':
+                return fieldValue > value;
+                
+            case 'greaterThanOrEqual':
+            case '>=':
+                return fieldValue >= value;
+                
+            case 'lessThan':
+            case '<':
+                return fieldValue < value;
+                
+            case 'lessThanOrEqual':
+            case '<=':
+                return fieldValue <= value;
+                
+            case 'between':
+                return Array.isArray(value) && 
+                       value.length === 2 && 
+                       fieldValue >= value[0] && 
+                       fieldValue <= value[1];
+                
+            case 'in':
+                return Array.isArray(value) && value.includes(fieldValue);
+                
+            case 'notIn':
+                return !Array.isArray(value) || !value.includes(fieldValue);
+                
+            case 'isNull':
+                return fieldValue === null || fieldValue === undefined;
+                
+            case 'isNotNull':
+                return fieldValue !== null && fieldValue !== undefined;
+                
+            case 'isEmpty':
+                return !fieldValue || fieldValue === '';
+                
+            case 'isNotEmpty':
+                return fieldValue && fieldValue !== '';
+                
+            case 'regex':
+                try {
+                    const regex = new RegExp(value, 'i');
+                    return regex.test(fieldValue);
+                } catch {
+                    return false;
+                }
+                
+            default:
+                debug.warn(`Unknown operator: ${operator}`);
+                return false;
+        }
+    }
+
+    /**
      * Cleanup method
      */
     cleanup() {

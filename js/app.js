@@ -199,6 +199,24 @@ import { populateAllCategoryDropdowns } from './modules/categories.js';
             }
         };
         
+        window.searchWithQuery = async (query) => {
+            try {
+                const results = await transactionManager.searchWithQuery(query);
+                console.log(`Complex query found ${results.length} results`);
+                console.table(results.slice(0, 10).map(t => ({
+                    'Date': t.date,
+                    'Description': t.description,
+                    'Amount': `$${parseFloat(t.amount).toFixed(2)}`,
+                    'Category': t.category,
+                    'Account': t.account_name || 'Unknown'
+                })));
+                return results;
+            } catch (error) {
+                console.error('Complex query failed:', error);
+                return [];
+            }
+        };
+        
         // Initialize rule templates UI
         const { ruleTemplatesUI } = await import('./modules/ruleTemplatesUI.js');
         ruleTemplatesUI.init();
