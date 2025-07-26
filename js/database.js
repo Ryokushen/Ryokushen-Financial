@@ -542,9 +542,10 @@ class FinancialDatabase {
                 category: bill.category,
                 amount: bill.amount,
                 frequency: bill.frequency,
-                next_due: bill.next_due,
+                next_due: bill.next_due || bill.next_due_date,
                 account_id: bill.account_id,
                 payment_method: bill.payment_method || 'cash',
+                last_paid_date: bill.last_paid_date,
                 debt_account_id: bill.debt_account_id || null,
                 notes: bill.notes || null,
                 active: bill.active !== undefined ? bill.active : true

@@ -2121,6 +2121,269 @@ class TransactionManager {
         }
     }
 
+    // ===== RECURRING TRANSACTION GENERATION =====
+    
+    /**
+     * Generate transactions for due recurring bills
+     * @param {Array} recurringBills - Array of recurring bills
+     * @param {Object} options - Generation options
+     * @returns {Promise<Object>} Generation results
+     */
+    async generateRecurringTransactions(recurringBills, options = {}) {
+        const {
+            daysAhead = 0, // Generate for bills due in next N days (0 = only today)
+            autoProcess = false, // Automatically create transactions
+            dryRun = false // Preview without creating
+        } = options;
+        
+        const results = {
+            due: [],
+            generated: [],
+            failed: [],
+            skipped: []
+        };
+        
+        try {
+            const today = new Date();
+            const targetDate = new Date();
+            targetDate.setDate(today.getDate() + daysAhead);
+            
+            // Filter bills that are due
+            for (const bill of recurringBills) {
+                if (!bill.is_active) {
+                    results.skipped.push({
+                        bill,
+                        reason: 'Bill is inactive'
+                    });
+                    continue;
+                }
+                
+                const nextDueDate = this.calculateNextDueDate(bill);
+                if (!nextDueDate) {
+                    results.skipped.push({
+                        bill,
+                        reason: 'Could not calculate next due date'
+                    });
+                    continue;
+                }
+                
+                const dueDate = new Date(nextDueDate);
+                
+                // Check if bill is due within target date range
+                if (dueDate <= targetDate) {
+                    const transactionData = {
+                        date: nextDueDate,
+                        account_id: bill.account_id,
+                        category: bill.category,
+                        description: `${bill.name} (Recurring)`,
+                        amount: -bill.amount, // Expenses are negative
+                        cleared: false,
+                        debt_account_id: bill.debt_account_id || null
+                    };
+                    
+                    results.due.push({
+                        bill,
+                        dueDate: nextDueDate,
+                        transactionData
+                    });
+                    
+                    // Generate transaction if autoProcess is enabled
+                    if (autoProcess && !dryRun) {
+                        try {
+                            let transaction;
+                            
+                            // Check payment method
+                            const paymentMethod = bill.payment_method || 'cash';
+                            
+                            if (paymentMethod === 'credit' && bill.debt_account_id) {
+                                // Credit card payment with balance update
+                                transactionData.account_id = null;
+                                transactionData.amount = bill.amount; // Positive for debt
+                                transactionData.description = `${bill.name} (Recurring - Credit Card)`;
+                                
+                                transaction = await this.createTransactionWithBalanceUpdate(
+                                    transactionData,
+                                    [{
+                                        accountType: 'debt',
+                                        accountId: bill.debt_account_id,
+                                        amount: bill.amount
+                                    }]
+                                );
+                            } else {
+                                // Regular cash account transaction
+                                transaction = await this.addTransaction(transactionData);
+                            }
+                            
+                            results.generated.push({
+                                bill,
+                                transaction
+                            });
+                            
+                            // Update last paid date
+                            await this.updateRecurringBillLastPaid(bill.id, nextDueDate);
+                            
+                        } catch (error) {
+                            results.failed.push({
+                                bill,
+                                error: error.message
+                            });
+                        }
+                    }
+                }
+            }
+            
+            // Dispatch event with results
+            this.dispatchEvent('recurring:generated', results);
+            
+            debug.log(`Recurring generation complete: ${results.generated.length} generated, ${results.due.length} due, ${results.failed.length} failed`);
+            
+            return results;
+            
+        } catch (error) {
+            debug.error('Failed to generate recurring transactions', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Calculate next due date for a recurring bill
+     * @param {Object} bill - Recurring bill
+     * @returns {string|null} Next due date in YYYY-MM-DD format
+     */
+    calculateNextDueDate(bill) {
+        try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            let nextDue;
+            
+            if (bill.last_paid_date) {
+                // Calculate from last paid date
+                nextDue = new Date(bill.last_paid_date);
+            } else if (bill.next_due_date) {
+                // Use stored next due date
+                nextDue = new Date(bill.next_due_date);
+                
+                // If it's in the past, calculate next occurrence
+                if (nextDue < today) {
+                    nextDue = today;
+                } else {
+                    return bill.next_due_date; // Already future date
+                }
+            } else {
+                // Start from today if no reference date
+                nextDue = new Date(today);
+            }
+            
+            // Add frequency period
+            switch (bill.frequency) {
+                case 'daily':
+                    nextDue.setDate(nextDue.getDate() + 1);
+                    break;
+                case 'weekly':
+                    nextDue.setDate(nextDue.getDate() + 7);
+                    break;
+                case 'biweekly':
+                    nextDue.setDate(nextDue.getDate() + 14);
+                    break;
+                case 'monthly':
+                    nextDue.setMonth(nextDue.getMonth() + 1);
+                    break;
+                case 'quarterly':
+                    nextDue.setMonth(nextDue.getMonth() + 3);
+                    break;
+                case 'annually':
+                    nextDue.setFullYear(nextDue.getFullYear() + 1);
+                    break;
+                default:
+                    return null;
+            }
+            
+            // If next due is still in the past, keep advancing until future
+            while (nextDue <= today) {
+                switch (bill.frequency) {
+                    case 'daily':
+                        nextDue.setDate(nextDue.getDate() + 1);
+                        break;
+                    case 'weekly':
+                        nextDue.setDate(nextDue.getDate() + 7);
+                        break;
+                    case 'biweekly':
+                        nextDue.setDate(nextDue.getDate() + 14);
+                        break;
+                    case 'monthly':
+                        nextDue.setMonth(nextDue.getMonth() + 1);
+                        break;
+                    case 'quarterly':
+                        nextDue.setMonth(nextDue.getMonth() + 3);
+                        break;
+                    case 'annually':
+                        nextDue.setFullYear(nextDue.getFullYear() + 1);
+                        break;
+                }
+            }
+            
+            return nextDue.toISOString().split('T')[0];
+            
+        } catch (error) {
+            debug.error('Failed to calculate next due date', error);
+            return null;
+        }
+    }
+    
+    /**
+     * Update recurring bill's last paid date
+     * @param {number} billId - Bill ID
+     * @param {string} paidDate - Date paid in YYYY-MM-DD format
+     * @returns {Promise<void>}
+     */
+    async updateRecurringBillLastPaid(billId, paidDate) {
+        try {
+            await database.updateRecurringBill(billId, {
+                last_paid_date: paidDate,
+                next_due_date: this.calculateNextDueDate({ 
+                    last_paid_date: paidDate,
+                    frequency: 'monthly' // This should come from the bill
+                })
+            });
+        } catch (error) {
+            debug.error('Failed to update recurring bill last paid date', error);
+            // Don't throw - this is not critical
+        }
+    }
+    
+    /**
+     * Preview upcoming recurring transactions
+     * @param {Array} recurringBills - Array of recurring bills
+     * @param {number} daysAhead - Number of days to look ahead
+     * @returns {Promise<Array>} Array of upcoming transactions
+     */
+    async previewUpcomingRecurring(recurringBills, daysAhead = 30) {
+        const results = await this.generateRecurringTransactions(recurringBills, {
+            daysAhead,
+            autoProcess: false,
+            dryRun: true
+        });
+        
+        return results.due.sort((a, b) => 
+            new Date(a.dueDate) - new Date(b.dueDate)
+        );
+    }
+    
+    /**
+     * Auto-generate recurring transactions that are due
+     * This can be called periodically (e.g., daily) to create due transactions
+     * @param {Array} recurringBills - Array of recurring bills
+     * @returns {Promise<Object>} Generation results
+     */
+    async autoGenerateDueTransactions(recurringBills) {
+        return this.generateRecurringTransactions(recurringBills, {
+            daysAhead: 0, // Only today's bills
+            autoProcess: true,
+            dryRun: false
+        });
+    }
+
     /**
      * Cleanup method
      */
