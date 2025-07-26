@@ -2664,6 +2664,316 @@ class TransactionManager {
     }
 
     /**
+     * Advanced search for transactions with multiple filter options
+     * @param {Object} filters - Search filters
+     * @param {string} filters.searchText - Text to search in description/notes
+     * @param {Date} filters.startDate - Start date for date range
+     * @param {Date} filters.endDate - End date for date range
+     * @param {number} filters.minAmount - Minimum transaction amount
+     * @param {number} filters.maxAmount - Maximum transaction amount
+     * @param {Array<string>} filters.categories - Array of categories to include
+     * @param {Array<string>} filters.accounts - Array of account IDs to include
+     * @param {string} filters.type - Transaction type ('income', 'expense', 'all')
+     * @param {string} filters.sortBy - Sort field ('date', 'amount', 'description')
+     * @param {string} filters.sortOrder - Sort order ('asc', 'desc')
+     * @param {number} filters.limit - Maximum results to return
+     * @param {number} filters.offset - Results offset for pagination
+     * @returns {Promise<Object>} Search results with transactions and metadata
+     */
+    async searchTransactions(filters = {}) {
+        try {
+            const startTime = Date.now();
+            
+            // Extract and validate filters
+            const {
+                searchText = '',
+                startDate = null,
+                endDate = null,
+                minAmount = null,
+                maxAmount = null,
+                categories = [],
+                accounts = [],
+                type = 'all',
+                sortBy = 'date',
+                sortOrder = 'desc',
+                limit = 100,
+                offset = 0
+            } = filters;
+            
+            debug.log('Searching transactions with filters:', filters);
+            
+            // Get all transactions (we'll filter in memory for now)
+            // In a production app, this would be done at the database level
+            const allTransactions = await database.getTransactions();
+            
+            // Apply filters
+            let filtered = allTransactions.filter(transaction => {
+                // Text search
+                if (searchText) {
+                    const searchLower = searchText.toLowerCase();
+                    const descMatch = transaction.description?.toLowerCase().includes(searchLower);
+                    const notesMatch = transaction.notes?.toLowerCase().includes(searchLower);
+                    const categoryMatch = transaction.category?.toLowerCase().includes(searchLower);
+                    
+                    if (!descMatch && !notesMatch && !categoryMatch) {
+                        return false;
+                    }
+                }
+                
+                // Date range filter
+                if (startDate && new Date(transaction.date) < startDate) {
+                    return false;
+                }
+                if (endDate && new Date(transaction.date) > endDate) {
+                    return false;
+                }
+                
+                // Amount range filter
+                const amount = Math.abs(parseFloat(transaction.amount));
+                if (minAmount !== null && amount < minAmount) {
+                    return false;
+                }
+                if (maxAmount !== null && amount > maxAmount) {
+                    return false;
+                }
+                
+                // Category filter
+                if (categories.length > 0 && !categories.includes(transaction.category)) {
+                    return false;
+                }
+                
+                // Account filter
+                if (accounts.length > 0) {
+                    const accountMatch = accounts.includes(transaction.account_id) ||
+                                       accounts.includes(transaction.from_account_id) ||
+                                       accounts.includes(transaction.to_account_id);
+                    if (!accountMatch) {
+                        return false;
+                    }
+                }
+                
+                // Type filter
+                if (type !== 'all') {
+                    const isIncome = parseFloat(transaction.amount) > 0;
+                    if (type === 'income' && !isIncome) return false;
+                    if (type === 'expense' && isIncome) return false;
+                }
+                
+                return true;
+            });
+            
+            // Sort results
+            filtered.sort((a, b) => {
+                let compareValue = 0;
+                
+                switch (sortBy) {
+                    case 'amount':
+                        compareValue = Math.abs(parseFloat(a.amount)) - Math.abs(parseFloat(b.amount));
+                        break;
+                    case 'description':
+                        compareValue = (a.description || '').localeCompare(b.description || '');
+                        break;
+                    case 'date':
+                    default:
+                        compareValue = new Date(a.date) - new Date(b.date);
+                        break;
+                }
+                
+                return sortOrder === 'asc' ? compareValue : -compareValue;
+            });
+            
+            // Calculate totals before pagination
+            const totalCount = filtered.length;
+            const totalAmount = filtered.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+            const totalIncome = filtered
+                .filter(t => parseFloat(t.amount) > 0)
+                .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+            const totalExpense = filtered
+                .filter(t => parseFloat(t.amount) < 0)
+                .reduce((sum, t) => sum + Math.abs(parseFloat(t.amount)), 0);
+            
+            // Apply pagination
+            const paginated = filtered.slice(offset, offset + limit);
+            
+            // Prepare results
+            const results = {
+                transactions: paginated,
+                metadata: {
+                    totalCount,
+                    returnedCount: paginated.length,
+                    offset,
+                    limit,
+                    totalAmount,
+                    totalIncome,
+                    totalExpense,
+                    searchTime: Date.now() - startTime,
+                    filters: filters
+                }
+            };
+            
+            debug.log(`Search completed: ${paginated.length} of ${totalCount} results in ${results.metadata.searchTime}ms`);
+            
+            return results;
+            
+        } catch (error) {
+            debug.error('Transaction search failed', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Full-text search across transaction descriptions and notes
+     * @param {string} searchText - Text to search for
+     * @param {Object} options - Search options
+     * @param {boolean} options.fuzzy - Enable fuzzy matching
+     * @param {boolean} options.highlight - Add highlighting to matches
+     * @param {number} options.limit - Maximum results
+     * @returns {Promise<Array>} Array of matching transactions with relevance scores
+     */
+    async searchByDescription(searchText, options = {}) {
+        try {
+            const {
+                fuzzy = true,
+                highlight = true,
+                limit = 50
+            } = options;
+            
+            if (!searchText || searchText.trim().length === 0) {
+                return [];
+            }
+            
+            const searchLower = searchText.toLowerCase().trim();
+            const searchTerms = searchLower.split(/\s+/);
+            
+            // Get all transactions
+            const transactions = await database.getTransactions();
+            
+            // Score and filter transactions
+            const scored = transactions
+                .map(transaction => {
+                    let score = 0;
+                    const matches = {
+                        description: [],
+                        notes: [],
+                        category: []
+                    };
+                    
+                    // Check description
+                    if (transaction.description) {
+                        const descLower = transaction.description.toLowerCase();
+                        searchTerms.forEach(term => {
+                            if (descLower.includes(term)) {
+                                score += 10;
+                                matches.description.push(term);
+                            } else if (fuzzy && this.fuzzyMatch(term, descLower)) {
+                                score += 5;
+                                matches.description.push(term);
+                            }
+                        });
+                    }
+                    
+                    // Check notes
+                    if (transaction.notes) {
+                        const notesLower = transaction.notes.toLowerCase();
+                        searchTerms.forEach(term => {
+                            if (notesLower.includes(term)) {
+                                score += 7;
+                                matches.notes.push(term);
+                            } else if (fuzzy && this.fuzzyMatch(term, notesLower)) {
+                                score += 3;
+                                matches.notes.push(term);
+                            }
+                        });
+                    }
+                    
+                    // Check category
+                    if (transaction.category) {
+                        const categoryLower = transaction.category.toLowerCase();
+                        searchTerms.forEach(term => {
+                            if (categoryLower.includes(term)) {
+                                score += 5;
+                                matches.category.push(term);
+                            }
+                        });
+                    }
+                    
+                    // Bonus for exact matches
+                    if (transaction.description?.toLowerCase() === searchLower) {
+                        score += 20;
+                    }
+                    
+                    return {
+                        ...transaction,
+                        _score: score,
+                        _matches: matches,
+                        _highlighted: highlight ? this.highlightMatches(transaction, searchTerms) : null
+                    };
+                })
+                .filter(t => t._score > 0)
+                .sort((a, b) => b._score - a._score)
+                .slice(0, limit);
+            
+            debug.log(`Description search found ${scored.length} matches for "${searchText}"`);
+            
+            return scored;
+            
+        } catch (error) {
+            debug.error('Description search failed', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Simple fuzzy matching helper
+     * @private
+     */
+    fuzzyMatch(needle, haystack) {
+        const hlen = haystack.length;
+        const nlen = needle.length;
+        
+        if (nlen > hlen) {
+            return false;
+        }
+        
+        if (nlen === hlen) {
+            return needle === haystack;
+        }
+        
+        outer: for (let i = 0, j = 0; i < nlen; i++) {
+            const nch = needle.charCodeAt(i);
+            while (j < hlen) {
+                if (haystack.charCodeAt(j++) === nch) {
+                    continue outer;
+                }
+            }
+            return false;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Highlight search matches in transaction fields
+     * @private
+     */
+    highlightMatches(transaction, searchTerms) {
+        const highlighted = {};
+        
+        ['description', 'notes', 'category'].forEach(field => {
+            if (transaction[field]) {
+                let text = transaction[field];
+                searchTerms.forEach(term => {
+                    const regex = new RegExp(`(${term})`, 'gi');
+                    text = text.replace(regex, '**$1**');
+                });
+                highlighted[field] = text;
+            }
+        });
+        
+        return highlighted;
+    }
+
+    /**
      * Cleanup method
      */
     cleanup() {

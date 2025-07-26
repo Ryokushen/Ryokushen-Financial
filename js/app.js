@@ -161,6 +161,44 @@ import { populateAllCategoryDropdowns } from './modules/categories.js';
             return preview;
         };
         
+        // Expose advanced search helpers for console use
+        window.searchTransactions = async (filters) => {
+            try {
+                const results = await transactionManager.searchTransactions(filters);
+                console.log(`Found ${results.metadata.totalCount} transactions (showing ${results.metadata.returnedCount})`);
+                console.log(`Total: $${results.metadata.totalAmount.toFixed(2)} (Income: $${results.metadata.totalIncome.toFixed(2)}, Expense: $${results.metadata.totalExpense.toFixed(2)})`);
+                console.table(results.transactions.slice(0, 10).map(t => ({
+                    'Date': t.date,
+                    'Description': t.description,
+                    'Amount': `$${parseFloat(t.amount).toFixed(2)}`,
+                    'Category': t.category,
+                    'Account': t.account_name || 'Unknown'
+                })));
+                return results;
+            } catch (error) {
+                console.error('Search failed:', error);
+                return null;
+            }
+        };
+        
+        window.searchByText = async (text, options = {}) => {
+            try {
+                const results = await transactionManager.searchByDescription(text, options);
+                console.log(`Found ${results.length} matches for "${text}"`);
+                console.table(results.slice(0, 10).map(t => ({
+                    'Score': t._score,
+                    'Date': t.date,
+                    'Description': t._highlighted?.description || t.description,
+                    'Amount': `$${parseFloat(t.amount).toFixed(2)}`,
+                    'Category': t.category
+                })));
+                return results;
+            } catch (error) {
+                console.error('Text search failed:', error);
+                return [];
+            }
+        };
+        
         // Initialize rule templates UI
         const { ruleTemplatesUI } = await import('./modules/ruleTemplatesUI.js');
         ruleTemplatesUI.init();
