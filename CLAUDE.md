@@ -90,7 +90,50 @@ git diff
 - HTML element IDs: kebab-case (e.g., `transaction-form`)
 - CSS classes: kebab-case (e.g., `.privacy-blur`)
 
-## Architecture Patterns
+### Glass-Morphism Design System
+- **Background**: `rgba(255, 255, 255, 0.05)` with `backdrop-filter: blur(20px)`
+- **Borders**: `1px solid rgba(255, 255, 255, 0.1)`
+- **Border Radius**: Use `--radius-xl` (1rem) for cards
+- **Shadows**: Enhanced shadows for depth
+- **Hover Effects**: Scale 1.05 with translateY(-4px)
+
+### Color Tokens
+- Primary: `#3b82f6` (blue)
+- Secondary: `#10b981` (emerald)
+- Success: `#22c55e`
+- Danger: `#ef4444`
+- Warning: `#f59e0b`
+
+### Component Patterns
+- All cards use glass-morphism
+- Buttons have gradient backgrounds
+- Forms use dark theme with light text
+- Modals slide in with backdrop blur
+
+## Technical Architecture
+
+### Frontend Stack
+- **Framework**: Vanilla JavaScript (no framework)
+- **Modules**: 60+ ES6 modules with dynamic imports
+- **State Management**: Centralized appState with event-driven updates
+- **Data Layer**: Supabase with Row Level Security
+- **Styling**: Custom CSS with glass-morphism design system
+- **Charts**: Chart.js for visualizations
+- **Voice**: Custom NLP with Web Speech API
+
+### Design Patterns
+- **Singleton Pattern**: EventManager, PrivacyManager, TransactionManager (15 total)
+- **Observer Pattern**: Event-driven communication via CustomEvents
+- **Factory Pattern**: Transaction creation and validation
+- **Module Pattern**: All features as ES6 modules
+
+### Module Categories
+1. **Core Infrastructure** (4): App, Database, EventManager, Config
+2. **Data Management** (4): TransactionManager, DataIndex, Validation, ErrorHandler
+3. **Feature Modules** (13): Accounts, Transactions, Investments, Debt, etc.
+4. **UI/UX Modules** (10): ModalManager, LoadingState, DOMCache, etc.
+5. **Voice System** (11): Complete voice command architecture
+6. **Utility Modules** (8+): Memoization, PerformanceUtils, etc.
 
 ### Database Operations
 - All database operations MUST go through `database.js`
@@ -115,6 +158,7 @@ try {
 - Use EventManager for module communication
 - Event names: 'module:action' format (e.g., 'transaction:added')
 - Always clean up event listeners on destroy
+- 30+ event types for cross-module communication
 
 ### Voice Command Integration
 - Voice commands must work with privacy mode
@@ -181,6 +225,24 @@ describe('ModuleName', () => {
 
 ## Security & Privacy
 
+### Authentication
+- Supabase authentication with email/password
+- Magic link support
+- Session persistence
+- Row Level Security for data isolation
+
+### Privacy Mode
+- Master password or biometric authentication
+- Visual blur for sensitive data
+- Click-to-reveal with auto re-blur (3s)
+- Panic button for instant privacy
+
+### Data Protection
+- Input sanitization for XSS prevention
+- No sensitive data in localStorage
+- All financial data in Supabase with RLS
+- WebAuthn for biometric authentication
+
 ### Never:
 - Log sensitive financial data to console
 - Store credentials in code
@@ -195,7 +257,24 @@ describe('ModuleName', () => {
 - Test authentication flows
 - Respect privacy mode settings
 
-## Performance Considerations
+## Performance Optimization
+
+### Caching Strategy
+1. **TransactionManager Cache**: 5-minute TTL with LRU eviction
+2. **DOM Cache**: Max 50 elements with MutationObserver cleanup
+3. **Memoization**: Function-level caching with dependencies
+4. **Search Cache**: 2-minute TTL, max 50 results
+5. **DataIndex**: O(1) lookups via Maps
+
+### Event Batching
+- Use 50ms delay for transaction events
+- Batch size of 50 for database operations
+- RAF throttling for animations
+
+### Lazy Loading
+- Dynamic imports for feature modules
+- On-demand voice module loading
+- Deferred non-critical module initialization
 
 ### Optimization Strategies
 - Use memoization for expensive calculations
@@ -209,7 +288,19 @@ describe('ModuleName', () => {
 - Use responsive options
 - Limit data points for performance
 
-## Voice Command Guidelines
+## Voice Command Integration
+
+### Architecture
+- Global voice interface (Ctrl+K activation)
+- NLP parser with 100+ patterns
+- Context-aware command processing
+- Privacy mode compatibility
+
+### Common Commands
+- "What's my balance?" - Shows total balance
+- "Add expense fifty dollars for groceries" - Creates transaction
+- "Show spending this month" - Displays category breakdown
+- "Enable privacy mode" - Activates privacy
 
 ### Implementation
 - Support natural language variations
@@ -218,11 +309,13 @@ describe('ModuleName', () => {
 - Work with privacy mode enabled
 - Test with different accents/speeds
 
-### Common Commands
-- "Add expense [amount] for [category]"
-- "Show my balance"
-- "What did I spend on [category]"
-- "Add income [amount]"
+### Integration Pattern
+```javascript
+// Voice commands automatically work with any module that:
+// 1. Emits standard events (transaction:added, etc.)
+// 2. Implements standard interfaces (getBalance, addTransaction)
+// 3. Respects privacy mode state
+```
 
 ## Development Workflow
 
