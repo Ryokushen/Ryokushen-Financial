@@ -1,5 +1,6 @@
 // js/modules/batchOperations.js
 import { debug } from './debug.js';
+import { transactionManager } from './transactionManager.js';
 
 /**
  * Batch Operations Utility
@@ -139,23 +140,27 @@ class BatchOperationManager {
      * Batch update transactions
      */
     async batchUpdateTransactions(operations) {
-        const db = (await import('../database.js')).default;
-        
-        // Convert operations to the format expected by database.js
+        // Convert operations to the format expected by TransactionManager
         const updates = operations.map(op => ({
             id: op.data.id,
             updates: op.data.updates
         }));
         
-        // Use the new batch update method
-        const results = await db.batchUpdateTransactions(updates);
+        // Use TransactionManager's batch update method
+        const results = await transactionManager.updateMultipleTransactions(updates);
         
         // Resolve/reject operations based on results
         operations.forEach((op, index) => {
-            if (results[index].success) {
-                op.resolve(results[index].data);
+            // Find corresponding result for this operation
+            const successResult = results.successful.find(r => r.transaction && r.transaction.id === op.data.id);
+            const failedResult = results.failed.find(r => r.id === op.data.id);
+            
+            if (successResult) {
+                op.resolve(successResult.transaction);
+            } else if (failedResult) {
+                op.reject(new Error(failedResult.error));
             } else {
-                op.reject(results[index].error);
+                op.reject(new Error('Transaction update result not found'));
             }
         });
     }
@@ -196,6 +201,29 @@ export async function batchUpdateSavingsGoal(id, updates) {
         const db = (await import('../database.js')).default;
         return db.updateSavingsGoal(id, updates);
     });
+}
+
+/**
+ * Batch update helper for transactions using TransactionManager
+ */
+export async function batchUpdateTransaction(id, updates) {
+    return batchOperation('updateTransactions', { id, updates }, async () => {
+        return transactionManager.updateTransaction(id, updates);
+    });
+}
+
+/**
+ * Batch add transactions using TransactionManager
+ */
+export async function batchAddTransactions(transactionsData) {
+    return transactionManager.addMultipleTransactions(transactionsData);
+}
+
+/**
+ * Batch delete transactions using TransactionManager
+ */
+export async function batchDeleteTransactions(transactionIds) {
+    return transactionManager.deleteMultipleTransactions(transactionIds);
 }
 
 /**
