@@ -5,6 +5,7 @@ import { showError, announceToScreenReader, openModal, closeModal } from './ui.j
 import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, validateWithAsyncRules, AsyncValidators } from './validation.js';
 import { setupModalEventListeners, createFormSubmitHandler, populateFormFromData, displayValidationErrors } from './formUtils.js';
 import { eventManager } from './eventManager.js';
+import { transactionManager } from './transactionManager.js';
 
 export function setupEventListeners(appState, onUpdate) {
     const addCashAccountBtn = document.getElementById("add-cash-account-btn");
@@ -123,9 +124,9 @@ async function handleCashAccountSubmit(event, appState, onUpdate) {
                     amount: initialBalance,
                     cleared: true
                 };
-                const savedTransaction = await db.addTransaction(initialTransaction);
+                const savedTransaction = await transactionManager.addTransaction(initialTransaction);
                 appState.appData.transactions.unshift({ ...savedTransaction, amount: parseFloat(savedTransaction.amount) });
-                newAccount.balance = initialBalance;
+                // Balance will be recalculated automatically
             }
             appState.appData.cashAccounts.push(newAccount);
         }
@@ -144,7 +145,19 @@ async function deleteCashAccount(id, appState, onUpdate) {
 
     if (confirm(`Are you sure you want to delete "${account.name}"? This will also delete ALL associated transactions.`)) {
         try {
-            await db.deleteCashAccount(id); // DB handles deleting transactions
+            // Get all transactions for this account before deletion
+            const accountTransactions = appState.appData.transactions.filter(t => t.account_id === id);
+            const transactionIds = accountTransactions.map(t => t.id);
+            
+            // Use TransactionManager to delete transactions in batch if there are any
+            if (transactionIds.length > 0) {
+                await transactionManager.deleteMultipleTransactions(transactionIds);
+            }
+            
+            // Now delete the account itself
+            await db.deleteCashAccount(id);
+            
+            // Update local state
             appState.appData.cashAccounts = appState.appData.cashAccounts.filter(a => a.id !== id);
             appState.appData.transactions = appState.appData.transactions.filter(t => t.account_id !== id);
             
