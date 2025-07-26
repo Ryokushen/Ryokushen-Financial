@@ -206,7 +206,7 @@ class TransactionManager {
             return { valid: true, errors: {} };
         }
         
-        const { errors, hasErrors } = validateForm(transactionData, ValidationSchemas.transaction);
+        const { errors } = validateForm(transactionData, ValidationSchemas.transaction);
         
         // Additional custom validations
         const customErrors = {};
@@ -1472,7 +1472,6 @@ class TransactionManager {
      * @returns {Promise<Object>} Batch operation result
      */
     async batchProcess(items, operation, options = {}) {
-        const batchId = Date.now();
         const results = {
             successful: [],
             failed: [],
@@ -1733,7 +1732,7 @@ class TransactionManager {
      * @returns {Promise<Object>} Transaction statistics
      */
     async getTransactionStatistics(options = {}) {
-        const { dateFrom, dateTo, groupBy = 'category' } = options;
+        const { dateFrom, dateTo } = options;
         
         const transactions = await this.getTransactions({ dateFrom, dateTo });
         
