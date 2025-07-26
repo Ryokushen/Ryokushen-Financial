@@ -5,6 +5,7 @@
 
 import { timeBudgets } from './timeBudgets.js';
 import { debug } from './debug.js';
+import { eventManager } from './eventManager.js';
 
 /**
  * Initialize transaction time preview
@@ -30,11 +31,13 @@ export function initializeTransactionTimePreview() {
     previewContainer.style.display = 'none';
     
     // Update preview on amount change
-    amountInput.addEventListener('input', updatePreview);
-    categorySelect?.addEventListener('change', updatePreview);
+    eventManager.addEventListener(amountInput, 'input', updatePreview);
+    if (categorySelect) {
+        eventManager.addEventListener(categorySelect, 'change', updatePreview);
+    }
     
     // Listen for wage config updates
-    window.addEventListener('wage-config-updated', updatePreview);
+    eventManager.addEventListener(window, 'wage-config-updated', updatePreview);
     
     function updatePreview() {
         debug.log('updatePreview called', {
