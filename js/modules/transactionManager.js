@@ -1026,8 +1026,9 @@ class TransactionManager {
                     
                     originalBalances.set(`${accountType}_${accountId}`, currentBalance);
                     
-                    // Apply reversal
-                    const newBalance = subtractMoney(currentBalance, amount);
+                    // Apply reversal (negate the amount to reverse the original negation)
+                    // Original: balance += -amount, Reversal: balance += -(-amount) = balance += amount
+                    const newBalance = addMoney(currentBalance, -amount);
                     
                     // Update balance
                     await database.updateDebtBalance(accountId, newBalance);

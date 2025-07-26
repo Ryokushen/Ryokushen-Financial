@@ -1386,20 +1386,9 @@ async function deleteTransaction(id, appState, onUpdate) {
             // Remove from app state
             appState.appData.transactions = appState.appData.transactions.filter(t => t.id !== id);
 
-            // Update local account balances in app state
-            if (transactionToDelete.account_id) {
-                const account = appState.appData.cashAccounts.find(a => a.id === transactionToDelete.account_id);
-                if (account) {
-                    account.balance -= transactionToDelete.amount;
-                }
-            }
-            
-            if (transactionToDelete.debt_account_id) {
-                const debtAccount = appState.appData.debtAccounts.find(d => d.id === transactionToDelete.debt_account_id);
-                if (debtAccount) {
-                    debtAccount.balance -= transactionToDelete.amount;
-                }
-            }
+            // Balance updates are handled by:
+            // - TransactionManager for debt accounts (stored balances)
+            // - calculateAccountBalances() via onUpdate() for cash accounts (calculated balances)
 
             // Cancel edit if we're deleting the transaction being edited
             if (editingTransactionId === id) {
