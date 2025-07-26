@@ -2259,16 +2259,30 @@ class TransactionManager {
             
             if (bill.last_paid_date) {
                 // Calculate from last paid date
-                nextDue = new Date(bill.last_paid_date);
+                const lastPaidDate = new Date(bill.last_paid_date);
+                // Validate the date
+                if (isNaN(lastPaidDate.getTime())) {
+                    debug.warn('Invalid last_paid_date for bill:', bill.name, bill.last_paid_date);
+                    nextDue = new Date(today);
+                } else {
+                    nextDue = lastPaidDate;
+                }
             } else if (bill.next_due_date) {
                 // Use stored next due date
-                nextDue = new Date(bill.next_due_date);
-                
-                // If it's in the past, calculate next occurrence
-                if (nextDue < today) {
-                    nextDue = today;
+                const storedNextDue = new Date(bill.next_due_date);
+                // Validate the date
+                if (isNaN(storedNextDue.getTime())) {
+                    debug.warn('Invalid next_due_date for bill:', bill.name, bill.next_due_date);
+                    nextDue = new Date(today);
                 } else {
-                    return bill.next_due_date; // Already future date
+                    nextDue = storedNextDue;
+                    
+                    // If it's in the past, calculate next occurrence
+                    if (nextDue < today) {
+                        nextDue = today;
+                    } else {
+                        return bill.next_due_date; // Already future date
+                    }
                 }
             } else {
                 // Start from today if no reference date
@@ -2321,6 +2335,12 @@ class TransactionManager {
                         nextDue.setFullYear(nextDue.getFullYear() + 1);
                         break;
                 }
+            }
+            
+            // Validate the final date before returning
+            if (isNaN(nextDue.getTime())) {
+                debug.error('Invalid date calculated for bill:', bill.name);
+                return null;
             }
             
             return nextDue.toISOString().split('T')[0];

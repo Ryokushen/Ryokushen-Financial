@@ -251,7 +251,17 @@ import { populateAllCategoryDropdowns } from './modules/categories.js';
                 nextDue: b.next_due,
                 active: b.active !== undefined ? b.active : true,
                 paymentMethod: b.payment_method || 'cash', // Default to cash for backward compatibility
-                debtAccountId: b.debt_account_id // Add debt account ID field
+                debtAccountId: b.debt_account_id, // Add debt account ID field
+                // Keep original field names for TransactionManager compatibility
+                is_active: b.is_active !== undefined ? b.is_active : (b.active !== undefined ? b.active : true),
+                next_due_date: b.next_due_date || b.next_due,
+                last_paid_date: b.last_paid_date,
+                payment_method: b.payment_method || 'cash',
+                debt_account_id: b.debt_account_id,
+                account_id: b.account_id,
+                frequency: b.frequency,
+                category: b.category,
+                name: b.name
             }));
 
             appState.appData.savingsGoals = savingsGoals.map(g => ({
