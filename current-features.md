@@ -1,6 +1,6 @@
 # Current Features - Ryokushen Financial Tracker
 
-> Last Updated: July 19, 2025
+> Last Updated: January 26, 2025
 
 This document provides a comprehensive overview of all currently implemented features in the Ryokushen Financial Tracker application.
 
@@ -97,6 +97,26 @@ Income, Housing, Transportation, Food, Healthcare, Entertainment, Shopping, Util
 - **Export Formats**: Multiple export options for data portability
 - **Error Recovery**: Automatic retry logic for transient failures
 
+#### Transaction Templates (NEW - Phase 2, January 2025)
+- **Template Creation**: Save frequently used transactions as reusable templates
+- **Quick Entry**: Create transactions from templates with one click
+- **Pattern Detection**: Automatically suggest templates based on usage patterns
+- **Template Management**: Full CRUD operations for templates
+- **Smart Conversion**: Convert existing transactions to templates
+- **Flexible Overrides**: Override any template field when creating transactions
+
+#### Smart Defaults & Pattern Recognition (NEW - Phase 2, January 2025)
+- **Pattern Matching**: Multi-level matching system for transaction suggestions
+  - Exact description matches (95% confidence)
+  - Partial description matches (up to 70% confidence)
+  - Category-based defaults (30% confidence)
+  - Template-based suggestions (70% confidence)
+- **Merchant Suggestions**: Auto-complete for transaction descriptions
+- **Amount Prediction**: Suggests amounts based on historical patterns
+- **Account Selection**: Recommends most likely account for transactions
+- **Learning System**: Framework for recording and learning from corrections
+- **Confidence Scoring**: Indicates reliability of suggestions
+
 ---
 
 ## Smart Rules Engine
@@ -167,13 +187,26 @@ Income, Housing, Transportation, Food, Healthcare, Entertainment, Shopping, Util
 ### 📅 Bills & Recurring Payments
 
 #### Bill Management
-- **Frequencies**: Weekly, Monthly, Quarterly, Semi-annually, Annually
+- **Frequencies**: Daily, Weekly, Biweekly, Monthly, Quarterly, Annually
 - **Payment Methods**: Cash account or Credit card
 - **Features**:
   - Active/inactive status
   - Next due date auto-calculation
   - 30-day upcoming bills forecast
   - Notes field
+  - Last paid date tracking
+
+#### Recurring Transaction Generation (NEW - Phase 2, January 2025)
+- **Automatic Generation**: Create transactions for due bills automatically
+- **Preview Mode**: See upcoming bills without creating transactions
+- **Batch Processing**: Handle multiple bills in one operation
+- **Smart Scheduling**: Calculates next due dates based on frequency
+- **Payment Method Support**: Works with both cash and credit cards
+- **Flexible Options**:
+  - Generate for bills due today only
+  - Generate for bills due in next N days
+  - Dry run mode for testing
+  - Progress tracking for batch operations
 
 #### Visual Calendar View (NEW - July 19, 2025)
 - **Monthly Calendar Display**: Visual grid showing all bill due dates
