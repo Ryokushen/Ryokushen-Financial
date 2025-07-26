@@ -2384,6 +2384,265 @@ class TransactionManager {
         });
     }
 
+    // ===== SMART DEFAULTS & PATTERN RECOGNITION =====
+    
+    /**
+     * Get smart defaults for a new transaction based on patterns
+     * @param {Object} partialData - Partial transaction data (e.g., description)
+     * @returns {Promise<Object>} Suggested defaults
+     */
+    async getSmartDefaults(partialData = {}) {
+        try {
+            const { description, category, account_id } = partialData;
+            const suggestions = {
+                category: null,
+                amount: null,
+                account_id: null,
+                debt_account_id: null,
+                confidence: 0,
+                source: null
+            };
+            
+            // Get recent transactions for pattern matching
+            const recentTransactions = await database.getTransactions();
+            
+            // First try: Exact description match
+            if (description) {
+                const exactMatches = recentTransactions.filter(t => 
+                    t.description && 
+                    t.description.toLowerCase() === description.toLowerCase()
+                );
+                
+                if (exactMatches.length > 0) {
+                    // Use the most recent exact match
+                    const match = exactMatches[0];
+                    suggestions.category = match.category;
+                    suggestions.amount = Math.abs(match.amount);
+                    suggestions.account_id = match.account_id;
+                    suggestions.debt_account_id = match.debt_account_id;
+                    suggestions.confidence = 0.95;
+                    suggestions.source = 'exact_match';
+                    
+                    debug.log(`Found exact match for "${description}"`);
+                    return suggestions;
+                }
+            }
+            
+            // Second try: Partial description match
+            if (description && description.length > 3) {
+                const partialMatches = recentTransactions.filter(t => 
+                    t.description && 
+                    t.description.toLowerCase().includes(description.toLowerCase())
+                );
+                
+                if (partialMatches.length > 0) {
+                    // Analyze patterns in partial matches
+                    const patterns = this.analyzeTransactionPatterns(partialMatches);
+                    
+                    if (patterns.mostCommonCategory) {
+                        suggestions.category = patterns.mostCommonCategory;
+                        suggestions.confidence += 0.3;
+                    }
+                    
+                    if (patterns.averageAmount) {
+                        suggestions.amount = patterns.averageAmount;
+                        suggestions.confidence += 0.2;
+                    }
+                    
+                    if (patterns.mostCommonAccount) {
+                        suggestions.account_id = patterns.mostCommonAccount;
+                        suggestions.confidence += 0.2;
+                    }
+                    
+                    suggestions.source = 'partial_match';
+                    debug.log(`Found partial matches for "${description}"`);
+                }
+            }
+            
+            // Third try: Category-based defaults
+            if (category && !suggestions.category) {
+                const categoryMatches = recentTransactions.filter(t => 
+                    t.category === category
+                );
+                
+                if (categoryMatches.length > 0) {
+                    const patterns = this.analyzeTransactionPatterns(categoryMatches);
+                    
+                    if (!suggestions.amount && patterns.averageAmount) {
+                        suggestions.amount = patterns.averageAmount;
+                        suggestions.confidence += 0.15;
+                    }
+                    
+                    if (!suggestions.account_id && patterns.mostCommonAccount) {
+                        suggestions.account_id = patterns.mostCommonAccount;
+                        suggestions.confidence += 0.15;
+                    }
+                    
+                    suggestions.source = suggestions.source || 'category_match';
+                }
+            }
+            
+            // Fourth try: Check transaction templates
+            const templates = await this.getTransactionTemplates();
+            if (description && templates.length > 0) {
+                const templateMatch = templates.find(t => 
+                    t.description && 
+                    t.description.toLowerCase().includes(description.toLowerCase())
+                );
+                
+                if (templateMatch && suggestions.confidence < 0.8) {
+                    suggestions.category = suggestions.category || templateMatch.category;
+                    suggestions.amount = suggestions.amount || templateMatch.amount;
+                    suggestions.account_id = suggestions.account_id || templateMatch.account_id;
+                    suggestions.debt_account_id = suggestions.debt_account_id || templateMatch.debt_account_id;
+                    suggestions.confidence = Math.max(suggestions.confidence, 0.7);
+                    suggestions.source = 'template_match';
+                    suggestions.templateId = templateMatch.id;
+                    suggestions.templateName = templateMatch.name;
+                }
+            }
+            
+            // Cap confidence at 1.0
+            suggestions.confidence = Math.min(suggestions.confidence, 1.0);
+            
+            debug.log('Smart defaults generated:', suggestions);
+            return suggestions;
+            
+        } catch (error) {
+            debug.error('Failed to get smart defaults', error);
+            return {
+                category: null,
+                amount: null,
+                account_id: null,
+                debt_account_id: null,
+                confidence: 0,
+                source: 'error'
+            };
+        }
+    }
+    
+    /**
+     * Analyze patterns in a set of transactions
+     * @param {Array} transactions - Array of transactions to analyze
+     * @returns {Object} Pattern analysis results
+     */
+    analyzeTransactionPatterns(transactions) {
+        if (!transactions || transactions.length === 0) {
+            return {};
+        }
+        
+        // Category frequency
+        const categoryCount = new Map();
+        transactions.forEach(t => {
+            if (t.category) {
+                categoryCount.set(t.category, (categoryCount.get(t.category) || 0) + 1);
+            }
+        });
+        
+        // Account frequency
+        const accountCount = new Map();
+        transactions.forEach(t => {
+            if (t.account_id) {
+                accountCount.set(t.account_id, (accountCount.get(t.account_id) || 0) + 1);
+            }
+        });
+        
+        // Amount statistics
+        const amounts = transactions
+            .map(t => Math.abs(t.amount))
+            .filter(a => a > 0);
+        
+        const averageAmount = amounts.length > 0
+            ? Math.round((amounts.reduce((sum, a) => sum + a, 0) / amounts.length) * 100) / 100
+            : null;
+        
+        // Most common values
+        const mostCommonCategory = categoryCount.size > 0
+            ? Array.from(categoryCount.entries()).sort((a, b) => b[1] - a[1])[0][0]
+            : null;
+        
+        const mostCommonAccount = accountCount.size > 0
+            ? Array.from(accountCount.entries()).sort((a, b) => b[1] - a[1])[0][0]
+            : null;
+        
+        return {
+            mostCommonCategory,
+            mostCommonAccount,
+            averageAmount,
+            transactionCount: transactions.length,
+            categoryCount: categoryCount.size,
+            accountCount: accountCount.size
+        };
+    }
+    
+    /**
+     * Learn from user corrections to improve future suggestions
+     * @param {Object} suggested - What was suggested
+     * @param {Object} actual - What the user actually chose
+     * @returns {Promise<void>}
+     */
+    async learnFromCorrection(suggested, actual) {
+        try {
+            // This could be extended to store correction patterns
+            // For now, just log for analysis
+            debug.log('User correction recorded:', {
+                suggested,
+                actual,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Could store this in a learning table for future ML features
+            // await database.addTransactionCorrection({ suggested, actual });
+            
+        } catch (error) {
+            debug.error('Failed to record correction', error);
+            // Don't throw - this is not critical
+        }
+    }
+    
+    /**
+     * Get merchant suggestions based on description
+     * @param {string} partialDescription - Partial merchant name
+     * @returns {Promise<Array>} Array of merchant suggestions
+     */
+    async getMerchantSuggestions(partialDescription) {
+        try {
+            if (!partialDescription || partialDescription.length < 2) {
+                return [];
+            }
+            
+            const recentTransactions = await database.getTransactions();
+            
+            // Extract unique descriptions that match
+            const merchants = new Set();
+            
+            recentTransactions.forEach(t => {
+                if (t.description && 
+                    t.description.toLowerCase().includes(partialDescription.toLowerCase())) {
+                    merchants.add(t.description);
+                }
+            });
+            
+            // Sort by relevance (exact starts with first, then contains)
+            const suggestions = Array.from(merchants)
+                .sort((a, b) => {
+                    const aStarts = a.toLowerCase().startsWith(partialDescription.toLowerCase());
+                    const bStarts = b.toLowerCase().startsWith(partialDescription.toLowerCase());
+                    
+                    if (aStarts && !bStarts) return -1;
+                    if (!aStarts && bStarts) return 1;
+                    return a.localeCompare(b);
+                })
+                .slice(0, 10); // Limit to 10 suggestions
+            
+            return suggestions;
+            
+        } catch (error) {
+            debug.error('Failed to get merchant suggestions', error);
+            return [];
+        }
+    }
+
     /**
      * Cleanup method
      */
