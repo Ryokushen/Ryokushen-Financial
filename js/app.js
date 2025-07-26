@@ -226,6 +226,10 @@ import { populateAllCategoryDropdowns } from './modules/categories.js';
         
         // Initialize calendar
         calendar.init();
+        
+        // Initialize transaction import UI
+        const { transactionImport } = await import('./modules/transactionImport.js');
+        transactionImport.init();
 
         calculateAccountBalances();
 

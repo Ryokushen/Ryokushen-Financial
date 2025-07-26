@@ -300,6 +300,14 @@
                             <span>🎤</span>
                             <span>Voice Add</span>
                         </button>
+                        <button class="btn btn--secondary" id="import-transactions-btn" title="Import transactions from file">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 4px;">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span>Import</span>
+                        </button>
                     </div>
                 </div>
                 
@@ -1430,6 +1438,99 @@
                     <h3>Existing Pay Schedules</h3>
                     <div id="pay-schedules-list"></div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Import Modal -->
+    <div id="import-transactions-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Import Transactions</h2>
+                <button class="modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="import-step" id="import-step-upload">
+                    <h3>Step 1: Select File</h3>
+                    <p>Upload a CSV, QFX, or QIF file containing your transactions.</p>
+                    
+                    <div class="file-upload-area" id="file-upload-area">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; opacity: 0.5;">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        <p>Drag and drop your file here, or click to browse</p>
+                        <input type="file" id="import-file-input" accept=".csv,.qfx,.qif" style="display: none;">
+                    </div>
+                    
+                    <div id="file-info" style="display: none; margin-top: var(--space-3);">
+                        <p><strong>Selected file:</strong> <span id="selected-filename"></span></p>
+                        <p><strong>File type:</strong> <span id="detected-format"></span></p>
+                    </div>
+                </div>
+                
+                <div class="import-step" id="import-step-mapping" style="display: none;">
+                    <h3>Step 2: Map Columns</h3>
+                    <p>Map your file's columns to the transaction fields.</p>
+                    
+                    <div id="column-mapping-container">
+                        <!-- Column mapping will be dynamically generated -->
+                    </div>
+                </div>
+                
+                <div class="import-step" id="import-step-preview" style="display: none;">
+                    <h3>Step 3: Preview & Import</h3>
+                    <p>Review the transactions before importing.</p>
+                    
+                    <div class="import-options">
+                        <label>
+                            <input type="checkbox" id="skip-duplicates" checked>
+                            Skip duplicate transactions
+                        </label>
+                        <label>
+                            <input type="checkbox" id="auto-categorize" checked>
+                            Apply smart categorization rules
+                        </label>
+                    </div>
+                    
+                    <div class="import-preview-table" id="import-preview-table">
+                        <!-- Preview table will be dynamically generated -->
+                    </div>
+                    
+                    <div class="import-summary" id="import-summary" style="display: none;">
+                        <p><strong>Total transactions:</strong> <span id="total-count">0</span></p>
+                        <p><strong>New transactions:</strong> <span id="new-count">0</span></p>
+                        <p><strong>Duplicates:</strong> <span id="duplicate-count">0</span></p>
+                    </div>
+                </div>
+                
+                <div class="import-step" id="import-step-progress" style="display: none;">
+                    <h3>Importing Transactions...</h3>
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" id="import-progress-bar" style="width: 0%"></div>
+                    </div>
+                    <p id="import-status">Preparing import...</p>
+                </div>
+                
+                <div class="import-step" id="import-step-complete" style="display: none;">
+                    <h3>Import Complete!</h3>
+                    <div class="import-results">
+                        <p><strong>Successfully imported:</strong> <span id="success-count">0</span> transactions</p>
+                        <p><strong>Failed:</strong> <span id="failed-count">0</span> transactions</p>
+                        <div id="import-errors" style="display: none;">
+                            <h4>Errors:</h4>
+                            <ul id="error-list"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary" id="import-cancel-btn">Cancel</button>
+                <button type="button" class="btn btn--secondary" id="import-back-btn" style="display: none;">Back</button>
+                <button type="button" class="btn btn--primary" id="import-next-btn" disabled>Next</button>
+                <button type="button" class="btn btn--primary" id="import-start-btn" style="display: none;">Start Import</button>
+                <button type="button" class="btn btn--primary" id="import-done-btn" style="display: none;">Done</button>
             </div>
         </div>
     </div>

@@ -2904,3 +2904,197 @@ label.feature-label {
   margin-bottom: 0 !important;
   cursor: pointer !important;
 }
+
+/* ===== TRANSACTION IMPORT MODAL STYLES ===== */
+.file-upload-area {
+  border: 2px dashed var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+}
+
+.file-upload-area:hover {
+  border-color: var(--color-primary);
+  background: var(--glass-hover);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.file-upload-area.drag-over {
+  border-color: var(--color-success);
+  background: rgba(34, 197, 94, 0.1);
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+}
+
+.import-step {
+  margin-bottom: var(--space-4);
+}
+
+.import-step h3 {
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.import-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.import-options label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.import-preview-table {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+  background: var(--glass-bg);
+}
+
+.import-preview-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.import-preview-table th,
+.import-preview-table td {
+  padding: var(--space-2);
+  text-align: left;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.import-preview-table th {
+  background: rgba(255, 255, 255, 0.08);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: var(--text-primary);
+}
+
+.import-preview-table tr:hover {
+  background: var(--glass-hover);
+}
+
+.import-summary {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.import-summary p {
+  margin: var(--space-1) 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.import-summary strong {
+  color: var(--text-primary);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin: var(--space-3) 0;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-teal) 100%);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+.import-results {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.import-results p {
+  margin: var(--space-2) 0;
+  font-size: var(--font-size-sm);
+}
+
+#import-errors {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-md);
+}
+
+#import-errors h4 {
+  color: var(--color-danger);
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-base);
+}
+
+#error-list {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-4);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.column-mapping-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.column-mapping-row label {
+  flex: 1;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.column-mapping-row select {
+  flex: 2;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+#file-info {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+}
+
+#file-info p {
+  margin: var(--space-1) 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+#file-info strong {
+  color: var(--text-primary);
+}
