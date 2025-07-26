@@ -2813,6 +2813,9 @@ class TransactionManager {
             
             debug.log(`Search completed: ${paginated.length} of ${totalCount} results in ${results.metadata.searchTime}ms`);
             
+            // Add to search history
+            this.addToSearchHistory('filters', filters, totalCount);
+            
             return results;
             
         } catch (error) {
@@ -2914,6 +2917,9 @@ class TransactionManager {
                 .slice(0, limit);
             
             debug.log(`Description search found ${scored.length} matches for "${searchText}"`);
+            
+            // Add to search history
+            this.addToSearchHistory('text', { searchText, options }, scored.length);
             
             return scored;
             
@@ -3055,6 +3061,9 @@ class TransactionManager {
             
             debug.log(`Complex query found ${results.length} results`);
             
+            // Add to search history
+            this.addToSearchHistory('query', query, results.length);
+            
             return results;
             
         } catch (error) {
@@ -3161,6 +3170,218 @@ class TransactionManager {
             default:
                 debug.warn(`Unknown operator: ${operator}`);
                 return false;
+        }
+    }
+
+    /**
+     * Save a search for future use
+     * @param {Object} search - Search to save
+     * @param {string} search.name - Name for the saved search
+     * @param {string} search.description - Description of the search
+     * @param {Object} search.filters - Search filters (for searchTransactions)
+     * @param {Object} search.query - Complex query (for searchWithQuery)
+     * @param {string} search.type - Type of search ('filters' or 'query')
+     * @returns {Promise<Object>} Saved search object
+     */
+    async saveSearch(search) {
+        try {
+            const {
+                name,
+                description = '',
+                filters = null,
+                query = null,
+                type = 'filters'
+            } = search;
+            
+            if (!name) {
+                throw new Error('Search name is required');
+            }
+            
+            if (!filters && !query) {
+                throw new Error('Either filters or query must be provided');
+            }
+            
+            const savedSearch = {
+                id: Date.now().toString(),
+                name,
+                description,
+                type,
+                filters,
+                query,
+                created_at: new Date().toISOString(),
+                last_used: null,
+                use_count: 0
+            };
+            
+            // Get existing saved searches
+            const savedSearches = await this.getSavedSearches();
+            
+            // Check for duplicate names
+            if (savedSearches.some(s => s.name === name)) {
+                throw new Error(`A search with name "${name}" already exists`);
+            }
+            
+            // Add new search
+            savedSearches.push(savedSearch);
+            
+            // Save to localStorage (in production, this would go to database)
+            localStorage.setItem('saved_searches', JSON.stringify(savedSearches));
+            
+            debug.log(`Saved search: ${name}`);
+            
+            // Emit event
+            this.queueEvent('search:saved', { search: savedSearch });
+            
+            return savedSearch;
+            
+        } catch (error) {
+            debug.error('Failed to save search', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Get all saved searches
+     * @returns {Promise<Array>} Array of saved searches
+     */
+    async getSavedSearches() {
+        try {
+            const savedSearchesJson = localStorage.getItem('saved_searches');
+            const savedSearches = savedSearchesJson ? JSON.parse(savedSearchesJson) : [];
+            
+            // Sort by most recently used
+            savedSearches.sort((a, b) => {
+                if (!a.last_used && !b.last_used) return 0;
+                if (!a.last_used) return 1;
+                if (!b.last_used) return -1;
+                return new Date(b.last_used) - new Date(a.last_used);
+            });
+            
+            return savedSearches;
+            
+        } catch (error) {
+            debug.error('Failed to get saved searches', error);
+            return [];
+        }
+    }
+    
+    /**
+     * Run a saved search by ID
+     * @param {string} searchId - ID of the saved search
+     * @returns {Promise<Object|Array>} Search results
+     */
+    async runSavedSearch(searchId) {
+        try {
+            const savedSearches = await this.getSavedSearches();
+            const savedSearch = savedSearches.find(s => s.id === searchId);
+            
+            if (!savedSearch) {
+                throw new Error(`Saved search with ID ${searchId} not found`);
+            }
+            
+            // Update usage stats
+            savedSearch.last_used = new Date().toISOString();
+            savedSearch.use_count++;
+            
+            // Save updated stats
+            localStorage.setItem('saved_searches', JSON.stringify(savedSearches));
+            
+            debug.log(`Running saved search: ${savedSearch.name}`);
+            
+            // Run the appropriate search
+            if (savedSearch.type === 'query' && savedSearch.query) {
+                return await this.searchWithQuery(savedSearch.query);
+            } else if (savedSearch.filters) {
+                return await this.searchTransactions(savedSearch.filters);
+            } else {
+                throw new Error('Invalid saved search format');
+            }
+            
+        } catch (error) {
+            debug.error('Failed to run saved search', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Delete a saved search
+     * @param {string} searchId - ID of the search to delete
+     * @returns {Promise<boolean>} Success status
+     */
+    async deleteSavedSearch(searchId) {
+        try {
+            const savedSearches = await this.getSavedSearches();
+            const index = savedSearches.findIndex(s => s.id === searchId);
+            
+            if (index === -1) {
+                throw new Error(`Saved search with ID ${searchId} not found`);
+            }
+            
+            const deletedSearch = savedSearches.splice(index, 1)[0];
+            
+            // Save updated list
+            localStorage.setItem('saved_searches', JSON.stringify(savedSearches));
+            
+            debug.log(`Deleted saved search: ${deletedSearch.name}`);
+            
+            // Emit event
+            this.queueEvent('search:deleted', { search: deletedSearch });
+            
+            return true;
+            
+        } catch (error) {
+            debug.error('Failed to delete saved search', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Get search history (last N searches)
+     * @param {number} limit - Number of searches to return
+     * @returns {Promise<Array>} Recent search history
+     */
+    async getSearchHistory(limit = 10) {
+        try {
+            const historyJson = localStorage.getItem('search_history');
+            const history = historyJson ? JSON.parse(historyJson) : [];
+            
+            return history.slice(0, limit);
+            
+        } catch (error) {
+            debug.error('Failed to get search history', error);
+            return [];
+        }
+    }
+    
+    /**
+     * Add a search to history
+     * @private
+     */
+    async addToSearchHistory(searchType, params, resultCount) {
+        try {
+            const history = await this.getSearchHistory(50);
+            
+            const historyEntry = {
+                id: Date.now().toString(),
+                type: searchType,
+                params,
+                resultCount,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Add to beginning
+            history.unshift(historyEntry);
+            
+            // Keep only last 50
+            if (history.length > 50) {
+                history.pop();
+            }
+            
+            localStorage.setItem('search_history', JSON.stringify(history));
+            
+        } catch (error) {
+            debug.error('Failed to add to search history', error);
+            // Don't throw - this is not critical
         }
     }
 
