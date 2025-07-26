@@ -99,12 +99,27 @@ async function handleDebtSubmit(event, appState, onUpdate) {
             const savedDebt = await db.updateDebtAccount(debtId, debtData);
             const index = appState.appData.debtAccounts.findIndex(d => d.id === debtId);
             if (index > -1) {
-                // Update local state with the saved data (which has snake_case fields)
-                appState.appData.debtAccounts[index] = savedDebt;
+                // Update with both snake_case and camelCase fields for consistency
+                appState.appData.debtAccounts[index] = {
+                    ...savedDebt,
+                    balance: savedDebt.balance != null ? parseFloat(savedDebt.balance) : 0,
+                    interestRate: savedDebt.interest_rate != null ? parseFloat(savedDebt.interest_rate) : 0,
+                    minimumPayment: savedDebt.minimum_payment != null ? parseFloat(savedDebt.minimum_payment) : 0,
+                    creditLimit: savedDebt.credit_limit != null ? parseFloat(savedDebt.credit_limit) : null,
+                    dueDate: savedDebt.due_date
+                };
             }
         } else {
             const savedDebt = await db.addDebtAccount(debtData);
-            appState.appData.debtAccounts.push(savedDebt);
+            // Add with both snake_case and camelCase fields for consistency
+            appState.appData.debtAccounts.push({
+                ...savedDebt,
+                balance: savedDebt.balance != null ? parseFloat(savedDebt.balance) : 0,
+                interestRate: savedDebt.interest_rate != null ? parseFloat(savedDebt.interest_rate) : 0,
+                minimumPayment: savedDebt.minimum_payment != null ? parseFloat(savedDebt.minimum_payment) : 0,
+                creditLimit: savedDebt.credit_limit != null ? parseFloat(savedDebt.credit_limit) : null,
+                dueDate: savedDebt.due_date
+            });
         }
         
         closeModal('debt-modal');
@@ -265,10 +280,12 @@ export function renderDebtAccounts(appState) {
     }
     
     debtAccountsList.innerHTML = appData.debtAccounts.map(account => {
-        const utilization = calculateUtilization(account.balance, account.creditLimit);
-        const payoffTime = calculatePayoffTime(account.balance, account.minimumPayment, account.interestRate);
-        const monthlyInterest = (account.balance * account.interestRate / 100 / 12);
-        const isCredit = account.type === 'Credit Card' || account.creditLimit > 0;
+        const utilization = calculateUtilization(account.balance, account.creditLimit || account.credit_limit);
+        const interestRate = account.interestRate || account.interest_rate || 0;
+        const minimumPayment = account.minimumPayment || account.minimum_payment || 0;
+        const payoffTime = calculatePayoffTime(account.balance, minimumPayment, interestRate);
+        const monthlyInterest = (account.balance * interestRate / 100 / 12);
+        const isCredit = account.type === 'Credit Card' || (account.creditLimit || account.credit_limit) > 0;
         
         return `
             <div class="debt-card" data-id="${account.id}">
@@ -285,11 +302,11 @@ export function renderDebtAccounts(appState) {
                 <div class="payment-breakdown">
                     <div class="payment-item">
                         <div class="payment-label">Min Payment</div>
-                        <div class="payment-value" data-sensitive="true">${formatCurrency(account.minimumPayment)}</div>
+                        <div class="payment-value" data-sensitive="true">${formatCurrency(minimumPayment)}</div>
                     </div>
                     <div class="payment-item">
                         <div class="payment-label">APR</div>
-                        <div class="payment-value">${account.interestRate.toFixed(1)}%</div>
+                        <div class="payment-value">${interestRate.toFixed(1)}%</div>
                     </div>
                     <div class="payment-item">
                         <div class="payment-label">Payoff</div>
