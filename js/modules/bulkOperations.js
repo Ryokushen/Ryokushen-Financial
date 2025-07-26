@@ -287,7 +287,7 @@ class BulkOperationsUI {
 
             // Clear selection and refresh
             this.cancelBulkSelection();
-            eventManager.dispatchEvent(window, 'transaction:updated');
+            window.dispatchEvent(new CustomEvent('transaction:updated'));
 
         } catch (error) {
             this.hideProgressModal();
@@ -326,7 +326,7 @@ class BulkOperationsUI {
 
             // Clear selection and refresh
             this.cancelBulkSelection();
-            eventManager.dispatchEvent(window, 'transaction:deleted');
+            window.dispatchEvent(new CustomEvent('transaction:deleted'));
 
         } catch (error) {
             this.hideProgressModal();

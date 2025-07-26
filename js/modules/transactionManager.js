@@ -129,7 +129,9 @@ class TransactionManager {
         try {
             // Fetch from database
             const transactions = await database.getTransactions();
-            const transaction = transactions.find(t => t.id === id);
+            // Convert id to number for comparison since database IDs are numeric
+            const numericId = parseInt(id, 10);
+            const transaction = transactions.find(t => t.id === numericId || t.id === id);
             
             if (transaction) {
                 this.setCache(cacheKey, transaction);
