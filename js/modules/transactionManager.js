@@ -1910,7 +1910,7 @@ class TransactionManager {
             const template = await database.addTransactionTemplate(templateData);
             
             // Dispatch event
-            this.dispatchEvent('template:created', { template });
+            this.queueEvent('template:created', { template });
             
             debug.log(`Created template "${templateName}" from transaction ${transactionId}`);
             return template;
@@ -1942,7 +1942,7 @@ class TransactionManager {
             const template = await database.addTransactionTemplate(templateData);
             
             // Dispatch event
-            this.dispatchEvent('template:created', { template });
+            this.queueEvent('template:created', { template });
             
             debug.log(`Created template "${templateData.name}"`);
             return template;
@@ -1970,7 +1970,7 @@ class TransactionManager {
             const template = await database.updateTransactionTemplate(templateId, updates);
             
             // Dispatch event
-            this.dispatchEvent('template:updated', { template });
+            this.queueEvent('template:updated', { template });
             
             debug.log(`Updated template ${templateId}`);
             return template;
@@ -1991,7 +1991,7 @@ class TransactionManager {
             await database.deleteTransactionTemplate(templateId);
             
             // Dispatch event
-            this.dispatchEvent('template:deleted', { templateId });
+            this.queueEvent('template:deleted', { templateId });
             
             debug.log(`Deleted template ${templateId}`);
             return true;
@@ -2033,7 +2033,7 @@ class TransactionManager {
             const transaction = await this.addTransaction(transactionData);
             
             // Dispatch event
-            this.dispatchEvent('transaction:created:fromTemplate', { 
+            this.queueEvent('transaction:created:fromTemplate', { 
                 transaction, 
                 templateId,
                 templateName: template.name 
@@ -2233,7 +2233,7 @@ class TransactionManager {
             }
             
             // Dispatch event with results
-            this.dispatchEvent('recurring:generated', results);
+            this.queueEvent('recurring:generated', results);
             
             debug.log(`Recurring generation complete: ${results.generated.length} generated, ${results.due.length} due, ${results.failed.length} failed`);
             
