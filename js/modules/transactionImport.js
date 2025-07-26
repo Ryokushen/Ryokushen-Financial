@@ -40,6 +40,13 @@ class TransactionImport {
             return;
         }
         
+        // Register modal with modalManager
+        modalManager.register('import-transactions-modal', {
+            resetFormOnOpen: false,
+            closeOnEscape: true,
+            closeOnClickOutside: false
+        });
+        
         // Setup event listeners
         this.setupEventListeners();
         
@@ -117,14 +124,14 @@ class TransactionImport {
      */
     openModal() {
         this.resetModal();
-        modalManager.openModal(this.modal);
+        modalManager.open('import-transactions-modal');
     }
 
     /**
      * Close the import modal
      */
     closeModal() {
-        modalManager.closeModal(this.modal);
+        modalManager.close('import-transactions-modal');
         this.resetModal();
     }
 
