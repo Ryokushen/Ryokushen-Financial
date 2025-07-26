@@ -19,10 +19,11 @@ function openDebtModal(appData, debtId = null) {
                 document.getElementById("debt-type").value = debt.type;
                 document.getElementById("debt-institution").value = debt.institution;
                 document.getElementById("debt-balance").value = debt.balance;
-                document.getElementById("debt-interest-rate").value = debt.interestRate;
-                document.getElementById("debt-minimum-payment").value = debt.minimumPayment;
-                document.getElementById("debt-due-date").value = debt.dueDate;
-                document.getElementById("debt-credit-limit").value = debt.creditLimit || "";
+                // Handle both camelCase and snake_case for compatibility
+                document.getElementById("debt-interest-rate").value = debt.interestRate || debt.interest_rate || "";
+                document.getElementById("debt-minimum-payment").value = debt.minimumPayment || debt.minimum_payment || "";
+                document.getElementById("debt-due-date").value = debt.dueDate || debt.due_date || "";
+                document.getElementById("debt-credit-limit").value = debt.creditLimit || debt.credit_limit || "";
                 document.getElementById("debt-notes").value = debt.notes || "";
             }, 0);
         }
@@ -56,6 +57,9 @@ async function handleDebtSubmit(event, appState, onUpdate) {
             notes: document.getElementById("debt-notes").value
         };
         
+        // Debug log to see what values we're validating
+        debug.log('Debt form data:', debtData);
+        
         // Validate form data with cross-field validation and async validation
         const asyncValidators = {
             name: AsyncValidators.uniqueDebtAccountName(appState.appData.debtAccounts, debtId ? parseInt(debtId) : null)
@@ -66,6 +70,8 @@ async function handleDebtSubmit(event, appState, onUpdate) {
             ValidationSchemas.debtAccount,
             asyncValidators
         );
+        
+        debug.log('Validation errors:', errors);
         
         // Also check cross-field validation
         const crossFieldErrors = CrossFieldValidators.debtAccount ? CrossFieldValidators.debtAccount(debtData) : {};
