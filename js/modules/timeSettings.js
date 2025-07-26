@@ -6,6 +6,7 @@
 import { timeBudgets } from './timeBudgets.js';
 import { showError } from './ui.js';
 import { debug } from './debug.js';
+import { eventManager } from './eventManager.js';
 
 /**
  * Show a success message to the user
@@ -62,13 +63,13 @@ export function initializeTimeSettings() {
     loadExistingConfig();
     
     // Setup event listeners
-    enableToggle.addEventListener('change', handleToggleChange);
-    wageForm.addEventListener('submit', handleWageFormSubmit);
-    hourlyWageInput.addEventListener('input', updatePreview);
-    taxRateInput.addEventListener('input', updatePreview);
+    eventManager.addEventListener(enableToggle, 'change', handleToggleChange);
+    eventManager.addEventListener(wageForm, 'submit', handleWageFormSubmit);
+    eventManager.addEventListener(hourlyWageInput, 'input', updatePreview);
+    eventManager.addEventListener(taxRateInput, 'input', updatePreview);
     
     // Listen for configuration updates from other sources
-    window.addEventListener('wage-config-updated', handleConfigUpdate);
+    eventManager.addEventListener(window, 'wage-config-updated', handleConfigUpdate);
     
     /**
      * Load existing configuration from timeBudgets module
