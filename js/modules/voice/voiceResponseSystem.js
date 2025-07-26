@@ -3,6 +3,7 @@
 import { debug } from '../debug.js';
 import { formatCurrency, escapeHtml } from '../utils.js';
 import { announceToScreenReader } from '../ui.js';
+import { eventManager } from '../eventManager.js';
 
 /**
  * Voice Response System - Handles visual and audio feedback for voice commands
@@ -326,9 +327,12 @@ export class VoiceResponseSystem {
         `;
 
         // Add close functionality
-        header.querySelector('.voice-response-close').addEventListener('click', () => {
-            this.hideResponse();
-        });
+        const closeBtn = header.querySelector('.voice-response-close');
+        if (closeBtn) {
+            eventManager.addEventListener(closeBtn, 'click', () => {
+                this.hideResponse();
+            });
+        }
 
         return header;
     }
