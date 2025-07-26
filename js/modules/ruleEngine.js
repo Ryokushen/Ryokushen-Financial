@@ -1,6 +1,7 @@
 // js/modules/ruleEngine.js
 import { debug } from './debug.js'
 import database from '../database.js'
+import { transactionManager } from './transactionManager.js'
 
 class RuleEngine {
   constructor() {
@@ -252,10 +253,9 @@ class RuleEngine {
   async applyAction(transaction, action) {
     switch (action.type) {
       case 'set_category':
-        // Update the transaction category using the wrapper method
+        // Update the transaction category using TransactionManager
         try {
-          const updatedTransaction = await database.updateTransaction(transaction.id, {
-            ...transaction,
+          const updatedTransaction = await transactionManager.updateTransaction(transaction.id, {
             category: action.value
           })
           
@@ -276,8 +276,7 @@ class RuleEngine {
           : `#${action.value}`
         
         try {
-          const updatedTransaction = await database.updateTransaction(transaction.id, {
-            ...transaction,
+          const updatedTransaction = await transactionManager.updateTransaction(transaction.id, {
             description: newDescription
           })
           
@@ -297,8 +296,7 @@ class RuleEngine {
           : action.value
         
         try {
-          const updatedTransaction = await database.updateTransaction(transaction.id, {
-            ...transaction,
+          const updatedTransaction = await transactionManager.updateTransaction(transaction.id, {
             description: noteDescription
           })
           
