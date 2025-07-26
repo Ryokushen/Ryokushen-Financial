@@ -2,7 +2,7 @@
 
 import { eventManager } from './eventManager.js';
 import { transactionManager } from './transactionManager.js';
-import { showToast } from './ui.js';
+import { showError, showSuccess } from './ui.js';
 import { modalManager } from './modalManager.js';
 import { categories } from './categories.js';
 import { debug } from './debug.js';
@@ -199,7 +199,7 @@ class TransactionImport {
             const fileExt = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
             
             if (!validTypes.includes(fileExt)) {
-                showToast('Please select a CSV, QFX, or QIF file', 'error');
+                showError('Please select a CSV, QFX, or QIF file');
                 return;
             }
             
@@ -221,7 +221,7 @@ class TransactionImport {
             
         } catch (error) {
             debug.error('TransactionImport: Error processing file', error);
-            showToast('Error reading file', 'error');
+            showError('Error reading file');
         }
     }
 
@@ -316,7 +316,7 @@ class TransactionImport {
             }
         } catch (error) {
             debug.error('TransactionImport: Error parsing file', error);
-            showToast('Error parsing file', 'error');
+            showError('Error parsing file');
         }
     }
 
@@ -624,7 +624,7 @@ class TransactionImport {
         
         // Validate required fields
         if (!this.columnMapping.date || !this.columnMapping.description || !this.columnMapping.amount) {
-            showToast('Please map all required fields', 'error');
+            showError('Please map all required fields');
             return;
         }
         
@@ -804,7 +804,7 @@ class TransactionImport {
             
         } catch (error) {
             debug.error('TransactionImport: Import failed', error);
-            showToast('Import failed', 'error');
+            showError('Import failed');
             this.showStep('preview');
         }
     }
@@ -845,7 +845,7 @@ class TransactionImport {
         // Refresh transactions display
         window.dispatchEvent(new CustomEvent('transaction:added'));
         
-        showToast(`Successfully imported ${result.successful} transactions`, 'success');
+        showSuccess(`Successfully imported ${result.successful} transactions`);
     }
 
     /**
