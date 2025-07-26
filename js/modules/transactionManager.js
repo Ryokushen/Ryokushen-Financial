@@ -867,9 +867,9 @@ class TransactionManager {
                 }));
                 
                 // Also dispatch standard transaction:added event for compatibility
-                eventManager.dispatch('transaction:added', {
-                    transaction: savedTransaction
-                });
+                window.dispatchEvent(new CustomEvent('transaction:added', {
+                    detail: { transaction: savedTransaction }
+                }));
                 
                 return savedTransaction;
             },
