@@ -18,6 +18,7 @@ This document provides a comprehensive overview of all currently implemented fea
 ## Recent Updates (January 2025)
 - 🆕 **TransactionManager System** - Centralized transaction management with atomic operations
 - 🆕 **EventManager Integration** - Enhanced event-driven architecture for better performance
+- 🆕 **Transaction Import UI** - Full-featured import wizard for CSV, QFX, and QIF files
 - 🆕 **Batch Transaction Operations** - Import/export capabilities for bulk data handling
 
 ## Previous Updates (July 2025)
@@ -96,6 +97,27 @@ Income, Housing, Transportation, Food, Healthcare, Entertainment, Shopping, Util
 - **Search & Analytics**: Advanced transaction search and statistics
 - **Export Formats**: Multiple export options for data portability
 - **Error Recovery**: Automatic retry logic for transient failures
+
+#### Transaction Import UI (NEW - January 2025)
+- **Multi-Step Wizard**: Intuitive step-by-step import process
+- **File Format Support**: 
+  - CSV with smart column mapping
+  - QFX (Quicken/OFX format)
+  - QIF (Quicken Interchange Format)
+- **Drag & Drop Upload**: Modern file upload with drag-and-drop support
+- **Column Mapping**: 
+  - Auto-detection of common column names
+  - Manual mapping override
+  - Required field validation
+- **Preview & Validation**:
+  - Transaction preview before import
+  - Duplicate detection (90-day lookback)
+  - Visual indicators for new vs duplicate
+- **Import Options**:
+  - Skip duplicates toggle
+  - Auto-categorize toggle
+- **Progress Tracking**: Real-time import progress with status updates
+- **Error Handling**: Detailed error reporting with partial success support
 
 #### Transaction Templates (NEW - Phase 2, January 2025)
 - **Template Creation**: Save frequently used transactions as reusable templates
