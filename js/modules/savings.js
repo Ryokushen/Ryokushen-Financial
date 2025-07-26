@@ -6,6 +6,7 @@ import { debug } from './debug.js';
 import { subtractMoney, addMoney, moneyGreaterThan, moneyLessThan, moneyEquals } from './financialMath.js';
 import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, ValidationRules, CrossFieldValidators, validateFormWithCrossFields } from './validation.js';
 import { eventManager } from './eventManager.js';
+import { transactionManager } from './transactionManager.js';
 
 function mapSavingsGoal(goal) {
     return {
@@ -316,8 +317,24 @@ async function handleContributionSubmit(event, appState, onUpdate) {
             return;
         }
 
-        // Create withdrawal transaction from source
-        if (isSourceCashAccount) {
+        // Handle transfers between accounts
+        if (isSourceCashAccount && isTargetCashAccount) {
+            // Both are cash accounts - use linked transactions for proper transfer
+            const linkedTransactions = await transactionManager.addLinkedTransactions(
+                sourceAccountId,
+                goal.linkedAccountId,
+                amount,
+                `Transfer to ${targetAccount.name} [Savings Goal: ${goal.name}]`,
+                `Contribution to ${goal.name} [Savings Goal]`
+            );
+            
+            // Add both transactions to the UI
+            appState.appData.transactions.unshift(
+                { ...linkedTransactions.from, amount: parseFloat(linkedTransactions.from.amount) },
+                { ...linkedTransactions.to, amount: parseFloat(linkedTransactions.to.amount) }
+            );
+        } else if (isSourceCashAccount) {
+            // Source is cash, target is investment - create withdrawal only
             const withdrawal = {
                 date: new Date().toISOString().split('T')[0],
                 account_id: sourceAccountId,
@@ -326,20 +343,14 @@ async function handleContributionSubmit(event, appState, onUpdate) {
                 amount: -amount,
                 cleared: true
             };
-            const savedWithdrawal = await db.addTransaction(withdrawal);
+            const savedWithdrawal = await transactionManager.addTransaction(withdrawal);
             appState.appData.transactions.unshift({ ...savedWithdrawal, amount: parseFloat(savedWithdrawal.amount) });
-
-            // Update source account balance
-            sourceAccount.balance = subtractMoney(sourceAccount.balance, amount);
-        } else {
-            // For investment accounts, just reduce the balance
-            sourceAccount.balance = subtractMoney(sourceAccount.balance, amount);
-            await db.updateInvestmentAccount(sourceAccount.id, { balance: sourceAccount.balance });
-        }
-
-        // Update target account balance
-        if (isTargetCashAccount) {
-            // Create deposit transaction for cash savings account
+            
+            // Update investment account balance
+            targetAccount.balance = addMoney(targetAccount.balance, amount);
+            await db.updateInvestmentAccount(targetAccount.id, { balance: targetAccount.balance });
+        } else if (isTargetCashAccount) {
+            // Source is investment, target is cash - create deposit only
             const deposit = {
                 date: new Date().toISOString().split('T')[0],
                 account_id: goal.linkedAccountId,
@@ -348,13 +359,17 @@ async function handleContributionSubmit(event, appState, onUpdate) {
                 amount: amount,
                 cleared: true
             };
-            const savedDeposit = await db.addTransaction(deposit);
+            const savedDeposit = await transactionManager.addTransaction(deposit);
             appState.appData.transactions.unshift({ ...savedDeposit, amount: parseFloat(savedDeposit.amount) });
-
-            targetAccount.balance = addMoney(targetAccount.balance, amount);
+            
+            // Update investment account balance
+            sourceAccount.balance = subtractMoney(sourceAccount.balance, amount);
+            await db.updateInvestmentAccount(sourceAccount.id, { balance: sourceAccount.balance });
         } else {
-            // For investment savings accounts, just update the balance
+            // Both are investment accounts - just update balances
+            sourceAccount.balance = subtractMoney(sourceAccount.balance, amount);
             targetAccount.balance = addMoney(targetAccount.balance, amount);
+            await db.updateInvestmentAccount(sourceAccount.id, { balance: sourceAccount.balance });
             await db.updateInvestmentAccount(targetAccount.id, { balance: targetAccount.balance });
         }
 
