@@ -58,16 +58,28 @@ async function handleDebtSubmit(event, appState, onUpdate) {
         const debtIdValue = document.getElementById("debt-id").value;
         const debtId = debtIdValue ? parseInt(debtIdValue) : null;
         const debtData = {
+            name: document.getElementById("debt-name").value || "",
+            type: document.getElementById("debt-type").value || "",
+            institution: document.getElementById("debt-institution").value || "",
+            balance: safeParseFloat(document.getElementById("debt-balance").value || "0"),
+            interestRate: safeParseFloat(document.getElementById("debt-interest-rate").value || "0"),
+            minimumPayment: safeParseFloat(document.getElementById("debt-minimum-payment").value || "0"),
+            dueDate: document.getElementById("debt-due-date").value || "",
+            creditLimit: safeParseFloat(document.getElementById("debt-credit-limit").value) || null,
+            notes: document.getElementById("debt-notes").value || ""
+        };
+        
+        console.log("Raw form values:", {
             name: document.getElementById("debt-name").value,
             type: document.getElementById("debt-type").value,
             institution: document.getElementById("debt-institution").value,
-            balance: safeParseFloat(document.getElementById("debt-balance").value),
-            interestRate: safeParseFloat(document.getElementById("debt-interest-rate").value),
-            minimumPayment: safeParseFloat(document.getElementById("debt-minimum-payment").value),
+            balance: document.getElementById("debt-balance").value,
+            interestRate: document.getElementById("debt-interest-rate").value,
+            minimumPayment: document.getElementById("debt-minimum-payment").value,
             dueDate: document.getElementById("debt-due-date").value,
-            creditLimit: safeParseFloat(document.getElementById("debt-credit-limit").value) || null,
+            creditLimit: document.getElementById("debt-credit-limit").value,
             notes: document.getElementById("debt-notes").value
-        };
+        });
         
         // Debug log to see what values we're validating
         debug.log('Debt form data:', debtData);
@@ -93,8 +105,11 @@ async function handleDebtSubmit(event, appState, onUpdate) {
         if (hasErrors || hasCrossFieldErrors) {
             // Show field-level errors
             Object.entries(errors).forEach(([field, error]) => {
+                console.error(`Validation error for field '${field}':`, error);
                 showFieldError(`debt-${field}`, error);
             });
+            console.error("All validation errors:", errors);
+            console.error("Form data that failed validation:", debtData);
             showError("Please correct the errors in the form.");
             return;
         }
