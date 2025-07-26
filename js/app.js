@@ -634,6 +634,11 @@ import { populateAllCategoryDropdowns } from './modules/categories.js';
             });
         }
         
+        // Listen for transaction events to refresh UI
+        eventManager.addEventListener(window, 'transaction:added', onUpdate);
+        eventManager.addEventListener(window, 'transaction:updated', onUpdate);
+        eventManager.addEventListener(window, 'transaction:deleted', onUpdate);
+        
         // Add privacy listener to reapply on data updates
         privacyManager.addListener(() => {
             // First, reapply privacy mode to blur/unblur elements
