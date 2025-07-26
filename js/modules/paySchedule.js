@@ -2,6 +2,7 @@
 import database from '../database.js'
 import { debug } from './debug.js'
 import { formatDate } from './utils.js'
+import { eventManager } from './eventManager.js'
 
 class PaySchedule {
   constructor() {
@@ -18,7 +19,7 @@ class PaySchedule {
 
   setupEventListeners() {
     // Listen for wage config updates from time budget
-    window.addEventListener('wage-config-updated', (event) => {
+    eventManager.addEventListener(window, 'wage-config-updated', (event) => {
       debug.log('PaySchedule: Wage config updated', event.detail)
       // Could auto-update pay amounts if desired
     })
