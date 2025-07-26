@@ -5,6 +5,7 @@ import { showError, announceToScreenReader, openModal, closeModal } from './ui.j
 import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, CrossFieldValidators, validateFormWithCrossFields, validateWithAsyncRules, AsyncValidators } from './validation.js';
 import { DebtStrategy } from './debtStrategy.js';
 import { eventManager } from './eventManager.js';
+import { debug } from './debug.js';
 
 function openDebtModal(appData, debtId = null) {
     const modalData = { debtId };
