@@ -27,6 +27,11 @@ class TransactionManager {
         this.cache = new Map();
         this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
         
+        // Search result cache
+        this.searchCache = new Map();
+        this.searchCacheTimeout = 2 * 60 * 1000; // 2 minutes
+        this.maxSearchCacheSize = 50;
+        
         // Transaction state management
         this.pendingOperations = new Map();
         this.operationHistory = [];
@@ -311,7 +316,61 @@ class TransactionManager {
 
     clearCache() {
         this.cache.clear();
+        this.searchCache.clear();
         debug.log('TransactionManager: Cache cleared');
+    }
+    
+    /**
+     * Get search cache key
+     * @private
+     */
+    getSearchCacheKey(type, params) {
+        return `${type}:${JSON.stringify(params)}`;
+    }
+    
+    /**
+     * Get cached search results
+     * @private
+     */
+    getCachedSearchResults(key) {
+        const cached = this.searchCache.get(key);
+        
+        if (cached && Date.now() - cached.timestamp < this.searchCacheTimeout) {
+            this.metrics.cacheHits++;
+            debug.log(`Search cache hit for key: ${key}`);
+            return cached.results;
+        }
+        
+        this.metrics.cacheMisses++;
+        return null;
+    }
+    
+    /**
+     * Cache search results
+     * @private
+     */
+    cacheSearchResults(key, results) {
+        // Limit cache size
+        if (this.searchCache.size >= this.maxSearchCacheSize) {
+            // Remove oldest entry
+            const firstKey = this.searchCache.keys().next().value;
+            this.searchCache.delete(firstKey);
+        }
+        
+        this.searchCache.set(key, {
+            results,
+            timestamp: Date.now()
+        });
+        
+        debug.log(`Cached search results for key: ${key}`);
+    }
+    
+    /**
+     * Invalidate search cache
+     */
+    invalidateSearchCache() {
+        this.searchCache.clear();
+        debug.log('Search cache invalidated');
     }
 
     /**
@@ -475,6 +534,10 @@ class TransactionManager {
             this.pendingOperations.delete(operationId);
             
             debug.log('TransactionManager: Transaction added', savedTransaction.id);
+            
+            // Invalidate search cache since data changed
+            this.invalidateSearchCache();
+            
             return savedTransaction;
             
         } catch (error) {
@@ -563,6 +626,10 @@ class TransactionManager {
             this.pendingOperations.delete(operationId);
             
             debug.log('TransactionManager: Transaction updated', id);
+            
+            // Invalidate search cache since data changed
+            this.invalidateSearchCache();
+            
             return updatedTransaction;
             
         } catch (error) {
@@ -637,6 +704,10 @@ class TransactionManager {
             this.pendingOperations.delete(operationId);
             
             debug.log('TransactionManager: Transaction deleted', id);
+            
+            // Invalidate search cache since data changed
+            this.invalidateSearchCache();
+            
             return true;
             
         } catch (error) {
@@ -2682,6 +2753,13 @@ class TransactionManager {
      */
     async searchTransactions(filters = {}) {
         try {
+            // Check cache first
+            const cacheKey = this.getSearchCacheKey('filters', filters);
+            const cached = this.getCachedSearchResults(cacheKey);
+            if (cached) {
+                return cached;
+            }
+            
             const startTime = Date.now();
             
             // Extract and validate filters
@@ -2816,6 +2894,9 @@ class TransactionManager {
             // Add to search history
             this.addToSearchHistory('filters', filters, totalCount);
             
+            // Cache results
+            this.cacheSearchResults(cacheKey, results);
+            
             return results;
             
         } catch (error) {
@@ -2835,6 +2916,13 @@ class TransactionManager {
      */
     async searchByDescription(searchText, options = {}) {
         try {
+            // Check cache first
+            const cacheKey = this.getSearchCacheKey('text', { searchText, options });
+            const cached = this.getCachedSearchResults(cacheKey);
+            if (cached) {
+                return cached;
+            }
+            
             const {
                 fuzzy = true,
                 highlight = true,
@@ -2921,6 +3009,9 @@ class TransactionManager {
             // Add to search history
             this.addToSearchHistory('text', { searchText, options }, scored.length);
             
+            // Cache results
+            this.cacheSearchResults(cacheKey, scored);
+            
             return scored;
             
         } catch (error) {
@@ -3004,6 +3095,13 @@ class TransactionManager {
      */
     async searchWithQuery(query) {
         try {
+            // Check cache first
+            const cacheKey = this.getSearchCacheKey('query', query);
+            const cached = this.getCachedSearchResults(cacheKey);
+            if (cached) {
+                return cached;
+            }
+            
             const {
                 and = [],
                 or = [],
@@ -3063,6 +3161,9 @@ class TransactionManager {
             
             // Add to search history
             this.addToSearchHistory('query', query, results.length);
+            
+            // Cache results
+            this.cacheSearchResults(cacheKey, results);
             
             return results;
             
