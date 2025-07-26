@@ -813,28 +813,25 @@ class TransactionManager {
             for (const update of balanceUpdates) {
                 const { accountType, accountId, amount } = update;
                 
-                // Store original balance
-                let originalBalance = 0;
+                // Skip cash accounts - their balances are calculated from transactions
                 if (accountType === 'cash') {
-                    const account = await database.getCashAccountById(accountId);
-                    originalBalance = account?.balance || 0;
-                } else if (accountType === 'debt') {
+                    debug.log(`Skipping balance update for cash account ${accountId} - balances are calculated`);
+                    continue;
+                }
+                
+                // Only update debt account balances (they have stored balances)
+                if (accountType === 'debt') {
                     const account = await database.getDebtAccountById(accountId);
-                    originalBalance = account?.balance || 0;
-                }
-                
-                originalBalances.set(`${accountType}_${accountId}`, originalBalance);
-                
-                // Apply balance update
-                const newBalance = addMoney(originalBalance, amount);
-                
-                if (accountType === 'cash') {
-                    await database.updateCashBalance(accountId, newBalance);
-                } else if (accountType === 'debt') {
+                    const originalBalance = account?.balance || 0;
+                    
+                    originalBalances.set(`${accountType}_${accountId}`, originalBalance);
+                    
+                    // Apply balance update
+                    const newBalance = addMoney(originalBalance, amount);
                     await database.updateDebtBalance(accountId, newBalance);
+                    
+                    debug.log(`Balance updated: ${accountType}_${accountId} from ${originalBalance} to ${newBalance}`);
                 }
-                
-                debug.log(`Balance updated: ${accountType}_${accountId} from ${originalBalance} to ${newBalance}`);
             }
         };
         
@@ -843,13 +840,12 @@ class TransactionManager {
             for (const [key, originalBalance] of originalBalances) {
                 const [accountType, accountId] = key.split('_');
                 
-                if (accountType === 'cash') {
-                    await database.updateCashBalance(parseInt(accountId), originalBalance);
-                } else if (accountType === 'debt') {
+                // Only rollback debt account balances (cash accounts don't have stored balances)
+                if (accountType === 'debt') {
                     await database.updateDebtBalance(parseInt(accountId), originalBalance);
+                    debug.log(`Balance rolled back: ${key} to ${originalBalance}`);
                 }
-                
-                debug.log(`Balance rolled back: ${key} to ${originalBalance}`);
+                // Cash accounts don't need rollback - their balances are calculated
             }
         };
         
@@ -862,13 +858,18 @@ class TransactionManager {
                 // Then update balances
                 await applyBalanceUpdates();
                 
-                // Dispatch success event
+                // Dispatch success events
                 window.dispatchEvent(new CustomEvent('transaction:created:withBalance', {
                     detail: {
                         transaction: savedTransaction,
                         balanceUpdates
                     }
                 }));
+                
+                // Also dispatch standard transaction:added event for compatibility
+                eventManager.dispatch('transaction:added', {
+                    transaction: savedTransaction
+                });
                 
                 return savedTransaction;
             },
@@ -910,35 +911,33 @@ class TransactionManager {
             for (const adjustment of balanceAdjustments) {
                 const { accountType, accountId, reverseAmount, applyAmount } = adjustment;
                 
-                // Get current balance
-                let currentBalance = 0;
+                // Skip cash accounts - their balances are calculated from transactions
                 if (accountType === 'cash') {
-                    const account = await database.getCashAccountById(accountId);
-                    currentBalance = account?.balance || 0;
-                } else if (accountType === 'debt') {
+                    debug.log(`Skipping balance adjustment for cash account ${accountId} - balances are calculated`);
+                    continue;
+                }
+                
+                // Only adjust debt account balances (they have stored balances)
+                if (accountType === 'debt') {
                     const account = await database.getDebtAccountById(accountId);
-                    currentBalance = account?.balance || 0;
-                }
-                
-                originalBalances.set(`${accountType}_${accountId}`, currentBalance);
-                
-                // Apply adjustment (reverse old + apply new)
-                let newBalance = currentBalance;
-                if (reverseAmount !== undefined) {
-                    newBalance = subtractMoney(newBalance, reverseAmount);
-                }
-                if (applyAmount !== undefined) {
-                    newBalance = addMoney(newBalance, applyAmount);
-                }
-                
-                // Update balance
-                if (accountType === 'cash') {
-                    await database.updateCashBalance(accountId, newBalance);
-                } else if (accountType === 'debt') {
+                    const currentBalance = account?.balance || 0;
+                    
+                    originalBalances.set(`${accountType}_${accountId}`, currentBalance);
+                    
+                    // Apply adjustment (reverse old + apply new)
+                    let newBalance = currentBalance;
+                    if (reverseAmount !== undefined) {
+                        newBalance = subtractMoney(newBalance, reverseAmount);
+                    }
+                    if (applyAmount !== undefined) {
+                        newBalance = addMoney(newBalance, applyAmount);
+                    }
+                    
+                    // Update balance
                     await database.updateDebtBalance(accountId, newBalance);
+                    
+                    debug.log(`Balance adjusted: ${accountType}_${accountId} from ${currentBalance} to ${newBalance}`);
                 }
-                
-                debug.log(`Balance adjusted: ${accountType}_${accountId} from ${currentBalance} to ${newBalance}`);
             }
         };
         
@@ -947,13 +946,12 @@ class TransactionManager {
             for (const [key, originalBalance] of originalBalances) {
                 const [accountType, accountId] = key.split('_');
                 
-                if (accountType === 'cash') {
-                    await database.updateCashBalance(parseInt(accountId), originalBalance);
-                } else if (accountType === 'debt') {
+                // Only rollback debt account balances (cash accounts don't have stored balances)
+                if (accountType === 'debt') {
                     await database.updateDebtBalance(parseInt(accountId), originalBalance);
+                    debug.log(`Balance rolled back: ${key} to ${originalBalance}`);
                 }
-                
-                debug.log(`Balance rolled back: ${key} to ${originalBalance}`);
+                // Cash accounts don't need rollback - their balances are calculated
             }
         };
         
@@ -1015,29 +1013,27 @@ class TransactionManager {
             for (const reversal of balanceReversals) {
                 const { accountType, accountId, amount } = reversal;
                 
-                // Get current balance
-                let currentBalance = 0;
+                // Skip cash accounts - their balances are calculated from transactions
                 if (accountType === 'cash') {
-                    const account = await database.getCashAccountById(accountId);
-                    currentBalance = account?.balance || 0;
-                } else if (accountType === 'debt') {
+                    debug.log(`Skipping balance reversal for cash account ${accountId} - balances are calculated`);
+                    continue;
+                }
+                
+                // Only reverse debt account balances (they have stored balances)
+                if (accountType === 'debt') {
                     const account = await database.getDebtAccountById(accountId);
-                    currentBalance = account?.balance || 0;
-                }
-                
-                originalBalances.set(`${accountType}_${accountId}`, currentBalance);
-                
-                // Apply reversal
-                const newBalance = subtractMoney(currentBalance, amount);
-                
-                // Update balance
-                if (accountType === 'cash') {
-                    await database.updateCashBalance(accountId, newBalance);
-                } else if (accountType === 'debt') {
+                    const currentBalance = account?.balance || 0;
+                    
+                    originalBalances.set(`${accountType}_${accountId}`, currentBalance);
+                    
+                    // Apply reversal
+                    const newBalance = subtractMoney(currentBalance, amount);
+                    
+                    // Update balance
                     await database.updateDebtBalance(accountId, newBalance);
+                    
+                    debug.log(`Balance reversed: ${accountType}_${accountId} from ${currentBalance} to ${newBalance}`);
                 }
-                
-                debug.log(`Balance reversed: ${accountType}_${accountId} from ${currentBalance} to ${newBalance}`);
             }
         };
         
@@ -1046,13 +1042,12 @@ class TransactionManager {
             for (const [key, originalBalance] of originalBalances) {
                 const [accountType, accountId] = key.split('_');
                 
-                if (accountType === 'cash') {
-                    await database.updateCashBalance(parseInt(accountId), originalBalance);
-                } else if (accountType === 'debt') {
+                // Only rollback debt account balances (cash accounts don't have stored balances)
+                if (accountType === 'debt') {
                     await database.updateDebtBalance(parseInt(accountId), originalBalance);
+                    debug.log(`Balance rolled back: ${key} to ${originalBalance}`);
                 }
-                
-                debug.log(`Balance rolled back: ${key} to ${originalBalance}`);
+                // Cash accounts don't need rollback - their balances are calculated
             }
         };
         

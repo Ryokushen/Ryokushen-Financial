@@ -446,13 +446,6 @@ class FinancialDatabase {
         } catch (error) { this.handleError('getDebtAccountById', error); }
     }
 
-    async updateCashBalance(accountId, newBalance) {
-        try {
-            const { data, error } = await this.supabase.from('cash_accounts').update({ balance: newBalance }).eq('id', accountId).select().single();
-            if (error) throw error;
-            return data;
-        } catch (error) { this.handleError('updateCashBalance', error); }
-    }
 
     // --- RECURRING BILLS - UPDATED TO SUPPORT CREDIT CARD PAYMENTS ---
     async getRecurringBills() {

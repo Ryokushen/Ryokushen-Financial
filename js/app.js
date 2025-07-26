@@ -444,6 +444,9 @@ import { populateAllCategoryDropdowns } from './modules/categories.js';
 
     function setupEventListeners() {
         const onUpdate = () => {
+            // Recalculate account balances for cash accounts
+            calculateAccountBalances();
+            
             // Rebuild data indexes for fast lookups
             dataIndex.rebuildIndexes(appState.appData);
             
