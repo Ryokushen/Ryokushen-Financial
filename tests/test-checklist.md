@@ -9,6 +9,16 @@
    - `testRunner.testAccountsModule()` - Test only Accounts
    - etc.
 
+### TransactionManager Tests
+1. Open `/tests/unit/transaction-manager-test.html` in browser
+2. Tests run automatically on page load
+3. Verifies:
+   - Initialization
+   - Atomic add/update/delete with balance updates
+   - Batch operations
+   - Validation
+   - Cache functionality
+
 ## Issues Found During Code Analysis
 
 ### 1. Accounts Module
@@ -20,6 +30,9 @@
 - [x] Transaction form validation includes required fields
 - [x] Debt category shows/hides debt account dropdown correctly
 - [x] Balance calculations use caching for performance
+- [x] **NEW**: TransactionManager provides centralized transaction management
+- [x] **NEW**: Atomic operations with automatic rollback support
+- [x] **NEW**: Batch transaction operations for imports
 - [ ] **ISSUE**: No validation for future dates beyond reasonable range
 
 ### 3. Debt Module
@@ -40,10 +53,23 @@
 - [x] Savings goals can be linked to accounts
 - [ ] **ISSUE**: API key for stock prices may not be configured
 
-### 6. Cross-Module Interactions
+### 6. TransactionManager Module (NEW)
+- [x] Centralized transaction management with singleton pattern
+- [x] Atomic operations with automatic rollback on failure
+- [x] Smart caching with 5-minute TTL
+- [x] Event batching for performance (50ms delay)
+- [x] Batch operations for bulk imports (CSV, JSON, QIF)
+- [x] Transaction validation and data preparation
+- [x] Balance update tracking and reversal
+- [x] Integration with EventManager for proper cleanup
+- [x] Export functionality in multiple formats
+- [x] Search and statistics capabilities
+
+### 7. Cross-Module Interactions
 - [x] Account deletion cascades to transactions
 - [x] Debt payments link to transactions
 - [x] Recurring bills create transactions
+- [x] **NEW**: TransactionManager handles all transaction operations atomically
 - [ ] **ISSUE**: No check for circular dependencies
 
 ## Recommended Fixes

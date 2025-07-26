@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransactionManager Tests</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .test-result.pass {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .test-result.fail {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .test-summary {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .error-details {
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 5px;
+            padding: 5px;
+            background-color: #f0f0f0;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>TransactionManager Test Suite</h1>
+        <p>This test suite verifies the core functionality of the TransactionManager module.</p>
+        
+        <div id="test-status">Loading test environment...</div>
+        <div id="test-results"></div>
+        <div id="test-summary"></div>
+    </div>
+
+    <!-- Mock Supabase for testing -->
+    <script>
+        // Create mock Supabase client
+        window.supabaseConfig = {
+            supabaseUrl: 'https://mock.supabase.co',
+            supabaseAnonKey: 'mock-key'
+        };
+
+        // Mock database responses
+        const mockData = {
+            transactions: [],
+            cashAccounts: [
+                { id: 1, name: 'Checking', balance: 1000, user_id: 'test-user' },
+                { id: 2, name: 'Savings', balance: 5000, user_id: 'test-user' }
+            ],
+            debtAccounts: [
+                { id: 1, name: 'Credit Card', balance: -500, type: 'Credit Card', user_id: 'test-user' }
+            ],
+            nextTransactionId: 1
+        };
+
+        // Create mock Supabase client
+        window.supabaseClient = {
+            auth: {
+                getUser: async () => ({ data: { user: { id: 'test-user' } } })
+            },
+            from: (table) => ({
+                select: (fields) => ({
+                    eq: (field, value) => ({
+                        single: async () => {
+                            if (table === 'transactions') {
+                                const transaction = mockData.transactions.find(t => t.id === value);
+                                return { data: transaction, error: null };
+                            }
+                            if (table === 'cash_accounts') {
+                                const account = mockData.cashAccounts.find(a => a.id === value);
+                                return { data: account, error: null };
+                            }
+                            if (table === 'debt_accounts') {
+                                const account = mockData.debtAccounts.find(a => a.id === value);
+                                return { data: account, error: null };
+                            }
+                            return { data: null, error: { message: 'Not found' } };
+                        }
+                    }),
+                    order: () => ({
+                        then: async (resolve) => {
+                            if (table === 'transactions') {
+                                resolve({ data: mockData.transactions, error: null });
+                            }
+                        }
+                    })
+                }),
+                insert: (data) => ({
+                    select: () => ({
+                        single: async () => {
+                            if (table === 'transactions') {
+                                const newTransaction = { ...data, id: mockData.nextTransactionId++ };
+                                mockData.transactions.push(newTransaction);
+                                return { data: newTransaction, error: null };
+                            }
+                            return { data: null, error: { message: 'Insert failed' } };
+                        }
+                    })
+                }),
+                update: (data) => ({
+                    eq: (field, value) => ({
+                        select: () => ({
+                            single: async () => {
+                                if (table === 'transactions') {
+                                    const index = mockData.transactions.findIndex(t => t.id === value);
+                                    if (index !== -1) {
+                                        mockData.transactions[index] = { ...mockData.transactions[index], ...data };
+                                        return { data: mockData.transactions[index], error: null };
+                                    }
+                                }
+                                if (table === 'cash_accounts') {
+                                    const account = mockData.cashAccounts.find(a => a.id === value);
+                                    if (account) {
+                                        Object.assign(account, data);
+                                        return { data: account, error: null };
+                                    }
+                                }
+                                return { data: null, error: { message: 'Update failed' } };
+                            }
+                        })
+                    })
+                }),
+                delete: () => ({
+                    eq: (field, value) => ({
+                        then: async (resolve) => {
+                            if (table === 'transactions') {
+                                const index = mockData.transactions.findIndex(t => t.id === value);
+                                if (index !== -1) {
+                                    mockData.transactions.splice(index, 1);
+                                    resolve({ error: null });
+                                } else {
+                                    resolve({ error: { message: 'Transaction not found' } });
+                                }
+                            }
+                        }
+                    })
+                })
+            })
+        };
+    </script>
+
+    <!-- Load required modules -->
+    <script type="module">
+        import database from '../../js/database.js';
+        import { transactionManager } from '../../js/modules/transactionManager.js';
+        
+        const testResults = [];
+        let passCount = 0;
+        let failCount = 0;
+
+        function displayResult(name, passed, error = null) {
+            const result = {
+                name,
+                passed,
+                error: error ? error.message : null
+            };
+            testResults.push(result);
+
+            if (passed) {
+                passCount++;
+            } else {
+                failCount++;
+            }
+
+            const resultDiv = document.getElementById('test-results');
+            const testDiv = document.createElement('div');
+            testDiv.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            testDiv.innerHTML = `
+                <strong>${passed ? '✓' : '✗'} ${name}</strong>
+                ${error ? `<div class="error-details">${error.message}</div>` : ''}
+            `;
+            resultDiv.appendChild(testDiv);
+        }
+
+        async function runTests() {
+            const statusDiv = document.getElementById('test-status');
+            statusDiv.textContent = 'Running tests...';
+
+            try {
+                // Test 1: Initialize TransactionManager
+                try {
+                    await transactionManager.init();
+                    displayResult('TransactionManager initialization', true);
+                } catch (error) {
+                    displayResult('TransactionManager initialization', false, error);
+                }
+
+                // Test 2: Add transaction with balance update
+                try {
+                    const transactionData = {
+                        date: '2025-01-26',
+                        account_id: 1,
+                        category: 'Food',
+                        description: 'Test transaction',
+                        amount: -50.00,
+                        cleared: true
+                    };
+
+                    const balanceUpdates = [{
+                        accountType: 'cash',
+                        accountId: 1,
+                        amount: -50.00
+                    }];
+
+                    const result = await transactionManager.createTransactionWithBalanceUpdate(
+                        transactionData,
+                        balanceUpdates
+                    );
+
+                    const success = result && result.id && mockData.cashAccounts[0].balance === 950;
+                    displayResult('Add transaction with balance update', success);
+                } catch (error) {
+                    displayResult('Add transaction with balance update', false, error);
+                }
+
+                // Test 3: Update transaction with balance adjustment
+                try {
+                    const updates = {
+                        amount: -75.00,
+                        description: 'Updated test transaction'
+                    };
+
+                    const balanceAdjustments = [{
+                        accountType: 'cash',
+                        accountId: 1,
+                        amount: -25.00 // Additional -25
+                    }];
+
+                    const result = await transactionManager.updateTransactionWithBalanceAdjustment(
+                        1,
+                        updates,
+                        balanceAdjustments
+                    );
+
+                    const success = result && mockData.cashAccounts[0].balance === 925;
+                    displayResult('Update transaction with balance adjustment', success);
+                } catch (error) {
+                    displayResult('Update transaction with balance adjustment', false, error);
+                }
+
+                // Test 4: Delete transaction with balance reversal
+                try {
+                    const balanceReversals = [{
+                        accountType: 'cash',
+                        accountId: 1,
+                        amount: -75.00 // Reverse the -75
+                    }];
+
+                    await transactionManager.deleteTransactionWithBalanceReversal(1, balanceReversals);
+                    
+                    const success = mockData.cashAccounts[0].balance === 1000 && 
+                                  mockData.transactions.length === 0;
+                    displayResult('Delete transaction with balance reversal', success);
+                } catch (error) {
+                    displayResult('Delete transaction with balance reversal', false, error);
+                }
+
+                // Test 5: Batch add transactions
+                try {
+                    const transactions = [
+                        {
+                            date: '2025-01-26',
+                            account_id: 1,
+                            category: 'Food',
+                            description: 'Grocery shopping',
+                            amount: -100.00,
+                            cleared: true
+                        },
+                        {
+                            date: '2025-01-26',
+                            account_id: 2,
+                            category: 'Income',
+                            description: 'Salary',
+                            amount: 2000.00,
+                            cleared: true
+                        }
+                    ];
+
+                    const results = await transactionManager.addMultipleTransactions(transactions);
+                    const success = results.successful === 2 && results.failed === 0;
+                    displayResult('Batch add transactions', success);
+                } catch (error) {
+                    displayResult('Batch add transactions', false, error);
+                }
+
+                // Test 6: Transaction validation
+                try {
+                    const invalidTransaction = {
+                        // Missing required fields
+                        description: 'Invalid transaction'
+                    };
+
+                    let errorThrown = false;
+                    try {
+                        await transactionManager.addTransaction(invalidTransaction);
+                    } catch (error) {
+                        errorThrown = true;
+                    }
+
+                    displayResult('Transaction validation', errorThrown);
+                } catch (error) {
+                    displayResult('Transaction validation', false, error);
+                }
+
+                // Test 7: Cache functionality
+                try {
+                    // Add a transaction
+                    const transaction = await transactionManager.addTransaction({
+                        date: '2025-01-26',
+                        account_id: 1,
+                        category: 'Test',
+                        description: 'Cache test',
+                        amount: -25.00,
+                        cleared: true
+                    });
+
+                    // Retrieve from cache
+                    const cached = await transactionManager.getTransaction(transaction.id);
+                    const success = cached && cached.id === transaction.id;
+                    displayResult('Cache functionality', success);
+                } catch (error) {
+                    displayResult('Cache functionality', false, error);
+                }
+
+            } catch (error) {
+                console.error('Test suite error:', error);
+                statusDiv.textContent = 'Test suite encountered an error';
+                statusDiv.style.color = 'red';
+            }
+
+            // Display summary
+            const summaryDiv = document.getElementById('test-summary');
+            summaryDiv.className = 'test-summary';
+            summaryDiv.innerHTML = `
+                <hr>
+                <p>Tests completed: ${passCount + failCount}</p>
+                <p style="color: green;">Passed: ${passCount}</p>
+                <p style="color: red;">Failed: ${failCount}</p>
+                <p>Success rate: ${((passCount / (passCount + failCount)) * 100).toFixed(1)}%</p>
+            `;
+
+            statusDiv.textContent = 'All tests completed';
+            statusDiv.style.color = passCount === (passCount + failCount) ? 'green' : 'orange';
+        }
+
+        // Run tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(runTests, 100);
+        });
+    </script>
+</body>
+</html>

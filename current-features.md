@@ -15,10 +15,15 @@ This document provides a comprehensive overview of all currently implemented fea
 - [Privacy & Security](#privacy--security)
 - [Performance Optimizations](#performance-optimizations)
 
-## Recent Updates (July 2025)
-- 🆕 **Visual Bills Calendar** - Interactive monthly calendar view for recurring bills
-- 🆕 **Smart Rules Engine** - Automatic transaction categorization and processing
-- 🆕 **Time Budget System** - Convert expenses to hours of work
+## Recent Updates (January 2025)
+- 🆕 **TransactionManager System** - Centralized transaction management with atomic operations
+- 🆕 **EventManager Integration** - Enhanced event-driven architecture for better performance
+- 🆕 **Batch Transaction Operations** - Import/export capabilities for bulk data handling
+
+## Previous Updates (July 2025)
+- **Visual Bills Calendar** - Interactive monthly calendar view for recurring bills
+- **Smart Rules Engine** - Automatic transaction categorization and processing
+- **Time Budget System** - Convert expenses to hours of work
 
 ---
 
@@ -79,6 +84,18 @@ Income, Housing, Transportation, Food, Healthcare, Entertainment, Shopping, Util
 - Filter by category
 - Recent transactions display
 - Recurring payment linking
+
+#### TransactionManager System (NEW - January 2025)
+- **Centralized Management**: All transaction operations through single manager
+- **Atomic Operations**: Automatic rollback on failure prevents data corruption
+- **Smart Caching**: 5-minute TTL cache for improved performance
+- **Batch Operations**: Bulk import/export support (CSV, JSON, QIF formats)
+- **Event Batching**: 50ms delay for performance optimization
+- **Balance Tracking**: Automatic balance updates and reversals
+- **Validation Engine**: Comprehensive data validation before operations
+- **Search & Analytics**: Advanced transaction search and statistics
+- **Export Formats**: Multiple export options for data portability
+- **Error Recovery**: Automatic retry logic for transient failures
 
 ---
 
@@ -537,11 +554,12 @@ The Time Budget System transforms financial expenses into time worked, providing
 - Event-driven communication
 
 #### Core Systems
-- **EventManager**: Centralized event handling
+- **EventManager**: Centralized event handling with automatic cleanup
 - **LoadingState**: UI state management
 - **ModalManager**: Dialog control
 - **ValidationFramework**: Form validation
 - **DebugSystem**: Conditional logging
+- **TransactionManager**: Centralized transaction operations with atomic support
 
 ### 🔌 External Integrations
 
