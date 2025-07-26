@@ -134,6 +134,13 @@ import { populateAllCategoryDropdowns } from './modules/categories.js';
         // Make smartRules globally accessible for UI components
         window.smartRules = smartRules;
         
+        // Initialize TransactionManager after data is loaded
+        const { transactionManager } = await import('./modules/transactionManager.js');
+        await transactionManager.init();
+        
+        // Make transactionManager globally accessible for debugging
+        window.transactionManager = transactionManager;
+        
         // Initialize rule templates UI
         const { ruleTemplatesUI } = await import('./modules/ruleTemplatesUI.js');
         ruleTemplatesUI.init();

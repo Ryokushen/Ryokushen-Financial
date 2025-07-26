@@ -7,6 +7,7 @@ import { subtractMoney, addMoney } from './financialMath.js';
 import { validateForm, ValidationSchemas, showFieldError, clearFormErrors, CrossFieldValidators, validateFormWithCrossFields } from './validation.js';
 import { calendarUI } from './calendarUI.js';
 import { eventManager } from './eventManager.js';
+import { transactionManager } from './transactionManager.js';
 
 export function setupEventListeners(appState, onUpdate) {
     // Cache DOM elements
@@ -324,7 +325,7 @@ async function deleteRecurringBill(id, appState, onUpdate) {
     }
 }
 
-// UPDATED: Support both cash and credit card payments
+// UPDATED: Support both cash and credit card payments using TransactionManager
 async function payRecurringBill(id, appState, onUpdate) {
     const bill = appState.appData.recurringBills.find(b => b.id === id);
     if (!bill) return;
@@ -333,8 +334,10 @@ async function payRecurringBill(id, appState, onUpdate) {
 
     if (confirm(`Pay ${bill.name} for ${formatCurrency(bill.amount)} via ${paymentMethod === 'credit' ? 'credit card' : 'cash account'}?`)) {
         try {
+            let savedTransaction;
+            
             if (paymentMethod === 'cash') {
-                // Original cash payment logic
+                // Cash payment using TransactionManager
                 const transaction = {
                     date: new Date().toISOString().split('T')[0],
                     account_id: bill.account_id,
@@ -344,27 +347,19 @@ async function payRecurringBill(id, appState, onUpdate) {
                     cleared: true
                 };
 
-                const savedTransaction = await db.addTransaction(transaction);
+                savedTransaction = await transactionManager.addTransaction(transaction);
                 appState.appData.transactions.unshift({ ...savedTransaction, amount: parseFloat(savedTransaction.amount) });
 
-                // Update cash account balance
-                if (appState.updateAccountBalance) {
-                    appState.updateAccountBalance(bill.account_id, -bill.amount);
-                } else {
-                    const paymentAccount = appState.appData.cashAccounts.find(a => a.id === bill.account_id);
-                    if (paymentAccount) {
-                        paymentAccount.balance = subtractMoney(paymentAccount.balance, bill.amount);
-                    }
-                }
+                // Balance will be recalculated automatically for cash accounts
             } else if (paymentMethod === 'credit') {
-                // NEW: Credit card payment logic
+                // Credit card payment using TransactionManager with atomic balance update
                 const debtAccountId = bill.debtAccountId || bill.debt_account_id;
                 if (!debtAccountId) {
                     showError("No credit card account found for this bill.");
                     return;
                 }
 
-                // Create a debt transaction (increases debt)
+                // Create a debt transaction with atomic balance update
                 const transaction = {
                     date: new Date().toISOString().split('T')[0],
                     account_id: null, // No cash account involved
@@ -375,15 +370,22 @@ async function payRecurringBill(id, appState, onUpdate) {
                     debt_account_id: debtAccountId
                 };
 
-                const savedTransaction = await db.addTransaction(transaction);
+                // Use atomic operation to create transaction and update balance
+                savedTransaction = await transactionManager.createTransactionWithBalanceUpdate(
+                    transaction,
+                    { accountType: 'debt', accountId: debtAccountId, amount: bill.amount }
+                );
+                
                 appState.appData.transactions.unshift({ ...savedTransaction, amount: parseFloat(savedTransaction.amount) });
 
-                // Update credit card debt balance
+                // Update local debt account balance
                 const debtAccount = appState.appData.debtAccounts.find(d => d.id === debtAccountId);
                 if (debtAccount) {
-                    const newBalance = debtAccount.balance + bill.amount;
-                    await db.updateDebtBalance(debtAccount.id, newBalance);
-                    debtAccount.balance = newBalance;
+                    // Fetch updated balance from database to ensure consistency
+                    const updatedAccount = await db.getDebtAccountById(debtAccountId);
+                    if (updatedAccount) {
+                        debtAccount.balance = updatedAccount.balance;
+                    }
                 }
             }
 
