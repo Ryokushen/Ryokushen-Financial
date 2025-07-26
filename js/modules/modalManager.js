@@ -328,6 +328,9 @@ export const modalManager = new ModalManager();
  * Helper function to setup common modals
  */
 export function setupCommonModals() {
+    // Initialize modal manager first
+    modalManager.init();
+    
     // Investment Account Modal
     modalManager.register('investment-account-modal', {
         formId: 'investment-account-form',

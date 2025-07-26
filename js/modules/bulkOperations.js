@@ -115,8 +115,8 @@ class BulkOperationsUI {
         document.body.insertAdjacentHTML('beforeend', categoryModalHtml);
 
         // Register modals
-        modalManager.registerModal('bulk-progress-modal');
-        modalManager.registerModal('bulk-category-modal');
+        modalManager.register('bulk-progress-modal');
+        modalManager.register('bulk-category-modal');
 
         // Setup category form submit
         const applyCategoryBtn = document.getElementById('apply-category-btn');
