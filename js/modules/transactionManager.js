@@ -1863,6 +1863,264 @@ class TransactionManager {
         return qif;
     }
 
+    // ===== TRANSACTION TEMPLATES =====
+    
+    /**
+     * Get all transaction templates
+     * @returns {Promise<Array>} Array of templates
+     */
+    async getTransactionTemplates() {
+        try {
+            const templates = await database.getTransactionTemplates();
+            debug.log(`Retrieved ${templates.length} transaction templates`);
+            return templates;
+        } catch (error) {
+            debug.error('Failed to get transaction templates', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Create a transaction template from an existing transaction
+     * @param {number} transactionId - ID of transaction to use as template
+     * @param {string} templateName - Name for the template
+     * @returns {Promise<Object>} Created template
+     */
+    async createTemplateFromTransaction(transactionId, templateName) {
+        try {
+            // Get the transaction
+            const transaction = await this.getTransaction(transactionId);
+            if (!transaction) {
+                throw new Error('Transaction not found');
+            }
+            
+            // Create template data
+            const templateData = {
+                name: templateName,
+                account_id: transaction.account_id,
+                category: transaction.category,
+                description: transaction.description,
+                amount: Math.abs(transaction.amount), // Store absolute amount
+                debt_account_id: transaction.debt_account_id,
+                is_income: transaction.amount > 0,
+                tags: [] // Can be extended to support tags
+            };
+            
+            // Save template
+            const template = await database.addTransactionTemplate(templateData);
+            
+            // Dispatch event
+            this.dispatchEvent('template:created', { template });
+            
+            debug.log(`Created template "${templateName}" from transaction ${transactionId}`);
+            return template;
+            
+        } catch (error) {
+            debug.error('Failed to create template from transaction', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Create a new transaction template
+     * @param {Object} templateData - Template data
+     * @returns {Promise<Object>} Created template
+     */
+    async createTemplate(templateData) {
+        try {
+            // Validate template data
+            if (!templateData.name) {
+                throw new Error('Template name is required');
+            }
+            
+            // Ensure amount is positive
+            if (templateData.amount) {
+                templateData.amount = Math.abs(templateData.amount);
+            }
+            
+            // Save template
+            const template = await database.addTransactionTemplate(templateData);
+            
+            // Dispatch event
+            this.dispatchEvent('template:created', { template });
+            
+            debug.log(`Created template "${templateData.name}"`);
+            return template;
+            
+        } catch (error) {
+            debug.error('Failed to create template', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Update a transaction template
+     * @param {number} templateId - Template ID
+     * @param {Object} updates - Updated data
+     * @returns {Promise<Object>} Updated template
+     */
+    async updateTemplate(templateId, updates) {
+        try {
+            // Ensure amount is positive if provided
+            if (updates.amount !== undefined) {
+                updates.amount = Math.abs(updates.amount);
+            }
+            
+            // Update template
+            const template = await database.updateTransactionTemplate(templateId, updates);
+            
+            // Dispatch event
+            this.dispatchEvent('template:updated', { template });
+            
+            debug.log(`Updated template ${templateId}`);
+            return template;
+            
+        } catch (error) {
+            debug.error('Failed to update template', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Delete a transaction template
+     * @param {number} templateId - Template ID
+     * @returns {Promise<boolean>} Success status
+     */
+    async deleteTemplate(templateId) {
+        try {
+            await database.deleteTransactionTemplate(templateId);
+            
+            // Dispatch event
+            this.dispatchEvent('template:deleted', { templateId });
+            
+            debug.log(`Deleted template ${templateId}`);
+            return true;
+            
+        } catch (error) {
+            debug.error('Failed to delete template', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Create a transaction from a template
+     * @param {number} templateId - Template ID
+     * @param {Object} overrides - Override template values (e.g., date, amount)
+     * @returns {Promise<Object>} Created transaction
+     */
+    async createTransactionFromTemplate(templateId, overrides = {}) {
+        try {
+            // Get the template
+            const templates = await this.getTransactionTemplates();
+            const template = templates.find(t => t.id === templateId);
+            
+            if (!template) {
+                throw new Error('Template not found');
+            }
+            
+            // Build transaction data from template
+            const transactionData = {
+                date: overrides.date || new Date().toISOString().split('T')[0],
+                account_id: overrides.account_id || template.account_id,
+                category: overrides.category || template.category,
+                description: overrides.description || template.description,
+                amount: overrides.amount !== undefined ? overrides.amount : (template.is_income ? template.amount : -template.amount),
+                debt_account_id: overrides.debt_account_id !== undefined ? overrides.debt_account_id : template.debt_account_id,
+                cleared: overrides.cleared !== undefined ? overrides.cleared : false
+            };
+            
+            // Create the transaction
+            const transaction = await this.addTransaction(transactionData);
+            
+            // Dispatch event
+            this.dispatchEvent('transaction:created:fromTemplate', { 
+                transaction, 
+                templateId,
+                templateName: template.name 
+            });
+            
+            debug.log(`Created transaction from template "${template.name}"`);
+            return transaction;
+            
+        } catch (error) {
+            debug.error('Failed to create transaction from template', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Get suggested templates based on transaction patterns
+     * @param {number} limit - Maximum number of suggestions
+     * @returns {Promise<Array>} Suggested template data
+     */
+    async getSuggestedTemplates(limit = 5) {
+        try {
+            // Get recent transactions
+            const recentTransactions = await database.getTransactions();
+            
+            // Count frequency of description/category combinations
+            const patterns = new Map();
+            
+            recentTransactions.forEach(transaction => {
+                // Create a key from category and cleaned description
+                const cleanDescription = transaction.description
+                    .toLowerCase()
+                    .replace(/\d+/g, '') // Remove numbers
+                    .replace(/\s+/g, ' ') // Normalize spaces
+                    .trim();
+                
+                const key = `${transaction.category}|${cleanDescription}`;
+                
+                if (!patterns.has(key)) {
+                    patterns.set(key, {
+                        category: transaction.category,
+                        description: transaction.description,
+                        account_id: transaction.account_id,
+                        debt_account_id: transaction.debt_account_id,
+                        count: 0,
+                        totalAmount: 0,
+                        isIncome: transaction.amount > 0
+                    });
+                }
+                
+                const pattern = patterns.get(key);
+                pattern.count++;
+                pattern.totalAmount += Math.abs(transaction.amount);
+            });
+            
+            // Sort by frequency and filter out existing templates
+            const existingTemplates = await this.getTransactionTemplates();
+            const existingKeys = new Set(
+                existingTemplates.map(t => `${t.category}|${t.description.toLowerCase()}`)
+            );
+            
+            const suggestions = Array.from(patterns.entries())
+                .filter(([key, pattern]) => {
+                    // Only suggest if used at least 3 times and not already a template
+                    return pattern.count >= 3 && !existingKeys.has(key);
+                })
+                .sort((a, b) => b[1].count - a[1].count)
+                .slice(0, limit)
+                .map(([key, pattern]) => ({
+                    name: `${pattern.category}: ${pattern.description}`,
+                    category: pattern.category,
+                    description: pattern.description,
+                    account_id: pattern.account_id,
+                    debt_account_id: pattern.debt_account_id,
+                    amount: Math.round(pattern.totalAmount / pattern.count * 100) / 100,
+                    is_income: pattern.isIncome,
+                    frequency: pattern.count
+                }));
+            
+            debug.log(`Generated ${suggestions.length} template suggestions`);
+            return suggestions;
+            
+        } catch (error) {
+            debug.error('Failed to get suggested templates', error);
+            throw error;
+        }
+    }
+
     /**
      * Cleanup method
      */

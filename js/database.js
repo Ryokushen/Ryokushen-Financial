@@ -252,6 +252,58 @@ class FinancialDatabase {
         } catch (error) { this.handleError('deleteTransaction', error); }
     }
 
+    // --- TRANSACTION TEMPLATES ---
+    async getTransactionTemplates() {
+        return this.executeWithRetry(async () => {
+            const { data, error } = await this.supabase.from('transaction_templates').select('*').order('name', { ascending: true });
+            if (error) throw error;
+            return data || [];
+        }, 'getTransactionTemplates');
+    }
+    
+    async addTransactionTemplate(template) {
+        try {
+            const userId = await this.getCurrentUserId();
+            const { data, error } = await this.supabase.from('transaction_templates').insert({
+                name: template.name,
+                account_id: template.account_id,
+                category: template.category,
+                description: template.description,
+                amount: template.amount,
+                debt_account_id: template.debt_account_id || null,
+                is_income: template.is_income || false,
+                tags: template.tags || [],
+                user_id: userId
+            }).select().single();
+            if (error) throw error;
+            return data;
+        } catch (error) { this.handleError('addTransactionTemplate', error); }
+    }
+    
+    async updateTransactionTemplate(id, updates) {
+        try {
+            const { data, error } = await this.supabase.from('transaction_templates').update({
+                name: updates.name,
+                account_id: updates.account_id,
+                category: updates.category,
+                description: updates.description,
+                amount: updates.amount,
+                debt_account_id: updates.debt_account_id || null,
+                is_income: updates.is_income || false,
+                tags: updates.tags || []
+            }).eq('id', id).select().single();
+            if (error) throw error;
+            return data;
+        } catch (error) { this.handleError('updateTransactionTemplate', error); }
+    }
+    
+    async deleteTransactionTemplate(id) {
+        try {
+            await this.supabase.from('transaction_templates').delete().eq('id', id);
+            return true;
+        } catch (error) { this.handleError('deleteTransactionTemplate', error); }
+    }
+
     // --- INVESTMENTS & HOLDINGS ---
     async getInvestmentAccounts() {
         return this.executeWithRetry(async () => {
