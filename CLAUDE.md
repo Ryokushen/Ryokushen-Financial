@@ -141,7 +141,31 @@ git diff
 - Use batch operations to prevent N+1 queries
 - Include retry logic for transient failures
 
-Example:
+#### Supabase MCP Integration
+**IMPORTANT**: When working on features that require database knowledge, **ALWAYS use the Supabase MCP** to:
+- Check actual database schema before making assumptions
+- Verify column names, types, and constraints
+- Examine existing data for troubleshooting
+- Understand relationships between tables
+
+**Common MCP commands**:
+```bash
+# Get project ID
+mcp__supabase__list_projects
+
+# See all tables and their columns
+mcp__supabase__list_tables --project_id=<id> --schemas=["public"]
+
+# Query data for debugging
+mcp__supabase__execute_sql --project_id=<id> --query="SELECT * FROM transactions LIMIT 10"
+```
+
+**Example**: Before assuming transaction IDs are UUIDs, check the actual schema:
+- Transaction IDs are `bigint` (auto-increment), not UUID
+- Always verify data types to avoid type conversion issues
+- Check constraints and relationships before implementing features
+
+Example database operation:
 ```javascript
 try {
   const data = await window.database.from('table')
