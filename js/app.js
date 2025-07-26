@@ -141,6 +141,26 @@ import { populateAllCategoryDropdowns } from './modules/categories.js';
         // Make transactionManager globally accessible for debugging
         window.transactionManager = transactionManager;
         
+        // Expose helper for accessing recurring bills (for testing/debugging)
+        window.getRecurringBills = () => appState.appData.recurringBills;
+        window.previewRecurring = async (days = 30) => {
+            const bills = appState.appData.recurringBills;
+            if (!bills || bills.length === 0) {
+                console.log('No recurring bills found');
+                return [];
+            }
+            const preview = await transactionManager.previewUpcomingRecurring(bills, days);
+            console.table(preview.map(p => ({
+                bill: p.bill.name,
+                dueDate: p.dueDate,
+                amount: p.transactionData.amount,
+                category: p.transactionData.category,
+                account: p.transactionData.account_id,
+                creditCard: p.transactionData.debt_account_id
+            })));
+            return preview;
+        };
+        
         // Initialize rule templates UI
         const { ruleTemplatesUI } = await import('./modules/ruleTemplatesUI.js');
         ruleTemplatesUI.init();
