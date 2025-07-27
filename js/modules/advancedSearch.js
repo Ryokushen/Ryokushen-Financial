@@ -4,7 +4,7 @@
  * complex queries, and saved searches.
  */
 
-import { showNotification } from './notifications.js';
+import { showError, showSuccess } from './ui.js';
 import transactionManager from './transactionManager.js';
 import { categories } from './categories.js';
 import { formatAmount } from './utils.js';
@@ -180,7 +180,7 @@ class AdvancedSearch {
                 if (Object.keys(filters).length > 0) {
                     results = await transactionManager.searchTransactions(filters);
                 } else {
-                    showNotification('Please enter search criteria', 'warning');
+                    showError('Please enter search criteria');
                     return;
                 }
             }
@@ -191,7 +191,7 @@ class AdvancedSearch {
             
         } catch (error) {
             console.error('Search error:', error);
-            showNotification('Search failed: ' + error.message, 'error');
+            showError('Search failed: ' + error.message);
         } finally {
             this.executeButton.disabled = false;
             this.executeButton.textContent = 'Search';
@@ -297,10 +297,10 @@ class AdvancedSearch {
             const savedSearch = await transactionManager.saveSearch(searchName, searchCriteria);
             this.savedSearches.push(savedSearch);
             this.renderSavedSearches();
-            showNotification('Search saved successfully', 'success');
+            showSuccess('Search saved successfully');
         } catch (error) {
             console.error('Error saving search:', error);
-            showNotification('Failed to save search', 'error');
+            showError('Failed to save search');
         }
     }
 
@@ -388,16 +388,16 @@ class AdvancedSearch {
             await transactionManager.deleteSavedSearch(searchId);
             this.savedSearches = this.savedSearches.filter(s => s.id !== searchId);
             this.renderSavedSearches();
-            showNotification('Search deleted', 'success');
+            showSuccess('Search deleted');
         } catch (error) {
             console.error('Error deleting search:', error);
-            showNotification('Failed to delete search', 'error');
+            showError('Failed to delete search');
         }
     }
 
     exportResults() {
         if (!this.currentResults.length) {
-            showNotification('No results to export', 'warning');
+            showError('No results to export');
             return;
         }
         
@@ -426,7 +426,7 @@ class AdvancedSearch {
         a.click();
         URL.revokeObjectURL(url);
         
-        showNotification('Results exported', 'success');
+        showSuccess('Results exported');
     }
 
     escapeHtml(text) {
