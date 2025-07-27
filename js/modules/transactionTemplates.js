@@ -67,20 +67,53 @@ class TransactionTemplatesUI {
             });
         }
 
-        // Modal close buttons - add explicit handlers
-        document.querySelectorAll('[data-modal-close]').forEach(btn => {
-            eventManager.addEventListener(btn, 'click', (e) => {
-                const modal = e.target.closest('.modal');
-                if (modal) {
-                    modalManager.close(modal.id);
-                }
-            });
-        });
+        // Setup modal close handlers after DOM is ready
+        this.setupModalCloseHandlers();
     }
 
     registerModals() {
         modalManager.register('templates-modal');
         modalManager.register('template-form-modal');
+    }
+
+    setupModalCloseHandlers() {
+        // Templates modal close handlers
+        const templatesModal = document.getElementById('templates-modal');
+        if (templatesModal) {
+            // Close button (X)
+            const closeBtn = templatesModal.querySelector('.modal__close');
+            if (closeBtn) {
+                eventManager.addEventListener(closeBtn, 'click', () => {
+                    modalManager.close('templates-modal');
+                });
+            }
+            
+            // Cancel buttons
+            templatesModal.querySelectorAll('[data-modal-close]').forEach(btn => {
+                eventManager.addEventListener(btn, 'click', () => {
+                    modalManager.close('templates-modal');
+                });
+            });
+        }
+        
+        // Template form modal close handlers
+        const templateFormModal = document.getElementById('template-form-modal');
+        if (templateFormModal) {
+            // Close button (X)
+            const closeBtn = templateFormModal.querySelector('.modal__close');
+            if (closeBtn) {
+                eventManager.addEventListener(closeBtn, 'click', () => {
+                    modalManager.close('template-form-modal');
+                });
+            }
+            
+            // Cancel button
+            templateFormModal.querySelectorAll('[data-modal-close]').forEach(btn => {
+                eventManager.addEventListener(btn, 'click', () => {
+                    modalManager.close('template-form-modal');
+                });
+            });
+        }
     }
 
     async loadTemplates() {
@@ -116,16 +149,22 @@ class TransactionTemplatesUI {
         // Reset form
         form.reset();
         
-        // Populate dropdowns
-        const categorySelect = document.getElementById('template-category');
-        if (categorySelect) {
-            populateCategoryDropdown(categorySelect);
-        }
+        // Open the modal first to ensure DOM elements are visible
+        modalManager.open('template-form-modal');
         
-        const accountSelect = document.getElementById('template-account');
-        if (accountSelect) {
-            this.populateAccountDropdown(accountSelect);
-        }
+        // Small delay to ensure modal DOM is ready
+        setTimeout(() => {
+            // Populate dropdowns after modal is open
+            const categorySelect = document.getElementById('template-category');
+            if (categorySelect) {
+                populateCategoryDropdown(categorySelect);
+            }
+            
+            const accountSelect = document.getElementById('template-account');
+            if (accountSelect) {
+                this.populateAccountDropdown(accountSelect);
+            }
+        }, 50);
         
         if (templateId) {
             // Edit mode
@@ -151,8 +190,6 @@ class TransactionTemplatesUI {
             templateIdInput.value = '';
             this.editingTemplateId = null;
         }
-        
-        modalManager.open('template-form-modal');
     }
 
     async saveTemplate() {
