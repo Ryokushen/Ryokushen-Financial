@@ -67,15 +67,7 @@ class TransactionTemplatesUI {
             });
         }
 
-        // Modal close buttons - add explicit handlers
-        document.querySelectorAll('[data-modal-close]').forEach(btn => {
-            eventManager.addEventListener(btn, 'click', (e) => {
-                const modal = e.target.closest('.modal');
-                if (modal) {
-                    modalManager.close(modal.id);
-                }
-            });
-        });
+        // Modal close handlers are managed by modalManager when modals are registered
     }
 
     registerModals() {
@@ -104,6 +96,8 @@ class TransactionTemplatesUI {
     }
 
     openTemplatesModal() {
+        // Re-register modal to ensure event listeners are attached
+        modalManager.register('templates-modal');
         modalManager.open('templates-modal');
         this.loadTemplates(); // Refresh data when opening
     }
@@ -119,7 +113,7 @@ class TransactionTemplatesUI {
         // Populate dropdowns
         const categorySelect = document.getElementById('template-category');
         if (categorySelect) {
-            populateCategoryDropdown(categorySelect);
+            populateCategoryDropdown('template-category');
         }
         
         const accountSelect = document.getElementById('template-account');
@@ -152,6 +146,8 @@ class TransactionTemplatesUI {
             this.editingTemplateId = null;
         }
         
+        // Re-register modal to ensure event listeners are attached
+        modalManager.register('template-form-modal');
         modalManager.open('template-form-modal');
     }
 
@@ -465,7 +461,7 @@ class TransactionTemplatesUI {
     }
 
     cleanup() {
-        eventManager.removeListeners('transactionTemplates');
+        eventManager.removeAllListeners();
         this.templates = [];
         this.suggestedTemplates = [];
         this.filteredTemplates = [];
