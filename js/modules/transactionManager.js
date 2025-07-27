@@ -61,6 +61,7 @@ class TransactionManager {
         
         // Initialize state
         this.initialized = false;
+        this.initTime = null;
     }
 
     /**
@@ -79,6 +80,7 @@ class TransactionManager {
             
             // Mark as initialized
             this.initialized = true;
+            this.initTime = Date.now();
             
             debug.log('TransactionManager: Initialized successfully');
             return this;
@@ -202,6 +204,35 @@ class TransactionManager {
             throw error;
         }
     }
+    
+    /**
+     * Get all transactions without any filtering
+     * @returns {Promise<Array>} All transactions
+     */
+    async getAllTransactions() {
+        try {
+            // Check cache first
+            const cacheKey = 'all_transactions';
+            const cached = this.getFromCache(cacheKey);
+            if (cached) {
+                this.metrics.cacheHits++;
+                return cached;
+            }
+            
+            // Fetch from database
+            this.metrics.cacheMisses++;
+            const transactions = await database.getTransactions();
+            
+            // Cache the results
+            this.setCache(cacheKey, transactions);
+            
+            return transactions;
+        } catch (error) {
+            debug.error('Failed to get all transactions', error);
+            this.metrics.errors++;
+            throw error;
+        }
+    }
 
     /**
      * Validate transaction data
@@ -320,6 +351,25 @@ class TransactionManager {
         this.cache.clear();
         this.searchCache.clear();
         debug.log('TransactionManager: Cache cleared');
+    }
+    
+    /**
+     * Cleanup search cache
+     * @param {boolean} force - Force cleanup regardless of timeout
+     * @returns {number} Number of entries cleaned
+     */
+    cleanupSearchCache(force = false) {
+        const now = Date.now();
+        let cleaned = 0;
+        
+        this.searchCache.forEach((result, key) => {
+            if (force || (now - result.timestamp > this.searchCacheTimeout)) {
+                this.searchCache.delete(key);
+                cleaned++;
+            }
+        });
+        
+        return cleaned;
     }
     
     /**
@@ -5519,6 +5569,814 @@ class TransactionManager {
         }
     }
     
+    // ============================================================================
+    // PHASE 4 - MILESTONE 3: PERFORMANCE OPTIMIZATION & INTEGRATION
+    // ============================================================================
+    
+    /**
+     * Get comprehensive performance metrics
+     * @returns {Object} Performance metrics and statistics
+     */
+    getPerformanceMetrics() {
+        const now = Date.now();
+        
+        // Calculate cache metrics
+        const cacheStats = {
+            size: this.cache.size,
+            hitRate: this.metrics.cacheHits > 0 ? 
+                (this.metrics.cacheHits / (this.metrics.cacheHits + this.metrics.cacheMisses) * 100).toFixed(2) : 0,
+            hits: this.metrics.cacheHits,
+            misses: this.metrics.cacheMisses,
+            evictions: 0 // Track when implementing LRU
+        };
+        
+        // Calculate search cache metrics
+        const searchCacheStats = {
+            size: this.searchCache.size,
+            maxSize: this.maxSearchCacheSize,
+            utilizationPercent: (this.searchCache.size / this.maxSearchCacheSize * 100).toFixed(2)
+        };
+        
+        // Operation metrics
+        const operationStats = {
+            totalOperations: this.metrics.operations,
+            errorRate: this.metrics.operations > 0 ?
+                (this.metrics.errors / this.metrics.operations * 100).toFixed(2) : 0,
+            rollbackRate: this.metrics.operations > 0 ?
+                (this.metrics.rollbacks / this.metrics.operations * 100).toFixed(2) : 0
+        };
+        
+        // Memory usage estimation
+        const memoryStats = {
+            cacheMemoryMB: this.estimateCacheMemory(),
+            pendingOperations: this.pendingOperations.size,
+            eventQueueSize: this.eventQueue.length,
+            historySize: this.operationHistory.length
+        };
+        
+        // Performance optimization suggestions
+        const suggestions = [];
+        
+        if (cacheStats.hitRate < 60) {
+            suggestions.push({
+                type: 'cache_optimization',
+                message: 'Low cache hit rate detected. Consider increasing cache timeout.',
+                impact: 'high'
+            });
+        }
+        
+        if (searchCacheStats.utilizationPercent > 90) {
+            suggestions.push({
+                type: 'search_cache',
+                message: 'Search cache nearly full. Old entries will be evicted.',
+                impact: 'medium'
+            });
+        }
+        
+        if (operationStats.errorRate > 5) {
+            suggestions.push({
+                type: 'error_rate',
+                message: 'High error rate detected. Review error logs.',
+                impact: 'high'
+            });
+        }
+        
+        if (memoryStats.pendingOperations > 10) {
+            suggestions.push({
+                type: 'pending_operations',
+                message: 'Many pending operations. Ensure cleanup is running.',
+                impact: 'medium'
+            });
+        }
+        
+        return {
+            timestamp: now,
+            cache: cacheStats,
+            searchCache: searchCacheStats,
+            operations: operationStats,
+            memory: memoryStats,
+            suggestions,
+            uptime: {
+                initialized: this.initialized,
+                uptimeMs: this.initialized ? now - (this.initTime || now) : 0
+            }
+        };
+    }
+    
+    /**
+     * Optimize performance based on usage patterns
+     * @returns {Promise<Object>} Optimization results
+     */
+    async optimizePerformance() {
+        debug.log('Running performance optimization');
+        const startTime = Date.now();
+        const actions = [];
+        
+        try {
+            const metrics = this.getPerformanceMetrics();
+            
+            // 1. Cache optimization
+            if (metrics.cache.hitRate < 60 && this.cacheTimeout < 10 * 60 * 1000) {
+                this.cacheTimeout = Math.min(this.cacheTimeout * 1.5, 10 * 60 * 1000);
+                actions.push({
+                    action: 'increased_cache_timeout',
+                    oldValue: this.cacheTimeout / 1.5,
+                    newValue: this.cacheTimeout
+                });
+            }
+            
+            // 2. Search cache cleanup
+            if (metrics.searchCache.utilizationPercent > 80) {
+                const oldSize = this.searchCache.size;
+                this.cleanupSearchCache(true); // Force cleanup
+                actions.push({
+                    action: 'search_cache_cleanup',
+                    entriesRemoved: oldSize - this.searchCache.size
+                });
+            }
+            
+            // 3. Pending operations cleanup
+            if (metrics.memory.pendingOperations > 5) {
+                const cleaned = this.cleanupPendingOperations();
+                actions.push({
+                    action: 'pending_operations_cleanup',
+                    operationsCleaned: cleaned
+                });
+            }
+            
+            // 4. History trimming
+            if (this.operationHistory.length > this.maxHistorySize) {
+                const trimmed = this.operationHistory.length - this.maxHistorySize;
+                this.operationHistory = this.operationHistory.slice(-this.maxHistorySize);
+                actions.push({
+                    action: 'history_trimmed',
+                    entriesRemoved: trimmed
+                });
+            }
+            
+            // 5. Predictive cache warming for frequently accessed data
+            await this.warmFrequentlyAccessedCache();
+            
+            return {
+                success: true,
+                actions,
+                metrics: {
+                    before: metrics,
+                    after: this.getPerformanceMetrics()
+                },
+                executionTime: Date.now() - startTime
+            };
+            
+        } catch (error) {
+            debug.error('Performance optimization failed', error);
+            return {
+                success: false,
+                error: error.message,
+                actions,
+                executionTime: Date.now() - startTime
+            };
+        }
+    }
+    
+    /**
+     * Get data quality report
+     * @returns {Promise<Object>} Data quality analysis
+     */
+    async getDataQualityReport() {
+        const startTime = Date.now();
+        debug.log('Generating data quality report');
+        
+        try {
+            // Get all transactions for analysis
+            const allTransactions = await this.getAllTransactions();
+            
+            if (allTransactions.length === 0) {
+                return {
+                    summary: {
+                        message: 'No transactions to analyze',
+                        totalTransactions: 0
+                    }
+                };
+            }
+            
+            // Quality metrics
+            const issues = [];
+            const metrics = {
+                totalTransactions: allTransactions.length,
+                missingCategories: 0,
+                uncategorized: 0,
+                missingDescriptions: 0,
+                potentialDuplicates: 0,
+                invalidAmounts: 0,
+                futureDated: 0,
+                suspiciousDates: 0
+            };
+            
+            // Track patterns for duplicate detection
+            const transactionPatterns = new Map();
+            const today = new Date();
+            const oneYearAgo = new Date();
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+            
+            // Analyze each transaction
+            allTransactions.forEach(transaction => {
+                // Check for missing/invalid data
+                if (!transaction.category) {
+                    metrics.missingCategories++;
+                    issues.push({
+                        type: 'missing_category',
+                        transactionId: transaction.id,
+                        severity: 'medium'
+                    });
+                } else if (transaction.category === 'Uncategorized') {
+                    metrics.uncategorized++;
+                }
+                
+                if (!transaction.description || transaction.description.trim() === '') {
+                    metrics.missingDescriptions++;
+                    issues.push({
+                        type: 'missing_description',
+                        transactionId: transaction.id,
+                        severity: 'low'
+                    });
+                }
+                
+                if (transaction.amount === 0 || isNaN(transaction.amount)) {
+                    metrics.invalidAmounts++;
+                    issues.push({
+                        type: 'invalid_amount',
+                        transactionId: transaction.id,
+                        severity: 'high'
+                    });
+                }
+                
+                // Date validation
+                const transDate = new Date(transaction.date);
+                if (transDate > today) {
+                    metrics.futureDated++;
+                    issues.push({
+                        type: 'future_date',
+                        transactionId: transaction.id,
+                        date: transaction.date,
+                        severity: 'medium'
+                    });
+                }
+                
+                if (transDate < oneYearAgo) {
+                    metrics.suspiciousDates++;
+                    issues.push({
+                        type: 'old_date',
+                        transactionId: transaction.id,
+                        date: transaction.date,
+                        severity: 'low'
+                    });
+                }
+                
+                // Duplicate detection
+                const pattern = `${transaction.date}|${transaction.amount}|${transaction.description}`;
+                if (transactionPatterns.has(pattern)) {
+                    metrics.potentialDuplicates++;
+                    issues.push({
+                        type: 'potential_duplicate',
+                        transactionId: transaction.id,
+                        matchingId: transactionPatterns.get(pattern),
+                        severity: 'high'
+                    });
+                } else {
+                    transactionPatterns.set(pattern, transaction.id);
+                }
+            });
+            
+            // Calculate quality score
+            const qualityScore = this.calculateDataQualityScore(metrics);
+            
+            // Generate recommendations
+            const recommendations = [];
+            
+            if (metrics.uncategorized > allTransactions.length * 0.1) {
+                recommendations.push({
+                    priority: 'high',
+                    type: 'categorization',
+                    message: `${metrics.uncategorized} transactions need categorization`,
+                    action: 'Run Smart Rules or bulk categorization'
+                });
+            }
+            
+            if (metrics.potentialDuplicates > 0) {
+                recommendations.push({
+                    priority: 'high',
+                    type: 'duplicates',
+                    message: `${metrics.potentialDuplicates} potential duplicate transactions found`,
+                    action: 'Review and remove duplicates'
+                });
+            }
+            
+            if (metrics.missingDescriptions > allTransactions.length * 0.2) {
+                recommendations.push({
+                    priority: 'medium',
+                    type: 'descriptions',
+                    message: 'Many transactions lack descriptions',
+                    action: 'Add descriptions for better searchability'
+                });
+            }
+            
+            // Category distribution analysis
+            const categoryDistribution = new Map();
+            allTransactions.forEach(t => {
+                const cat = t.category || 'Uncategorized';
+                categoryDistribution.set(cat, (categoryDistribution.get(cat) || 0) + 1);
+            });
+            
+            return {
+                summary: {
+                    totalTransactions: allTransactions.length,
+                    qualityScore,
+                    scoreRating: qualityScore >= 90 ? 'Excellent' :
+                                qualityScore >= 75 ? 'Good' :
+                                qualityScore >= 60 ? 'Fair' : 'Needs Improvement'
+                },
+                metrics,
+                issues: issues.slice(0, 100), // Limit to first 100 issues
+                recommendations,
+                categoryDistribution: Array.from(categoryDistribution.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10)
+                    .map(([category, count]) => ({
+                        category,
+                        count,
+                        percentage: (count / allTransactions.length * 100).toFixed(2)
+                    })),
+                performance: {
+                    executionTime: Date.now() - startTime
+                }
+            };
+            
+        } catch (error) {
+            debug.error('Failed to generate data quality report', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Get Smart Rule recommendations based on patterns
+     * @returns {Promise<Object>} Rule recommendations
+     */
+    async getSmartRuleRecommendations() {
+        const startTime = Date.now();
+        debug.log('Generating Smart Rule recommendations');
+        
+        try {
+            // Get recent transactions and existing rules
+            const lookbackDays = 90;
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - lookbackDays);
+            
+            const transactions = await this.searchTransactions({
+                dateRange: {
+                    start: startDate.toISOString(),
+                    end: endDate.toISOString()
+                }
+            });
+            
+            const existingRules = await database.getSmartRules(true);
+            
+            // Track patterns
+            const merchantPatterns = new Map();
+            const descriptionPatterns = new Map();
+            const amountPatterns = new Map();
+            
+            // Analyze transactions for patterns
+            transactions.forEach(transaction => {
+                // Skip if already has a category
+                if (!transaction.category || transaction.category === 'Uncategorized') {
+                    return;
+                }
+                
+                // Merchant patterns
+                if (transaction.description) {
+                    const merchant = this.extractMerchantName(transaction.description);
+                    if (merchant) {
+                        if (!merchantPatterns.has(merchant)) {
+                            merchantPatterns.set(merchant, new Map());
+                        }
+                        const categories = merchantPatterns.get(merchant);
+                        categories.set(transaction.category, 
+                            (categories.get(transaction.category) || 0) + 1
+                        );
+                    }
+                    
+                    // Description keyword patterns
+                    const keywords = transaction.description.toLowerCase().split(/\s+/);
+                    keywords.forEach(keyword => {
+                        if (keyword.length > 3 && !this.isCommonWord(keyword)) {
+                            if (!descriptionPatterns.has(keyword)) {
+                                descriptionPatterns.set(keyword, new Map());
+                            }
+                            const categories = descriptionPatterns.get(keyword);
+                            categories.set(transaction.category,
+                                (categories.get(transaction.category) || 0) + 1
+                            );
+                        }
+                    });
+                }
+                
+                // Amount range patterns
+                const amountRange = this.getAmountRange(Math.abs(transaction.amount));
+                const rangeKey = `${amountRange.min}-${amountRange.max}`;
+                if (!amountPatterns.has(rangeKey)) {
+                    amountPatterns.set(rangeKey, new Map());
+                }
+                const categories = amountPatterns.get(rangeKey);
+                categories.set(transaction.category,
+                    (categories.get(transaction.category) || 0) + 1
+                );
+            });
+            
+            // Generate recommendations
+            const recommendations = [];
+            
+            // Merchant-based rules
+            merchantPatterns.forEach((categories, merchant) => {
+                const sortedCategories = Array.from(categories.entries())
+                    .sort((a, b) => b[1] - a[1]);
+                
+                if (sortedCategories.length > 0 && sortedCategories[0][1] >= 3) {
+                    const dominantCategory = sortedCategories[0][0];
+                    const confidence = sortedCategories[0][1] / 
+                        Array.from(categories.values()).reduce((a, b) => a + b, 0);
+                    
+                    // Check if rule already exists
+                    const ruleExists = existingRules.some(rule =>
+                        rule.conditions?.description?.contains === merchant
+                    );
+                    
+                    if (!ruleExists && confidence > 0.8) {
+                        recommendations.push({
+                            type: 'merchant',
+                            priority: 'high',
+                            confidence: (confidence * 100).toFixed(0),
+                            rule: {
+                                name: `Auto-categorize ${merchant} transactions`,
+                                description: `Automatically categorize transactions from ${merchant} as ${dominantCategory}`,
+                                conditions: {
+                                    description: {
+                                        contains: merchant
+                                    }
+                                },
+                                actions: {
+                                    setCategory: dominantCategory
+                                }
+                            },
+                            evidence: {
+                                totalTransactions: Array.from(categories.values()).reduce((a, b) => a + b, 0),
+                                categoryBreakdown: sortedCategories
+                            }
+                        });
+                    }
+                }
+            });
+            
+            // Keyword-based rules
+            descriptionPatterns.forEach((categories, keyword) => {
+                const sortedCategories = Array.from(categories.entries())
+                    .sort((a, b) => b[1] - a[1]);
+                
+                if (sortedCategories.length > 0 && sortedCategories[0][1] >= 5) {
+                    const dominantCategory = sortedCategories[0][0];
+                    const total = Array.from(categories.values()).reduce((a, b) => a + b, 0);
+                    const confidence = sortedCategories[0][1] / total;
+                    
+                    if (confidence > 0.75 && total >= 10) {
+                        recommendations.push({
+                            type: 'keyword',
+                            priority: 'medium',
+                            confidence: (confidence * 100).toFixed(0),
+                            rule: {
+                                name: `Categorize "${keyword}" transactions`,
+                                description: `Transactions containing "${keyword}" likely belong to ${dominantCategory}`,
+                                conditions: {
+                                    description: {
+                                        contains: keyword,
+                                        caseSensitive: false
+                                    }
+                                },
+                                actions: {
+                                    setCategory: dominantCategory
+                                }
+                            },
+                            evidence: {
+                                totalTransactions: total,
+                                categoryBreakdown: sortedCategories
+                            }
+                        });
+                    }
+                }
+            });
+            
+            // Sort recommendations by priority and confidence
+            recommendations.sort((a, b) => {
+                const priorityOrder = { high: 3, medium: 2, low: 1 };
+                const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
+                if (priorityDiff !== 0) return priorityDiff;
+                return parseFloat(b.confidence) - parseFloat(a.confidence);
+            });
+            
+            return {
+                recommendations: recommendations.slice(0, 20), // Top 20 recommendations
+                summary: {
+                    totalPatterns: merchantPatterns.size + descriptionPatterns.size,
+                    merchantPatterns: merchantPatterns.size,
+                    keywordPatterns: descriptionPatterns.size,
+                    existingRules: existingRules.length,
+                    transactionsAnalyzed: transactions.length
+                },
+                performance: {
+                    executionTime: Date.now() - startTime
+                }
+            };
+            
+        } catch (error) {
+            debug.error('Failed to generate Smart Rule recommendations', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Evaluate effectiveness of existing Smart Rules
+     * @returns {Promise<Object>} Rule effectiveness analysis
+     */
+    async evaluateRuleEffectiveness() {
+        const startTime = Date.now();
+        debug.log('Evaluating Smart Rule effectiveness');
+        
+        try {
+            const rules = await database.getSmartRules();
+            
+            if (rules.length === 0) {
+                return {
+                    summary: {
+                        message: 'No Smart Rules to evaluate',
+                        totalRules: 0
+                    }
+                };
+            }
+            
+            // Get recent transactions to analyze
+            const lookbackDays = 30;
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - lookbackDays);
+            
+            const transactions = await this.searchTransactions({
+                dateRange: {
+                    start: startDate.toISOString(),
+                    end: endDate.toISOString()
+                }
+            });
+            
+            // Evaluate each rule
+            const evaluations = [];
+            
+            for (const rule of rules) {
+                const evaluation = {
+                    ruleId: rule.id,
+                    ruleName: rule.name,
+                    enabled: rule.enabled,
+                    matches: 0,
+                    potentialMatches: 0,
+                    accuracy: 0,
+                    suggestions: []
+                };
+                
+                // Count matches and analyze effectiveness
+                transactions.forEach(transaction => {
+                    // Check if rule conditions would match
+                    const wouldMatch = this.checkRuleConditions(transaction, rule.conditions);
+                    
+                    if (wouldMatch) {
+                        evaluation.potentialMatches++;
+                        
+                        // Check if the action was already applied
+                        if (rule.actions.setCategory && 
+                            transaction.category === rule.actions.setCategory) {
+                            evaluation.matches++;
+                        }
+                    }
+                });
+                
+                // Calculate metrics
+                if (evaluation.potentialMatches > 0) {
+                    evaluation.accuracy = (evaluation.matches / evaluation.potentialMatches * 100).toFixed(2);
+                }
+                
+                // Generate suggestions
+                if (!rule.enabled && evaluation.potentialMatches > 10) {
+                    evaluation.suggestions.push({
+                        type: 'enable_rule',
+                        message: 'This rule matches many transactions. Consider enabling it.',
+                        impact: 'high'
+                    });
+                }
+                
+                if (rule.enabled && evaluation.accuracy < 50 && evaluation.potentialMatches > 5) {
+                    evaluation.suggestions.push({
+                        type: 'review_conditions',
+                        message: 'Low accuracy suggests rule conditions may be too broad.',
+                        impact: 'medium'
+                    });
+                }
+                
+                if (rule.enabled && evaluation.potentialMatches === 0) {
+                    evaluation.suggestions.push({
+                        type: 'no_matches',
+                        message: 'Rule has not matched any recent transactions.',
+                        impact: 'low'
+                    });
+                }
+                
+                evaluations.push(evaluation);
+            }
+            
+            // Calculate overall statistics
+            const activeRules = evaluations.filter(e => e.enabled);
+            const totalMatches = evaluations.reduce((sum, e) => sum + e.matches, 0);
+            const totalPotentialMatches = evaluations.reduce((sum, e) => sum + e.potentialMatches, 0);
+            
+            // Sort by effectiveness
+            evaluations.sort((a, b) => b.matches - a.matches);
+            
+            return {
+                evaluations,
+                summary: {
+                    totalRules: rules.length,
+                    activeRules: activeRules.length,
+                    totalMatches,
+                    totalPotentialMatches,
+                    overallAccuracy: totalPotentialMatches > 0 ?
+                        (totalMatches / totalPotentialMatches * 100).toFixed(2) : 0,
+                    transactionsAnalyzed: transactions.length,
+                    timeWindow: `Last ${lookbackDays} days`
+                },
+                recommendations: {
+                    topPerformers: evaluations.filter(e => e.matches > 10).slice(0, 5),
+                    needsAttention: evaluations.filter(e => e.suggestions.length > 0).slice(0, 5),
+                    inactive: evaluations.filter(e => e.potentialMatches === 0 && e.enabled)
+                },
+                performance: {
+                    executionTime: Date.now() - startTime
+                }
+            };
+            
+        } catch (error) {
+            debug.error('Failed to evaluate rule effectiveness', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Helper: Estimate cache memory usage
+     * @private
+     */
+    estimateCacheMemory() {
+        // Rough estimation: assume average transaction is 500 bytes
+        const avgTransactionSize = 500;
+        const cacheSize = this.cache.size * avgTransactionSize;
+        const searchCacheSize = this.searchCache.size * avgTransactionSize * 20; // Results arrays
+        return ((cacheSize + searchCacheSize) / 1024 / 1024).toFixed(2);
+    }
+    
+    /**
+     * Helper: Cleanup pending operations
+     * @private
+     */
+    cleanupPendingOperations() {
+        const now = Date.now();
+        const timeout = 5 * 60 * 1000; // 5 minutes
+        let cleaned = 0;
+        
+        this.pendingOperations.forEach((operation, id) => {
+            if (now - operation.timestamp > timeout) {
+                this.pendingOperations.delete(id);
+                cleaned++;
+            }
+        });
+        
+        return cleaned;
+    }
+    
+    /**
+     * Helper: Warm cache with frequently accessed data
+     * @private
+     */
+    async warmFrequentlyAccessedCache() {
+        try {
+            // Pre-load current month transactions
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            
+            await this.searchTransactions({
+                dateRange: {
+                    start: startOfMonth.toISOString(),
+                    end: now.toISOString()
+                }
+            });
+            
+            debug.log('Cache warmed with current month transactions');
+        } catch (error) {
+            debug.error('Failed to warm cache', error);
+        }
+    }
+    
+    /**
+     * Helper: Calculate data quality score
+     * @private
+     */
+    calculateDataQualityScore(metrics) {
+        const weights = {
+            categorization: 0.3,
+            descriptions: 0.2,
+            amounts: 0.2,
+            duplicates: 0.2,
+            dates: 0.1
+        };
+        
+        const scores = {
+            categorization: Math.max(0, 100 - (metrics.uncategorized / metrics.totalTransactions * 100)),
+            descriptions: Math.max(0, 100 - (metrics.missingDescriptions / metrics.totalTransactions * 100)),
+            amounts: Math.max(0, 100 - (metrics.invalidAmounts / metrics.totalTransactions * 100)),
+            duplicates: Math.max(0, 100 - (metrics.potentialDuplicates / metrics.totalTransactions * 200)),
+            dates: Math.max(0, 100 - ((metrics.futureDated + metrics.suspiciousDates) / metrics.totalTransactions * 100))
+        };
+        
+        let totalScore = 0;
+        Object.entries(scores).forEach(([key, score]) => {
+            totalScore += score * weights[key];
+        });
+        
+        return Math.round(totalScore);
+    }
+    
+    /**
+     * Helper: Check if word is common
+     * @private
+     */
+    isCommonWord(word) {
+        const commonWords = ['the', 'and', 'for', 'with', 'from', 'payment', 'purchase', 'transaction'];
+        return commonWords.includes(word.toLowerCase());
+    }
+    
+    /**
+     * Helper: Get amount range for pattern detection
+     * @private
+     */
+    getAmountRange(amount) {
+        if (amount < 10) return { min: 0, max: 10 };
+        if (amount < 50) return { min: 10, max: 50 };
+        if (amount < 100) return { min: 50, max: 100 };
+        if (amount < 500) return { min: 100, max: 500 };
+        if (amount < 1000) return { min: 500, max: 1000 };
+        return { min: 1000, max: 999999 };
+    }
+    
+    /**
+     * Helper: Check if transaction matches rule conditions
+     * @private
+     */
+    checkRuleConditions(transaction, conditions) {
+        if (!conditions) return false;
+        
+        // Check description conditions
+        if (conditions.description) {
+            if (conditions.description.contains) {
+                const searchStr = conditions.description.caseSensitive === false ?
+                    transaction.description?.toLowerCase() : transaction.description;
+                const searchTerm = conditions.description.caseSensitive === false ?
+                    conditions.description.contains.toLowerCase() : conditions.description.contains;
+                
+                if (!searchStr || !searchStr.includes(searchTerm)) {
+                    return false;
+                }
+            }
+        }
+        
+        // Check amount conditions
+        if (conditions.amount) {
+            const amount = Math.abs(transaction.amount);
+            if (conditions.amount.min !== undefined && amount < conditions.amount.min) return false;
+            if (conditions.amount.max !== undefined && amount > conditions.amount.max) return false;
+            if (conditions.amount.equals !== undefined && amount !== conditions.amount.equals) return false;
+        }
+        
+        // Check category conditions
+        if (conditions.category) {
+            if (conditions.category.equals && transaction.category !== conditions.category.equals) return false;
+            if (conditions.category.in && !conditions.category.in.includes(transaction.category)) return false;
+        }
+        
+        return true;
+    }
+    
     /**
      * Cleanup method
      */
@@ -5560,6 +6418,13 @@ if (typeof window !== 'undefined') {
     window.getTransactionInsights = () => transactionManager.getTransactionInsights();
     window.getBudgetPerformance = (budgets) => transactionManager.getBudgetPerformance(budgets);
     
+    // Milestone 3: Performance Optimization & Integration
+    window.getPerformanceMetrics = () => transactionManager.getPerformanceMetrics();
+    window.optimizePerformance = () => transactionManager.optimizePerformance();
+    window.getDataQualityReport = () => transactionManager.getDataQualityReport();
+    window.getSmartRuleRecommendations = () => transactionManager.getSmartRuleRecommendations();
+    window.evaluateRuleEffectiveness = () => transactionManager.evaluateRuleEffectiveness();
+    
     console.log('🎯 TransactionManager Phase 4 Analytics Available:');
     console.log('📊 Milestone 1 - Core Analytics:');
     console.log('   window.getSpendingTrends({ months: 6, groupBy: "category" })');
@@ -5575,4 +6440,11 @@ if (typeof window !== 'undefined') {
     console.log('   window.getCashFlowForecast(30)');
     console.log('   window.getTransactionInsights()');
     console.log('   window.getBudgetPerformance({ Food: 600, Entertainment: 200 })');
+    console.log('');
+    console.log('⚡ Milestone 3 - Performance & Integration:');
+    console.log('   window.getPerformanceMetrics()');
+    console.log('   window.optimizePerformance()');
+    console.log('   window.getDataQualityReport()');
+    console.log('   window.getSmartRuleRecommendations()');
+    console.log('   window.evaluateRuleEffectiveness()');
 }
