@@ -104,7 +104,7 @@ class ModalManager {
         const modalListeners = [];
         
         // Find and setup close buttons
-        const closeButtons = modal.querySelectorAll('[data-modal-close], .modal__close, .btn--cancel');
+        const closeButtons = modal.querySelectorAll('[data-modal-close], .modal__close, .modal-close, .btn--cancel');
         closeButtons.forEach(btn => {
             const closeHandler = (e) => {
                 e.preventDefault();

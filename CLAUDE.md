@@ -75,4 +75,6 @@ git log --oneline -10
 git diff
 ```
 
-[Rest of the existing content remains unchanged]
+## Visual Handling Guidelines
+
+- When a picture or screenshot is pasted always mount in order to view
