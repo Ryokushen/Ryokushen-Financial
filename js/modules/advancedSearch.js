@@ -120,19 +120,65 @@ class AdvancedSearch {
                 const user = await supabase.auth.getUser();
                 
                 if (user.data.user) {
-                    const { data: accounts } = await supabase
-                        .from('accounts')
-                        .select('id, name, type')
-                        .eq('user_id', user.data.user.id)
-                        .order('name');
+                    // Query all account types
+                    const [cashResult, debtResult, investmentResult] = await Promise.all([
+                        supabase
+                            .from('cash_accounts')
+                            .select('id, name, type')
+                            .eq('user_id', user.data.user.id)
+                            .order('name'),
+                        supabase
+                            .from('debt_accounts')
+                            .select('id, name, type')
+                            .eq('user_id', user.data.user.id)
+                            .order('name'),
+                        supabase
+                            .from('investment_accounts')
+                            .select('id, name, account_type')
+                            .eq('user_id', user.data.user.id)
+                            .order('name')
+                    ]);
                     
                     this.accountSelect.innerHTML = '<option value="">— All Accounts —</option>';
-                    accounts?.forEach(account => {
-                        const option = document.createElement('option');
-                        option.value = account.id;
-                        option.textContent = `${account.name} (${account.type})`;
-                        this.accountSelect.appendChild(option);
-                    });
+                    
+                    // Add cash accounts
+                    if (cashResult.data?.length > 0) {
+                        const optgroup = document.createElement('optgroup');
+                        optgroup.label = 'Cash Accounts';
+                        cashResult.data.forEach(account => {
+                            const option = document.createElement('option');
+                            option.value = `cash_${account.id}`;
+                            option.textContent = `${account.name} (${account.type})`;
+                            optgroup.appendChild(option);
+                        });
+                        this.accountSelect.appendChild(optgroup);
+                    }
+                    
+                    // Add debt accounts
+                    if (debtResult.data?.length > 0) {
+                        const optgroup = document.createElement('optgroup');
+                        optgroup.label = 'Debt Accounts';
+                        debtResult.data.forEach(account => {
+                            const option = document.createElement('option');
+                            option.value = `debt_${account.id}`;
+                            option.textContent = `${account.name} (${account.type})`;
+                            optgroup.appendChild(option);
+                        });
+                        this.accountSelect.appendChild(optgroup);
+                    }
+                    
+                    // Add investment accounts
+                    if (investmentResult.data?.length > 0) {
+                        const optgroup = document.createElement('optgroup');
+                        optgroup.label = 'Investment Accounts';
+                        investmentResult.data.forEach(account => {
+                            const option = document.createElement('option');
+                            option.value = `investment_${account.id}`;
+                            option.textContent = `${account.name} (${account.account_type})`;
+                            optgroup.appendChild(option);
+                        });
+                        this.accountSelect.appendChild(optgroup);
+                    }
                 }
             } catch (error) {
                 console.error('Error loading accounts:', error);
@@ -207,7 +253,17 @@ class AdvancedSearch {
         if (this.amountMin.value) filters.amountMin = parseFloat(this.amountMin.value);
         if (this.amountMax.value) filters.amountMax = parseFloat(this.amountMax.value);
         if (this.categorySelect.value) filters.category = this.categorySelect.value;
-        if (this.accountSelect.value) filters.accountId = this.accountSelect.value;
+        
+        // Parse account selection (format: "type_id")
+        if (this.accountSelect.value) {
+            const [accountType, accountId] = this.accountSelect.value.split('_');
+            if (accountType === 'cash') {
+                filters.accountId = parseInt(accountId);
+            } else if (accountType === 'debt') {
+                filters.debtAccountId = parseInt(accountId);
+            }
+            // Note: investment accounts are not directly linked to transactions in this schema
+        }
         
         return filters;
     }
