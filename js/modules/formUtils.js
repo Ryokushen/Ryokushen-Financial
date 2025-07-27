@@ -51,7 +51,7 @@ export function populateFormFromData(formId, data, fieldPrefix = '') {
     }
     
     Object.entries(data).forEach(([field, value]) => {
-        const fieldId = fieldPrefix ? `${fieldPrefix}-${field}` : field;
+        const fieldId = fieldPrefix ? `${fieldPrefix}${field}` : field;
         const element = form.querySelector(`#${fieldId}`);
         
         if (element) {
@@ -75,7 +75,7 @@ export function displayValidationErrors(errors, fieldPrefix = '') {
     
     // Display new errors
     Object.entries(errors).forEach(([field, error]) => {
-        const fieldId = fieldPrefix ? `${fieldPrefix}-${field}` : field;
+        const fieldId = fieldPrefix ? `${fieldPrefix}${field}` : field;
         showFieldError(fieldId, error);
     });
     
