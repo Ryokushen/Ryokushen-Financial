@@ -559,6 +559,51 @@ body::before {
   font-weight: 600;
 }
 
+/* Debt Account Sorting */
+.debt-accounts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.debt-sort-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.debt-sort-controls label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.sort-select {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 200px;
+}
+
+.sort-select:hover {
+  background: var(--glass-hover);
+  border-color: var(--primary);
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.1);
+}
+
 /* Individual Debt Cards */
 .debt-cards {
   display: grid;
@@ -791,6 +836,21 @@ body::before {
   
   .payoff-summary {
     grid-template-columns: 1fr;
+  }
+  
+  /* Adjust sort controls for mobile */
+  .debt-accounts-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .debt-sort-controls {
+    width: 100%;
+  }
+  
+  .sort-select {
+    width: 100%;
+    min-width: unset;
   }
 }
 

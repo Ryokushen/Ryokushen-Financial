@@ -649,7 +649,23 @@
                 </div>
 
                 <!-- Individual Debt Cards -->
-                <h3 class="debt-accounts-title">Debt Accounts</h3>
+                <div class="debt-accounts-header">
+                    <h3 class="debt-accounts-title">Debt Accounts</h3>
+                    <div class="debt-sort-controls">
+                        <label for="debt-sort-select">Sort by:</label>
+                        <select id="debt-sort-select" class="sort-select">
+                            <option value="alphabetical">Alphabetical (A-Z)</option>
+                            <option value="balance-high">Balance (High to Low)</option>
+                            <option value="balance-low">Balance (Low to High)</option>
+                            <option value="apr-high">APR (High to Low)</option>
+                            <option value="apr-low">APR (Low to High)</option>
+                            <option value="payment-high">Min Payment (High to Low)</option>
+                            <option value="payment-low">Min Payment (Low to High)</option>
+                            <option value="interest-high">Monthly Interest (High to Low)</option>
+                            <option value="interest-low">Monthly Interest (Low to High)</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="debt-cards">
                     <div id="debt-accounts-list">
                         <!-- Debt cards will be rendered here -->

@@ -7,6 +7,59 @@ import { DebtStrategy } from './debtStrategy.js';
 import { eventManager } from './eventManager.js';
 import { debug } from './debug.js';
 
+// Store the current sort preference
+let currentSortType = localStorage.getItem('debtSortPreference') || 'balance-high';
+
+// Calculate monthly interest for a debt account
+function calculateMonthlyInterest(account) {
+    const rate = account.interestRate || account.interest_rate || 0;
+    return account.balance * rate / 100 / 12;
+}
+
+// Sort debt accounts based on the selected criteria
+function sortDebtAccounts(accounts, sortType) {
+    const sorted = [...accounts]; // Create copy to avoid mutating original
+    
+    switch(sortType) {
+        case 'alphabetical':
+            return sorted.sort((a, b) => a.name.localeCompare(b.name));
+        case 'balance-high':
+            return sorted.sort((a, b) => b.balance - a.balance);
+        case 'balance-low':
+            return sorted.sort((a, b) => a.balance - b.balance);
+        case 'apr-high':
+            return sorted.sort((a, b) => 
+                (b.interestRate || b.interest_rate || 0) - 
+                (a.interestRate || a.interest_rate || 0));
+        case 'apr-low':
+            return sorted.sort((a, b) => 
+                (a.interestRate || a.interest_rate || 0) - 
+                (b.interestRate || b.interest_rate || 0));
+        case 'payment-high':
+            return sorted.sort((a, b) => 
+                (b.minimumPayment || b.minimum_payment || 0) - 
+                (a.minimumPayment || a.minimum_payment || 0));
+        case 'payment-low':
+            return sorted.sort((a, b) => 
+                (a.minimumPayment || a.minimum_payment || 0) - 
+                (b.minimumPayment || b.minimum_payment || 0));
+        case 'interest-high':
+            return sorted.sort((a, b) => {
+                const aInterest = calculateMonthlyInterest(a);
+                const bInterest = calculateMonthlyInterest(b);
+                return bInterest - aInterest;
+            });
+        case 'interest-low':
+            return sorted.sort((a, b) => {
+                const aInterest = calculateMonthlyInterest(a);
+                const bInterest = calculateMonthlyInterest(b);
+                return aInterest - bInterest;
+            });
+        default:
+            return sorted;
+    }
+}
+
 function openDebtModal(appData, debtId = null) {
     const modalData = { debtId };
     
@@ -279,12 +332,21 @@ export function renderDebtAccounts(appState) {
         return;
     }
     
-    debtAccountsList.innerHTML = appData.debtAccounts.map(account => {
+    // Sort accounts based on current preference
+    const sortedAccounts = sortDebtAccounts(appData.debtAccounts, currentSortType);
+    
+    // Update sort dropdown to reflect current sort
+    const sortSelect = document.getElementById('debt-sort-select');
+    if (sortSelect && sortSelect.value !== currentSortType) {
+        sortSelect.value = currentSortType;
+    }
+    
+    debtAccountsList.innerHTML = sortedAccounts.map(account => {
         const utilization = calculateUtilization(account.balance, account.creditLimit || account.credit_limit);
         const interestRate = account.interestRate || account.interest_rate || 0;
         const minimumPayment = account.minimumPayment || account.minimum_payment || 0;
         const payoffTime = calculatePayoffTime(account.balance, minimumPayment, interestRate);
-        const monthlyInterest = (account.balance * interestRate / 100 / 12);
+        const monthlyInterest = calculateMonthlyInterest(account);
         const isCredit = account.type === 'Credit Card' || (account.creditLimit || account.credit_limit) > 0;
         
         return `
@@ -595,11 +657,22 @@ export function setupEventListeners(appState, onUpdate) {
     const calculatePayoffBtn = document.getElementById("calculate-payoff-btn");
     const debtStrategySelect = document.getElementById("debt-strategy-select");
     const extraPaymentAmount = document.getElementById("extra-payment-amount");
+    const debtSortSelect = document.getElementById("debt-sort-select");
     
     if (addDebtBtn) eventManager.addEventListener(addDebtBtn, "click", () => openDebtModal(appState.appData));
     if (closeDebtModalBtn) eventManager.addEventListener(closeDebtModalBtn, "click", () => closeModal('debt-modal'));
     if (cancelDebtBtn) eventManager.addEventListener(cancelDebtBtn, "click", () => closeModal('debt-modal'));
     if (debtForm) eventManager.addEventListener(debtForm, "submit", (e) => handleDebtSubmit(e, appState, onUpdate));
+    
+    // Sort dropdown event listener
+    if (debtSortSelect) {
+        eventManager.addEventListener(debtSortSelect, "change", (e) => {
+            currentSortType = e.target.value;
+            localStorage.setItem('debtSortPreference', currentSortType);
+            renderDebtAccounts(appState);
+            announceToScreenReader(`Debt accounts sorted by ${e.target.selectedOptions[0].text}`);
+        });
+    }
 
     if (debtAccountsList) eventManager.addEventListener(debtAccountsList, 'click', (event) => {
         const target = event.target;
