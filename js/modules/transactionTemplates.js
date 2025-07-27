@@ -50,6 +50,14 @@ class TransactionTemplatesUI {
             });
         }
 
+        // Cancel templates button
+        const cancelTemplatesBtn = document.getElementById('cancel-templates-btn');
+        if (cancelTemplatesBtn) {
+            eventManager.addEventListener(cancelTemplatesBtn, 'click', () => {
+                modalManager.close('templates-modal');
+            });
+        }
+
         // Template search
         const searchInput = document.getElementById('template-search');
         if (searchInput) {
