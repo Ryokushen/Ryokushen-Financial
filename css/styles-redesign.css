@@ -765,13 +765,25 @@ body::before {
 .payoff-calculator {
   display: flex;
   gap: var(--space-4);
-  align-items: end;
+  align-items: flex-end;
   flex-wrap: wrap;
 }
 
 .payoff-calculator .form-group {
   flex: 1;
   min-width: 200px;
+  margin-bottom: 0;
+}
+
+.payoff-calculator .btn {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+.payoff-calculator-button {
+  display: flex;
+  align-items: flex-end;
+  min-width: 150px;
 }
 
 .payoff-results {
@@ -832,6 +844,20 @@ body::before {
   
   .payoff-calculator {
     flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .payoff-calculator .form-group {
+    width: 100%;
+  }
+  
+  .payoff-calculator-button {
+    width: 100%;
+    margin-top: var(--space-3);
+  }
+  
+  .payoff-calculator-button .btn {
+    width: 100%;
   }
   
   .payoff-summary {
