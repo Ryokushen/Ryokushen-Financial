@@ -3541,6 +3541,443 @@ class TransactionManager {
         }
     }
 
+    // ===============================================
+    // PHASE 4: ANALYTICS & INSIGHTS
+    // ===============================================
+    
+    /**
+     * Get spending trends over time with various grouping options
+     * @param {Object} options - Analysis options
+     * @param {number} options.months - Number of months to analyze (default: 12)
+     * @param {Array<string>} options.categories - Filter by specific categories
+     * @param {string} options.groupBy - Group by 'month', 'category', or 'merchant'
+     * @param {boolean} options.includeIncome - Include income in analysis
+     * @returns {Promise<Object>} Trend analysis results
+     */
+    async getSpendingTrends(options = {}) {
+        try {
+            const startTime = Date.now();
+            const {
+                months = 12,
+                categories = [],
+                groupBy = 'month',
+                includeIncome = false
+            } = options;
+            
+            // Check analytics cache first
+            const cacheKey = `spending_trends_${JSON.stringify(options)}`;
+            const cached = await this.getAnalyticsFromCache(cacheKey);
+            if (cached) {
+                debug.log('Analytics cache hit for spending trends');
+                return cached;
+            }
+            
+            // Calculate date range
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setMonth(startDate.getMonth() - months);
+            
+            // Get transactions in date range
+            const transactions = await database.getTransactions();
+            const filtered = transactions.filter(t => {
+                const tDate = new Date(t.date);
+                const isInRange = tDate >= startDate && tDate <= endDate;
+                const isExpense = parseFloat(t.amount) < 0 || t.debt_account_id;
+                const isIncome = parseFloat(t.amount) > 0 && !t.debt_account_id;
+                const includeTransaction = includeIncome ? true : isExpense;
+                const categoryMatch = categories.length === 0 || categories.includes(t.category);
+                
+                return isInRange && includeTransaction && categoryMatch;
+            });
+            
+            // Group transactions based on groupBy parameter
+            const grouped = this.groupTransactionsForTrends(filtered, groupBy);
+            
+            // Calculate trends
+            const trends = this.calculateTrends(grouped, groupBy);
+            
+            // Calculate summary statistics
+            const summary = {
+                totalSpending: filtered
+                    .filter(t => parseFloat(t.amount) < 0 || t.debt_account_id)
+                    .reduce((sum, t) => sum + Math.abs(parseFloat(t.amount)), 0),
+                totalIncome: includeIncome ? 
+                    filtered.filter(t => parseFloat(t.amount) > 0 && !t.debt_account_id)
+                    .reduce((sum, t) => sum + parseFloat(t.amount), 0) : 0,
+                averageMonthlySpending: 0,
+                trendDirection: 'stable',
+                percentageChange: 0
+            };
+            
+            // Calculate monthly average
+            const monthlyTotals = Object.values(grouped).map(group => 
+                group.reduce((sum, t) => sum + Math.abs(parseFloat(t.amount)), 0)
+            );
+            summary.averageMonthlySpending = monthlyTotals.length > 0 ?
+                monthlyTotals.reduce((a, b) => a + b, 0) / monthlyTotals.length : 0;
+            
+            // Determine trend direction
+            if (monthlyTotals.length >= 2) {
+                const firstHalf = monthlyTotals.slice(0, Math.floor(monthlyTotals.length / 2));
+                const secondHalf = monthlyTotals.slice(Math.floor(monthlyTotals.length / 2));
+                const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+                const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+                
+                summary.percentageChange = firstAvg > 0 ? 
+                    ((secondAvg - firstAvg) / firstAvg) * 100 : 0;
+                summary.trendDirection = summary.percentageChange > 5 ? 'increasing' :
+                    summary.percentageChange < -5 ? 'decreasing' : 'stable';
+            }
+            
+            const result = {
+                data: trends,
+                summary: summary,
+                metadata: {
+                    startDate: startDate.toISOString(),
+                    endDate: endDate.toISOString(),
+                    transactionCount: filtered.length,
+                    groupBy: groupBy,
+                    analysisTime: Date.now() - startTime
+                }
+            };
+            
+            // Cache the results
+            await this.cacheAnalyticsResult(cacheKey, result, 3600); // 1 hour TTL
+            
+            return result;
+            
+        } catch (error) {
+            debug.error('Failed to get spending trends', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Get category-specific spending trends
+     * @param {string} categoryName - Category to analyze
+     * @param {number} months - Number of months to analyze
+     * @returns {Promise<Object>} Category trend analysis
+     */
+    async getCategoryTrends(categoryName, months = 6) {
+        try {
+            // Use getSpendingTrends with category filter
+            const trends = await this.getSpendingTrends({
+                months: months,
+                categories: [categoryName],
+                groupBy: 'month'
+            });
+            
+            // Add category-specific analysis
+            const transactions = await database.getTransactions();
+            const categoryTransactions = transactions.filter(t => 
+                t.category === categoryName && parseFloat(t.amount) < 0
+            );
+            
+            // Calculate variance and standard deviation
+            const amounts = categoryTransactions.map(t => Math.abs(parseFloat(t.amount)));
+            const mean = amounts.length > 0 ? 
+                amounts.reduce((a, b) => a + b, 0) / amounts.length : 0;
+            
+            const variance = amounts.length > 0 ?
+                amounts.reduce((sum, amt) => sum + Math.pow(amt - mean, 2), 0) / amounts.length : 0;
+            const stdDev = Math.sqrt(variance);
+            
+            // Find outliers (amounts > 2 standard deviations from mean)
+            const outliers = categoryTransactions.filter(t => {
+                const amount = Math.abs(parseFloat(t.amount));
+                return Math.abs(amount - mean) > (2 * stdDev);
+            });
+            
+            return {
+                ...trends,
+                statistics: {
+                    mean: mean,
+                    median: this.calculateMedian(amounts),
+                    standardDeviation: stdDev,
+                    variance: variance,
+                    outlierCount: outliers.length,
+                    outliers: outliers.slice(0, 10) // Return top 10 outliers
+                }
+            };
+            
+        } catch (error) {
+            debug.error('Failed to get category trends', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Analyze spending by merchant/description patterns
+     * @param {Object} options - Analysis options
+     * @returns {Promise<Object>} Merchant analysis results
+     */
+    async getMerchantAnalysis(options = {}) {
+        try {
+            const {
+                months = 6,
+                minTransactions = 2,
+                limit = 20
+            } = options;
+            
+            // Check cache
+            const cacheKey = `merchant_analysis_${JSON.stringify(options)}`;
+            const cached = await this.getAnalyticsFromCache(cacheKey);
+            if (cached) return cached;
+            
+            // Get transactions
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setMonth(startDate.getMonth() - months);
+            
+            const transactions = await database.getTransactions();
+            const filtered = transactions.filter(t => {
+                const tDate = new Date(t.date);
+                return tDate >= startDate && tDate <= endDate && 
+                       (parseFloat(t.amount) < 0 || t.debt_account_id);
+            });
+            
+            // Group by merchant (description patterns)
+            const merchantMap = new Map();
+            
+            filtered.forEach(t => {
+                const description = (t.description || '').toLowerCase().trim();
+                if (!description) return;
+                
+                // Extract merchant name (simple pattern matching)
+                const merchantKey = this.extractMerchantName(description);
+                
+                if (!merchantMap.has(merchantKey)) {
+                    merchantMap.set(merchantKey, {
+                        merchant: merchantKey,
+                        transactions: [],
+                        totalAmount: 0,
+                        categories: new Set(),
+                        firstSeen: t.date,
+                        lastSeen: t.date
+                    });
+                }
+                
+                const merchant = merchantMap.get(merchantKey);
+                merchant.transactions.push(t);
+                merchant.totalAmount += Math.abs(parseFloat(t.amount));
+                merchant.categories.add(t.category);
+                
+                if (new Date(t.date) < new Date(merchant.firstSeen)) {
+                    merchant.firstSeen = t.date;
+                }
+                if (new Date(t.date) > new Date(merchant.lastSeen)) {
+                    merchant.lastSeen = t.date;
+                }
+            });
+            
+            // Convert to array and filter by minimum transactions
+            const merchants = Array.from(merchantMap.values())
+                .filter(m => m.transactions.length >= minTransactions)
+                .map(m => ({
+                    ...m,
+                    categories: Array.from(m.categories),
+                    averageAmount: m.totalAmount / m.transactions.length,
+                    frequency: m.transactions.length,
+                    daysSinceLastTransaction: Math.floor(
+                        (new Date() - new Date(m.lastSeen)) / (1000 * 60 * 60 * 24)
+                    )
+                }))
+                .sort((a, b) => b.totalAmount - a.totalAmount)
+                .slice(0, limit);
+            
+            const result = {
+                merchants: merchants,
+                summary: {
+                    uniqueMerchants: merchantMap.size,
+                    totalAnalyzed: filtered.length,
+                    topCategory: this.getMostCommonValue(
+                        merchants.flatMap(m => m.categories)
+                    )
+                }
+            };
+            
+            // Cache results
+            await this.cacheAnalyticsResult(cacheKey, result, 3600);
+            
+            return result;
+            
+        } catch (error) {
+            debug.error('Failed to get merchant analysis', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Helper method to group transactions for trend analysis
+     * @private
+     */
+    groupTransactionsForTrends(transactions, groupBy) {
+        const grouped = {};
+        
+        transactions.forEach(t => {
+            let key;
+            
+            switch (groupBy) {
+                case 'category':
+                    key = t.category || 'Uncategorized';
+                    break;
+                case 'merchant':
+                    key = this.extractMerchantName(t.description || '');
+                    break;
+                case 'month':
+                default:
+                    const date = new Date(t.date);
+                    key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    break;
+            }
+            
+            if (!grouped[key]) {
+                grouped[key] = [];
+            }
+            grouped[key].push(t);
+        });
+        
+        return grouped;
+    }
+    
+    /**
+     * Calculate trends from grouped data
+     * @private
+     */
+    calculateTrends(grouped, groupBy) {
+        const trends = [];
+        
+        Object.entries(grouped).forEach(([key, transactions]) => {
+            const total = transactions.reduce((sum, t) => 
+                sum + Math.abs(parseFloat(t.amount)), 0
+            );
+            
+            trends.push({
+                label: key,
+                value: total,
+                count: transactions.length,
+                average: total / transactions.length
+            });
+        });
+        
+        // Sort based on groupBy type
+        if (groupBy === 'month') {
+            trends.sort((a, b) => a.label.localeCompare(b.label));
+        } else {
+            trends.sort((a, b) => b.value - a.value);
+        }
+        
+        return trends;
+    }
+    
+    /**
+     * Extract merchant name from transaction description
+     * @private
+     */
+    extractMerchantName(description) {
+        // Simple merchant extraction - can be enhanced
+        const cleaned = description.toLowerCase()
+            .replace(/\s+#\d+/, '') // Remove store numbers
+            .replace(/\s+\d{2}\/\d{2}/, '') // Remove dates
+            .replace(/\s+[a-z]{2}\s*$/, '') // Remove state codes
+            .trim();
+        
+        // Take first 2-3 words as merchant identifier
+        const words = cleaned.split(/\s+/).slice(0, 3);
+        return words.join(' ');
+    }
+    
+    /**
+     * Calculate median of an array of numbers
+     * @private
+     */
+    calculateMedian(numbers) {
+        if (numbers.length === 0) return 0;
+        
+        const sorted = numbers.slice().sort((a, b) => a - b);
+        const middle = Math.floor(sorted.length / 2);
+        
+        if (sorted.length % 2 === 0) {
+            return (sorted[middle - 1] + sorted[middle]) / 2;
+        } else {
+            return sorted[middle];
+        }
+    }
+    
+    /**
+     * Get analytics from cache
+     * @private
+     */
+    async getAnalyticsFromCache(key) {
+        try {
+            const user = await database.getCurrentUserId();
+            const { data } = await database.supabase
+                .from('transaction_analytics_cache')
+                .select('*')
+                .eq('user_id', user)
+                .eq('metric_type', key)
+                .single();
+            
+            if (data && data.computed_data) {
+                const age = (Date.now() - new Date(data.last_computed).getTime()) / 1000;
+                if (age < data.ttl) {
+                    return data.computed_data;
+                }
+            }
+            
+            return null;
+        } catch (error) {
+            // Cache miss is not an error
+            return null;
+        }
+    }
+    
+    /**
+     * Cache analytics result
+     * @private
+     */
+    async cacheAnalyticsResult(key, data, ttl = 3600) {
+        try {
+            const user = await database.getCurrentUserId();
+            await database.supabase
+                .from('transaction_analytics_cache')
+                .upsert({
+                    user_id: user,
+                    metric_type: key,
+                    date_range: { start: new Date().toISOString() },
+                    computed_data: data,
+                    ttl: ttl
+                });
+        } catch (error) {
+            debug.error('Failed to cache analytics result', error);
+            // Don't throw - caching failure shouldn't break analytics
+        }
+    }
+    
+    /**
+     * Get the most common value from an array
+     * @private
+     * @param {Array} arr - Array of values
+     * @returns {*} Most common value or null
+     */
+    getMostCommonValue(arr) {
+        if (!arr || arr.length === 0) return null;
+        
+        const frequency = {};
+        let maxCount = 0;
+        let mostCommon = null;
+        
+        arr.forEach(item => {
+            frequency[item] = (frequency[item] || 0) + 1;
+            if (frequency[item] > maxCount) {
+                maxCount = frequency[item];
+                mostCommon = item;
+            }
+        });
+        
+        return mostCommon;
+    }
+    
     /**
      * Cleanup method
      */
@@ -3566,3 +4003,15 @@ class TransactionManager {
 
 // Create and export singleton instance
 export const transactionManager = new TransactionManager();
+
+// Console helpers for Phase 4 Analytics
+if (typeof window !== 'undefined') {
+    window.getSpendingTrends = (options) => transactionManager.getSpendingTrends(options);
+    window.getCategoryTrends = (category, months) => transactionManager.getCategoryTrends(category, months);
+    window.getMerchantAnalysis = (options) => transactionManager.getMerchantAnalysis(options);
+    
+    console.log('🎯 TransactionManager Phase 4 Analytics Available:');
+    console.log('   window.getSpendingTrends({ months: 6, groupBy: "category" })');
+    console.log('   window.getCategoryTrends("Food", 3)');
+    console.log('   window.getMerchantAnalysis({ months: 6, limit: 10 })');
+}
