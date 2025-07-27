@@ -3295,3 +3295,123 @@ label.feature-label {
     display: none;
   }
 }
+
+/* Transaction Templates UI */
+.templates-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.templates-section {
+    margin-bottom: var(--space-5);
+}
+
+.templates-section .section-subtitle {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: var(--space-3);
+    color: var(--color-text-secondary);
+}
+
+.templates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-3);
+}
+
+.template-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+    transition: all 0.2s ease;
+}
+
+.template-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.template-card__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.template-card__icon {
+    font-size: 1.5rem;
+}
+
+.template-card__name {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.template-card__details {
+    margin-bottom: var(--space-3);
+}
+
+.template-card__category {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-1);
+}
+
+.template-card__amount {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    margin-bottom: var(--space-1);
+}
+
+.template-card__description {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin-top: var(--space-2);
+}
+
+.template-card__frequency {
+    font-size: 0.75rem;
+    color: var(--color-success);
+    font-style: italic;
+    margin-top: var(--space-1);
+}
+
+.template-card__actions {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.template-card__actions .btn--small {
+    padding: var(--space-1) var(--space-2);
+    font-size: 0.875rem;
+}
+
+/* Template form styles */
+#template-form .form-group {
+    margin-bottom: var(--space-3);
+}
+
+#template-search {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+}
+
+/* Empty state for templates */
+#empty-templates-state {
+    text-align: center;
+    padding: var(--space-6);
+    color: var(--color-text-secondary);
+}
+
+#empty-templates-state svg {
+    margin: 0 auto var(--space-3);
+}

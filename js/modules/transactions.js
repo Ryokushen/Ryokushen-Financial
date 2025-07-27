@@ -257,6 +257,9 @@ export function setupEventListeners(appState, onUpdate) {
         } else if (event.target.classList.contains('btn-edit-transaction')) {
             event.stopPropagation();
             editTransaction(transactionId, appState);
+        } else if (event.target.classList.contains('btn-template-transaction')) {
+            event.stopPropagation();
+            saveTransactionAsTemplate(transactionId, appState);
         }
         });
     }
@@ -1328,6 +1331,7 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
             <div>${statusBadge}</div>
             <div class="quick-actions">
                 <button class="icon-btn btn-edit-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''} title="${isEditing ? 'Editing...' : 'Edit'}">✏️</button>
+                <button class="icon-btn btn-template-transaction" data-id="${t.id}" title="Save as Template">📋</button>
                 <button class="icon-btn btn-delete-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''} title="Delete">🗑️</button>
             </div>
         </div>`;
@@ -1406,6 +1410,36 @@ async function deleteTransaction(id, appState, onUpdate) {
             debug.error("Error deleting transaction:", error);
             showError("Failed to delete transaction. Please try again.");
         }
+    }
+}
+
+// Save transaction as template
+async function saveTransactionAsTemplate(transactionId, appState) {
+    const transaction = appState.appData.transactions.find(t => t.id === transactionId);
+    if (!transaction) {
+        showError("Transaction not found.");
+        return;
+    }
+
+    const templateName = prompt("Enter a name for this template:");
+    if (!templateName || templateName.trim() === '') {
+        return; // User cancelled or entered empty name
+    }
+
+    try {
+        // Use the transactionTemplatesUI to create template from transaction
+        if (window.transactionTemplatesUI) {
+            await window.transactionTemplatesUI.createFromTransaction(transactionId, templateName.trim());
+        } else {
+            // Fallback: use transactionManager directly
+            await transactionManager.createTemplateFromTransaction(transactionId, templateName.trim());
+            showSuccess('Template created successfully');
+        }
+        
+        announceToScreenReader("Transaction saved as template");
+    } catch (error) {
+        debug.error("Error saving transaction as template:", error);
+        showError("Failed to save transaction as template. Please try again.");
     }
 }
 

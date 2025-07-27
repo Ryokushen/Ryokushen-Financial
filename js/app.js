@@ -141,6 +141,9 @@ import { populateAllCategoryDropdowns } from './modules/categories.js';
         // Make transactionManager globally accessible for debugging
         window.transactionManager = transactionManager;
         
+        // Expose appState for modules that need it
+        window.appState = appState;
+        
         // Expose helper for accessing recurring bills (for testing/debugging)
         window.getRecurringBills = () => appState.appData.recurringBills;
         window.previewRecurring = async (days = 30) => {
@@ -234,6 +237,13 @@ import { populateAllCategoryDropdowns } from './modules/categories.js';
         // Initialize bulk operations UI
         const { bulkOperationsUI } = await import('./modules/bulkOperations.js');
         bulkOperationsUI.init();
+        
+        // Initialize transaction templates UI
+        const { transactionTemplatesUI } = await import('./modules/transactionTemplates.js');
+        transactionTemplatesUI.init();
+        
+        // Make transactionTemplatesUI globally accessible
+        window.transactionTemplatesUI = transactionTemplatesUI;
 
         calculateAccountBalances();
 
