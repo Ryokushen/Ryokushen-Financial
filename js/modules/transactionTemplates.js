@@ -333,8 +333,11 @@ class TransactionTemplatesUI {
         const icon = getCategoryIcon(template.category);
         const amount = template.amount ? formatCurrency(Math.abs(template.amount)) : 'Variable';
         
+        // For suggested templates, create a temporary ID if none exists
+        const templateId = template.id || `suggested-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
         return `
-            <div class="template-card" data-template-id="${template.id}">
+            <div class="template-card" data-template-id="${templateId}">
                 <div class="template-card__header">
                     <span class="template-card__icon">${icon}</span>
                     <h4 class="template-card__name">${escapeHtml(template.name)}</h4>
@@ -346,19 +349,22 @@ class TransactionTemplatesUI {
                     ${isSuggested && frequency ? `<div class="template-card__frequency">Used ${frequency} times</div>` : ''}
                 </div>
                 <div class="template-card__actions">
-                    <button class="btn btn--small btn--primary use-template" data-template-id="${template.id}">
-                        Use
-                    </button>
-                    ${!isSuggested ? `
-                        <button class="btn btn--small btn--ghost edit-template" data-template-id="${template.id}">
-                            Edit
+                    ${isSuggested ? `
+                        <button class="btn btn--small btn--primary use-suggested-template" data-template='${JSON.stringify(template).replace(/'/g, '&apos;')}'>
+                            Use
                         </button>
-                        <button class="btn btn--small btn--ghost delete-template" data-template-id="${template.id}">
-                            Delete
-                        </button>
-                    ` : `
                         <button class="btn btn--small btn--ghost create-from-suggestion" data-template='${JSON.stringify({...template, frequency: undefined}).replace(/'/g, '&apos;')}'>
                             Save Template
+                        </button>
+                    ` : `
+                        <button class="btn btn--small btn--primary use-template" data-template-id="${templateId}">
+                            Use
+                        </button>
+                        <button class="btn btn--small btn--ghost edit-template" data-template-id="${templateId}">
+                            Edit
+                        </button>
+                        <button class="btn btn--small btn--ghost delete-template" data-template-id="${templateId}">
+                            Delete
                         </button>
                     `}
                 </div>
@@ -372,6 +378,26 @@ class TransactionTemplatesUI {
             eventManager.addEventListener(btn, 'click', (e) => {
                 const templateId = parseInt(e.target.dataset.templateId);
                 this.useTemplate(templateId);
+            });
+        });
+        
+        // Use suggested template buttons
+        container.querySelectorAll('.use-suggested-template').forEach(btn => {
+            eventManager.addEventListener(btn, 'click', (e) => {
+                try {
+                    const template = JSON.parse(e.target.dataset.template);
+                    
+                    // Close the templates modal
+                    modalManager.close('templates-modal');
+                    
+                    // Fill the transaction form with suggested template data
+                    this.populateTransactionForm(template);
+                    
+                    announceToScreenReader('Template applied to transaction form');
+                } catch (error) {
+                    debug.error('Failed to use suggested template:', error);
+                    showError('Failed to apply template');
+                }
             });
         });
         
