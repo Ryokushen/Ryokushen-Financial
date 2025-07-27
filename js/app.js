@@ -244,6 +244,10 @@ import { populateAllCategoryDropdowns } from './modules/categories.js';
         
         // Make transactionTemplatesUI globally accessible
         window.transactionTemplatesUI = transactionTemplatesUI;
+        
+        // Initialize advanced search UI
+        const advancedSearchModule = await import('./modules/advancedSearch.js');
+        const advancedSearch = advancedSearchModule.default;
 
         calculateAccountBalances();
 

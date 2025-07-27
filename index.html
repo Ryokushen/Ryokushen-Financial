@@ -303,6 +303,13 @@
                             </svg>
                             <span>Templates</span>
                         </button>
+                        <button class="btn btn--primary" id="advanced-search-btn" title="Advanced Search">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 4px;">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <span>Search</span>
+                        </button>
                         <button class="btn btn--secondary" id="voice-add-transaction-btn" title="Add transaction by voice">
                             <span>🎤</span>
                             <span>Voice Add</span>
@@ -1677,6 +1684,125 @@
             <div class="modal__footer">
                 <button type="button" class="btn btn--ghost" data-modal-close>Cancel</button>
                 <button type="button" class="btn btn--primary" id="save-template-btn">Save Template</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Advanced Search Modal -->
+    <div id="advanced-search-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Advanced Transaction Search</h2>
+                <button class="modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="search-layout">
+                    <!-- Main Search Area -->
+                    <div class="search-main">
+                        <!-- Quick Search -->
+                        <div class="search-section">
+                            <h3>Quick Search</h3>
+                            <div class="form-group">
+                                <input type="text" id="search-text" class="form-control" placeholder="Search descriptions, notes, or amounts...">
+                                <label class="form-checkbox-label">
+                                    <input type="checkbox" id="search-fuzzy" class="form-checkbox" checked>
+                                    <span>Enable fuzzy matching</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Filters -->
+                        <div class="search-section">
+                            <h3>Filters</h3>
+                            <div class="search-filters-grid">
+                                <div class="form-group">
+                                    <label for="search-date-from" class="form-label">Date From</label>
+                                    <input type="date" id="search-date-from" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="search-date-to" class="form-label">Date To</label>
+                                    <input type="date" id="search-date-to" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="search-amount-min" class="form-label">Min Amount</label>
+                                    <input type="number" id="search-amount-min" class="form-control" step="0.01" placeholder="0.00">
+                                </div>
+                                <div class="form-group">
+                                    <label for="search-amount-max" class="form-label">Max Amount</label>
+                                    <input type="number" id="search-amount-max" class="form-control" step="0.01" placeholder="0.00">
+                                </div>
+                                <div class="form-group">
+                                    <label for="search-category" class="form-label">Category</label>
+                                    <select id="search-category" class="form-control" multiple style="min-height: 100px;">
+                                        <option value="">— All Categories —</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="search-account" class="form-label">Account</label>
+                                    <select id="search-account" class="form-control">
+                                        <option value="">— All Accounts —</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Advanced Query Builder -->
+                        <div class="search-section">
+                            <h3>Query Builder</h3>
+                            <div class="query-builder" id="query-builder">
+                                <div class="query-help">
+                                    <p>Build complex queries using AND, OR, and NOT operators.</p>
+                                    <details>
+                                        <summary>Examples</summary>
+                                        <ul>
+                                            <li><code>coffee AND amount:>5</code> - Coffee purchases over $5</li>
+                                            <li><code>grocery OR food NOT restaurant</code> - Grocery or food but not restaurants</li>
+                                            <li><code>category:shopping AND (amazon OR target)</code> - Shopping at Amazon or Target</li>
+                                        </ul>
+                                    </details>
+                                </div>
+                                <textarea id="search-query" class="form-control" rows="3" placeholder="Enter custom query..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- Search Actions -->
+                        <div class="search-actions">
+                            <button type="button" class="btn btn--secondary" id="clear-search-btn">Clear</button>
+                            <button type="button" class="btn btn--primary" id="execute-search-btn">Search</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Saved Searches Sidebar -->
+                    <div class="search-sidebar">
+                        <h3>Saved Searches</h3>
+                        <div class="saved-searches-list" id="saved-searches-list">
+                            <div class="empty-state">
+                                <p>No saved searches yet</p>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn--ghost btn--sm" id="save-current-search-btn" style="width: 100%; margin-top: var(--space-2);">
+                            Save Current Search
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Search Results -->
+                <div class="search-results-section" id="search-results-section" style="display: none;">
+                    <h3>Search Results</h3>
+                    <div class="search-results-header">
+                        <span id="search-results-count">0 results</span>
+                        <button type="button" class="btn btn--ghost btn--sm" id="export-results-btn">Export CSV</button>
+                    </div>
+                    <div class="search-results-container" id="search-results-container">
+                        <!-- Results will be rendered here -->
+                    </div>
+                    <div class="search-pagination" id="search-pagination">
+                        <!-- Pagination controls -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary" id="close-advanced-search-btn">Close</button>
             </div>
         </div>
     </div>

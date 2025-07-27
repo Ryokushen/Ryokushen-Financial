@@ -338,6 +338,15 @@ window.transactionManager.getSmartDefaults({description: 'Starbucks'})
 
 ## Recent Updates
 
+### Advanced Search UI (January 2025)
+- Full-text search with fuzzy matching
+- Multi-filter search (date, amount, category, account)
+- Complex query builder with AND/OR/NOT operators
+- Saved searches with persistence
+- Search history and result export
+- Paginated results display
+- Real-time search suggestions
+
 ### Transaction Import UI (January 2025)
 - Multi-step import wizard
 - File format detection
