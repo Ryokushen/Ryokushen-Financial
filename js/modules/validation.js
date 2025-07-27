@@ -334,7 +334,10 @@ export const ValidationSchemas = {
 // Enhanced validation with async checks (e.g., duplicate names)
 export async function validateWithAsyncRules(formData, validationSchema, asyncValidators = {}) {
     // First do synchronous validation
-    const { errors, hasErrors } = validateForm(formData, validationSchema);
+    const { errors, hasErrors: syncHasErrors } = validateForm(formData, validationSchema);
+    
+    // Track if we find any async errors
+    let asyncHasErrors = false;
     
     // Then do async validation
     for (const [field, validator] of Object.entries(asyncValidators)) {
@@ -342,12 +345,15 @@ export async function validateWithAsyncRules(formData, validationSchema, asyncVa
             const error = await validator(formData[field], formData);
             if (error) {
                 errors[field] = error;
-                hasErrors = true;
+                asyncHasErrors = true;
             }
         } catch (e) {
             debug.error(`Async validation error for field ${field}:`, e);
         }
     }
+    
+    // Combine sync and async error states
+    const hasErrors = syncHasErrors || asyncHasErrors;
     
     return { errors, hasErrors };
 }
