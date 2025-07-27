@@ -4,7 +4,6 @@
  * complex queries, and saved searches.
  */
 
-import { getSupabaseClient } from '../supabaseClient.js';
 import { showNotification } from './notifications.js';
 import transactionManager from './transactionManager.js';
 import { categories } from './categories.js';
@@ -116,7 +115,7 @@ class AdvancedSearch {
         // Populate accounts
         if (this.accountSelect) {
             try {
-                const supabase = getSupabaseClient();
+                const supabase = window.supabaseClient;
                 const user = await supabase.auth.getUser();
                 
                 if (user.data.user) {
