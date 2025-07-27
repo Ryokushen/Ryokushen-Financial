@@ -96,8 +96,6 @@ class TransactionTemplatesUI {
     }
 
     openTemplatesModal() {
-        // Re-register modal to ensure event listeners are attached
-        modalManager.register('templates-modal');
         modalManager.open('templates-modal');
         this.loadTemplates(); // Refresh data when opening
     }
@@ -216,8 +214,14 @@ class TransactionTemplatesUI {
 
     async useTemplate(templateId) {
         try {
-            const template = this.templates.find(t => t.id === templateId);
+            // Search in both regular templates and suggested templates
+            let template = this.templates.find(t => t.id === templateId);
             if (!template) {
+                template = this.suggestedTemplates.find(t => t.id === templateId);
+            }
+            
+            if (!template) {
+                debug.error('Template not found with ID:', templateId);
                 showError('Template not found');
                 return;
             }
