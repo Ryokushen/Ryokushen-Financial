@@ -7,7 +7,7 @@
 import { showError, showSuccess } from './ui.js';
 import transactionManager from './transactionManager.js';
 import { categories } from './categories.js';
-import { formatAmount } from './utils.js';
+import { formatCurrency } from './utils.js';
 
 class AdvancedSearch {
     constructor() {
@@ -237,7 +237,7 @@ class AdvancedSearch {
                     <div class="search-result-category">${this.getCategoryDisplay(transaction.category)}</div>
                 </div>
                 <div class="search-result-amount ${transaction.amount >= 0 ? 'positive' : 'negative'}">
-                    ${formatAmount(transaction.amount)}
+                    ${formatCurrency(transaction.amount)}
                 </div>
             </div>
         `).join('');
