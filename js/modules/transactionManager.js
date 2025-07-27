@@ -1009,10 +1009,25 @@ class TransactionManager {
                     
                     // Apply adjustment (reverse old + apply new) with special handling for "Debt" category
                     let newBalance = currentBalance;
+                    
+                    // First, reverse the original transaction if needed
                     if (reverseAmount !== undefined) {
-                        // Reverse the original: if original was -amount, reverse with +amount
-                        newBalance = addMoney(newBalance, reverseAmount);
+                        // Need to know if the ORIGINAL transaction was "Debt" category
+                        // The 'original' transaction is available in the outer scope
+                        let reverseBalanceChange;
+                        if (original && original.category === "Debt") {
+                            // Original was "Debt" category, so it used amount as-is
+                            // To reverse, we negate it
+                            reverseBalanceChange = -reverseAmount;
+                        } else {
+                            // Original was credit card transaction, so it negated the amount
+                            // To reverse a negation, we use the amount as-is
+                            reverseBalanceChange = reverseAmount;
+                        }
+                        newBalance = addMoney(newBalance, reverseBalanceChange);
                     }
+                    
+                    // Then apply the new amount if needed
                     if (applyAmount !== undefined) {
                         // Apply new with category-specific sign convention
                         let balanceChange;
