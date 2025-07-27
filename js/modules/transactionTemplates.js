@@ -66,6 +66,16 @@ class TransactionTemplatesUI {
                 this.saveTemplate();
             });
         }
+
+        // Modal close buttons - add explicit handlers
+        document.querySelectorAll('[data-modal-close]').forEach(btn => {
+            eventManager.addEventListener(btn, 'click', (e) => {
+                const modal = e.target.closest('.modal');
+                if (modal) {
+                    modalManager.close(modal.id);
+                }
+            });
+        });
     }
 
     registerModals() {
@@ -75,7 +85,7 @@ class TransactionTemplatesUI {
 
     async loadTemplates() {
         try {
-            loadingState.show('Loading templates...');
+            loadingState.showOperationLock('Loading templates...');
             
             // Load all templates
             this.templates = await transactionManager.getTransactionTemplates();
@@ -85,9 +95,9 @@ class TransactionTemplatesUI {
             
             this.renderTemplates();
             
-            loadingState.hide();
+            loadingState.hideOperationLock();
         } catch (error) {
-            loadingState.hide();
+            loadingState.hideOperationLock();
             debug.error('Failed to load templates:', error);
             showError('Failed to load templates');
         }
@@ -160,7 +170,7 @@ class TransactionTemplatesUI {
         };
         
         try {
-            loadingState.show('Saving template...');
+            loadingState.showOperationLock('Saving template...');
             
             if (this.editingTemplateId) {
                 // Update existing template
@@ -175,9 +185,9 @@ class TransactionTemplatesUI {
             modalManager.close('template-form-modal');
             await this.loadTemplates();
             
-            loadingState.hide();
+            loadingState.hideOperationLock();
         } catch (error) {
-            loadingState.hide();
+            loadingState.hideOperationLock();
             debug.error('Failed to save template:', error);
             showError('Failed to save template: ' + error.message);
         }
@@ -189,16 +199,16 @@ class TransactionTemplatesUI {
         }
         
         try {
-            loadingState.show('Deleting template...');
+            loadingState.showOperationLock('Deleting template...');
             
             await transactionManager.deleteTemplate(templateId);
             showSuccess('Template deleted successfully');
             
             await this.loadTemplates();
             
-            loadingState.hide();
+            loadingState.hideOperationLock();
         } catch (error) {
-            loadingState.hide();
+            loadingState.hideOperationLock();
             debug.error('Failed to delete template:', error);
             showError('Failed to delete template');
         }
@@ -435,16 +445,16 @@ class TransactionTemplatesUI {
     // Method to create template from existing transaction
     async createFromTransaction(transactionId, name) {
         try {
-            loadingState.show('Creating template...');
+            loadingState.showOperationLock('Creating template...');
             
             await transactionManager.createTemplateFromTransaction(transactionId, name);
             showSuccess('Template created successfully');
             
             await this.loadTemplates();
             
-            loadingState.hide();
+            loadingState.hideOperationLock();
         } catch (error) {
-            loadingState.hide();
+            loadingState.hideOperationLock();
             debug.error('Failed to create template from transaction:', error);
             showError('Failed to create template');
         }
