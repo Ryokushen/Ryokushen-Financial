@@ -295,9 +295,8 @@ class TransactionTemplatesUI {
         
         section.style.display = 'block';
         
-        container.innerHTML = this.suggestedTemplates.map(suggestion => {
-            const template = suggestion.template;
-            return this.createTemplateCard(template, true, suggestion.frequency);
+        container.innerHTML = this.suggestedTemplates.map(template => {
+            return this.createTemplateCard(template, true, template.frequency);
         }).join('');
         
         // Add event listeners to suggested template cards
@@ -358,7 +357,7 @@ class TransactionTemplatesUI {
                             Delete
                         </button>
                     ` : `
-                        <button class="btn btn--small btn--ghost create-from-suggestion" data-template='${JSON.stringify(template).replace(/'/g, '&apos;')}'>
+                        <button class="btn btn--small btn--ghost create-from-suggestion" data-template='${JSON.stringify({...template, frequency: undefined}).replace(/'/g, '&apos;')}'>
                             Save Template
                         </button>
                     `}
@@ -398,6 +397,7 @@ class TransactionTemplatesUI {
                 try {
                     const template = JSON.parse(e.target.dataset.template);
                     delete template.id; // Remove ID so it creates a new template
+                    delete template.frequency; // Remove frequency as it's not a template field
                     
                     await transactionManager.createTemplate(template);
                     showSuccess('Template created from suggestion');
