@@ -3744,7 +3744,7 @@ class TransactionManager {
                 if (!description) return;
                 
                 // Extract merchant name (simple pattern matching)
-                const merchantKey = this.extractMerchantName(description);
+                const merchantKey = this.extractMerchantNameName(description);
                 
                 if (!merchantMap.has(merchantKey)) {
                     merchantMap.set(merchantKey, {
@@ -3822,7 +3822,7 @@ class TransactionManager {
                     key = t.category || 'Uncategorized';
                     break;
                 case 'merchant':
-                    key = this.extractMerchantName(t.description || '');
+                    key = this.extractMerchantNameName(t.description || '');
                     break;
                 case 'month':
                 default:
@@ -3978,6 +3978,1547 @@ class TransactionManager {
         return mostCommon;
     }
     
+    // ============================================================================
+    // PHASE 4 - MILESTONE 2: ANOMALY DETECTION & PREDICTIVE ANALYTICS
+    // ============================================================================
+    
+    /**
+     * Detect anomalous transactions using statistical methods
+     * @param {Object} options - Detection options
+     * @returns {Promise<Object>} Anomalies with confidence scores
+     */
+    async detectAnomalies(options = {}) {
+        const startTime = Date.now();
+        debug.log('Detecting transaction anomalies', options);
+        
+        try {
+            const {
+                sensitivity = 'medium',
+                categories = [],
+                lookbackDays = 90,
+                methods = ['zscore', 'iqr'],
+                includePositive = true
+            } = options;
+            
+            // Get transactions for analysis
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - lookbackDays);
+            
+            const transactions = await this.searchTransactions({
+                dateRange: {
+                    start: startDate.toISOString(),
+                    end: endDate.toISOString()
+                },
+                categories: categories.length > 0 ? categories : undefined
+            });
+            
+            if (transactions.length < 10) {
+                return {
+                    anomalies: [],
+                    summary: {
+                        totalAnalyzed: transactions.length,
+                        anomaliesFound: 0,
+                        message: 'Insufficient data for anomaly detection'
+                    }
+                };
+            }
+            
+            // Calculate statistical measures by category
+            const categoryStats = new Map();
+            const overallAmounts = [];
+            
+            transactions.forEach(t => {
+                const amount = Math.abs(t.amount);
+                overallAmounts.push(amount);
+                
+                const category = t.category || 'Uncategorized';
+                if (!categoryStats.has(category)) {
+                    categoryStats.set(category, []);
+                }
+                categoryStats.get(category).push(amount);
+            });
+            
+            // Define sensitivity thresholds
+            const sensitivityThresholds = {
+                low: { zscore: 3, iqrMultiplier: 2.5 },
+                medium: { zscore: 2.5, iqrMultiplier: 2 },
+                high: { zscore: 2, iqrMultiplier: 1.5 }
+            };
+            const threshold = sensitivityThresholds[sensitivity];
+            
+            const anomalies = [];
+            
+            // Analyze each transaction
+            for (const transaction of transactions) {
+                const amount = Math.abs(transaction.amount);
+                const category = transaction.category || 'Uncategorized';
+                const categoryAmounts = categoryStats.get(category);
+                
+                let isAnomaly = false;
+                const anomalyReasons = [];
+                let confidenceScore = 0;
+                
+                // Method 1: Z-score detection
+                if (methods.includes('zscore')) {
+                    // Use category-specific stats if enough data
+                    const amounts = categoryAmounts.length >= 5 ? categoryAmounts : overallAmounts;
+                    const stats = this.calculateStatistics(amounts);
+                    
+                    if (stats.stdDev > 0) {
+                        const zScore = Math.abs((amount - stats.mean) / stats.stdDev);
+                        if (zScore > threshold.zscore) {
+                            isAnomaly = true;
+                            anomalyReasons.push({
+                                method: 'z-score',
+                                score: zScore.toFixed(2),
+                                threshold: threshold.zscore
+                            });
+                            confidenceScore += (zScore / threshold.zscore) * 0.5;
+                        }
+                    }
+                }
+                
+                // Method 2: IQR detection
+                if (methods.includes('iqr')) {
+                    const amounts = categoryAmounts.length >= 5 ? categoryAmounts : overallAmounts;
+                    const iqrStats = this.calculateIQR(amounts);
+                    
+                    const lowerBound = iqrStats.q1 - (threshold.iqrMultiplier * iqrStats.iqr);
+                    const upperBound = iqrStats.q3 + (threshold.iqrMultiplier * iqrStats.iqr);
+                    
+                    if (amount < lowerBound || amount > upperBound) {
+                        isAnomaly = true;
+                        const deviation = amount > upperBound ? 
+                            (amount - upperBound) / iqrStats.iqr :
+                            (lowerBound - amount) / iqrStats.iqr;
+                        anomalyReasons.push({
+                            method: 'iqr',
+                            deviation: deviation.toFixed(2),
+                            bounds: {
+                                lower: lowerBound.toFixed(2),
+                                upper: upperBound.toFixed(2)
+                            }
+                        });
+                        confidenceScore += Math.min(deviation * 0.3, 0.5);
+                    }
+                }
+                
+                // Method 3: Frequency-based detection
+                if (transaction.description) {
+                    const merchant = this.extractMerchantNameName(transaction.description);
+                    const merchantTransactions = transactions.filter(t => 
+                        t.description && this.extractMerchantNameName(t.description) === merchant
+                    );
+                    
+                    if (merchantTransactions.length >= 3) {
+                        const merchantAmounts = merchantTransactions.map(t => Math.abs(t.amount));
+                        const merchantStats = this.calculateStatistics(merchantAmounts);
+                        
+                        if (merchantStats.stdDev > 0) {
+                            const deviation = Math.abs(amount - merchantStats.mean) / merchantStats.mean;
+                            if (deviation > 0.5) { // 50% deviation from typical
+                                isAnomaly = true;
+                                anomalyReasons.push({
+                                    method: 'merchant-pattern',
+                                    typicalAmount: merchantStats.mean.toFixed(2),
+                                    deviation: (deviation * 100).toFixed(0) + '%'
+                                });
+                                confidenceScore += deviation * 0.2;
+                            }
+                        }
+                    }
+                }
+                
+                // Skip positive transactions if not included
+                if (!includePositive && transaction.amount > 0) {
+                    isAnomaly = false;
+                }
+                
+                if (isAnomaly) {
+                    confidenceScore = Math.min(confidenceScore, 1); // Cap at 100%
+                    anomalies.push({
+                        transaction,
+                        confidence: confidenceScore,
+                        reasons: anomalyReasons,
+                        severity: confidenceScore > 0.7 ? 'high' : 
+                                 confidenceScore > 0.4 ? 'medium' : 'low'
+                    });
+                }
+            }
+            
+            // Sort by confidence score
+            anomalies.sort((a, b) => b.confidence - a.confidence);
+            
+            const result = {
+                anomalies: anomalies.slice(0, 50), // Limit to top 50
+                summary: {
+                    totalAnalyzed: transactions.length,
+                    anomaliesFound: anomalies.length,
+                    sensitivity,
+                    methods,
+                    timeRange: {
+                        start: startDate.toISOString(),
+                        end: endDate.toISOString()
+                    }
+                },
+                performance: {
+                    executionTime: Date.now() - startTime
+                }
+            };
+            
+            return result;
+            
+        } catch (error) {
+            debug.error('Failed to detect anomalies', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Get real-time spending alerts
+     * @param {Object} options - Alert options
+     * @returns {Promise<Object>} Active alerts
+     */
+    async getSpendingAlerts(options = {}) {
+        const startTime = Date.now();
+        debug.log('Getting spending alerts', options);
+        
+        try {
+            const {
+                includedAlertTypes = ['overspending', 'unusual_merchant', 'category_spike', 'velocity'],
+                lookbackDays = 30,
+                realtimeWindow = 7 // Days for recent activity
+            } = options;
+            
+            const alerts = [];
+            const now = new Date();
+            
+            // Get recent transactions for real-time analysis
+            const recentDate = new Date();
+            recentDate.setDate(recentDate.getDate() - realtimeWindow);
+            
+            const recentTransactions = await this.searchTransactions({
+                dateRange: {
+                    start: recentDate.toISOString(),
+                    end: now.toISOString()
+                }
+            });
+            
+            // Get historical data for comparison
+            const historicalDate = new Date();
+            historicalDate.setDate(historicalDate.getDate() - lookbackDays);
+            
+            const historicalTransactions = await this.searchTransactions({
+                dateRange: {
+                    start: historicalDate.toISOString(),
+                    end: recentDate.toISOString()
+                }
+            });
+            
+            // Alert Type 1: Overspending Detection
+            if (includedAlertTypes.includes('overspending')) {
+                const categorySpending = new Map();
+                const historicalCategorySpending = new Map();
+                
+                // Calculate recent spending by category
+                recentTransactions.forEach(t => {
+                    if (t.amount < 0) {
+                        const category = t.category || 'Uncategorized';
+                        categorySpending.set(category, 
+                            (categorySpending.get(category) || 0) + Math.abs(t.amount)
+                        );
+                    }
+                });
+                
+                // Calculate historical average
+                historicalTransactions.forEach(t => {
+                    if (t.amount < 0) {
+                        const category = t.category || 'Uncategorized';
+                        historicalCategorySpending.set(category,
+                            (historicalCategorySpending.get(category) || 0) + Math.abs(t.amount)
+                        );
+                    }
+                });
+                
+                // Compare and generate alerts
+                const daysInHistorical = lookbackDays - realtimeWindow;
+                categorySpending.forEach((amount, category) => {
+                    const historicalTotal = historicalCategorySpending.get(category) || 0;
+                    const historicalDaily = historicalTotal / daysInHistorical;
+                    const recentDaily = amount / realtimeWindow;
+                    
+                    if (historicalDaily > 0 && recentDaily > historicalDaily * 1.5) {
+                        alerts.push({
+                            type: 'overspending',
+                            severity: recentDaily > historicalDaily * 2 ? 'high' : 'medium',
+                            category,
+                            message: `Spending in ${category} is ${((recentDaily / historicalDaily - 1) * 100).toFixed(0)}% higher than usual`,
+                            details: {
+                                recentDailyAverage: recentDaily,
+                                historicalDailyAverage: historicalDaily,
+                                totalRecent: amount,
+                                increase: recentDaily - historicalDaily
+                            },
+                            timestamp: now.toISOString()
+                        });
+                    }
+                });
+            }
+            
+            // Alert Type 2: Unusual Merchant Detection
+            if (includedAlertTypes.includes('unusual_merchant')) {
+                const recentMerchants = new Set();
+                const historicalMerchants = new Set();
+                
+                recentTransactions.forEach(t => {
+                    if (t.description) {
+                        const merchant = this.extractMerchantNameName(t.description);
+                        if (merchant) recentMerchants.add(merchant);
+                    }
+                });
+                
+                historicalTransactions.forEach(t => {
+                    if (t.description) {
+                        const merchant = this.extractMerchantNameName(t.description);
+                        if (merchant) historicalMerchants.add(merchant);
+                    }
+                });
+                
+                // Find new merchants
+                const newMerchants = [];
+                recentMerchants.forEach(merchant => {
+                    if (!historicalMerchants.has(merchant)) {
+                        const merchantTransactions = recentTransactions.filter(t =>
+                            t.description && this.extractMerchantNameName(t.description) === merchant
+                        );
+                        const totalSpent = merchantTransactions.reduce((sum, t) => 
+                            sum + (t.amount < 0 ? Math.abs(t.amount) : 0), 0
+                        );
+                        
+                        if (totalSpent > 50) { // Only alert for significant amounts
+                            newMerchants.push({ merchant, totalSpent, count: merchantTransactions.length });
+                        }
+                    }
+                });
+                
+                if (newMerchants.length > 0) {
+                    newMerchants.forEach(({ merchant, totalSpent, count }) => {
+                        alerts.push({
+                            type: 'unusual_merchant',
+                            severity: totalSpent > 200 ? 'high' : 'medium',
+                            merchant,
+                            message: `New merchant detected: ${merchant}`,
+                            details: {
+                                totalSpent,
+                                transactionCount: count,
+                                firstSeen: recentDate.toISOString()
+                            },
+                            timestamp: now.toISOString()
+                        });
+                    });
+                }
+            }
+            
+            // Alert Type 3: Category Spike Detection
+            if (includedAlertTypes.includes('category_spike')) {
+                const todayTransactions = recentTransactions.filter(t => {
+                    const tDate = new Date(t.date);
+                    return tDate.toDateString() === now.toDateString();
+                });
+                
+                const todayByCategory = new Map();
+                todayTransactions.forEach(t => {
+                    if (t.amount < 0) {
+                        const category = t.category || 'Uncategorized';
+                        todayByCategory.set(category,
+                            (todayByCategory.get(category) || 0) + Math.abs(t.amount)
+                        );
+                    }
+                });
+                
+                todayByCategory.forEach((amount, category) => {
+                    // Get typical daily spending for this category
+                    const categoryHistory = historicalTransactions.filter(t => 
+                        t.category === category && t.amount < 0
+                    );
+                    const historicalTotal = categoryHistory.reduce((sum, t) => 
+                        sum + Math.abs(t.amount), 0
+                    );
+                    const dailyAverage = historicalTotal / (lookbackDays - realtimeWindow);
+                    
+                    if (dailyAverage > 0 && amount > dailyAverage * 3) {
+                        alerts.push({
+                            type: 'category_spike',
+                            severity: 'high',
+                            category,
+                            message: `Unusual spike in ${category} spending today`,
+                            details: {
+                                todayTotal: amount,
+                                typicalDaily: dailyAverage,
+                                multiplier: (amount / dailyAverage).toFixed(1)
+                            },
+                            timestamp: now.toISOString()
+                        });
+                    }
+                });
+            }
+            
+            // Alert Type 4: Velocity Detection (rapid spending)
+            if (includedAlertTypes.includes('velocity')) {
+                // Check last 24 hours
+                const last24h = new Date();
+                last24h.setDate(last24h.getDate() - 1);
+                
+                const last24hTransactions = recentTransactions.filter(t => 
+                    new Date(t.date) >= last24h && t.amount < 0
+                );
+                
+                if (last24hTransactions.length >= 10) {
+                    const total24h = last24hTransactions.reduce((sum, t) => 
+                        sum + Math.abs(t.amount), 0
+                    );
+                    
+                    // Compare to typical daily spending
+                    const allExpenses = historicalTransactions.filter(t => t.amount < 0);
+                    const totalHistorical = allExpenses.reduce((sum, t) => 
+                        sum + Math.abs(t.amount), 0
+                    );
+                    const dailyAverage = totalHistorical / (lookbackDays - realtimeWindow);
+                    
+                    if (total24h > dailyAverage * 2) {
+                        alerts.push({
+                            type: 'velocity',
+                            severity: 'high',
+                            message: 'Rapid spending detected in last 24 hours',
+                            details: {
+                                last24hTotal: total24h,
+                                transactionCount: last24hTransactions.length,
+                                typicalDaily: dailyAverage,
+                                multiplier: (total24h / dailyAverage).toFixed(1)
+                            },
+                            timestamp: now.toISOString()
+                        });
+                    }
+                }
+            }
+            
+            // Sort alerts by severity
+            const severityOrder = { high: 3, medium: 2, low: 1 };
+            alerts.sort((a, b) => 
+                severityOrder[b.severity] - severityOrder[a.severity]
+            );
+            
+            return {
+                alerts,
+                summary: {
+                    totalAlerts: alerts.length,
+                    highSeverity: alerts.filter(a => a.severity === 'high').length,
+                    mediumSeverity: alerts.filter(a => a.severity === 'medium').length,
+                    lowSeverity: alerts.filter(a => a.severity === 'low').length
+                },
+                performance: {
+                    executionTime: Date.now() - startTime
+                }
+            };
+            
+        } catch (error) {
+            debug.error('Failed to get spending alerts', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Calculate basic statistics for an array of values
+     * @private
+     * @param {Array<number>} values - Array of numeric values
+     * @returns {Object} Statistics including mean, stdDev, min, max
+     */
+    calculateStatistics(values) {
+        if (!values || values.length === 0) {
+            return { mean: 0, stdDev: 0, min: 0, max: 0, count: 0 };
+        }
+        
+        const n = values.length;
+        const mean = values.reduce((sum, val) => sum + val, 0) / n;
+        
+        // Calculate standard deviation
+        const variance = values.reduce((sum, val) => {
+            const diff = val - mean;
+            return sum + (diff * diff);
+        }, 0) / n;
+        
+        const stdDev = Math.sqrt(variance);
+        
+        return {
+            mean,
+            stdDev,
+            min: Math.min(...values),
+            max: Math.max(...values),
+            count: n
+        };
+    }
+    
+    /**
+     * Calculate basic statistics for a set of values
+     * @private
+     * @param {Array<number>} values - Array of numeric values
+     * @returns {Object} Statistics including mean, stdDev, min, max
+     */
+    calculateStatistics(values) {
+        if (!values || values.length === 0) {
+            return { mean: 0, stdDev: 0, min: 0, max: 0, count: 0 };
+        }
+        
+        const n = values.length;
+        const mean = values.reduce((sum, val) => sum + val, 0) / n;
+        
+        // Calculate standard deviation
+        const variance = values.reduce((sum, val) => {
+            const diff = val - mean;
+            return sum + (diff * diff);
+        }, 0) / n;
+        
+        const stdDev = Math.sqrt(variance);
+        
+        return {
+            mean,
+            stdDev,
+            min: Math.min(...values),
+            max: Math.max(...values),
+            count: n
+        };
+    }
+    
+    /**
+     * Calculate IQR (Interquartile Range) statistics
+     * @private
+     * @param {Array<number>} values - Array of numeric values
+     * @returns {Object} IQR statistics
+     */
+    calculateIQR(values) {
+        const sorted = [...values].sort((a, b) => a - b);
+        const n = sorted.length;
+        
+        const q1Index = Math.floor(n * 0.25);
+        const q3Index = Math.floor(n * 0.75);
+        
+        const q1 = sorted[q1Index];
+        const q3 = sorted[q3Index];
+        const iqr = q3 - q1;
+        
+        return { q1, q3, iqr, median: sorted[Math.floor(n / 2)] };
+    }
+    
+    /**
+     * Predict monthly spending based on historical data
+     * @param {Object} options - Prediction options
+     * @returns {Promise<Object>} Spending predictions with confidence intervals
+     */
+    async predictMonthlySpending(options = {}) {
+        const startTime = Date.now();
+        debug.log('Predicting monthly spending', options);
+        
+        try {
+            const {
+                months = 3,
+                categories = [],
+                confidence = 0.95,
+                lookbackMonths = 12,
+                includeSeasonality = true
+            } = options;
+            
+            // Get historical transactions
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setMonth(startDate.getMonth() - lookbackMonths);
+            
+            const transactions = await this.searchTransactions({
+                dateRange: {
+                    start: startDate.toISOString(),
+                    end: endDate.toISOString()
+                },
+                categories: categories.length > 0 ? categories : undefined
+            });
+            
+            if (transactions.length < 30) {
+                return {
+                    predictions: [],
+                    summary: {
+                        message: 'Insufficient data for reliable predictions',
+                        dataPoints: transactions.length
+                    }
+                };
+            }
+            
+            // Group by month and calculate monthly totals
+            const monthlyData = new Map();
+            const categoryMonthlyData = new Map();
+            
+            transactions.forEach(t => {
+                const date = new Date(t.date);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                const category = t.category || 'Uncategorized';
+                
+                // Overall monthly totals
+                if (!monthlyData.has(monthKey)) {
+                    monthlyData.set(monthKey, { income: 0, expenses: 0 });
+                }
+                
+                if (t.amount > 0) {
+                    monthlyData.get(monthKey).income += t.amount;
+                } else {
+                    monthlyData.get(monthKey).expenses += Math.abs(t.amount);
+                }
+                
+                // Category-specific monthly totals
+                if (categories.length === 0 || categories.includes(category)) {
+                    const catKey = `${category}-${monthKey}`;
+                    if (!categoryMonthlyData.has(catKey)) {
+                        categoryMonthlyData.set(catKey, { category, month: monthKey, amount: 0 });
+                    }
+                    categoryMonthlyData.get(catKey).amount += Math.abs(t.amount);
+                }
+            });
+            
+            // Convert to arrays and sort by month
+            const monthlyArray = Array.from(monthlyData.entries())
+                .map(([month, data]) => ({ month, ...data }))
+                .sort((a, b) => a.month.localeCompare(b.month));
+            
+            // Calculate trends using linear regression
+            const predictions = [];
+            
+            for (let i = 1; i <= months; i++) {
+                const targetDate = new Date();
+                targetDate.setMonth(targetDate.getMonth() + i);
+                const targetMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+                
+                // Simple linear regression for expenses
+                const expenseValues = monthlyArray.map(m => m.expenses);
+                const expenseTrend = this.calculateLinearRegression(expenseValues);
+                
+                // Apply seasonality adjustment if enabled
+                let seasonalFactor = 1;
+                if (includeSeasonality && monthlyArray.length >= 12) {
+                    const targetMonthIndex = targetDate.getMonth();
+                    const sameMonthData = monthlyArray.filter((m, idx) => 
+                        new Date(m.month).getMonth() === targetMonthIndex
+                    );
+                    
+                    if (sameMonthData.length > 0) {
+                        const avgSameMonth = sameMonthData.reduce((sum, m) => sum + m.expenses, 0) / sameMonthData.length;
+                        const overallAvg = expenseValues.reduce((sum, v) => sum + v, 0) / expenseValues.length;
+                        seasonalFactor = avgSameMonth / overallAvg;
+                    }
+                }
+                
+                // Calculate prediction
+                const baseProjection = expenseTrend.slope * (monthlyArray.length + i) + expenseTrend.intercept;
+                const adjustedProjection = baseProjection * seasonalFactor;
+                
+                // Calculate confidence interval
+                const stdError = this.calculateStandardError(expenseValues, expenseTrend);
+                const tValue = this.getTValue(confidence, expenseValues.length - 2);
+                const margin = tValue * stdError * Math.sqrt(1 + 1/expenseValues.length + 
+                    Math.pow(i, 2) / expenseValues.reduce((sum, _, idx) => sum + Math.pow(idx - expenseValues.length/2, 2), 0));
+                
+                // Income prediction (simpler - use average)
+                const avgIncome = monthlyArray.reduce((sum, m) => sum + m.income, 0) / monthlyArray.length;
+                
+                // Category predictions if requested
+                const categoryPredictions = [];
+                if (categories.length > 0) {
+                    categories.forEach(category => {
+                        const catData = Array.from(categoryMonthlyData.values())
+                            .filter(d => d.category === category)
+                            .sort((a, b) => a.month.localeCompare(b.month))
+                            .map(d => d.amount);
+                        
+                        if (catData.length >= 3) {
+                            const catTrend = this.calculateLinearRegression(catData);
+                            const catProjection = catTrend.slope * (catData.length + i) + catTrend.intercept;
+                            categoryPredictions.push({
+                                category,
+                                predicted: Math.max(0, catProjection),
+                                trend: catTrend.slope > 0 ? 'increasing' : 'decreasing'
+                            });
+                        }
+                    });
+                }
+                
+                predictions.push({
+                    month: targetMonth,
+                    expenses: {
+                        predicted: Math.max(0, adjustedProjection),
+                        confidenceInterval: {
+                            lower: Math.max(0, adjustedProjection - margin),
+                            upper: adjustedProjection + margin
+                        },
+                        seasonalAdjustment: (seasonalFactor - 1) * 100
+                    },
+                    income: {
+                        predicted: avgIncome,
+                        confidence: 'Based on historical average'
+                    },
+                    netCashFlow: avgIncome - adjustedProjection,
+                    categories: categoryPredictions
+                });
+            }
+            
+            // Calculate accuracy metrics based on historical data
+            const accuracy = this.calculatePredictionAccuracy(monthlyArray);
+            
+            return {
+                predictions,
+                summary: {
+                    dataPoints: transactions.length,
+                    monthsAnalyzed: monthlyArray.length,
+                    confidence: confidence * 100,
+                    accuracy: accuracy,
+                    trends: {
+                        expenses: expenseTrend.slope > 0 ? 'increasing' : 'decreasing',
+                        monthlyChange: expenseTrend.slope
+                    }
+                },
+                performance: {
+                    executionTime: Date.now() - startTime
+                }
+            };
+            
+        } catch (error) {
+            debug.error('Failed to predict monthly spending', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Forecast cash flow based on recurring bills and spending patterns
+     * @param {number} days - Number of days to forecast
+     * @returns {Promise<Object>} Daily balance projections
+     */
+    async getCashFlowForecast(days = 30) {
+        const startTime = Date.now();
+        debug.log(`Getting cash flow forecast for ${days} days`);
+        
+        try {
+            // Get current cash balance
+            const cashAccounts = await database.getCashAccounts();
+            const currentBalance = cashAccounts.reduce((sum, acc) => 
+                sum + (acc.balance || 0), 0
+            );
+            
+            // Get recurring bills
+            const recurringBills = await database.getRecurringBills();
+            const activeBills = recurringBills.filter(b => b.active !== false);
+            
+            // Get recent spending patterns (last 90 days)
+            const lookbackDate = new Date();
+            lookbackDate.setDate(lookbackDate.getDate() - 90);
+            
+            const recentTransactions = await this.searchTransactions({
+                dateRange: {
+                    start: lookbackDate.toISOString(),
+                    end: new Date().toISOString()
+                }
+            });
+            
+            // Calculate daily spending patterns by day of week
+            const dailyPatterns = this.calculateDailySpendingPatterns(recentTransactions);
+            
+            // Get pay schedules
+            const paySchedules = await database.getPaySchedules(true);
+            
+            // Build daily forecast
+            const forecast = [];
+            let runningBalance = currentBalance;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            for (let i = 0; i < days; i++) {
+                const forecastDate = new Date(today);
+                forecastDate.setDate(forecastDate.getDate() + i);
+                
+                const dayOfWeek = forecastDate.getDay();
+                const dateStr = forecastDate.toISOString().split('T')[0];
+                
+                let dayIncome = 0;
+                let dayExpenses = 0;
+                const scheduledTransactions = [];
+                
+                // Check for scheduled income (pay schedules)
+                paySchedules.forEach(schedule => {
+                    if (this.isPayday(forecastDate, schedule)) {
+                        dayIncome += schedule.amount;
+                        scheduledTransactions.push({
+                            type: 'income',
+                            description: schedule.name,
+                            amount: schedule.amount,
+                            category: 'Income'
+                        });
+                    }
+                });
+                
+                // Check for scheduled bills
+                activeBills.forEach(bill => {
+                    if (this.isBillDue(forecastDate, bill)) {
+                        dayExpenses += bill.amount;
+                        scheduledTransactions.push({
+                            type: 'bill',
+                            description: bill.name,
+                            amount: bill.amount,
+                            category: bill.category
+                        });
+                    }
+                });
+                
+                // Add predicted daily spending based on patterns
+                const predictedSpending = dailyPatterns[dayOfWeek] || 0;
+                dayExpenses += predictedSpending;
+                
+                // Calculate end of day balance
+                runningBalance = runningBalance + dayIncome - dayExpenses;
+                
+                // Determine alerts
+                const alerts = [];
+                if (runningBalance < 0) {
+                    alerts.push({
+                        type: 'negative_balance',
+                        severity: 'high',
+                        message: 'Projected negative balance'
+                    });
+                } else if (runningBalance < 500) {
+                    alerts.push({
+                        type: 'low_balance',
+                        severity: 'medium',
+                        message: 'Projected low balance'
+                    });
+                }
+                
+                // Check for large scheduled transactions
+                scheduledTransactions.forEach(trans => {
+                    if (trans.amount > runningBalance * 0.5 && trans.type === 'bill') {
+                        alerts.push({
+                            type: 'large_payment',
+                            severity: 'medium',
+                            message: `Large payment: ${trans.description}`
+                        });
+                    }
+                });
+                
+                forecast.push({
+                    date: dateStr,
+                    dayOfWeek: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek],
+                    startBalance: runningBalance - dayIncome + dayExpenses,
+                    income: dayIncome,
+                    expenses: dayExpenses,
+                    endBalance: runningBalance,
+                    scheduledTransactions,
+                    predictedSpending,
+                    alerts
+                });
+            }
+            
+            // Calculate summary statistics
+            const minBalance = Math.min(...forecast.map(f => f.endBalance));
+            const criticalDates = forecast.filter(f => f.alerts.length > 0);
+            const totalIncome = forecast.reduce((sum, f) => sum + f.income, 0);
+            const totalExpenses = forecast.reduce((sum, f) => sum + f.expenses, 0);
+            
+            return {
+                forecast,
+                summary: {
+                    currentBalance,
+                    projectedBalance: runningBalance,
+                    minBalance,
+                    avgDailySpending: totalExpenses / days,
+                    totalIncome,
+                    totalExpenses,
+                    netChange: runningBalance - currentBalance,
+                    criticalDates: criticalDates.length,
+                    alerts: {
+                        negativeDays: forecast.filter(f => f.endBalance < 0).length,
+                        lowBalanceDays: forecast.filter(f => f.endBalance < 500).length
+                    }
+                },
+                recommendations: this.generateCashFlowRecommendations(forecast, minBalance),
+                performance: {
+                    executionTime: Date.now() - startTime
+                }
+            };
+            
+        } catch (error) {
+            debug.error('Failed to get cash flow forecast', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Calculate linear regression for trend analysis
+     * @private
+     * @param {Array<number>} values - Y values (X is assumed to be indices)
+     * @returns {Object} Slope and intercept
+     */
+    calculateLinearRegression(values) {
+        const n = values.length;
+        const x = Array.from({ length: n }, (_, i) => i);
+        
+        const sumX = x.reduce((a, b) => a + b, 0);
+        const sumY = values.reduce((a, b) => a + b, 0);
+        const sumXY = x.reduce((sum, xi, i) => sum + xi * values[i], 0);
+        const sumXX = x.reduce((sum, xi) => sum + xi * xi, 0);
+        
+        const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+        const intercept = (sumY - slope * sumX) / n;
+        
+        return { slope, intercept };
+    }
+    
+    /**
+     * Calculate standard error for predictions
+     * @private
+     */
+    calculateStandardError(actual, regression) {
+        const predicted = actual.map((_, i) => regression.slope * i + regression.intercept);
+        const residuals = actual.map((y, i) => y - predicted[i]);
+        const sse = residuals.reduce((sum, r) => sum + r * r, 0);
+        return Math.sqrt(sse / (actual.length - 2));
+    }
+    
+    /**
+     * Get t-value for confidence interval
+     * @private
+     */
+    getTValue(confidence, df) {
+        // Simplified t-table for common confidence levels
+        const tTable = {
+            0.90: { 10: 1.812, 20: 1.725, 30: 1.697, 50: 1.676 },
+            0.95: { 10: 2.228, 20: 2.086, 30: 2.042, 50: 2.009 },
+            0.99: { 10: 3.169, 20: 2.845, 30: 2.750, 50: 2.678 }
+        };
+        
+        const conf = confidence >= 0.99 ? 0.99 : confidence >= 0.95 ? 0.95 : 0.90;
+        const adjustedDf = df > 50 ? 50 : df > 30 ? 30 : df > 20 ? 20 : 10;
+        
+        return tTable[conf][adjustedDf] || 2.0;
+    }
+    
+    /**
+     * Calculate prediction accuracy based on historical data
+     * @private
+     */
+    calculatePredictionAccuracy(monthlyData) {
+        if (monthlyData.length < 6) return null;
+        
+        // Use first 75% for training, last 25% for testing
+        const splitIndex = Math.floor(monthlyData.length * 0.75);
+        const training = monthlyData.slice(0, splitIndex);
+        const testing = monthlyData.slice(splitIndex);
+        
+        const expenseValues = training.map(m => m.expenses);
+        const trend = this.calculateLinearRegression(expenseValues);
+        
+        let totalError = 0;
+        testing.forEach((actual, i) => {
+            const predicted = trend.slope * (training.length + i) + trend.intercept;
+            const error = Math.abs(actual.expenses - predicted) / actual.expenses;
+            totalError += error;
+        });
+        
+        const mape = (totalError / testing.length) * 100;
+        return {
+            mape: mape.toFixed(1),
+            accuracy: Math.max(0, 100 - mape).toFixed(1)
+        };
+    }
+    
+    /**
+     * Calculate daily spending patterns
+     * @private
+     */
+    calculateDailySpendingPatterns(transactions) {
+        const patterns = Array(7).fill(0);
+        const counts = Array(7).fill(0);
+        
+        transactions.forEach(t => {
+            if (t.amount < 0) {
+                const dayOfWeek = new Date(t.date).getDay();
+                patterns[dayOfWeek] += Math.abs(t.amount);
+                counts[dayOfWeek]++;
+            }
+        });
+        
+        return patterns.map((total, i) => counts[i] > 0 ? total / counts[i] : 0);
+    }
+    
+    /**
+     * Check if date is a payday
+     * @private
+     */
+    isPayday(date, schedule) {
+        if (!schedule.is_active) return false;
+        
+        const nextPayDate = new Date(schedule.next_pay_date);
+        return date.toDateString() === nextPayDate.toDateString();
+    }
+    
+    /**
+     * Check if bill is due
+     * @private
+     */
+    isBillDue(date, bill) {
+        if (!bill.active) return false;
+        
+        const nextDue = new Date(bill.next_due);
+        return date.toDateString() === nextDue.toDateString();
+    }
+    
+    /**
+     * Generate cash flow recommendations
+     * @private
+     */
+    generateCashFlowRecommendations(forecast, minBalance) {
+        const recommendations = [];
+        
+        if (minBalance < 0) {
+            const firstNegativeDay = forecast.find(f => f.endBalance < 0);
+            recommendations.push({
+                priority: 'high',
+                type: 'negative_balance',
+                message: `Projected negative balance on ${firstNegativeDay.date}`,
+                action: 'Consider reducing expenses or moving payment dates'
+            });
+        }
+        
+        if (minBalance < 500 && minBalance >= 0) {
+            recommendations.push({
+                priority: 'medium',
+                type: 'low_balance',
+                message: 'Balance projected to drop below $500',
+                action: 'Build emergency buffer or reduce discretionary spending'
+            });
+        }
+        
+        // Check for clustering of bills
+        const highExpenseDays = forecast.filter(f => f.expenses > f.income * 2);
+        if (highExpenseDays.length > 3) {
+            recommendations.push({
+                priority: 'medium',
+                type: 'expense_clustering',
+                message: 'Multiple high-expense days detected',
+                action: 'Consider spreading out bill payment dates'
+            });
+        }
+        
+        return recommendations;
+    }
+    
+    /**
+     * Get comprehensive transaction insights
+     * @returns {Promise<Object>} Transaction insights and patterns
+     */
+    async getTransactionInsights() {
+        const startTime = Date.now();
+        debug.log('Getting transaction insights');
+        
+        try {
+            // Get transactions for last 6 months
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setMonth(startDate.getMonth() - 6);
+            
+            const transactions = await this.searchTransactions({
+                dateRange: {
+                    start: startDate.toISOString(),
+                    end: endDate.toISOString()
+                }
+            });
+            
+            if (transactions.length < 20) {
+                return {
+                    insights: {
+                        message: 'Insufficient data for meaningful insights',
+                        dataPoints: transactions.length
+                    }
+                };
+            }
+            
+            // Calculate spending velocity
+            const now = new Date();
+            const daysSinceStart = Math.ceil((now - startDate) / (1000 * 60 * 60 * 24));
+            const totalExpenses = transactions
+                .filter(t => t.amount < 0)
+                .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+            
+            // Recent velocity (last 30 days)
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const recentExpenses = transactions
+                .filter(t => t.amount < 0 && new Date(t.date) >= thirtyDaysAgo)
+                .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+            
+            const averageVelocity = totalExpenses / daysSinceStart;
+            const recentVelocity = recentExpenses / 30;
+            
+            // Time patterns analysis
+            const timePatterns = {
+                byHour: Array(24).fill(0),
+                byDayOfWeek: Array(7).fill(0),
+                byDayOfMonth: Array(31).fill(0),
+                counts: {
+                    byHour: Array(24).fill(0),
+                    byDayOfWeek: Array(7).fill(0),
+                    byDayOfMonth: Array(31).fill(0)
+                }
+            };
+            
+            transactions.forEach(t => {
+                if (t.amount < 0) {
+                    const date = new Date(t.date);
+                    const hour = date.getHours();
+                    const dayOfWeek = date.getDay();
+                    const dayOfMonth = date.getDate() - 1; // 0-indexed
+                    
+                    timePatterns.byHour[hour] += Math.abs(t.amount);
+                    timePatterns.byDayOfWeek[dayOfWeek] += Math.abs(t.amount);
+                    timePatterns.byDayOfMonth[dayOfMonth] += Math.abs(t.amount);
+                    
+                    timePatterns.counts.byHour[hour]++;
+                    timePatterns.counts.byDayOfWeek[dayOfWeek]++;
+                    timePatterns.counts.byDayOfMonth[dayOfMonth]++;
+                }
+            });
+            
+            // Find peak times
+            const peakHour = timePatterns.byHour.indexOf(Math.max(...timePatterns.byHour));
+            const peakDayOfWeek = timePatterns.byDayOfWeek.indexOf(Math.max(...timePatterns.byDayOfWeek));
+            const peakDayOfMonth = timePatterns.byDayOfMonth.indexOf(Math.max(...timePatterns.byDayOfMonth)) + 1;
+            
+            // Category distribution analysis
+            const categoryDistribution = new Map();
+            const categoryChanges = new Map();
+            
+            // Split into first and second half for trend analysis
+            const midPoint = new Date(startDate.getTime() + (endDate.getTime() - startDate.getTime()) / 2);
+            
+            transactions.forEach(t => {
+                if (t.amount < 0) {
+                    const category = t.category || 'Uncategorized';
+                    const amount = Math.abs(t.amount);
+                    
+                    if (!categoryDistribution.has(category)) {
+                        categoryDistribution.set(category, {
+                            total: 0,
+                            count: 0,
+                            firstHalf: 0,
+                            secondHalf: 0
+                        });
+                    }
+                    
+                    const catData = categoryDistribution.get(category);
+                    catData.total += amount;
+                    catData.count++;
+                    
+                    if (new Date(t.date) < midPoint) {
+                        catData.firstHalf += amount;
+                    } else {
+                        catData.secondHalf += amount;
+                    }
+                }
+            });
+            
+            // Calculate category trends
+            const categoryInsights = [];
+            categoryDistribution.forEach((data, category) => {
+                const percentOfTotal = (data.total / totalExpenses) * 100;
+                const avgTransaction = data.total / data.count;
+                const trend = data.secondHalf > data.firstHalf * 1.1 ? 'increasing' :
+                             data.secondHalf < data.firstHalf * 0.9 ? 'decreasing' : 'stable';
+                
+                categoryInsights.push({
+                    category,
+                    total: data.total,
+                    percentOfTotal,
+                    avgTransaction,
+                    count: data.count,
+                    trend,
+                    monthlyAverage: data.total / 6
+                });
+            });
+            
+            // Sort by total spending
+            categoryInsights.sort((a, b) => b.total - a.total);
+            
+            // Payment method analysis
+            const paymentMethods = {
+                cash: { count: 0, total: 0 },
+                credit: { count: 0, total: 0 }
+            };
+            
+            transactions.forEach(t => {
+                if (t.debt_account_id) {
+                    paymentMethods.credit.count++;
+                    paymentMethods.credit.total += Math.abs(t.amount);
+                } else {
+                    paymentMethods.cash.count++;
+                    paymentMethods.cash.total += Math.abs(t.amount);
+                }
+            });
+            
+            // Transaction size analysis
+            const amounts = transactions
+                .filter(t => t.amount < 0)
+                .map(t => Math.abs(t.amount))
+                .sort((a, b) => a - b);
+            
+            const sizeDistribution = {
+                small: amounts.filter(a => a < 50).length,
+                medium: amounts.filter(a => a >= 50 && a < 200).length,
+                large: amounts.filter(a => a >= 200 && a < 500).length,
+                veryLarge: amounts.filter(a => a >= 500).length
+            };
+            
+            // Merchant diversity
+            const uniqueMerchants = new Set();
+            const merchantFrequency = new Map();
+            
+            transactions.forEach(t => {
+                if (t.description) {
+                    const merchant = this.extractMerchantNameName(t.description);
+                    if (merchant) {
+                        uniqueMerchants.add(merchant);
+                        merchantFrequency.set(merchant, 
+                            (merchantFrequency.get(merchant) || 0) + 1
+                        );
+                    }
+                }
+            });
+            
+            // Find most frequent merchants
+            const topMerchants = Array.from(merchantFrequency.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([merchant, count]) => ({ merchant, count }));
+            
+            return {
+                insights: {
+                    spendingVelocity: {
+                        current: recentVelocity,
+                        average: averageVelocity,
+                        trend: recentVelocity > averageVelocity * 1.1 ? 'increasing' :
+                               recentVelocity < averageVelocity * 0.9 ? 'decreasing' : 'stable',
+                        percentChange: ((recentVelocity - averageVelocity) / averageVelocity * 100)
+                    },
+                    timePatterns: {
+                        peakHour: {
+                            hour: peakHour,
+                            display: `${peakHour}:00 - ${peakHour + 1}:00`,
+                            avgSpending: timePatterns.byHour[peakHour] / timePatterns.counts.byHour[peakHour]
+                        },
+                        peakDayOfWeek: {
+                            day: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][peakDayOfWeek],
+                            index: peakDayOfWeek,
+                            avgSpending: timePatterns.byDayOfWeek[peakDayOfWeek] / timePatterns.counts.byDayOfWeek[peakDayOfWeek]
+                        },
+                        peakDayOfMonth: {
+                            day: peakDayOfMonth,
+                            avgSpending: timePatterns.byDayOfMonth[peakDayOfMonth - 1] / timePatterns.counts.byDayOfMonth[peakDayOfMonth - 1]
+                        },
+                        weekendVsWeekday: {
+                            weekend: (timePatterns.byDayOfWeek[0] + timePatterns.byDayOfWeek[6]) / 
+                                    (timePatterns.counts.byDayOfWeek[0] + timePatterns.counts.byDayOfWeek[6]),
+                            weekday: (timePatterns.byDayOfWeek[1] + timePatterns.byDayOfWeek[2] + 
+                                     timePatterns.byDayOfWeek[3] + timePatterns.byDayOfWeek[4] + 
+                                     timePatterns.byDayOfWeek[5]) /
+                                    (timePatterns.counts.byDayOfWeek[1] + timePatterns.counts.byDayOfWeek[2] +
+                                     timePatterns.counts.byDayOfWeek[3] + timePatterns.counts.byDayOfWeek[4] +
+                                     timePatterns.counts.byDayOfWeek[5])
+                        }
+                    },
+                    categoryInsights: categoryInsights.slice(0, 10),
+                    paymentMethods: {
+                        cashPreference: (paymentMethods.cash.count / transactions.length * 100),
+                        creditPreference: (paymentMethods.credit.count / transactions.length * 100),
+                        avgCashTransaction: paymentMethods.cash.total / paymentMethods.cash.count,
+                        avgCreditTransaction: paymentMethods.credit.total / paymentMethods.credit.count
+                    },
+                    transactionSizes: {
+                        distribution: sizeDistribution,
+                        median: amounts[Math.floor(amounts.length / 2)],
+                        average: totalExpenses / amounts.length
+                    },
+                    merchantDiversity: {
+                        uniqueMerchants: uniqueMerchants.size,
+                        topMerchants,
+                        merchantsPerMonth: uniqueMerchants.size / 6
+                    }
+                },
+                summary: {
+                    totalTransactions: transactions.length,
+                    totalExpenses,
+                    periodDays: daysSinceStart
+                },
+                performance: {
+                    executionTime: Date.now() - startTime
+                }
+            };
+            
+        } catch (error) {
+            debug.error('Failed to get transaction insights', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Get budget performance metrics
+     * @param {Object} budgets - Budget configuration
+     * @returns {Promise<Object>} Budget performance analysis
+     */
+    async getBudgetPerformance(budgets = {}) {
+        const startTime = Date.now();
+        debug.log('Getting budget performance', budgets);
+        
+        try {
+            // Default budgets if not provided
+            const defaultBudgets = {
+                'Food': 600,
+                'Transportation': 200,
+                'Shopping': 300,
+                'Entertainment': 150,
+                'Bills': 800,
+                'Healthcare': 100,
+                'Other': 200
+            };
+            
+            const activeBudgets = { ...defaultBudgets, ...budgets };
+            
+            // Get current month transactions
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            
+            const currentMonthTransactions = await this.searchTransactions({
+                dateRange: {
+                    start: startOfMonth.toISOString(),
+                    end: now.toISOString()
+                }
+            });
+            
+            // Get last 3 months for trend analysis
+            const threeMonthsAgo = new Date();
+            threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+            
+            const historicalTransactions = await this.searchTransactions({
+                dateRange: {
+                    start: threeMonthsAgo.toISOString(),
+                    end: startOfMonth.toISOString()
+                }
+            });
+            
+            // Calculate current month spending by category
+            const currentSpending = new Map();
+            currentMonthTransactions.forEach(t => {
+                if (t.amount < 0) {
+                    const category = t.category || 'Other';
+                    currentSpending.set(category,
+                        (currentSpending.get(category) || 0) + Math.abs(t.amount)
+                    );
+                }
+            });
+            
+            // Calculate historical average by category
+            const historicalByMonth = new Map();
+            historicalTransactions.forEach(t => {
+                if (t.amount < 0) {
+                    const date = new Date(t.date);
+                    const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+                    const category = t.category || 'Other';
+                    const key = `${monthKey}-${category}`;
+                    
+                    historicalByMonth.set(key,
+                        (historicalByMonth.get(key) || 0) + Math.abs(t.amount)
+                    );
+                }
+            });
+            
+            // Calculate averages
+            const categoryAverages = new Map();
+            const monthsCount = 3;
+            
+            Object.keys(activeBudgets).forEach(category => {
+                let total = 0;
+                for (let i = 0; i < monthsCount; i++) {
+                    const checkDate = new Date(threeMonthsAgo);
+                    checkDate.setMonth(checkDate.getMonth() + i);
+                    const monthKey = `${checkDate.getFullYear()}-${checkDate.getMonth()}`;
+                    const key = `${monthKey}-${category}`;
+                    total += historicalByMonth.get(key) || 0;
+                }
+                categoryAverages.set(category, total / monthsCount);
+            });
+            
+            // Calculate days elapsed and remaining in month
+            const daysInMonth = endOfMonth.getDate();
+            const daysElapsed = now.getDate();
+            const daysRemaining = daysInMonth - daysElapsed;
+            const monthProgress = daysElapsed / daysInMonth;
+            
+            // Analyze each budget category
+            const categoryPerformance = [];
+            let totalBudget = 0;
+            let totalSpent = 0;
+            let totalProjected = 0;
+            
+            Object.entries(activeBudgets).forEach(([category, budget]) => {
+                const spent = currentSpending.get(category) || 0;
+                const dailyBudget = budget / daysInMonth;
+                const expectedSpending = dailyBudget * daysElapsed;
+                const projectedTotal = (spent / daysElapsed) * daysInMonth;
+                const historicalAvg = categoryAverages.get(category) || 0;
+                
+                totalBudget += budget;
+                totalSpent += spent;
+                totalProjected += projectedTotal;
+                
+                // Determine status
+                let status, statusMessage;
+                const percentUsed = (spent / budget) * 100;
+                const expectedPercent = monthProgress * 100;
+                
+                if (percentUsed > 100) {
+                    status = 'over_budget';
+                    statusMessage = `Over budget by ${formatCurrency(spent - budget)}`;
+                } else if (percentUsed > expectedPercent + 10) {
+                    status = 'at_risk';
+                    statusMessage = 'Spending faster than planned';
+                } else if (percentUsed < expectedPercent - 20) {
+                    status = 'under_budget';
+                    statusMessage = 'Well under budget';
+                } else {
+                    status = 'on_track';
+                    statusMessage = 'On track';
+                }
+                
+                // Calculate pace
+                const dailyPace = spent / daysElapsed;
+                const requiredPace = (budget - spent) / daysRemaining;
+                
+                categoryPerformance.push({
+                    category,
+                    budget,
+                    spent,
+                    remaining: Math.max(0, budget - spent),
+                    percentUsed,
+                    projectedTotal,
+                    status,
+                    statusMessage,
+                    pace: {
+                        current: dailyPace,
+                        required: Math.max(0, requiredPace),
+                        sustainable: requiredPace > 0
+                    },
+                    vsHistorical: {
+                        average: historicalAvg,
+                        difference: spent - (historicalAvg * monthProgress),
+                        trend: spent > historicalAvg * monthProgress * 1.1 ? 'higher' :
+                               spent < historicalAvg * monthProgress * 0.9 ? 'lower' : 'similar'
+                    }
+                });
+            });
+            
+            // Sort by percent used (highest first)
+            categoryPerformance.sort((a, b) => b.percentUsed - a.percentUsed);
+            
+            // Generate recommendations
+            const recommendations = [];
+            
+            // Over budget categories
+            const overBudget = categoryPerformance.filter(c => c.status === 'over_budget');
+            if (overBudget.length > 0) {
+                recommendations.push({
+                    priority: 'high',
+                    type: 'over_budget',
+                    categories: overBudget.map(c => c.category),
+                    message: `${overBudget.length} categories are over budget`,
+                    action: 'Review and reduce spending in these categories immediately'
+                });
+            }
+            
+            // At risk categories
+            const atRisk = categoryPerformance.filter(c => c.status === 'at_risk');
+            if (atRisk.length > 0) {
+                recommendations.push({
+                    priority: 'medium',
+                    type: 'at_risk',
+                    categories: atRisk.map(c => c.category),
+                    message: `${atRisk.length} categories at risk of going over budget`,
+                    action: 'Monitor closely and reduce spending pace'
+                });
+            }
+            
+            // Optimization opportunities
+            const underutilized = categoryPerformance.filter(c => 
+                c.percentUsed < 50 && monthProgress > 0.7
+            );
+            if (underutilized.length > 0) {
+                recommendations.push({
+                    priority: 'low',
+                    type: 'optimization',
+                    categories: underutilized.map(c => c.category),
+                    message: 'Some budgets are significantly underutilized',
+                    action: 'Consider reallocating funds to overspent categories'
+                });
+            }
+            
+            // Calculate overall metrics
+            const overallStatus = totalProjected > totalBudget ? 'over_budget' :
+                                 totalProjected > totalBudget * 0.9 ? 'at_risk' : 'on_track';
+            
+            return {
+                performance: {
+                    categories: categoryPerformance,
+                    overall: {
+                        totalBudget,
+                        totalSpent,
+                        totalRemaining: totalBudget - totalSpent,
+                        percentUsed: (totalSpent / totalBudget) * 100,
+                        projectedTotal: totalProjected,
+                        projectedSurplus: totalBudget - totalProjected,
+                        status: overallStatus,
+                        daysRemaining,
+                        monthProgress: monthProgress * 100
+                    },
+                    recommendations,
+                    insights: {
+                        biggestSpenders: categoryPerformance.slice(0, 3).map(c => ({
+                            category: c.category,
+                            spent: c.spent,
+                            percentOfTotal: (c.spent / totalSpent) * 100
+                        })),
+                        mostOverBudget: overBudget.slice(0, 3),
+                        bestPerformers: categoryPerformance
+                            .filter(c => c.status === 'on_track' || c.status === 'under_budget')
+                            .slice(-3)
+                            .reverse()
+                    }
+                },
+                summary: {
+                    month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+                    daysInMonth,
+                    daysElapsed,
+                    categoriesTracked: categoryPerformance.length
+                },
+                performance: {
+                    executionTime: Date.now() - startTime
+                }
+            };
+            
+        } catch (error) {
+            debug.error('Failed to get budget performance', error);
+            throw error;
+        }
+    }
+    
     /**
      * Cleanup method
      */
@@ -4006,12 +5547,32 @@ export const transactionManager = new TransactionManager();
 
 // Console helpers for Phase 4 Analytics
 if (typeof window !== 'undefined') {
+    // Milestone 1: Core Analytics
     window.getSpendingTrends = (options) => transactionManager.getSpendingTrends(options);
     window.getCategoryTrends = (category, months) => transactionManager.getCategoryTrends(category, months);
     window.getMerchantAnalysis = (options) => transactionManager.getMerchantAnalysis(options);
     
+    // Milestone 2: Anomaly Detection & Predictive Analytics
+    window.detectAnomalies = (options) => transactionManager.detectAnomalies(options);
+    window.getSpendingAlerts = (options) => transactionManager.getSpendingAlerts(options);
+    window.predictMonthlySpending = (options) => transactionManager.predictMonthlySpending(options);
+    window.getCashFlowForecast = (days) => transactionManager.getCashFlowForecast(days);
+    window.getTransactionInsights = () => transactionManager.getTransactionInsights();
+    window.getBudgetPerformance = (budgets) => transactionManager.getBudgetPerformance(budgets);
+    
     console.log('🎯 TransactionManager Phase 4 Analytics Available:');
+    console.log('📊 Milestone 1 - Core Analytics:');
     console.log('   window.getSpendingTrends({ months: 6, groupBy: "category" })');
     console.log('   window.getCategoryTrends("Food", 3)');
     console.log('   window.getMerchantAnalysis({ months: 6, limit: 10 })');
+    console.log('');
+    console.log('🚨 Milestone 2 - Anomaly Detection:');
+    console.log('   window.detectAnomalies({ sensitivity: "medium", lookbackDays: 90 })');
+    console.log('   window.getSpendingAlerts({ lookbackDays: 30 })');
+    console.log('');
+    console.log('🔮 Milestone 2 - Predictive Analytics:');
+    console.log('   window.predictMonthlySpending({ months: 3, confidence: 0.95 })');
+    console.log('   window.getCashFlowForecast(30)');
+    console.log('   window.getTransactionInsights()');
+    console.log('   window.getBudgetPerformance({ Food: 600, Entertainment: 200 })');
 }
