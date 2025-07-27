@@ -94,8 +94,17 @@ class ModalManager {
         const config = this.modalConfig.get(modalId);
         if (!config) return;
         
-        const modal = domCache.getElementById(modalId);
-        if (!modal) return;
+        // Clear any cached entry for this modal to ensure fresh reference
+        if (domCache && domCache.clear) {
+            domCache.clear(`#${modalId}`);
+        }
+        
+        // Use direct DOM query instead of cache for modals
+        const modal = document.getElementById(modalId);
+        if (!modal) {
+            debug.warn(`Modal ${modalId} not found in DOM during setupModalListeners`);
+            return;
+        }
         
         // Clean up existing listeners for this modal
         this.cleanupModalListeners(modalId);
@@ -151,7 +160,7 @@ class ModalManager {
     open(modalId, data = {}) {
         this.init(); // Ensure initialized
         
-        const modal = domCache.getElementById(modalId);
+        const modal = document.getElementById(modalId);
         if (!modal) {
             debug.error(`Modal ${modalId} not found`);
             return;
@@ -159,9 +168,18 @@ class ModalManager {
         
         const config = this.modalConfig.get(modalId) || {};
         
+        // Check if close buttons have event listeners, if not re-setup
+        const closeButtons = modal.querySelectorAll('[data-modal-close], .modal__close, .modal-close, .btn--cancel');
+        const hasListeners = this.eventListeners.has(modalId) && this.eventListeners.get(modalId).length > 0;
+        
+        if (closeButtons.length > 0 && !hasListeners) {
+            debug.log(`Re-setting up listeners for modal ${modalId}`);
+            this.setupModalListeners(modalId);
+        }
+        
         // Reset form if configured
         if (config.formId && config.resetFormOnOpen) {
-            const form = domCache.getElementById(config.formId);
+            const form = document.getElementById(config.formId);
             if (form) form.reset();
         }
         
@@ -191,7 +209,7 @@ class ModalManager {
      * Close a modal
      */
     close(modalId) {
-        const modal = domCache.getElementById(modalId);
+        const modal = document.getElementById(modalId);
         if (!modal) return;
         
         const config = this.modalConfig.get(modalId) || {};
@@ -203,7 +221,7 @@ class ModalManager {
         
         // Reset form if configured
         if (config.formId && config.resetFormOnClose) {
-            const form = domCache.getElementById(config.formId);
+            const form = document.getElementById(config.formId);
             if (form) form.reset();
         }
         
