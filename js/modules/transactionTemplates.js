@@ -139,9 +139,11 @@ class TransactionTemplatesUI {
                 document.getElementById('template-name').value = template.name || '';
                 document.getElementById('template-description').value = template.description || '';
                 document.getElementById('template-category').value = template.category || '';
-                document.getElementById('template-amount').value = template.default_amount || '';
-                document.getElementById('template-account').value = template.default_account_id || '';
-                document.getElementById('template-notes').value = template.notes || '';
+                document.getElementById('template-amount').value = template.amount || '';
+                document.getElementById('template-account').value = template.account_id || '';
+                // Extract notes from tags array (first tag used as notes)
+                document.getElementById('template-notes').value = 
+                    (template.tags && template.tags.length > 0) ? template.tags[0] : '';
             }
         } else {
             // Create mode
@@ -164,9 +166,11 @@ class TransactionTemplatesUI {
             name: document.getElementById('template-name').value,
             description: document.getElementById('template-description').value,
             category: document.getElementById('template-category').value,
-            default_amount: parseFloat(document.getElementById('template-amount').value) || null,
-            default_account_id: parseInt(document.getElementById('template-account').value) || null,
-            notes: document.getElementById('template-notes').value
+            amount: parseFloat(document.getElementById('template-amount').value) || null,
+            account_id: parseInt(document.getElementById('template-account').value) || null,
+            // Add notes to tags array if provided
+            tags: document.getElementById('template-notes').value ? 
+                [document.getElementById('template-notes').value] : []
         };
         
         try {
@@ -249,18 +253,18 @@ class TransactionTemplatesUI {
         }
         
         const amountInput = document.getElementById('transaction-amount');
-        if (amountInput && template.default_amount) {
-            amountInput.value = Math.abs(template.default_amount);
+        if (amountInput && template.amount) {
+            amountInput.value = Math.abs(template.amount);
         }
         
         const accountSelect = document.getElementById('transaction-account');
-        if (accountSelect && template.default_account_id) {
-            accountSelect.value = template.default_account_id;
+        if (accountSelect && template.account_id) {
+            accountSelect.value = template.account_id;
         }
         
         const notesInput = document.getElementById('transaction-notes');
-        if (notesInput && template.notes) {
-            notesInput.value = template.notes;
+        if (notesInput && template.tags && template.tags.length > 0) {
+            notesInput.value = template.tags[0]; // Use first tag as notes
         }
         
         // Focus on the date field for quick entry
@@ -328,7 +332,7 @@ class TransactionTemplatesUI {
 
     createTemplateCard(template, isSuggested = false, frequency = null) {
         const icon = getCategoryIcon(template.category);
-        const amount = template.default_amount ? formatCurrency(Math.abs(template.default_amount)) : 'Variable';
+        const amount = template.amount ? formatCurrency(Math.abs(template.amount)) : 'Variable';
         
         return `
             <div class="template-card" data-template-id="${template.id}">
