@@ -5,8 +5,8 @@
  */
 
 import { showError, showSuccess } from './ui.js';
-import transactionManager from './transactionManager.js';
-import { categories } from './categories.js';
+import { transactionManager } from './transactionManager.js';
+import { getCategoriesWithIcons, getCategoryIcon } from './categories.js';
 import { formatCurrency } from './utils.js';
 
 class AdvancedSearch {
@@ -104,9 +104,10 @@ class AdvancedSearch {
         // Populate categories
         if (this.categorySelect) {
             this.categorySelect.innerHTML = '<option value="">— All Categories —</option>';
-            Object.entries(categories).forEach(([key, category]) => {
+            const categoriesWithIcons = getCategoriesWithIcons();
+            categoriesWithIcons.forEach(category => {
                 const option = document.createElement('option');
-                option.value = key;
+                option.value = category.name;
                 option.textContent = `${category.icon} ${category.name}`;
                 this.categorySelect.appendChild(option);
             });
@@ -277,9 +278,10 @@ class AdvancedSearch {
         this.resultsSection.style.display = 'none';
     }
 
-    getCategoryDisplay(categoryKey) {
-        const category = categories[categoryKey];
-        return category ? `${category.icon} ${category.name}` : categoryKey || 'Uncategorized';
+    getCategoryDisplay(categoryName) {
+        if (!categoryName) return 'Uncategorized';
+        const icon = getCategoryIcon(categoryName);
+        return `${icon} ${categoryName}`;
     }
 
     async saveCurrentSearch() {
