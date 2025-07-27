@@ -900,7 +900,8 @@ class TransactionManager {
                     originalBalances.set(`${accountType}_${accountId}`, originalBalance);
                     
                     // Apply balance update with sign convention for debt accounts
-                    // Purchases (negative amounts) increase debt, payments (positive amounts) decrease debt
+                    // All debt amounts are negated: stored negative → positive (increases debt), stored positive → negative (decreases debt)
+                    // This works with frontend sign conversion: user negative → stored positive → negated negative (payment)
                     const newBalance = addMoney(originalBalance, -amount);
                     await database.updateDebtBalance(accountId, newBalance);
                     
