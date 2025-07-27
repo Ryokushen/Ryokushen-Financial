@@ -882,7 +882,7 @@ class TransactionManager {
         const originalBalances = new Map();
         
         // Prepare balance update functions
-        const applyBalanceUpdates = async () => {
+        const applyBalanceUpdates = async (transaction) => {
             for (const update of balanceUpdates) {
                 const { accountType, accountId, amount } = update;
                 
@@ -899,13 +899,21 @@ class TransactionManager {
                     
                     originalBalances.set(`${accountType}_${accountId}`, originalBalance);
                     
-                    // Apply balance update with sign convention for debt accounts
-                    // All debt amounts are negated: stored negative → positive (increases debt), stored positive → negative (decreases debt)
-                    // This works with frontend sign conversion: user negative → stored positive → negated negative (payment)
-                    const newBalance = addMoney(originalBalance, -amount);
+                    // Apply balance update with special handling for "Debt" category
+                    let balanceChange;
+                    if (transaction && transaction.category === "Debt") {
+                        // For "Debt" category, use amount as-is
+                        // Negative payment reduces debt, positive charge increases debt
+                        balanceChange = amount;
+                    } else {
+                        // For other transactions (credit card), negate
+                        // This maintains the existing sign convention for credit card transactions
+                        balanceChange = -amount;
+                    }
+                    const newBalance = addMoney(originalBalance, balanceChange);
                     await database.updateDebtBalance(accountId, newBalance);
                     
-                    debug.log(`Balance updated: ${accountType}_${accountId} from ${originalBalance} to ${newBalance}`);
+                    debug.log(`Balance updated: ${accountType}_${accountId} from ${originalBalance} to ${newBalance} (category: ${transaction?.category || 'N/A'})`);
                 }
             }
         };
@@ -930,8 +938,8 @@ class TransactionManager {
                 // Create transaction first
                 savedTransaction = await this.addTransaction(transactionData);
                 
-                // Then update balances
-                await applyBalanceUpdates();
+                // Then update balances (passing the saved transaction for category checking)
+                await applyBalanceUpdates(savedTransaction);
                 
                 // Dispatch success events
                 window.dispatchEvent(new CustomEvent('transaction:created:withBalance', {
@@ -982,7 +990,7 @@ class TransactionManager {
         const originalBalances = new Map();
         
         // Prepare balance adjustment functions
-        const applyBalanceAdjustments = async () => {
+        const applyBalanceAdjustments = async (transaction) => {
             for (const adjustment of balanceAdjustments) {
                 const { accountType, accountId, reverseAmount, applyAmount } = adjustment;
                 
@@ -999,21 +1007,29 @@ class TransactionManager {
                     
                     originalBalances.set(`${accountType}_${accountId}`, currentBalance);
                     
-                    // Apply adjustment (reverse old + apply new) with debt sign convention
+                    // Apply adjustment (reverse old + apply new) with special handling for "Debt" category
                     let newBalance = currentBalance;
                     if (reverseAmount !== undefined) {
                         // Reverse the original: if original was -amount, reverse with +amount
                         newBalance = addMoney(newBalance, reverseAmount);
                     }
                     if (applyAmount !== undefined) {
-                        // Apply new with sign convention
-                        newBalance = addMoney(newBalance, -applyAmount);
+                        // Apply new with category-specific sign convention
+                        let balanceChange;
+                        if (transaction && transaction.category === "Debt") {
+                            // For "Debt" category, use amount as-is
+                            balanceChange = applyAmount;
+                        } else {
+                            // For other transactions (credit card), negate
+                            balanceChange = -applyAmount;
+                        }
+                        newBalance = addMoney(newBalance, balanceChange);
                     }
                     
                     // Update balance
                     await database.updateDebtBalance(accountId, newBalance);
                     
-                    debug.log(`Balance adjusted: ${accountType}_${accountId} from ${currentBalance} to ${newBalance}`);
+                    debug.log(`Balance adjusted: ${accountType}_${accountId} from ${currentBalance} to ${newBalance} (category: ${transaction?.category || 'N/A'})`);
                 }
             }
         };
@@ -1038,8 +1054,8 @@ class TransactionManager {
                 // Update transaction first
                 updatedTransaction = await this.updateTransaction(id, updates);
                 
-                // Then adjust balances
-                await applyBalanceAdjustments();
+                // Then adjust balances (passing the updated transaction for category checking)
+                await applyBalanceAdjustments(updatedTransaction);
                 
                 // Dispatch success event
                 window.dispatchEvent(new CustomEvent('transaction:updated:withBalance', {
@@ -1103,15 +1119,23 @@ class TransactionManager {
                     
                     originalBalances.set(`${accountType}_${accountId}`, currentBalance);
                     
-                    // Apply reversal - undo the original operation
-                    // Original: balance += -amount
-                    // Reversal: balance -= -amount (which is balance += amount)
-                    const newBalance = addMoney(currentBalance, amount);
+                    // Apply reversal - undo the original operation with category-specific logic
+                    let balanceChange;
+                    if (transaction && transaction.category === "Debt") {
+                        // For "Debt" category, the original operation used amount as-is
+                        // So reversal is simply negating the amount
+                        balanceChange = -amount;
+                    } else {
+                        // For other transactions (credit card), the original operation negated the amount
+                        // So reversal is the amount itself (double negative becomes positive)
+                        balanceChange = amount;
+                    }
+                    const newBalance = addMoney(currentBalance, balanceChange);
                     
                     // Update balance
                     await database.updateDebtBalance(accountId, newBalance);
                     
-                    debug.log(`Balance reversed: ${accountType}_${accountId} from ${currentBalance} to ${newBalance}`);
+                    debug.log(`Balance reversed: ${accountType}_${accountId} from ${currentBalance} to ${newBalance} (category: ${transaction?.category || 'N/A'})`);
                 }
             }
         };

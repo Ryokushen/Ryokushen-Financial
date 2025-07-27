@@ -700,18 +700,6 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
             } else if (transactionData.amount > 0 && !confirm("Positive amount will increase the debt balance (e.g., a charge). Proceed?")) {
                 return;
             }
-            
-            // Apply sign conversion for debt category (same as credit card transactions)
-            // This ensures the backend negation produces the expected result
-            if (transactionData.amount < 0) {
-                // User entered negative (payment) → store as positive
-                transactionData.amount = Math.abs(transactionData.amount);
-                debug.log('Debt payment:', transactionData.amount, 'stored as positive');
-            } else if (transactionData.amount > 0) {
-                // User entered positive (charge) → store as negative
-                transactionData.amount = -Math.abs(transactionData.amount);
-                debug.log('Debt charge:', transactionData.amount, 'stored as negative');
-            }
         } else {
             // Cash transactions need an account
             if (!transactionData.account_id || isNaN(transactionData.account_id)) {
