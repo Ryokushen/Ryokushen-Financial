@@ -1,4 +1,4 @@
-// js/modules/stockApi.js - Finnhub Stock API Integration
+// js/modules/stockApi.js - Finnhub Stock API Integration with Improved Mutual Fund Handling
 
 import { debug } from './debug.js';
 import { withTimeout, retryOperation } from './errorHandler.js';
@@ -86,9 +86,9 @@ export class StockApiService {
         }
       }
 
-      // Skip mutual fund symbols
+      // Skip mutual fund symbols BEFORE making the API call
       if (this.isMutualFundSymbol(symbol)) {
-        debug.info(`Skipping mutual fund ${symbol} - not supported by Finnhub free tier`);
+        debug.log(`Skipping mutual fund ${symbol} - not supported by Finnhub free tier`);
         return null;
       }
 
@@ -121,7 +121,7 @@ export class StockApiService {
         }
         if (response.status === 403) {
           // 403 often means the symbol is not supported (e.g., mutual funds, bonds)
-          debug.info(`Symbol ${symbol} not supported by Finnhub free tier (403 error)`);
+          debug.log(`Symbol ${symbol} not supported by Finnhub (403 error)`);
           return null;
         }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -149,7 +149,12 @@ export class StockApiService {
 
       return result;
     } catch (error) {
-      // Don't log errors for 403s as they're expected for unsupported symbols
+      // Don't log API key configuration errors as errors
+      if (error.message === 'API key not configured') {
+        return null;
+      }
+      
+      // Don't log 403 errors as they're expected for unsupported symbols
       if (!error.message.includes('403')) {
         debug.error(`Error fetching price for ${symbol}:`, error);
       }
@@ -171,8 +176,12 @@ export class StockApiService {
     const stocks = uniqueSymbols.filter(s => !this.isMutualFundSymbol(s));
 
     if (mutualFunds.length > 0) {
-      debug.info(`Skipping ${mutualFunds.length} mutual fund symbols: ${mutualFunds.join(', ')}`);
-      debug.info('Finnhub free tier only supports stock symbols, not mutual funds');
+      debug.log(`Skipping ${mutualFunds.length} mutual fund symbols: ${mutualFunds.join(', ')}`);
+    }
+
+    if (stocks.length === 0) {
+      debug.log('No regular stock symbols to fetch');
+      return results;
     }
 
     debug.log(`Fetching prices for ${stocks.length} stock symbols...`);
@@ -185,8 +194,6 @@ export class StockApiService {
         if (priceData) {
           results.set(symbol, priceData);
           debug.log(`✓ ${symbol}: $${priceData.price}`);
-        } else {
-          debug.log(`✗ ${symbol}: No data available`);
         }
 
         // Rate limiting: wait between requests (except for last one)
@@ -305,7 +312,7 @@ export class HoldingsUpdater {
 
     // Use async lock to prevent race conditions
     return this.updateLock.withLock(async () => {
-      debug.log('Acquired update lock, starting holdings update...');
+      debug.log('Starting holdings update...');
 
       try {
         // Collect all unique stock symbols from all holdings
@@ -316,11 +323,14 @@ export class HoldingsUpdater {
           return { updated: 0, failed: 0, skipped: 0, mutualFunds: 0 };
         }
 
-        // Fetch current prices
+        // Count mutual funds before fetching
+        const mutualFundCount = allSymbols.filter(s => this.stockApi.isMutualFundSymbol(s)).length;
+
+        // Fetch current prices (this will automatically skip mutual funds)
         const priceData = await this.stockApi.fetchMultipleStockPrices(allSymbols);
 
         // Update holdings with new prices
-        const updateResults = await this.updateHoldingsWithPrices(priceData);
+        const updateResults = await this.updateHoldingsWithPrices(priceData, mutualFundCount);
 
         debug.log('Holdings update completed:', updateResults);
         return updateResults;
@@ -333,7 +343,7 @@ export class HoldingsUpdater {
 
   /**
    * Collect all unique stock symbols from investment accounts
-   * @returns {string[]}
+   * @returns {string[]}>
    */
   collectStockSymbols() {
     const symbols = new Set();
@@ -354,13 +364,14 @@ export class HoldingsUpdater {
   /**
    * Update individual holdings with fetched price data
    * @param {Map} priceData - Map of symbol -> price data
+   * @param {number} mutualFundCount - Count of mutual funds detected
    * @returns {Promise<{updated: number, failed: number, skipped: number, mutualFunds: number}>}
    */
-  async updateHoldingsWithPrices(priceData) {
+  async updateHoldingsWithPrices(priceData, mutualFundCount = 0) {
     let updated = 0;
     let failed = 0;
     let skipped = 0;
-    let mutualFunds = 0;
+    let mutualFunds = mutualFundCount;
 
     // Import the database module
     const { default: db } = await import('../database.js');
@@ -385,17 +396,14 @@ export class HoldingsUpdater {
 
           const symbol = holding.symbol.toUpperCase();
 
-          // Track mutual funds separately
+          // Skip mutual funds (already counted)
           if (this.stockApi.isMutualFundSymbol(symbol)) {
-            mutualFunds++;
-            debug.log(`Skipping mutual fund ${symbol}`);
             continue;
           }
 
           const stockData = priceData.get(symbol);
 
           if (!stockData) {
-            debug.log(`No price data available for ${symbol}`);
             skipped++;
             continue;
           }
