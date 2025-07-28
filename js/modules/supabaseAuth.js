@@ -3,116 +3,118 @@ import { debug } from './debug.js';
 import { eventManager } from './eventManager.js';
 
 class SupabaseAuthManager {
-    constructor() {
-        this.user = null;
-        this.session = null;
-        this._supabase = window.supabaseClient; // Private property - use methods instead of direct access
-        this.initialized = false;
-        this.previousUserId = null;
-        this.initPromise = this.initializeAuth();
-    }
+  constructor() {
+    this.user = null;
+    this.session = null;
+    this._supabase = window.supabaseClient; // Private property - use methods instead of direct access
+    this.initialized = false;
+    this.previousUserId = null;
+    this.initPromise = this.initializeAuth();
+  }
 
-    /**
-     * Initialize authentication state
-     */
-    async initializeAuth() {
-        try {
-            // Check for password reset on page load
-            this.handlePasswordReset();
-            
-            // Get initial session
-            const { data: { session } } = await this._supabase.auth.getSession();
-            this.session = session;
-            this.user = session?.user || null;
-            this.initialized = true;
-            
-            // Track previous user ID to detect actual auth changes
-            this.previousUserId = this.user?.id || null;
+  /**
+   * Initialize authentication state
+   */
+  async initializeAuth() {
+    try {
+      // Check for password reset on page load
+      this.handlePasswordReset();
 
-            // Listen for auth changes
-            this._supabase.auth.onAuthStateChange((event, session) => {
-                const currentUserId = session?.user?.id || null;
-                const wasSignedIn = !!this.previousUserId;
-                const isSignedIn = !!currentUserId;
-                const userChanged = currentUserId !== this.previousUserId;
-                
-                // Update session and user
-                this.session = session;
-                this.user = session?.user || null;
-                
-                // Only reload on actual auth state changes
-                if (event === 'SIGNED_OUT' && wasSignedIn) {
-                    // User actually signed out
-                    window.location.reload();
-                } else if (event === 'SIGNED_IN' && !wasSignedIn && isSignedIn) {
-                    // New user signed in (was null, now has user)
-                    window.location.reload();
-                } else if (event === 'SIGNED_IN' && userChanged && wasSignedIn && isSignedIn) {
-                    // Different user signed in (user switch)
-                    window.location.reload();
-                }
-                // Ignore SIGNED_IN events where user hasn't changed (tab/app refocus)
-                
-                // Update tracked user ID
-                this.previousUserId = currentUserId;
-            });
-        } catch (error) {
-            debug.error('Failed to initialize auth:', error);
-            this.initialized = true; // Mark as initialized even on error
+      // Get initial session
+      const {
+        data: { session },
+      } = await this._supabase.auth.getSession();
+      this.session = session;
+      this.user = session?.user || null;
+      this.initialized = true;
+
+      // Track previous user ID to detect actual auth changes
+      this.previousUserId = this.user?.id || null;
+
+      // Listen for auth changes
+      this._supabase.auth.onAuthStateChange((event, session) => {
+        const currentUserId = session?.user?.id || null;
+        const wasSignedIn = !!this.previousUserId;
+        const isSignedIn = !!currentUserId;
+        const userChanged = currentUserId !== this.previousUserId;
+
+        // Update session and user
+        this.session = session;
+        this.user = session?.user || null;
+
+        // Only reload on actual auth state changes
+        if (event === 'SIGNED_OUT' && wasSignedIn) {
+          // User actually signed out
+          window.location.reload();
+        } else if (event === 'SIGNED_IN' && !wasSignedIn && isSignedIn) {
+          // New user signed in (was null, now has user)
+          window.location.reload();
+        } else if (event === 'SIGNED_IN' && userChanged && wasSignedIn && isSignedIn) {
+          // Different user signed in (user switch)
+          window.location.reload();
         }
+        // Ignore SIGNED_IN events where user hasn't changed (tab/app refocus)
+
+        // Update tracked user ID
+        this.previousUserId = currentUserId;
+      });
+    } catch (error) {
+      debug.error('Failed to initialize auth:', error);
+      this.initialized = true; // Mark as initialized even on error
+    }
+  }
+
+  /**
+   * Wait for authentication to be initialized
+   */
+  async waitForInit() {
+    await this.initPromise;
+  }
+
+  /**
+   * Check if user is authenticated
+   */
+  isAuthenticated() {
+    return !!this.session;
+  }
+
+  /**
+   * Check if user's email is verified
+   */
+  isEmailVerified() {
+    return this.user?.email_confirmed_at != null;
+  }
+
+  /**
+   * Handle password reset flow
+   */
+  async handlePasswordReset() {
+    // Check if we're coming from a password reset email
+    const hash = window.location.hash.substring(1);
+
+    // Check for recovery in the hash (e.g., #recovery&access_token=...)
+    if (hash.includes('recovery')) {
+      // Parse the hash parameters
+      const hashParams = new URLSearchParams(hash);
+      const accessToken = hashParams.get('access_token');
+      const type = hashParams.get('type');
+
+      // Show password reset form if we have recovery type or just recovery in URL
+      if ((type === 'recovery' && accessToken) || hash.startsWith('recovery')) {
+        // User clicked password reset link
+        this.showPasswordResetForm();
+        return true; // Indicate that we handled the reset
+      }
     }
 
-    /**
-     * Wait for authentication to be initialized
-     */
-    async waitForInit() {
-        await this.initPromise;
-    }
+    return false; // No password reset to handle
+  }
 
-    /**
-     * Check if user is authenticated
-     */
-    isAuthenticated() {
-        return !!this.session;
-    }
-
-    /**
-     * Check if user's email is verified
-     */
-    isEmailVerified() {
-        return this.user?.email_confirmed_at != null;
-    }
-
-    /**
-     * Handle password reset flow
-     */
-    async handlePasswordReset() {
-        // Check if we're coming from a password reset email
-        const hash = window.location.hash.substring(1);
-        
-        // Check for recovery in the hash (e.g., #recovery&access_token=...)
-        if (hash.includes('recovery')) {
-            // Parse the hash parameters
-            const hashParams = new URLSearchParams(hash);
-            const accessToken = hashParams.get('access_token');
-            const type = hashParams.get('type');
-            
-            // Show password reset form if we have recovery type or just recovery in URL
-            if ((type === 'recovery' && accessToken) || hash.startsWith('recovery')) {
-                // User clicked password reset link
-                this.showPasswordResetForm();
-                return true; // Indicate that we handled the reset
-            }
-        }
-        
-        return false; // No password reset to handle
-    }
-
-    /**
-     * Show password reset form
-     */
-    showPasswordResetForm() {
-        document.body.innerHTML = `
+  /**
+   * Show password reset form
+   */
+  showPasswordResetForm() {
+    document.body.innerHTML = `
             <div class="auth-container">
                 <div class="auth-box">
                     <h1>Reset Your Password</h1>
@@ -266,110 +268,117 @@ class SupabaseAuthManager {
                 }
             </style>
         `;
-        
-        // Add event handler
-        const resetBtn = document.getElementById('reset-password-btn');
-        if (resetBtn) eventManager.addEventListener(resetBtn, 'click', () => this.updatePassword());
-        
-        // Enter key handling
-        document.querySelectorAll('input').forEach(input => {
-            eventManager.addEventListener(input, 'keypress', (e) => {
-                if (e.key === 'Enter') {
-                    this.updatePassword();
-                }
-            });
-        });
+
+    // Add event handler
+    const resetBtn = document.getElementById('reset-password-btn');
+    if (resetBtn) {
+      eventManager.addEventListener(resetBtn, 'click', () => this.updatePassword());
     }
 
-    /**
-     * Update password
-     */
-    async updatePassword() {
-        const newPassword = document.getElementById('new-password').value;
-        const confirmPassword = document.getElementById('confirm-password').value;
-        
-        if (!newPassword || !confirmPassword) {
-            this.showError('Please fill in both password fields');
-            return;
+    // Enter key handling
+    document.querySelectorAll('input').forEach(input => {
+      eventManager.addEventListener(input, 'keypress', e => {
+        if (e.key === 'Enter') {
+          this.updatePassword();
         }
-        
-        if (newPassword !== confirmPassword) {
-            this.showError('Passwords do not match');
-            return;
-        }
-        
-        if (newPassword.length < 8) {
-            this.showError('Password must be at least 8 characters');
-            return;
-        }
-        
-        try {
-            const { error } = await this._supabase.auth.updateUser({
-                password: newPassword
-            });
-            
-            if (error) throw error;
-            
-            this.showSuccess('Password updated successfully! Redirecting to login...');
-            
-            // Redirect to login after 2 seconds
-            setTimeout(() => {
-                window.location.hash = '';
-                window.location.reload();
-            }, 2000);
-            
-        } catch (error) {
-            this.showError(error.message || 'Failed to update password');
-        }
+      });
+    });
+  }
+
+  /**
+   * Update password
+   */
+  async updatePassword() {
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+
+    if (!newPassword || !confirmPassword) {
+      this.showError('Please fill in both password fields');
+      return;
     }
 
-    /**
-     * Request password reset email
-     */
-    async requestPasswordReset(email) {
-        try {
-            // Use window.location.origin to support both local and production environments
-            const baseUrl = window.location.origin;
-            const { error } = await this._supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${baseUrl}/#recovery`,
-            });
-            
-            if (error) throw error;
-            
-            return { success: true, message: 'Password reset email sent! Check your inbox.' };
-        } catch (error) {
-            return { success: false, message: error.message || 'Failed to send reset email' };
-        }
+    if (newPassword !== confirmPassword) {
+      this.showError('Passwords do not match');
+      return;
     }
 
-    /**
-     * Resend verification email
-     */
-    async resendVerificationEmail() {
-        try {
-            const user = this.getUser();
-            if (!user || !user.email) {
-                throw new Error('No user email found');
-            }
-            
-            const { error } = await this._supabase.auth.resend({
-                type: 'signup',
-                email: user.email,
-            });
-            
-            if (error) throw error;
-            
-            return { success: true, message: 'Verification email sent! Check your inbox.' };
-        } catch (error) {
-            return { success: false, message: error.message || 'Failed to send verification email' };
-        }
+    if (newPassword.length < 8) {
+      this.showError('Password must be at least 8 characters');
+      return;
     }
 
-    /**
-     * Show login screen
-     */
-    showAuthScreen() {
-        document.body.innerHTML = `
+    try {
+      const { error } = await this._supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      this.showSuccess('Password updated successfully! Redirecting to login...');
+
+      // Redirect to login after 2 seconds
+      setTimeout(() => {
+        window.location.hash = '';
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      this.showError(error.message || 'Failed to update password');
+    }
+  }
+
+  /**
+   * Request password reset email
+   */
+  async requestPasswordReset(email) {
+    try {
+      // Use window.location.origin to support both local and production environments
+      const baseUrl = window.location.origin;
+      const { error } = await this._supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${baseUrl}/#recovery`,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return { success: true, message: 'Password reset email sent! Check your inbox.' };
+    } catch (error) {
+      return { success: false, message: error.message || 'Failed to send reset email' };
+    }
+  }
+
+  /**
+   * Resend verification email
+   */
+  async resendVerificationEmail() {
+    try {
+      const user = this.getUser();
+      if (!user || !user.email) {
+        throw new Error('No user email found');
+      }
+
+      const { error } = await this._supabase.auth.resend({
+        type: 'signup',
+        email: user.email,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return { success: true, message: 'Verification email sent! Check your inbox.' };
+    } catch (error) {
+      return { success: false, message: error.message || 'Failed to send verification email' };
+    }
+  }
+
+  /**
+   * Show login screen
+   */
+  showAuthScreen() {
+    document.body.innerHTML = `
             <div class="auth-container">
                 <div class="auth-box">
                     <h1>Ryokushen Financial Tracker</h1>
@@ -631,210 +640,225 @@ class SupabaseAuthManager {
                 }
             </style>
         `;
-        
-        this.attachAuthHandlers();
+
+    this.attachAuthHandlers();
+  }
+
+  /**
+   * Attach event handlers
+   */
+  attachAuthHandlers() {
+    // Tab switching
+    document.querySelectorAll('.auth-tab').forEach(tab => {
+      eventManager.addEventListener(tab, 'click', e => {
+        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+
+        e.target.classList.add('active');
+        const targetForm = `${e.target.dataset.tab}-form`;
+        document.getElementById(targetForm).classList.add('active');
+      });
+    });
+
+    // Login
+    const loginBtn = document.getElementById('login-btn');
+    if (loginBtn) {
+      eventManager.addEventListener(loginBtn, 'click', () => this.handleLogin());
     }
 
-    /**
-     * Attach event handlers
-     */
-    attachAuthHandlers() {
-        // Tab switching
-        document.querySelectorAll('.auth-tab').forEach(tab => {
-            eventManager.addEventListener(tab, 'click', (e) => {
-                document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-                
-                e.target.classList.add('active');
-                const targetForm = e.target.dataset.tab + '-form';
-                document.getElementById(targetForm).classList.add('active');
-            });
-        });
+    // Sign up
+    const signupBtn = document.getElementById('signup-btn');
+    if (signupBtn) {
+      eventManager.addEventListener(signupBtn, 'click', () => this.handleSignup());
+    }
 
-        // Login
-        const loginBtn = document.getElementById('login-btn');
-        if (loginBtn) eventManager.addEventListener(loginBtn, 'click', () => this.handleLogin());
-        
-        // Sign up
-        const signupBtn = document.getElementById('signup-btn');
-        if (signupBtn) eventManager.addEventListener(signupBtn, 'click', () => this.handleSignup());
-        
-        // Magic link
-        const magicLinkBtn = document.getElementById('magic-link-btn');
-        if (magicLinkBtn) eventManager.addEventListener(magicLinkBtn, 'click', () => this.handleMagicLink());
-        
-        // Forgot password
-        const forgotPasswordLink = document.getElementById('forgot-password-link');
-        if (forgotPasswordLink) eventManager.addEventListener(forgotPasswordLink, 'click', (e) => {
-            e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            if (email) {
-                this.requestPasswordReset(email).then(result => {
-                    if (result.success) {
-                        this.showSuccess(result.message);
-                    } else {
-                        this.showError(result.message);
-                    }
-                });
+    // Magic link
+    const magicLinkBtn = document.getElementById('magic-link-btn');
+    if (magicLinkBtn) {
+      eventManager.addEventListener(magicLinkBtn, 'click', () => this.handleMagicLink());
+    }
+
+    // Forgot password
+    const forgotPasswordLink = document.getElementById('forgot-password-link');
+    if (forgotPasswordLink) {
+      eventManager.addEventListener(forgotPasswordLink, 'click', e => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        if (email) {
+          this.requestPasswordReset(email).then(result => {
+            if (result.success) {
+              this.showSuccess(result.message);
             } else {
-                this.showError('Please enter your email address first');
+              this.showError(result.message);
             }
-        });
-        
-        // Enter key handling
-        document.querySelectorAll('input').forEach(input => {
-            eventManager.addEventListener(input, 'keypress', (e) => {
-                if (e.key === 'Enter') {
-                    const activeForm = document.querySelector('.auth-form.active');
-                    if (activeForm.id === 'login-form') {
-                        this.handleLogin();
-                    } else {
-                        this.handleSignup();
-                    }
-                }
-            });
-        });
+          });
+        } else {
+          this.showError('Please enter your email address first');
+        }
+      });
     }
 
-    /**
-     * Handle login
-     */
-    async handleLogin() {
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
-        
-        if (!email || !password) {
-            this.showError('Please enter email and password');
-            return;
+    // Enter key handling
+    document.querySelectorAll('input').forEach(input => {
+      eventManager.addEventListener(input, 'keypress', e => {
+        if (e.key === 'Enter') {
+          const activeForm = document.querySelector('.auth-form.active');
+          if (activeForm.id === 'login-form') {
+            this.handleLogin();
+          } else {
+            this.handleSignup();
+          }
         }
-        
-        try {
-            const { data, error } = await this._supabase.auth.signInWithPassword({
-                email,
-                password
-            });
-            
-            if (error) throw error;
-            
-            this.showSuccess('Login successful! Redirecting...');
-            // Auth state change will handle the redirect
-            
-        } catch (error) {
-            this.showError(error.message || 'Login failed');
-        }
+      });
+    });
+  }
+
+  /**
+   * Handle login
+   */
+  async handleLogin() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+
+    if (!email || !password) {
+      this.showError('Please enter email and password');
+      return;
     }
 
-    /**
-     * Handle signup
-     */
-    async handleSignup() {
-        const email = document.getElementById('signup-email').value;
-        const password = document.getElementById('signup-password').value;
-        const confirm = document.getElementById('signup-confirm').value;
-        
-        if (!email || !password) {
-            this.showError('Please enter email and password');
-            return;
-        }
-        
-        if (password !== confirm) {
-            this.showError('Passwords do not match');
-            return;
-        }
-        
-        if (password.length < 8) {
-            this.showError('Password must be at least 8 characters');
-            return;
-        }
-        
-        try {
-            const { data, error } = await this._supabase.auth.signUp({
-                email,
-                password
-            });
-            
-            if (error) throw error;
-            
-            this.showSuccess('Account created! Check your email to verify your account.');
-            
-        } catch (error) {
-            this.showError(error.message || 'Signup failed');
-        }
+    try {
+      const { data, error } = await this._supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      this.showSuccess('Login successful! Redirecting...');
+      // Auth state change will handle the redirect
+    } catch (error) {
+      this.showError(error.message || 'Login failed');
+    }
+  }
+
+  /**
+   * Handle signup
+   */
+  async handleSignup() {
+    const email = document.getElementById('signup-email').value;
+    const password = document.getElementById('signup-password').value;
+    const confirm = document.getElementById('signup-confirm').value;
+
+    if (!email || !password) {
+      this.showError('Please enter email and password');
+      return;
     }
 
-    /**
-     * Handle magic link
-     */
-    async handleMagicLink() {
-        const email = document.getElementById('login-email').value;
-        
-        if (!email) {
-            this.showError('Please enter your email');
-            return;
-        }
-        
-        try {
-            const { error } = await this._supabase.auth.signInWithOtp({
-                email,
-                options: {
-                    emailRedirectTo: 'https://ryokushen-financial.netlify.app'
-                }
-            });
-            
-            if (error) throw error;
-            
-            this.showSuccess('Magic link sent! Check your email.');
-            
-        } catch (error) {
-            this.showError(error.message || 'Failed to send magic link');
-        }
+    if (password !== confirm) {
+      this.showError('Passwords do not match');
+      return;
     }
 
-    /**
-     * Logout
-     */
-    async logout() {
-        try {
-            await this._supabase.auth.signOut();
-        } catch (error) {
-            debug.error('Logout error:', error);
-        }
+    if (password.length < 8) {
+      this.showError('Password must be at least 8 characters');
+      return;
     }
 
-    /**
-     * Get current user
-     */
-    getUser() {
-        return this.user;
+    try {
+      const { data, error } = await this._supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      this.showSuccess('Account created! Check your email to verify your account.');
+    } catch (error) {
+      this.showError(error.message || 'Signup failed');
+    }
+  }
+
+  /**
+   * Handle magic link
+   */
+  async handleMagicLink() {
+    const email = document.getElementById('login-email').value;
+
+    if (!email) {
+      this.showError('Please enter your email');
+      return;
     }
 
-    /**
-     * Show error message
-     */
-    showError(message) {
-        const errorDiv = document.getElementById('auth-error');
-        const successDiv = document.getElementById('auth-success');
-        
-        if (successDiv) successDiv.style.display = 'none';
-        if (errorDiv) {
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-        }
-    }
+    try {
+      const { error } = await this._supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: 'https://ryokushen-financial.netlify.app',
+        },
+      });
 
-    /**
-     * Show success message
-     */
-    showSuccess(message) {
-        const errorDiv = document.getElementById('auth-error');
-        const successDiv = document.getElementById('auth-success');
-        
-        if (errorDiv) errorDiv.style.display = 'none';
-        if (successDiv) {
-            successDiv.textContent = message;
-            successDiv.style.display = 'block';
-        }
+      if (error) {
+        throw error;
+      }
+
+      this.showSuccess('Magic link sent! Check your email.');
+    } catch (error) {
+      this.showError(error.message || 'Failed to send magic link');
     }
+  }
+
+  /**
+   * Logout
+   */
+  async logout() {
+    try {
+      await this._supabase.auth.signOut();
+    } catch (error) {
+      debug.error('Logout error:', error);
+    }
+  }
+
+  /**
+   * Get current user
+   */
+  getUser() {
+    return this.user;
+  }
+
+  /**
+   * Show error message
+   */
+  showError(message) {
+    const errorDiv = document.getElementById('auth-error');
+    const successDiv = document.getElementById('auth-success');
+
+    if (successDiv) {
+      successDiv.style.display = 'none';
+    }
+    if (errorDiv) {
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+    }
+  }
+
+  /**
+   * Show success message
+   */
+  showSuccess(message) {
+    const errorDiv = document.getElementById('auth-error');
+    const successDiv = document.getElementById('auth-success');
+
+    if (errorDiv) {
+      errorDiv.style.display = 'none';
+    }
+    if (successDiv) {
+      successDiv.textContent = message;
+      successDiv.style.display = 'block';
+    }
+  }
 }
 
 // Export instance

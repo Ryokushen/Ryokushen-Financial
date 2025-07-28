@@ -330,3 +330,156 @@ When using voice input for transactions, the system provides:
   - Highlights any missing required fields
   - Options to "Apply" directly or "Edit & Apply" for further modifications
 - **Fallback Mode**: Low-confidence inputs fall back to simple text entry
+
+## Voice System Architecture
+
+### System Overview
+The voice command system in Ryokushen Financial is a sophisticated, multi-component architecture that provides natural language interaction capabilities while maintaining privacy and security standards.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Global Voice Interface                         │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────────────┐    │
+│  │ Voice Button │  │ Keyboard     │  │ Status Indicator   │    │
+│  │ (UI Element) │  │ Shortcut     │  │ (Visual Feedback)  │    │
+│  └──────┬──────┘  └──────┬───────┘  └────────────────────┘    │
+│         └────────────────┬┘                                      │
+└─────────────────────────┼───────────────────────────────────────┘
+                          │
+                    ┌─────▼─────┐
+                    │  Voice    │
+                    │  Input    │◄─── Speech Recognition API
+                    └─────┬─────┘     (Browser Native)
+                          │
+                    ┌─────▼─────┐
+                    │  Voice    │
+                    │ Feedback  │──── Visual Waveform
+                    └─────┬─────┘     Real-time Transcript
+                          │
+                    ┌─────▼─────┐
+                    │  Command  │
+                    │  Engine   │──── Intent Recognition
+                    └─────┬─────┘     Parameter Extraction
+                          │
+         ┌────────────────┴────────────────┐
+         │                                 │
+    ┌────▼────┐                     ┌─────▼─────┐
+    │  Voice  │                     │   Voice   │
+    │Analytics│                     │Navigation │
+    └────┬────┘                     └─────┬─────┘
+         │                                 │
+    ┌────▼────┐                     ┌─────▼─────┐
+    │ Response│                     │  Action   │
+    │ System  │                     │ Processor │
+    └─────────┘                     └───────────┘
+```
+
+### Core Components
+
+#### 1. **GlobalVoiceInterface** (`globalVoiceInterface.js`)
+- Central coordinator for all voice functionality
+- Manages voice button UI and keyboard shortcuts
+- Handles state management (listening/processing)
+- Routes commands to appropriate handlers
+
+#### 2. **VoiceInput** (`voiceInput.js`)
+- Interfaces with browser's Speech Recognition API
+- Manages microphone access and permissions
+- Handles real-time transcription
+- Provides error handling and fallbacks
+
+#### 3. **VoiceCommandEngine** (`voiceCommandEngine.js`)
+- Natural language processing core
+- Intent recognition using pattern matching
+- Parameter extraction from voice commands
+- Confidence scoring for command accuracy
+
+#### 4. **VoiceFeedback** (`voiceFeedback.js`)
+- Visual feedback during voice recognition
+- Real-time waveform animation
+- Transcript display (interim and final)
+- Error message presentation
+
+## NLP Capabilities
+
+### Natural Language Processing Engine
+
+#### Pattern Recognition System
+The NLP engine uses a sophisticated pattern matching system with:
+
+1. **Intent Patterns**
+   - 100+ regex patterns for intent recognition
+   - Weighted confidence scoring
+   - Multiple pattern variations per intent
+
+2. **Parameter Extraction**
+   - Context-aware parameter extraction
+   - Support for multiple parameter types:
+     - Categories
+     - Time periods
+     - Merchants
+     - Amounts
+     - Account references
+
+3. **Confidence Calculation**
+   ```
+   confidence = baseConfidence * matchRatio * contextBoost
+   ```
+   - Base confidence: Intent-specific baseline
+   - Match ratio: Percentage of command matched
+   - Context boost: Additional confidence from context
+
+### NLP Parser Features
+
+#### Amount Recognition
+- **Numeric formats**: "$50", "50 dollars", "fifty dollars"
+- **Written numbers**: "twenty-five", "one hundred"
+- **Decimal support**: "50.25", "twenty-five point five zero"
+- **Range**: 0 to 100,000 (configurable)
+
+#### Date & Time Parsing
+- **Relative dates**: "yesterday", "today", "tomorrow"
+- **Day references**: "last Monday", "next Friday"
+- **Periods**: "X days ago", "last week", "this month"
+- **Ranges**: Date range extraction for reports
+
+#### Category Mapping
+Intelligent category inference from:
+- Direct category mentions
+- Merchant names
+- Transaction descriptions
+- Common patterns
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Microphone Not Working
+- Check browser permissions
+- Verify microphone hardware
+- Try different browser
+- Check privacy settings
+
+#### 2. Commands Not Recognized
+- Speak clearly and naturally
+- Check supported commands
+- Try simpler phrasing
+- Verify language settings
+
+#### 3. No Response
+- Check internet connection
+- Verify browser compatibility
+- Clear browser cache
+- Restart application
+
+### Debug Mode
+Enable debug logging:
+```javascript
+localStorage.setItem('debug', 'true')
+```
+
+View voice logs in console:
+- Command processing
+- Intent recognition
+- Parameter extraction
+- Response generation

@@ -1,44 +1,46 @@
 // js/modules/privacySettings.js - Privacy and Biometric Settings UI
 import { debug } from './debug.js';
 import { showError, announceToScreenReader } from './ui.js';
-import { 
-    isBiometricSupported, 
-    isBiometricRegistered,
-    getBiometricPlatformInfo
+import {
+  isBiometricSupported,
+  isBiometricRegistered,
+  getBiometricPlatformInfo,
 } from './biometricAuth.js';
 import {
-    enableBiometricPrivacy,
-    disableBiometricPrivacy,
-    isBiometricPrivacyEnabled,
-    setMasterPassword,
-    hasMasterPassword
+  enableBiometricPrivacy,
+  disableBiometricPrivacy,
+  isBiometricPrivacyEnabled,
+  setMasterPassword,
+  hasMasterPassword,
 } from './privacy.js';
 import { eventManager } from './eventManager.js';
 
 class PrivacySettingsManager {
-    constructor() {
-        this.isInitialized = false;
+  constructor() {
+    this.isInitialized = false;
+  }
+
+  init() {
+    if (this.isInitialized) {
+      return;
     }
 
-    init() {
-        if (this.isInitialized) return;
-        
-        this.isInitialized = true;
-        this.createSettingsUI();
-        this.attachEventListeners();
-        this.updateUI();
+    this.isInitialized = true;
+    this.createSettingsUI();
+    this.attachEventListeners();
+    this.updateUI();
+  }
+
+  createSettingsUI() {
+    // Find settings container
+    const settingsTab = document.getElementById('settings');
+    if (!settingsTab) {
+      debug.error('Settings tab not found');
+      return;
     }
 
-    createSettingsUI() {
-        // Find settings container
-        const settingsTab = document.getElementById('settings');
-        if (!settingsTab) {
-            debug.error('Settings tab not found');
-            return;
-        }
-
-        // Create privacy settings card after time settings
-        const privacySettingsHTML = `
+    // Create privacy settings card after time settings
+    const privacySettingsHTML = `
             <div class="card" style="margin-top: 20px;">
                 <div class="card__header">
                     <h3>Privacy & Security Settings</h3>
@@ -139,115 +141,125 @@ class PrivacySettingsManager {
             </div>
         `;
 
-        // Find the settings container and append our privacy settings
-        const settingsContainer = settingsTab.querySelector('.settings-container');
-        if (settingsContainer) {
-            settingsContainer.insertAdjacentHTML('beforeend', privacySettingsHTML);
-        }
+    // Find the settings container and append our privacy settings
+    const settingsContainer = settingsTab.querySelector('.settings-container');
+    if (settingsContainer) {
+      settingsContainer.insertAdjacentHTML('beforeend', privacySettingsHTML);
+    }
+  }
+
+  attachEventListeners() {
+    const setupBtn = document.getElementById('setup-biometric-btn');
+    const disableBtn = document.getElementById('disable-biometric-btn');
+    const setPasswordBtn = document.getElementById('set-master-password-btn');
+    const changePasswordBtn = document.getElementById('change-master-password-btn');
+
+    if (setupBtn) {
+      eventManager.addEventListener(setupBtn, 'click', () => this.handleSetupBiometric());
     }
 
-    attachEventListeners() {
-        const setupBtn = document.getElementById('setup-biometric-btn');
-        const disableBtn = document.getElementById('disable-biometric-btn');
-        const setPasswordBtn = document.getElementById('set-master-password-btn');
-        const changePasswordBtn = document.getElementById('change-master-password-btn');
-
-        if (setupBtn) {
-            eventManager.addEventListener(setupBtn, 'click', () => this.handleSetupBiometric());
-        }
-
-        if (disableBtn) {
-            eventManager.addEventListener(disableBtn, 'click', () => this.handleDisableBiometric());
-        }
-
-        if (setPasswordBtn) {
-            eventManager.addEventListener(setPasswordBtn, 'click', () => this.handleSetMasterPassword());
-        }
-
-        if (changePasswordBtn) {
-            eventManager.addEventListener(changePasswordBtn, 'click', () => this.handleChangeMasterPassword());
-        }
+    if (disableBtn) {
+      eventManager.addEventListener(disableBtn, 'click', () => this.handleDisableBiometric());
     }
 
-    async handleSetupBiometric() {
-        const setupBtn = document.getElementById('setup-biometric-btn');
-        if (!setupBtn) return;
-
-        try {
-            setupBtn.disabled = true;
-            setupBtn.textContent = 'Setting up...';
-
-            await enableBiometricPrivacy();
-            
-            announceToScreenReader('Biometric authentication has been enabled successfully');
-            this.showSuccessMessage('Biometric authentication enabled! It will be required when disabling privacy mode.');
-            this.updateUI();
-        } catch (error) {
-            debug.error('Biometric setup failed:', error);
-            showError(error.message || 'Failed to set up biometric authentication');
-        } finally {
-            setupBtn.disabled = false;
-            setupBtn.textContent = 'Set Up Biometric Authentication';
-        }
+    if (setPasswordBtn) {
+      eventManager.addEventListener(setPasswordBtn, 'click', () => this.handleSetMasterPassword());
     }
 
-    handleDisableBiometric() {
-        if (confirm('Are you sure you want to disable biometric authentication for privacy mode?')) {
-            try {
-                disableBiometricPrivacy();
-                announceToScreenReader('Biometric authentication has been disabled');
-                this.showSuccessMessage('Biometric authentication disabled.');
-                this.updateUI();
-            } catch (error) {
-                debug.error('Failed to disable biometric:', error);
-                showError('Failed to disable biometric authentication');
-            }
-        }
+    if (changePasswordBtn) {
+      eventManager.addEventListener(changePasswordBtn, 'click', () =>
+        this.handleChangeMasterPassword()
+      );
+    }
+  }
+
+  async handleSetupBiometric() {
+    const setupBtn = document.getElementById('setup-biometric-btn');
+    if (!setupBtn) {
+      return;
     }
 
-    async handleSetMasterPassword() {
-        const password = await this.promptForNewPassword('Set Master Password');
-        if (password) {
-            try {
-                await setMasterPassword(password);
-                this.showSuccessMessage('Master password has been set successfully!');
-                this.updateUI();
-            } catch (error) {
-                showError(error.message || 'Failed to set master password');
-            }
-        }
-    }
+    try {
+      setupBtn.disabled = true;
+      setupBtn.textContent = 'Setting up...';
 
-    async handleChangeMasterPassword() {
-        const password = await this.promptForNewPassword('Change Master Password', true);
-        if (password) {
-            try {
-                await setMasterPassword(password);
-                this.showSuccessMessage('Master password has been changed successfully!');
-                this.updateUI();
-            } catch (error) {
-                showError(error.message || 'Failed to change master password');
-            }
-        }
-    }
+      await enableBiometricPrivacy();
 
-    async promptForNewPassword(title, requireOldPassword = false) {
-        return new Promise((resolve) => {
-            const modal = document.createElement('div');
-            modal.className = 'password-setup-modal-overlay';
-            modal.innerHTML = `
+      announceToScreenReader('Biometric authentication has been enabled successfully');
+      this.showSuccessMessage(
+        'Biometric authentication enabled! It will be required when disabling privacy mode.'
+      );
+      this.updateUI();
+    } catch (error) {
+      debug.error('Biometric setup failed:', error);
+      showError(error.message || 'Failed to set up biometric authentication');
+    } finally {
+      setupBtn.disabled = false;
+      setupBtn.textContent = 'Set Up Biometric Authentication';
+    }
+  }
+
+  handleDisableBiometric() {
+    if (confirm('Are you sure you want to disable biometric authentication for privacy mode?')) {
+      try {
+        disableBiometricPrivacy();
+        announceToScreenReader('Biometric authentication has been disabled');
+        this.showSuccessMessage('Biometric authentication disabled.');
+        this.updateUI();
+      } catch (error) {
+        debug.error('Failed to disable biometric:', error);
+        showError('Failed to disable biometric authentication');
+      }
+    }
+  }
+
+  async handleSetMasterPassword() {
+    const password = await this.promptForNewPassword('Set Master Password');
+    if (password) {
+      try {
+        await setMasterPassword(password);
+        this.showSuccessMessage('Master password has been set successfully!');
+        this.updateUI();
+      } catch (error) {
+        showError(error.message || 'Failed to set master password');
+      }
+    }
+  }
+
+  async handleChangeMasterPassword() {
+    const password = await this.promptForNewPassword('Change Master Password', true);
+    if (password) {
+      try {
+        await setMasterPassword(password);
+        this.showSuccessMessage('Master password has been changed successfully!');
+        this.updateUI();
+      } catch (error) {
+        showError(error.message || 'Failed to change master password');
+      }
+    }
+  }
+
+  async promptForNewPassword(title, requireOldPassword = false) {
+    return new Promise(resolve => {
+      const modal = document.createElement('div');
+      modal.className = 'password-setup-modal-overlay';
+      modal.innerHTML = `
                 <div class="password-setup-modal">
                     <div class="password-setup-modal-header">
                         <h3>${title}</h3>
                         <button class="password-setup-modal-close">&times;</button>
                     </div>
                     <div class="password-setup-modal-body">
-                        ${requireOldPassword ? `
+                        ${
+                          requireOldPassword
+                            ? `
                             <div class="form-group">
                                 <label for="old-password">Current Password:</label>
                                 <input type="password" id="old-password" class="form-control" placeholder="Enter current password">
                             </div>
-                        ` : ''}
+                        `
+                            : ''
+                        }
                         <div class="form-group">
                             <label for="new-password">New Password:</label>
                             <input type="password" id="new-password" class="form-control" placeholder="At least 6 characters">
@@ -268,168 +280,188 @@ class PrivacySettingsManager {
                 </div>
             `;
 
-            document.body.appendChild(modal);
+      document.body.appendChild(modal);
 
-            const newPasswordInput = modal.querySelector('#new-password');
-            const confirmPasswordInput = modal.querySelector('#confirm-password');
-            const errorDiv = modal.querySelector('.password-setup-error');
-            const submitBtn = modal.querySelector('.password-setup-submit');
-            const cancelBtn = modal.querySelector('.password-setup-cancel');
-            const closeBtn = modal.querySelector('.password-setup-modal-close');
+      const newPasswordInput = modal.querySelector('#new-password');
+      const confirmPasswordInput = modal.querySelector('#confirm-password');
+      const errorDiv = modal.querySelector('.password-setup-error');
+      const submitBtn = modal.querySelector('.password-setup-submit');
+      const cancelBtn = modal.querySelector('.password-setup-cancel');
+      const closeBtn = modal.querySelector('.password-setup-modal-close');
 
-            const cleanup = () => {
-                modal.remove();
-            };
+      const cleanup = () => {
+        modal.remove();
+      };
 
-            const handleSubmit = async () => {
-                const newPassword = newPasswordInput.value;
-                const confirmPassword = confirmPasswordInput.value;
+      const handleSubmit = async () => {
+        const newPassword = newPasswordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
 
-                // Reset error
-                errorDiv.style.display = 'none';
-                errorDiv.textContent = '';
+        // Reset error
+        errorDiv.style.display = 'none';
+        errorDiv.textContent = '';
 
-                // Validate
-                if (newPassword.length < 6) {
-                    errorDiv.textContent = 'Password must be at least 6 characters';
-                    errorDiv.style.display = 'block';
-                    return;
-                }
+        // Validate
+        if (newPassword.length < 6) {
+          errorDiv.textContent = 'Password must be at least 6 characters';
+          errorDiv.style.display = 'block';
+          return;
+        }
 
-                if (newPassword !== confirmPassword) {
-                    errorDiv.textContent = 'Passwords do not match';
-                    errorDiv.style.display = 'block';
-                    return;
-                }
+        if (newPassword !== confirmPassword) {
+          errorDiv.textContent = 'Passwords do not match';
+          errorDiv.style.display = 'block';
+          return;
+        }
 
-                cleanup();
-                resolve(newPassword);
-            };
+        cleanup();
+        resolve(newPassword);
+      };
 
-            const handleCancel = () => {
-                cleanup();
-                resolve(null);
-            };
+      const handleCancel = () => {
+        cleanup();
+        resolve(null);
+      };
 
-            // Event listeners
-            eventManager.addEventListener(submitBtn, 'click', handleSubmit);
-            eventManager.addEventListener(cancelBtn, 'click', handleCancel);
-            eventManager.addEventListener(closeBtn, 'click', handleCancel);
-            
-            // Enter key handling
-            [newPasswordInput, confirmPasswordInput].forEach(input => {
-                eventManager.addEventListener(input, 'keypress', (e) => {
-                    if (e.key === 'Enter') handleSubmit();
-                });
-            });
+      // Event listeners
+      eventManager.addEventListener(submitBtn, 'click', handleSubmit);
+      eventManager.addEventListener(cancelBtn, 'click', handleCancel);
+      eventManager.addEventListener(closeBtn, 'click', handleCancel);
 
-            eventManager.addEventListener(modal, 'click', (e) => {
-                if (e.target === modal) handleCancel();
-            });
-
-            // Focus first input
-            if (requireOldPassword) {
-                modal.querySelector('#old-password').focus();
-            } else {
-                newPasswordInput.focus();
-            }
+      // Enter key handling
+      [newPasswordInput, confirmPasswordInput].forEach(input => {
+        eventManager.addEventListener(input, 'keypress', e => {
+          if (e.key === 'Enter') {
+            handleSubmit();
+          }
         });
+      });
+
+      eventManager.addEventListener(modal, 'click', e => {
+        if (e.target === modal) {
+          handleCancel();
+        }
+      });
+
+      // Focus first input
+      if (requireOldPassword) {
+        modal.querySelector('#old-password').focus();
+      } else {
+        newPasswordInput.focus();
+      }
+    });
+  }
+
+  updateUI() {
+    // Update master password status
+    const passwordStatus = document.getElementById('master-password-status');
+    const setPasswordBtn = document.getElementById('set-master-password-btn');
+    const changePasswordBtn = document.getElementById('change-master-password-btn');
+
+    if (passwordStatus) {
+      const hasPassword = hasMasterPassword();
+      if (hasPassword) {
+        passwordStatus.textContent = 'Set';
+        passwordStatus.className = 'status-value enabled';
+        if (setPasswordBtn) {
+          setPasswordBtn.style.display = 'none';
+        }
+        if (changePasswordBtn) {
+          changePasswordBtn.style.display = 'inline-block';
+        }
+      } else {
+        passwordStatus.textContent = 'Not Set';
+        passwordStatus.className = 'status-value disabled';
+        if (setPasswordBtn) {
+          setPasswordBtn.style.display = 'inline-block';
+        }
+        if (changePasswordBtn) {
+          changePasswordBtn.style.display = 'none';
+        }
+      }
     }
 
-    updateUI() {
-        // Update master password status
-        const passwordStatus = document.getElementById('master-password-status');
-        const setPasswordBtn = document.getElementById('set-master-password-btn');
-        const changePasswordBtn = document.getElementById('change-master-password-btn');
+    // Update biometric status
+    const supportStatus = document.getElementById('biometric-support-status');
+    const currentStatus = document.getElementById('biometric-status');
+    const platformInfo = document.getElementById('biometric-platform-info');
+    const setupBtn = document.getElementById('setup-biometric-btn');
+    const disableBtn = document.getElementById('disable-biometric-btn');
+    const setupGuide = document.getElementById('biometric-setup-guide');
 
-        if (passwordStatus) {
-            const hasPassword = hasMasterPassword();
-            if (hasPassword) {
-                passwordStatus.textContent = 'Set';
-                passwordStatus.className = 'status-value enabled';
-                if (setPasswordBtn) setPasswordBtn.style.display = 'none';
-                if (changePasswordBtn) changePasswordBtn.style.display = 'inline-block';
-            } else {
-                passwordStatus.textContent = 'Not Set';
-                passwordStatus.className = 'status-value disabled';
-                if (setPasswordBtn) setPasswordBtn.style.display = 'inline-block';
-                if (changePasswordBtn) changePasswordBtn.style.display = 'none';
-            }
-        }
-
-        // Update biometric status
-        const supportStatus = document.getElementById('biometric-support-status');
-        const currentStatus = document.getElementById('biometric-status');
-        const platformInfo = document.getElementById('biometric-platform-info');
-        const setupBtn = document.getElementById('setup-biometric-btn');
-        const disableBtn = document.getElementById('disable-biometric-btn');
-        const setupGuide = document.getElementById('biometric-setup-guide');
-
-        if (!supportStatus || !currentStatus) return;
-
-        const isSupported = isBiometricSupported();
-        const isRegistered = isBiometricRegistered();
-        const isEnabled = isBiometricPrivacyEnabled();
-
-        // Update support status
-        if (isSupported) {
-            supportStatus.textContent = 'Supported';
-            supportStatus.className = 'status-value supported';
-            
-            // Show platform-specific info
-            const platformData = getBiometricPlatformInfo();
-            if (platformInfo && platformData.supportedMethods.length > 0) {
-                platformInfo.style.display = 'block';
-                platformInfo.querySelector('.form-text').textContent = 
-                    `Your ${platformData.platformName} device supports: ${platformData.supportedMethods.join(', ')}`;
-            }
-        } else {
-            supportStatus.textContent = 'Not Supported';
-            supportStatus.className = 'status-value unsupported';
-            
-            if (platformInfo) {
-                platformInfo.style.display = 'block';
-                platformInfo.querySelector('.form-text').textContent = 
-                    'Biometric authentication requires a compatible device and HTTPS connection.';
-            }
-        }
-
-        // Update current status
-        if (!isSupported) {
-            currentStatus.textContent = 'Unavailable';
-            currentStatus.className = 'status-value disabled';
-        } else if (isEnabled) {
-            currentStatus.textContent = 'Enabled';
-            currentStatus.className = 'status-value enabled';
-        } else {
-            currentStatus.textContent = 'Disabled';
-            currentStatus.className = 'status-value disabled';
-        }
-
-        // Show/hide buttons
-        if (setupBtn && disableBtn) {
-            if (isSupported && !isEnabled) {
-                setupBtn.style.display = 'inline-block';
-                disableBtn.style.display = 'none';
-                if (setupGuide) setupGuide.style.display = 'block';
-            } else if (isSupported && isEnabled) {
-                setupBtn.style.display = 'none';
-                disableBtn.style.display = 'inline-block';
-                if (setupGuide) setupGuide.style.display = 'none';
-            } else {
-                setupBtn.style.display = 'none';
-                disableBtn.style.display = 'none';
-                if (setupGuide) setupGuide.style.display = 'none';
-            }
-        }
+    if (!supportStatus || !currentStatus) {
+      return;
     }
 
-    showSuccessMessage(message) {
-        // Create a temporary success message
-        const messageEl = document.createElement('div');
-        messageEl.className = 'success-message';
-        messageEl.textContent = message;
-        messageEl.style.cssText = `
+    const isSupported = isBiometricSupported();
+    const isRegistered = isBiometricRegistered();
+    const isEnabled = isBiometricPrivacyEnabled();
+
+    // Update support status
+    if (isSupported) {
+      supportStatus.textContent = 'Supported';
+      supportStatus.className = 'status-value supported';
+
+      // Show platform-specific info
+      const platformData = getBiometricPlatformInfo();
+      if (platformInfo && platformData.supportedMethods.length > 0) {
+        platformInfo.style.display = 'block';
+        platformInfo.querySelector('.form-text').textContent =
+          `Your ${platformData.platformName} device supports: ${platformData.supportedMethods.join(', ')}`;
+      }
+    } else {
+      supportStatus.textContent = 'Not Supported';
+      supportStatus.className = 'status-value unsupported';
+
+      if (platformInfo) {
+        platformInfo.style.display = 'block';
+        platformInfo.querySelector('.form-text').textContent =
+          'Biometric authentication requires a compatible device and HTTPS connection.';
+      }
+    }
+
+    // Update current status
+    if (!isSupported) {
+      currentStatus.textContent = 'Unavailable';
+      currentStatus.className = 'status-value disabled';
+    } else if (isEnabled) {
+      currentStatus.textContent = 'Enabled';
+      currentStatus.className = 'status-value enabled';
+    } else {
+      currentStatus.textContent = 'Disabled';
+      currentStatus.className = 'status-value disabled';
+    }
+
+    // Show/hide buttons
+    if (setupBtn && disableBtn) {
+      if (isSupported && !isEnabled) {
+        setupBtn.style.display = 'inline-block';
+        disableBtn.style.display = 'none';
+        if (setupGuide) {
+          setupGuide.style.display = 'block';
+        }
+      } else if (isSupported && isEnabled) {
+        setupBtn.style.display = 'none';
+        disableBtn.style.display = 'inline-block';
+        if (setupGuide) {
+          setupGuide.style.display = 'none';
+        }
+      } else {
+        setupBtn.style.display = 'none';
+        disableBtn.style.display = 'none';
+        if (setupGuide) {
+          setupGuide.style.display = 'none';
+        }
+      }
+    }
+  }
+
+  showSuccessMessage(message) {
+    // Create a temporary success message
+    const messageEl = document.createElement('div');
+    messageEl.className = 'success-message';
+    messageEl.textContent = message;
+    messageEl.style.cssText = `
             position: fixed;
             top: 20px;
             right: 20px;
@@ -442,13 +474,13 @@ class PrivacySettingsManager {
             animation: slideIn 0.3s ease-out;
         `;
 
-        document.body.appendChild(messageEl);
+    document.body.appendChild(messageEl);
 
-        setTimeout(() => {
-            messageEl.style.animation = 'slideOut 0.3s ease-out';
-            setTimeout(() => messageEl.remove(), 300);
-        }, 3000);
-    }
+    setTimeout(() => {
+      messageEl.style.animation = 'slideOut 0.3s ease-out';
+      setTimeout(() => messageEl.remove(), 300);
+    }, 3000);
+  }
 }
 
 // Create and export singleton instance
@@ -456,7 +488,7 @@ export const privacySettings = new PrivacySettingsManager();
 
 // Initialize when settings tab is opened
 export function initializePrivacySettings() {
-    privacySettings.init();
+  privacySettings.init();
 }
 
 // Add CSS for animations and modal

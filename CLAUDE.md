@@ -68,11 +68,51 @@ npm run test:watch       # Run tests in watch mode
 npm run test:coverage    # Run tests with coverage report
 ```
 
+### Code Quality & Formatting
+```bash
+npm run lint              # Check code for linting issues
+npm run lint:fix          # Auto-fix linting issues where possible
+npm run format            # Format code with Prettier
+npm run format:check      # Check if code formatting is correct
+```
+
 ### Git Operations
 ```bash
 git status
 git log --oneline -10
 git diff
 ```
+
+## Code Quality Standards
+
+### ESLint and Prettier Configuration
+The project uses ESLint for code quality and Prettier for consistent formatting:
+
+- **ESLint Configuration**: `eslint.config.js` - Modern flat config format
+- **Prettier Configuration**: `.prettierrc` - Consistent code formatting
+- **Key Standards**:
+  - ES2022+ syntax with module imports
+  - Single quotes for strings
+  - 2-space indentation
+  - 100 character line width
+  - Semicolons required
+  - Browser-first environment (window, document, etc.)
+
+### Running Code Quality Checks
+```bash
+# Before committing code, always run:
+npm run lint:fix    # Fix auto-fixable issues
+npm run format      # Format all code consistently
+
+# To check without making changes:
+npm run lint        # Check for linting issues only
+npm run format:check # Check formatting without changing files
+```
+
+### ESLint Rules Summary
+- **Errors**: Critical issues that must be fixed (syntax errors, undefined variables)
+- **Warnings**: Code quality suggestions (unused variables, prefer const, etc.)
+- **Auto-fixable**: Most formatting and simple style issues
+- **Manual fixes**: Logic errors, unused variables, accessibility issues
 
 [Rest of the existing content remains unchanged]

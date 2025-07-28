@@ -14,134 +14,137 @@ import { debug } from './debug.js';
 import { reapplyPrivacy } from './privacy.js';
 import { eventManager } from './eventManager.js';
 
-
 export function announceToScreenReader(message) {
-    const announcer = document.getElementById("screen-reader-announcer");
-    if (announcer) {
-        announcer.textContent = message;
-        setTimeout(() => {
-            announcer.textContent = "";
-        }, 1000);
-    }
+  const announcer = document.getElementById('screen-reader-announcer');
+  if (announcer) {
+    announcer.textContent = message;
+    setTimeout(() => {
+      announcer.textContent = '';
+    }, 1000);
+  }
 }
 
 export function showError(message) {
-    debug.error(message);
-    announceToScreenReader("Error: " + message);
+  debug.error(message);
+  announceToScreenReader(`Error: ${message}`);
 
-    const errorBanner = document.getElementById("error-banner");
-    const errorMessage = document.getElementById("error-message");
+  const errorBanner = document.getElementById('error-banner');
+  const errorMessage = document.getElementById('error-message');
 
-    if (errorBanner && errorMessage) {
-        errorMessage.textContent = message;
-        errorBanner.style.display = 'flex';
+  if (errorBanner && errorMessage) {
+    errorMessage.textContent = message;
+    errorBanner.style.display = 'flex';
 
-        setTimeout(() => {
-            if (errorBanner.style.display === 'flex') {
-                errorBanner.style.display = 'none';
-            }
-        }, 5000);
-    }
+    setTimeout(() => {
+      if (errorBanner.style.display === 'flex') {
+        errorBanner.style.display = 'none';
+      }
+    }, 5000);
+  }
 }
 
 export function showSuccess(message) {
-    debug.log(message);
-    announceToScreenReader(message);
+  debug.log(message);
+  announceToScreenReader(message);
 }
 
 // Listen for custom show-error events from formUtils
-eventManager.addEventListener(window, 'show-error', (e) => {
-    if (e.detail && e.detail.message) {
-        showError(e.detail.message);
-    }
+eventManager.addEventListener(window, 'show-error', e => {
+  if (e.detail && e.detail.message) {
+    showError(e.detail.message);
+  }
 });
 
 export function switchTab(tabName, appState) {
-    // Force scroll to top when switching tabs
-    window.scrollTo(0, 0);
-    
-    // Prevent any focus that might cause scrolling
-    if (document.activeElement && document.activeElement !== document.body) {
-        document.activeElement.blur();
-    }
+  // Force scroll to top when switching tabs
+  window.scrollTo(0, 0);
 
-    const tabContents = document.querySelectorAll(".tab-content");
-    tabContents.forEach(content => {
-        content.classList.remove("active");
-    });
+  // Prevent any focus that might cause scrolling
+  if (document.activeElement && document.activeElement !== document.body) {
+    document.activeElement.blur();
+  }
 
-    const tabButtons = document.querySelectorAll(".tab-btn");
-    tabButtons.forEach(button => {
-        button.classList.remove("active");
-    });
+  const tabContents = document.querySelectorAll('.tab-content');
+  tabContents.forEach(content => {
+    content.classList.remove('active');
+  });
 
-    const selectedTab = document.getElementById(tabName);
-    if (selectedTab) {
-        selectedTab.classList.add("active");
-    }
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  tabButtons.forEach(button => {
+    button.classList.remove('active');
+  });
 
-    const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
-    if (activeButton) {
-        activeButton.classList.add("active");
-    }
+  const selectedTab = document.getElementById(tabName);
+  if (selectedTab) {
+    selectedTab.classList.add('active');
+  }
 
-    tabButtons.forEach(button => {
-        button.classList.remove("active");
-        button.setAttribute('aria-selected', 'false');  // Add
-    });
-    if (activeButton) {
-        activeButton.classList.add("active");
-        activeButton.setAttribute('aria-selected', 'true');  // Add
-    }
+  const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
+  if (activeButton) {
+    activeButton.classList.add('active');
+  }
 
-    announceToScreenReader(`Switched to ${tabName} tab`);
+  tabButtons.forEach(button => {
+    button.classList.remove('active');
+    button.setAttribute('aria-selected', 'false'); // Add
+  });
+  if (activeButton) {
+    activeButton.classList.add('active');
+    activeButton.setAttribute('aria-selected', 'true'); // Add
+  }
 
-    // CORRECTED LOGIC: Call specific renderers for each tab
-    if (tabName === "dashboard") {
-        // Call only what's needed for the dashboard
-        updateDashboard(appState);
-        createCharts(appState);
-    } else if (tabName === "accounts") {
-        Accounts.renderCashAccounts(appState);
-    } else if (tabName === "transactions") {
-        Transactions.renderTransactions(appState);
-    } else if (tabName === "investments") {
-        Investments.renderInvestmentAccountsEnhanced(appState);
-        Savings.renderSavingsGoals(appState);
-    } else if (tabName === "debt") {
-        Debt.renderDebtAccounts(appState);
-        // Note: Debt charts are created by createCharts() in charts.js
-    } else if (tabName === "recurring") {
-        Recurring.renderRecurringBills(appState);
-    } else if (tabName === "performance") {
-        // Initialize performance dashboard when switching to it
-        try {
-            // Use dynamic import to avoid circular dependency issues
-            import('./performanceDashboard.js').then(module => {
-                if (module.performanceDashboard) {
-                    module.performanceDashboard.init();
-                }
-            }).catch(error => {
-                debug.error('Failed to load performance dashboard module:', error);
-            });
-        } catch (error) {
-            debug.error('Failed to initialize performance dashboard:', error);
-        }
-    } else if (tabName === "settings") {
-        // Initialize privacy settings when switching to settings tab
-        import('./privacySettings.js').then(module => {
-            if (module.initializePrivacySettings) {
-                setTimeout(() => module.initializePrivacySettings(), 100);
-            }
-        }).catch(error => {
-            debug.error('Failed to load privacy settings module:', error);
+  announceToScreenReader(`Switched to ${tabName} tab`);
+
+  // CORRECTED LOGIC: Call specific renderers for each tab
+  if (tabName === 'dashboard') {
+    // Call only what's needed for the dashboard
+    updateDashboard(appState);
+    createCharts(appState);
+  } else if (tabName === 'accounts') {
+    Accounts.renderCashAccounts(appState);
+  } else if (tabName === 'transactions') {
+    Transactions.renderTransactions(appState);
+  } else if (tabName === 'investments') {
+    Investments.renderInvestmentAccountsEnhanced(appState);
+    Savings.renderSavingsGoals(appState);
+  } else if (tabName === 'debt') {
+    Debt.renderDebtAccounts(appState);
+    // Note: Debt charts are created by createCharts() in charts.js
+  } else if (tabName === 'recurring') {
+    Recurring.renderRecurringBills(appState);
+  } else if (tabName === 'performance') {
+    // Initialize performance dashboard when switching to it
+    try {
+      // Use dynamic import to avoid circular dependency issues
+      import('./performanceDashboard.js')
+        .then(module => {
+          if (module.performanceDashboard) {
+            module.performanceDashboard.init();
+          }
+        })
+        .catch(error => {
+          debug.error('Failed to load performance dashboard module:', error);
         });
+    } catch (error) {
+      debug.error('Failed to initialize performance dashboard:', error);
     }
-    
-    // Reapply privacy mode after rendering new content
-    setTimeout(() => {
-        reapplyPrivacy();
-    }, 100);
+  } else if (tabName === 'settings') {
+    // Initialize privacy settings when switching to settings tab
+    import('./privacySettings.js')
+      .then(module => {
+        if (module.initializePrivacySettings) {
+          setTimeout(() => module.initializePrivacySettings(), 100);
+        }
+      })
+      .catch(error => {
+        debug.error('Failed to load privacy settings module:', error);
+      });
+  }
+
+  // Reapply privacy mode after rendering new content
+  setTimeout(() => {
+    reapplyPrivacy();
+  }, 100);
 }
 
 // Use modalManager for all modal operations

@@ -1,5 +1,5 @@
 // js/modules/ruleTemplates.js
-import { debug } from './debug.js'
+import { debug } from './debug.js';
 
 export const ruleTemplates = {
   // Common subscription services
@@ -20,14 +20,14 @@ export const ruleTemplates = {
             type: 'OR',
             items: [
               { field: 'description', operator: 'contains', value: 'NETFLIX' },
-              { field: 'description', operator: 'contains', value: 'NETFLIX.COM' }
-            ]
+              { field: 'description', operator: 'contains', value: 'NETFLIX.COM' },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Entertainment' },
-            { type: 'add_tag', value: 'subscription' }
-          ]
-        }
+            { type: 'add_tag', value: 'subscription' },
+          ],
+        },
       },
       {
         id: 'spotify',
@@ -42,14 +42,14 @@ export const ruleTemplates = {
             type: 'OR',
             items: [
               { field: 'description', operator: 'contains', value: 'SPOTIFY' },
-              { field: 'description', operator: 'contains', value: 'SPOTIFY USA' }
-            ]
+              { field: 'description', operator: 'contains', value: 'SPOTIFY USA' },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Entertainment' },
-            { type: 'add_tag', value: 'subscription' }
-          ]
-        }
+            { type: 'add_tag', value: 'subscription' },
+          ],
+        },
       },
       {
         id: 'amazon_prime',
@@ -64,14 +64,14 @@ export const ruleTemplates = {
             type: 'AND',
             items: [
               { field: 'description', operator: 'contains', value: 'AMAZON' },
-              { field: 'description', operator: 'contains', value: 'PRIME' }
-            ]
+              { field: 'description', operator: 'contains', value: 'PRIME' },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Shopping' },
-            { type: 'add_tag', value: 'subscription' }
-          ]
-        }
+            { type: 'add_tag', value: 'subscription' },
+          ],
+        },
       },
       {
         id: 'gym_membership',
@@ -89,16 +89,16 @@ export const ruleTemplates = {
               { field: 'description', operator: 'contains', value: '24 HOUR FITNESS' },
               { field: 'description', operator: 'contains', value: 'LA FITNESS' },
               { field: 'description', operator: 'contains', value: 'EQUINOX' },
-              { field: 'description', operator: 'contains', value: 'ANYTIME FITNESS' }
-            ]
+              { field: 'description', operator: 'contains', value: 'ANYTIME FITNESS' },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Healthcare' },
-            { type: 'add_tag', value: 'fitness' }
-          ]
-        }
-      }
-    ]
+            { type: 'add_tag', value: 'fitness' },
+          ],
+        },
+      },
+    ],
   },
 
   // Income categorization
@@ -125,16 +125,16 @@ export const ruleTemplates = {
                   { field: 'description', operator: 'contains', value: 'PAYROLL' },
                   { field: 'description', operator: 'contains', value: 'SALARY' },
                   { field: 'description', operator: 'contains', value: 'DIRECT DEP' },
-                  { field: 'description', operator: 'contains', value: 'DIRECT DEPOSIT' }
-                ]
-              }
-            ]
+                  { field: 'description', operator: 'contains', value: 'DIRECT DEPOSIT' },
+                ],
+              },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Income' },
-            { type: 'add_tag', value: 'salary' }
-          ]
-        }
+            { type: 'add_tag', value: 'salary' },
+          ],
+        },
       },
       {
         id: 'tax_refund',
@@ -154,18 +154,18 @@ export const ruleTemplates = {
                 items: [
                   { field: 'description', operator: 'contains', value: 'IRS' },
                   { field: 'description', operator: 'contains', value: 'TAX REF' },
-                  { field: 'description', operator: 'contains', value: 'STATE TAX' }
-                ]
-              }
-            ]
+                  { field: 'description', operator: 'contains', value: 'STATE TAX' },
+                ],
+              },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Misc' },
-            { type: 'add_tag', value: 'tax-refund' }
-          ]
-        }
-      }
-    ]
+            { type: 'add_tag', value: 'tax-refund' },
+          ],
+        },
+      },
+    ],
   },
 
   // Dining and restaurants
@@ -191,14 +191,14 @@ export const ruleTemplates = {
               { field: 'description', operator: 'contains', value: 'TACO BELL' },
               { field: 'description', operator: 'contains', value: 'WENDY' },
               { field: 'description', operator: 'contains', value: 'CHICK-FIL-A' },
-              { field: 'description', operator: 'contains', value: 'CHIPOTLE' }
-            ]
+              { field: 'description', operator: 'contains', value: 'CHIPOTLE' },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Dining' },
-            { type: 'add_tag', value: 'fast-food' }
-          ]
-        }
+            { type: 'add_tag', value: 'fast-food' },
+          ],
+        },
       },
       {
         id: 'food_delivery',
@@ -216,14 +216,14 @@ export const ruleTemplates = {
               { field: 'description', operator: 'contains', value: 'UBER EATS' },
               { field: 'description', operator: 'contains', value: 'GRUBHUB' },
               { field: 'description', operator: 'contains', value: 'POSTMATES' },
-              { field: 'description', operator: 'contains', value: 'SEAMLESS' }
-            ]
+              { field: 'description', operator: 'contains', value: 'SEAMLESS' },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Dining' },
-            { type: 'add_tag', value: 'delivery' }
-          ]
-        }
+            { type: 'add_tag', value: 'delivery' },
+          ],
+        },
       },
       {
         id: 'coffee_shops',
@@ -240,16 +240,16 @@ export const ruleTemplates = {
               { field: 'description', operator: 'contains', value: 'STARBUCKS' },
               { field: 'description', operator: 'contains', value: 'DUNKIN' },
               { field: 'description', operator: 'contains', value: 'PEET' },
-              { field: 'description', operator: 'contains', value: 'COFFEE' }
-            ]
+              { field: 'description', operator: 'contains', value: 'COFFEE' },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Dining' },
-            { type: 'add_tag', value: 'coffee' }
-          ]
-        }
-      }
-    ]
+            { type: 'add_tag', value: 'coffee' },
+          ],
+        },
+      },
+    ],
   },
 
   // Transportation
@@ -275,14 +275,14 @@ export const ruleTemplates = {
               { field: 'description', operator: 'contains', value: 'MOBIL' },
               { field: 'description', operator: 'contains', value: 'BP GAS' },
               { field: 'description', operator: 'contains', value: 'ARCO' },
-              { field: 'description', operator: 'contains', value: 'COSTCO GAS' }
-            ]
+              { field: 'description', operator: 'contains', value: 'COSTCO GAS' },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Transportation' },
-            { type: 'add_tag', value: 'gas' }
-          ]
-        }
+            { type: 'add_tag', value: 'gas' },
+          ],
+        },
       },
       {
         id: 'rideshare',
@@ -299,14 +299,14 @@ export const ruleTemplates = {
               { field: 'description', operator: 'contains', value: 'UBER' },
               { field: 'description', operator: 'contains', value: 'LYFT' },
               { field: 'description', operator: 'contains', value: 'TAXI' },
-              { field: 'description', operator: 'contains', value: 'CAB' }
-            ]
+              { field: 'description', operator: 'contains', value: 'CAB' },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Transportation' },
-            { type: 'add_tag', value: 'rideshare' }
-          ]
-        }
+            { type: 'add_tag', value: 'rideshare' },
+          ],
+        },
       },
       {
         id: 'parking',
@@ -322,16 +322,16 @@ export const ruleTemplates = {
             items: [
               { field: 'description', operator: 'contains', value: 'PARKING' },
               { field: 'description', operator: 'contains', value: 'PARK' },
-              { field: 'description', operator: 'contains', value: 'METER' }
-            ]
+              { field: 'description', operator: 'contains', value: 'METER' },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Transportation' },
-            { type: 'add_tag', value: 'parking' }
-          ]
-        }
-      }
-    ]
+            { type: 'add_tag', value: 'parking' },
+          ],
+        },
+      },
+    ],
   },
 
   // Shopping
@@ -357,14 +357,14 @@ export const ruleTemplates = {
               { field: 'description', operator: 'contains', value: 'TRADER JOE' },
               { field: 'description', operator: 'contains', value: 'WALMART' },
               { field: 'description', operator: 'contains', value: 'TARGET' },
-              { field: 'description', operator: 'contains', value: 'ALBERTSONS' }
-            ]
+              { field: 'description', operator: 'contains', value: 'ALBERTSONS' },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Groceries' },
-            { type: 'add_tag', value: 'groceries' }
-          ]
-        }
+            { type: 'add_tag', value: 'groceries' },
+          ],
+        },
       },
       {
         id: 'online_shopping',
@@ -384,23 +384,19 @@ export const ruleTemplates = {
                   { field: 'description', operator: 'contains', value: 'AMAZON' },
                   { field: 'description', operator: 'contains', value: 'EBAY' },
                   { field: 'description', operator: 'contains', value: 'ETSY' },
-                  { field: 'description', operator: 'contains', value: 'PAYPAL' }
-                ]
+                  { field: 'description', operator: 'contains', value: 'PAYPAL' },
+                ],
               },
               {
                 type: 'NOT',
-                items: [
-                  { field: 'description', operator: 'contains', value: 'PRIME' }
-                ]
-              }
-            ]
+                items: [{ field: 'description', operator: 'contains', value: 'PRIME' }],
+              },
+            ],
           },
-          actions: [
-            { type: 'set_category', value: 'Shopping' }
-          ]
-        }
-      }
-    ]
+          actions: [{ type: 'set_category', value: 'Shopping' }],
+        },
+      },
+    ],
   },
 
   // Utilities and bills
@@ -424,14 +420,14 @@ export const ruleTemplates = {
               { field: 'description', operator: 'contains', value: 'AT&T' },
               { field: 'description', operator: 'contains', value: 'T-MOBILE' },
               { field: 'description', operator: 'contains', value: 'SPRINT' },
-              { field: 'description', operator: 'contains', value: 'CRICKET' }
-            ]
+              { field: 'description', operator: 'contains', value: 'CRICKET' },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Utilities' },
-            { type: 'add_tag', value: 'phone' }
-          ]
-        }
+            { type: 'add_tag', value: 'phone' },
+          ],
+        },
       },
       {
         id: 'internet',
@@ -449,14 +445,14 @@ export const ruleTemplates = {
               { field: 'description', operator: 'contains', value: 'XFINITY' },
               { field: 'description', operator: 'contains', value: 'SPECTRUM' },
               { field: 'description', operator: 'contains', value: 'COX COMM' },
-              { field: 'description', operator: 'contains', value: 'FIOS' }
-            ]
+              { field: 'description', operator: 'contains', value: 'FIOS' },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Utilities' },
-            { type: 'add_tag', value: 'internet' }
-          ]
-        }
+            { type: 'add_tag', value: 'internet' },
+          ],
+        },
       },
       {
         id: 'electricity',
@@ -474,18 +470,18 @@ export const ruleTemplates = {
               { field: 'description', operator: 'contains', value: 'POWER' },
               { field: 'description', operator: 'contains', value: 'EDISON' },
               { field: 'description', operator: 'contains', value: 'PG&E' },
-              { field: 'description', operator: 'contains', value: 'DUKE ENERGY' }
-            ]
+              { field: 'description', operator: 'contains', value: 'DUKE ENERGY' },
+            ],
           },
           actions: [
             { type: 'set_category', value: 'Utilities' },
-            { type: 'add_tag', value: 'electricity' }
-          ]
-        }
-      }
-    ]
-  }
-}
+            { type: 'add_tag', value: 'electricity' },
+          ],
+        },
+      },
+    ],
+  },
+};
 
 // Get all template categories
 export function getTemplateCategories() {
@@ -493,103 +489,117 @@ export function getTemplateCategories() {
     id: key,
     name: ruleTemplates[key].name,
     description: ruleTemplates[key].description,
-    templateCount: ruleTemplates[key].templates.length
-  }))
+    templateCount: ruleTemplates[key].templates.length,
+  }));
 }
 
 // Get templates for a specific category
 export function getTemplatesByCategory(categoryId) {
-  const category = ruleTemplates[categoryId]
-  if (!category) return []
-  
-  return category.templates
+  const category = ruleTemplates[categoryId];
+  if (!category) {
+    return [];
+  }
+
+  return category.templates;
 }
 
 // Get a specific template
 export function getTemplate(categoryId, templateId) {
-  const category = ruleTemplates[categoryId]
-  if (!category) return null
-  
-  return category.templates.find(t => t.id === templateId)
+  const category = ruleTemplates[categoryId];
+  if (!category) {
+    return null;
+  }
+
+  return category.templates.find(t => t.id === templateId);
 }
 
 // Create a rule from template
 export function createRuleFromTemplate(categoryId, templateId, customizations = {}) {
-  const template = getTemplate(categoryId, templateId)
-  if (!template) return null
-  
+  const template = getTemplate(categoryId, templateId);
+  if (!template) {
+    return null;
+  }
+
   // Deep clone the rule and apply customizations
-  const rule = JSON.parse(JSON.stringify(template.rule))
-  
+  const rule = JSON.parse(JSON.stringify(template.rule));
+
   // Apply any customizations
-  if (customizations.name) rule.name = customizations.name
-  if (customizations.description) rule.description = customizations.description
-  if (typeof customizations.enabled !== 'undefined') rule.enabled = customizations.enabled
-  if (typeof customizations.priority !== 'undefined') rule.priority = customizations.priority
-  
-  return rule
+  if (customizations.name) {
+    rule.name = customizations.name;
+  }
+  if (customizations.description) {
+    rule.description = customizations.description;
+  }
+  if (typeof customizations.enabled !== 'undefined') {
+    rule.enabled = customizations.enabled;
+  }
+  if (typeof customizations.priority !== 'undefined') {
+    rule.priority = customizations.priority;
+  }
+
+  return rule;
 }
 
 // Get suggested templates based on transaction patterns
 export async function getSuggestedTemplates(transactions) {
-  const suggestions = []
-  const seenMerchants = new Set()
-  
+  const suggestions = [];
+  const seenMerchants = new Set();
+
   // Analyze transactions for patterns
   transactions.forEach(transaction => {
-    const desc = transaction.description?.toUpperCase() || ''
-    
+    const desc = transaction.description?.toUpperCase() || '';
+
     // Check for subscription patterns
     if (desc.includes('NETFLIX') && !seenMerchants.has('netflix')) {
-      seenMerchants.add('netflix')
+      seenMerchants.add('netflix');
       suggestions.push({
         category: 'subscriptions',
         templateId: 'netflix',
         confidence: 0.9,
-        reason: 'Found Netflix transactions'
-      })
+        reason: 'Found Netflix transactions',
+      });
     }
-    
+
     if (desc.includes('SPOTIFY') && !seenMerchants.has('spotify')) {
-      seenMerchants.add('spotify')
+      seenMerchants.add('spotify');
       suggestions.push({
         category: 'subscriptions',
         templateId: 'spotify',
         confidence: 0.9,
-        reason: 'Found Spotify transactions'
-      })
+        reason: 'Found Spotify transactions',
+      });
     }
-    
+
     // Check for gas station patterns
-    const gasStations = ['SHELL', 'CHEVRON', 'EXXON', 'MOBIL', 'BP GAS']
+    const gasStations = ['SHELL', 'CHEVRON', 'EXXON', 'MOBIL', 'BP GAS'];
     for (const station of gasStations) {
       if (desc.includes(station) && !seenMerchants.has('gas')) {
-        seenMerchants.add('gas')
+        seenMerchants.add('gas');
         suggestions.push({
           category: 'transportation',
           templateId: 'gas_stations',
           confidence: 0.85,
-          reason: 'Found gas station transactions'
-        })
-        break
+          reason: 'Found gas station transactions',
+        });
+        break;
       }
     }
-    
+
     // Check for food delivery
-    const deliveryApps = ['DOORDASH', 'UBER EATS', 'GRUBHUB']
+    const deliveryApps = ['DOORDASH', 'UBER EATS', 'GRUBHUB'];
     for (const app of deliveryApps) {
       if (desc.includes(app) && !seenMerchants.has('delivery')) {
-        seenMerchants.add('delivery')
+        seenMerchants.add('delivery');
         suggestions.push({
           category: 'dining',
           templateId: 'food_delivery',
           confidence: 0.9,
-          reason: 'Found food delivery transactions'
-        })
-        break
+          reason: 'Found food delivery transactions',
+        });
+        break;
       }
     }
-  })
-  
-  return suggestions
+  });
+
+  return suggestions;
 }
