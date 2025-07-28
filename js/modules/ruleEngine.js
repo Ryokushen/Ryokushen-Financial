@@ -9,9 +9,12 @@ class RuleEngine {
       // String operators
       contains: (value, target) => {
         if (typeof value !== 'string' || typeof target !== 'string') {
+          debug.log(`RuleEngine: contains operator - value or target not string. value: ${typeof value}, target: ${typeof target}`);
           return false;
         }
-        return value.toLowerCase().includes(target.toLowerCase());
+        const result = value.toLowerCase().includes(target.toLowerCase());
+        debug.log(`RuleEngine: contains check - "${value}" contains "${target}"? ${result}`);
+        return result;
       },
 
       equals: (value, target) => {
@@ -187,9 +190,10 @@ class RuleEngine {
       `RuleEngine: Evaluating condition - field: ${field}, operator: ${operator}, value: ${value}, fieldValue: ${fieldValue}`
     );
 
+    // Special handling for empty/null/undefined values
     if (fieldValue === undefined || fieldValue === null) {
-      debug.log(`RuleEngine: Field value is undefined/null for field: ${field}`);
-      return false;
+      fieldValue = ''; // Treat null/undefined as empty string
+      debug.log(`RuleEngine: Field value is undefined/null for field: ${field}, treating as empty string`);
     }
 
     // Handle case sensitivity for string comparisons
