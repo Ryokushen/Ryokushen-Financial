@@ -57,6 +57,20 @@ export class StockApiService {
   }
 
   /**
+   * Check if a symbol is a mutual fund (5 letters ending in X)
+   * @param {string} symbol
+   * @returns {boolean}
+   */
+  isMutualFundSymbol(symbol) {
+    if (!symbol || typeof symbol !== 'string') {
+      return false;
+    }
+    const trimmed = symbol.trim().toUpperCase();
+    // Mutual funds typically have 5 letters and end with X
+    return trimmed.length === 5 && trimmed.endsWith('X');
+  }
+
+  /**
    * Fetch current stock price for a symbol
    * @param {string} symbol - Stock symbol (e.g., 'AAPL', 'MSFT')
    * @returns {Promise<{symbol: string, price: number, change: number} | null>}
@@ -70,6 +84,12 @@ export class StockApiService {
         if (!this.isConfigured) {
           throw new Error('API key not configured');
         }
+      }
+
+      // Skip mutual fund symbols
+      if (this.isMutualFundSymbol(symbol)) {
+        debug.info(`Skipping mutual fund ${symbol} - not supported by Finnhub free tier`);
+        return null;
       }
 
       // Check cache first
@@ -99,6 +119,11 @@ export class StockApiService {
           await this.delay(1000);
           return this.fetchStockPrice(symbol);
         }
+        if (response.status === 403) {
+          // 403 often means the symbol is not supported (e.g., mutual funds, bonds)
+          debug.info(`Symbol ${symbol} not supported by Finnhub free tier (403 error)`);
+          return null;
+        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
@@ -124,7 +149,10 @@ export class StockApiService {
 
       return result;
     } catch (error) {
-      debug.error(`Error fetching price for ${symbol}:`, error);
+      // Don't log errors for 403s as they're expected for unsupported symbols
+      if (!error.message.includes('403')) {
+        debug.error(`Error fetching price for ${symbol}:`, error);
+      }
       return null;
     }
   }
@@ -138,10 +166,19 @@ export class StockApiService {
     const results = new Map();
     const uniqueSymbols = [...new Set(symbols.map(s => s.toUpperCase()))];
 
-    debug.log(`Fetching prices for ${uniqueSymbols.length} symbols...`);
+    // Separate mutual funds from stocks
+    const mutualFunds = uniqueSymbols.filter(s => this.isMutualFundSymbol(s));
+    const stocks = uniqueSymbols.filter(s => !this.isMutualFundSymbol(s));
 
-    for (let i = 0; i < uniqueSymbols.length; i++) {
-      const symbol = uniqueSymbols[i];
+    if (mutualFunds.length > 0) {
+      debug.info(`Skipping ${mutualFunds.length} mutual fund symbols: ${mutualFunds.join(', ')}`);
+      debug.info('Finnhub free tier only supports stock symbols, not mutual funds');
+    }
+
+    debug.log(`Fetching prices for ${stocks.length} stock symbols...`);
+
+    for (let i = 0; i < stocks.length; i++) {
+      const symbol = stocks[i];
 
       try {
         const priceData = await this.fetchStockPrice(symbol);
@@ -153,7 +190,7 @@ export class StockApiService {
         }
 
         // Rate limiting: wait between requests (except for last one)
-        if (i < uniqueSymbols.length - 1) {
+        if (i < stocks.length - 1) {
           await this.delay(this.rateLimitDelay);
         }
       } catch (error) {
@@ -222,6 +259,16 @@ export class StockApiService {
 
     return true;
   }
+
+  /**
+   * Check if a symbol is supported by Finnhub free tier
+   * @param {string} symbol
+   * @returns {boolean}
+   */
+  isSupportedSymbol(symbol) {
+    // Valid format and not a mutual fund
+    return this.isValidSymbol(symbol) && !this.isMutualFundSymbol(symbol);
+  }
 }
 
 /**
@@ -243,7 +290,7 @@ export class HoldingsUpdater {
 
   /**
    * Update all holdings with current stock prices
-   * @returns {Promise<{updated: number, failed: number, skipped: number}>}
+   * @returns {Promise<{updated: number, failed: number, skipped: number, mutualFunds: number}>}
    */
   async updateAllHoldings() {
     // Ensure we have a valid stock API service
@@ -266,7 +313,7 @@ export class HoldingsUpdater {
 
         if (allSymbols.length === 0) {
           debug.log('No stock symbols found to update');
-          return { updated: 0, failed: 0, skipped: 0 };
+          return { updated: 0, failed: 0, skipped: 0, mutualFunds: 0 };
         }
 
         // Fetch current prices
@@ -307,12 +354,13 @@ export class HoldingsUpdater {
   /**
    * Update individual holdings with fetched price data
    * @param {Map} priceData - Map of symbol -> price data
-   * @returns {Promise<{updated: number, failed: number, skipped: number}>}
+   * @returns {Promise<{updated: number, failed: number, skipped: number, mutualFunds: number}>}
    */
   async updateHoldingsWithPrices(priceData) {
     let updated = 0;
     let failed = 0;
     let skipped = 0;
+    let mutualFunds = 0;
 
     // Import the database module
     const { default: db } = await import('../database.js');
@@ -336,6 +384,14 @@ export class HoldingsUpdater {
           }
 
           const symbol = holding.symbol.toUpperCase();
+
+          // Track mutual funds separately
+          if (this.stockApi.isMutualFundSymbol(symbol)) {
+            mutualFunds++;
+            debug.log(`Skipping mutual fund ${symbol}`);
+            continue;
+          }
+
           const stockData = priceData.get(symbol);
 
           if (!stockData) {
@@ -414,7 +470,7 @@ export class HoldingsUpdater {
     // Wait for all account updates to complete
     await Promise.all(accountUpdatePromises);
 
-    return { updated, failed, skipped };
+    return { updated, failed, skipped, mutualFunds };
   }
 
   /**
@@ -435,6 +491,11 @@ export class HoldingsUpdater {
 
     if (!this.stockApi.isValidSymbol(symbol)) {
       debug.log(`Invalid symbol: ${symbol}`);
+      return false;
+    }
+
+    if (this.stockApi.isMutualFundSymbol(symbol)) {
+      debug.info(`Cannot update mutual fund ${symbol} - not supported by Finnhub free tier`);
       return false;
     }
 
