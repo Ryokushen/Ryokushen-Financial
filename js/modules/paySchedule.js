@@ -44,7 +44,7 @@ class PaySchedule {
       window.dispatchEvent(
         new CustomEvent('paySchedule:created', {
           detail: { schedule: newSchedule },
-        });
+        })
       );
 
       return newSchedule;
@@ -83,7 +83,7 @@ class PaySchedule {
       window.dispatchEvent(
         new CustomEvent('paySchedule:deleted', {
           detail: { scheduleId: id },
-        });
+        })
       );
 
       return true;
@@ -221,7 +221,7 @@ class PaySchedule {
         payDates.push({
           date: new Date(nextPayDate),
           amount: schedule.amount,
-          schedule
+          schedule,
         });
       }
 

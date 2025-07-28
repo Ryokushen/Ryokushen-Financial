@@ -21,7 +21,9 @@ export const rulesUI = {
     eventManager.addEventListener(window, 'rule:updated', () => this.refresh());
     eventManager.addEventListener(window, 'rule:deleted', () => this.refresh());
     eventManager.addEventListener(window, 'rule:matched', event => {
-      if (event.detail) {this.handleRuleMatch(event.detail)}
+      if (event.detail) {
+        this.handleRuleMatch(event.detail);
+      }
     });
 
     // Listen for transaction changes to update statistics
@@ -36,89 +38,100 @@ export const rulesUI = {
   setupEventListeners() {
     // Add rule button
     const addRuleBtn = document.getElementById('add-rule-btn');
-    if (addRuleBtn)
-      {eventManager.addEventListener(addRuleBtn, 'click', () => {
-      this.openRuleModal()
-    })}
+    if (addRuleBtn) {
+      eventManager.addEventListener(addRuleBtn, 'click', () => {
+        this.openRuleModal();
+      });
+    }
 
     // Reprocess all transactions button
     const reprocessBtn = document.getElementById('reprocess-all-btn');
-    if (reprocessBtn)
-      {eventManager.addEventListener(reprocessBtn, 'click', async () => {
-      if (confirm('This will apply all active rules to ALL transactions, including already categorized ones. Continue?')) {
-        try {
-          announceToScreenReader('Processing all transactions...')
-          
-          // Get all transactions
-          const transactions = await database.getTransactions()
-          let processed = 0
-          let matched = 0
-          
-          // Process each transaction with force flag
-          for (const transaction of transactions) {
-            const result = await window.smartRules.processTransaction(transaction, true) // force = true
-            processed++
-            if (result?.matched) {
-              matched++
+    if (reprocessBtn) {
+      eventManager.addEventListener(reprocessBtn, 'click', async () => {
+        if (
+          confirm(
+            'This will apply all active rules to ALL transactions, including already categorized ones. Continue?'
+          )
+        ) {
+          try {
+            announceToScreenReader('Processing all transactions...');
+
+            // Get all transactions
+            const transactions = await database.getTransactions();
+            let processed = 0;
+            let matched = 0;
+
+            // Process each transaction with force flag
+            for (const transaction of transactions) {
+              const result = await window.smartRules.processTransaction(transaction, true); // force = true
+              processed++;
+              if (result?.matched) {
+                matched++;
+              }
             }
+
+            showSuccess(`Processed ${processed} transactions. ${matched} matched rules.`);
+
+            // Refresh the transaction list
+            window.dispatchEvent(new CustomEvent('transactions:refresh'));
+          } catch (error) {
+            showError(`Failed to reprocess transactions: ${error.message}`);
+            debug.error('RulesUI: Error reprocessing transactions', error);
           }
-          
-          showSuccess(`Processed ${processed} transactions. ${matched} matched rules.`)
-          
-          // Refresh the transaction list
-          window.dispatchEvent(new CustomEvent('transactions:refresh'))
-          
-        } catch (error) {
-          showError('Failed to reprocess transactions: ' + error.message)
-          debug.error('RulesUI: Error reprocessing transactions', error)
         }
-      }
-    })}
+      });
+    }
 
     // Modal controls
     const closeRuleModalBtn = document.getElementById('close-rule-modal');
-    if (closeRuleModalBtn)
-      {eventManager.addEventListener(closeRuleModalBtn, 'click', () => {
-      closeModal('rule-modal')
-    })}
+    if (closeRuleModalBtn) {
+      eventManager.addEventListener(closeRuleModalBtn, 'click', () => {
+        closeModal('rule-modal');
+      });
+    }
 
     const cancelRuleBtn = document.getElementById('cancel-rule-btn');
-    if (cancelRuleBtn)
-      {eventManager.addEventListener(cancelRuleBtn, 'click', () => {
-      closeModal('rule-modal')
-    })}
+    if (cancelRuleBtn) {
+      eventManager.addEventListener(cancelRuleBtn, 'click', () => {
+        closeModal('rule-modal');
+      });
+    }
 
     // Form submission
     const ruleForm = document.getElementById('rule-form');
-    if (ruleForm)
+    if (ruleForm) {
       eventManager.addEventListener(ruleForm, 'submit', e => {
         this.handleRuleSubmit(e);
       });
+    }
 
     // Apply rules button
     const applyRulesBtn = document.getElementById('apply-rules-btn');
-    if (applyRulesBtn)
-      {eventManager.addEventListener(applyRulesBtn, 'click', () => {
-      this.applyRulesToExisting()
-    })}
+    if (applyRulesBtn) {
+      eventManager.addEventListener(applyRulesBtn, 'click', () => {
+        this.applyRulesToExisting();
+      });
+    }
 
     // Field change handler for dynamic operators
     const conditionField = document.querySelector('.condition-field');
-    if (conditionField)
+    if (conditionField) {
       eventManager.addEventListener(conditionField, 'change', e => {
         this.updateOperatorOptions(e.target);
       });
+    }
 
     // Action type change handler
     const ruleActionType = document.getElementById('rule-action-type');
-    if (ruleActionType)
+    if (ruleActionType) {
       eventManager.addEventListener(ruleActionType, 'change', e => {
         this.updateActionValueInput(e.target.value);
       });
+    }
 
     // Rule list delegation
     const rulesListContainer = document.getElementById('rules-list-container');
-    if (rulesListContainer)
+    if (rulesListContainer) {
       eventManager.addEventListener(rulesListContainer, 'click', e => {
         if (e.target.classList.contains('rule-toggle-switch')) {
           const ruleId = e.target.closest('.rule-item').dataset.ruleId;
@@ -131,12 +144,15 @@ export const rulesUI = {
           this.deleteRule(ruleId);
         }
       });
+    }
   },
 
   async loadRulesList() {
     try {
       const { data: rules, error } = await smartRules.getAllRules();
-      if (error) {throw error}
+      if (error) {
+        throw error;
+      }
 
       // Calculate dynamic match counts for each rule
       const transactions = await database.getTransactions();
@@ -169,7 +185,9 @@ export const rulesUI = {
 
   renderRulesList(rules) {
     const container = document.getElementById('rules-list-container');
-    if (!container) {return}
+    if (!container) {
+      return;
+    }
 
     if (rules.length === 0) {
       container.innerHTML = `
@@ -235,7 +253,9 @@ export const rulesUI = {
   },
 
   renderConditions(conditions, depth = 0) {
-    if (!conditions) {return ''}
+    if (!conditions) {
+      return '';
+    }
 
     // Handle single condition
     if (conditions.field) {
@@ -248,7 +268,9 @@ export const rulesUI = {
     }
 
     // Handle condition group
-    if (!conditions.items || conditions.items.length === 0) {return ''}
+    if (!conditions.items || conditions.items.length === 0) {
+      return '';
+    }
 
     const renderedItems = conditions.items
       .map((item, index) => {
@@ -319,7 +341,9 @@ export const rulesUI = {
   },
 
   renderActions(actions) {
-    if (!actions || actions.length === 0) {return ''}
+    if (!actions || actions.length === 0) {
+      return '';
+    }
 
     return actions
       .map(
@@ -543,17 +567,18 @@ export const rulesUI = {
       closeModal('rule-modal');
       showSuccess(ruleId ? 'Rule updated successfully' : 'Rule created successfully');
       this.refresh();
-
     } catch (error) {
       debug.error('RulesUI: Error saving rule', error);
-      showError(`Failed to save rule: ${  error.message}`);
+      showError(`Failed to save rule: ${error.message}`);
     }
   },
 
   async toggleRule(ruleId, enabled) {
     try {
       const result = await smartRules.toggleRule(ruleId, enabled);
-      if (result.error) {throw result.error}
+      if (result.error) {
+        throw result.error;
+      }
 
       announceToScreenReader(`Rule ${enabled ? 'enabled' : 'disabled'}`);
     } catch (error) {
@@ -563,7 +588,9 @@ export const rulesUI = {
       const toggle = document.querySelector(
         `.rule-item[data-rule-id="${ruleId}"] .rule-toggle-switch`
       );
-      if (toggle) {toggle.checked = !enabled}
+      if (toggle) {
+        toggle.checked = !enabled;
+      }
     }
   },
 
@@ -578,7 +605,9 @@ export const rulesUI = {
 
     try {
       const result = await smartRules.deleteRule(ruleId);
-      if (result.error) {throw result.error}
+      if (result.error) {
+        throw result.error;
+      }
 
       showSuccess('Rule deleted successfully');
       this.refresh();
@@ -600,7 +629,9 @@ export const rulesUI = {
 
       const result = await smartRules.applyRulesToExistingTransactions();
 
-      if (result.error) {throw result.error}
+      if (result.error) {
+        throw result.error;
+      }
 
       showSuccess(
         `Applied rules to ${result.processed} transactions. ${result.matched} matches found.`
@@ -608,7 +639,6 @@ export const rulesUI = {
 
       // Refresh transactions view if visible
       window.dispatchEvent(new CustomEvent('transactions:updated'));
-      
     } catch (error) {
       debug.error('RulesUI: Error applying rules', error);
       showError('Failed to apply rules');
@@ -647,7 +677,7 @@ export const rulesUI = {
               newCategory: categoryAction.value,
               ruleName: data.rule.name,
             },
-          });
+          })
         );
 
         // Show success message

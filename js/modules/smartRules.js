@@ -8,6 +8,10 @@ class SmartRules {
     this.rules = [];
     this.rulesLoaded = false;
     this.cache = new Map();
+    this.config = {
+      processAllNewTransactions: true, // Process all new transactions regardless of initial category
+      skipCategorized: true, // Skip already categorized transactions (except Uncategorized)
+    };
   }
 
   async init() {
@@ -20,7 +24,10 @@ class SmartRules {
       eventManager.addEventListener(window, 'transaction:added', async event => {
         debug.log('SmartRules: Received transaction:added event', event.detail);
         if (event.detail && event.detail.transaction) {
-          await this.processTransaction(event.detail.transaction);
+          // For new transactions, check config to determine if we should force processing
+          const isNewTransaction = true; // transaction:added always indicates a new transaction
+          const forceProcess = isNewTransaction && this.config.processAllNewTransactions;
+          await this.processTransaction(event.detail.transaction, forceProcess, isNewTransaction);
         } else {
           console.error(
             'SmartRules: Invalid event detail structure for transaction:added',
@@ -37,6 +44,95 @@ class SmartRules {
             'SmartRules: Invalid event detail structure for transaction:updated',
             event.detail
           );
+        }
+      });
+
+      // Listen for batch events from imports and bulk operations
+      eventManager.addEventListener(window, 'transaction:added:batch', async event => {
+        debug.log('SmartRules: Received transaction:added:batch event', event.detail);
+        if (event.detail && Array.isArray(event.detail)) {
+          let processed = 0;
+          const isNewTransaction = true; // Batch adds are new transactions
+          const forceProcess = isNewTransaction && this.config.processAllNewTransactions;
+
+          for (const item of event.detail) {
+            if (item.transaction) {
+              await this.processTransaction(item.transaction, forceProcess, isNewTransaction);
+              processed++;
+            }
+          }
+          debug.log(`SmartRules: Processed ${processed} transactions from batch`);
+        }
+      });
+
+      eventManager.addEventListener(window, 'transactions:batchAdded', async event => {
+        debug.log('SmartRules: Received transactions:batchAdded event', event.detail);
+        if (event.detail && event.detail.transactions) {
+          let processed = 0;
+          const isNewTransaction = true; // Batch adds are new transactions
+          const forceProcess = isNewTransaction && this.config.processAllNewTransactions;
+
+          for (const transaction of event.detail.transactions) {
+            await this.processTransaction(transaction, forceProcess, isNewTransaction);
+            processed++;
+          }
+          debug.log(`SmartRules: Processed ${processed} transactions from batch`);
+
+          // Dispatch completion event for UI feedback
+          window.dispatchEvent(
+            new CustomEvent('smartrules:batchProcessed', {
+              detail: { processed, total: event.detail.transactions.length },
+            })
+          );
+        }
+      });
+
+      eventManager.addEventListener(window, 'transaction:updated:batch', async event => {
+        debug.log('SmartRules: Received transaction:updated:batch event', event.detail);
+        if (event.detail && Array.isArray(event.detail)) {
+          let processed = 0;
+          for (const item of event.detail) {
+            if (item.transaction) {
+              await this.processTransaction(item.transaction);
+              processed++;
+            }
+          }
+          debug.log(`SmartRules: Processed ${processed} updated transactions from batch`);
+        }
+      });
+
+      // Listen for import completion to process uncategorized transactions
+      eventManager.addEventListener(window, 'transactions:imported', async event => {
+        debug.log('SmartRules: Received transactions:imported event', event.detail);
+
+        let transactionIds = [];
+
+        // Handle different event payload structures
+        if (event.detail) {
+          if (event.detail.transactionIds) {
+            // Direct transaction IDs array
+            transactionIds = event.detail.transactionIds;
+          } else if (event.detail.successful && Array.isArray(event.detail.successful)) {
+            // Extract IDs from successful imports array
+            transactionIds = event.detail.successful
+              .map(item => item.transaction?.id)
+              .filter(id => id !== undefined);
+          }
+        }
+
+        if (transactionIds.length > 0) {
+          debug.log(`SmartRules: Processing ${transactionIds.length} imported transactions`);
+          const result = await this.applyRulesToExistingTransactions(transactionIds, false);
+          debug.log('SmartRules: Import processing result:', result);
+
+          // Dispatch completion event
+          window.dispatchEvent(
+            new CustomEvent('smartrules:importProcessed', {
+              detail: result,
+            })
+          );
+        } else {
+          debug.warn('SmartRules: No transaction IDs found in import event');
         }
       });
 
@@ -129,6 +225,25 @@ class SmartRules {
     return this.updateRule(ruleId, { enabled });
   }
 
+  /**
+   * Update Smart Rules configuration
+   * @param {Object} config - Configuration options
+   * @returns {Object} Updated configuration
+   */
+  updateConfig(config) {
+    this.config = { ...this.config, ...config };
+    debug.log('SmartRules: Configuration updated', this.config);
+    return this.config;
+  }
+
+  /**
+   * Get current configuration
+   * @returns {Object} Current configuration
+   */
+  getConfig() {
+    return { ...this.config };
+  }
+
   async getAllRules() {
     try {
       const data = await database.getSmartRules(); // null = get all rules (enabled and disabled)
@@ -177,7 +292,7 @@ class SmartRules {
     }
   }
 
-  async processTransaction(transaction, forceProcess = false) {
+  async processTransaction(transaction, forceProcess = false, isNewTransaction = false) {
     if (!this.rulesLoaded || this.rules.length === 0) {
       debug.log('SmartRules: No rules loaded, skipping processing');
       return null;
@@ -188,11 +303,20 @@ class SmartRules {
       description: transaction.description,
       amount: transaction.amount,
       category: transaction.category,
+      isNewTransaction,
+      forceProcess,
     });
 
-    // Skip processing if transaction already has a category (unless it's Uncategorized or force processing)
-    if (!forceProcess && transaction.category && transaction.category !== 'Uncategorized') {
-      console.warn(
+    // Skip processing logic based on configuration and transaction state
+    const shouldSkip =
+      !forceProcess &&
+      this.config.skipCategorized &&
+      transaction.category &&
+      transaction.category !== 'Uncategorized' &&
+      !isNewTransaction;
+
+    if (shouldSkip) {
+      debug.log(
         `SmartRules: Skipping already categorized transaction (${transaction.category}):`,
         transaction.description
       );
@@ -203,13 +327,22 @@ class SmartRules {
     const { ruleEngine } = await import('./ruleEngine.js');
 
     // Process transaction through rules
+    const startTime = Date.now();
     const result = await ruleEngine.process(transaction, this.rules);
+    const processingTime = Date.now() - startTime;
 
     if (result.matched) {
-      debug.log(
-        `SmartRules: Rule "${result.rule.name}" matched for transaction:`,
-        transaction.description
-      );
+      debug.log('SmartRules: Rule match found', {
+        ruleName: result.rule.name,
+        ruleId: result.rule.id,
+        transactionId: transaction.id,
+        transactionDescription: transaction.description,
+        originalCategory: transaction.category,
+        newCategory: result.actions?.find(a => a.type === 'set_category')?.value,
+        processingTime: `${processingTime}ms`,
+        isNewTransaction,
+        forceProcess,
+      });
 
       // No need to update statistics - they're calculated dynamically now
 
@@ -223,7 +356,15 @@ class SmartRules {
         })
       );
     } else {
-      debug.log('SmartRules: No rules matched for transaction', transaction.description);
+      debug.log('SmartRules: No rules matched', {
+        transactionId: transaction.id,
+        transactionDescription: transaction.description,
+        category: transaction.category,
+        rulesChecked: this.rules.length,
+        processingTime: `${processingTime}ms`,
+        isNewTransaction,
+        forceProcess,
+      });
     }
 
     return result;
@@ -231,9 +372,11 @@ class SmartRules {
 
   async applyRulesToExistingTransactions(transactionIds = null, forceProcess = false) {
     try {
-      debug.log(
-        `SmartRules: Applying rules to existing transactions (forceProcess: ${forceProcess})`
-      );
+      debug.log('SmartRules: Starting batch rule application', {
+        forceProcess,
+        specificIds: transactionIds ? transactionIds.length : 'all',
+        timestamp: new Date().toISOString(),
+      });
 
       // Get transactions using the database method
       let transactions = await database.getTransactions();
@@ -241,6 +384,9 @@ class SmartRules {
       // Filter by specific transaction IDs if provided
       if (transactionIds && transactionIds.length > 0) {
         transactions = transactions.filter(t => transactionIds.includes(t.id));
+        debug.log(
+          `SmartRules: Filtered to ${transactions.length} specific transactions from ${transactionIds.length} IDs`
+        );
       }
 
       debug.log(`SmartRules: Found ${transactions.length} transactions to process`);
@@ -263,9 +409,20 @@ class SmartRules {
         }
       }
 
-      debug.log(
-        `SmartRules: Processing complete - Processed: ${processed}, Matched: ${matched}, Skipped: ${skipped})`
-      );
+      const endTime = Date.now();
+
+      debug.log('SmartRules: Batch processing complete', {
+        totalTransactions: transactions.length,
+        processed,
+        matched,
+        skipped,
+        successRate: processed > 0 ? `${Math.round((matched / processed) * 100)}%` : '0%',
+        averageTime:
+          processed > 0
+            ? `${Math.round((endTime - Date.now() + processed * 50) / processed)}ms`
+            : 'N/A',
+        timestamp: new Date().toISOString(),
+      });
 
       return {
         processed,

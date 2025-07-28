@@ -531,7 +531,7 @@ class TransactionImport {
    */
   parseQIFDate(dateStr) {
     // Handle various date formats (MM/DD/YY, MM/DD/YYYY, etc.)
-    const parts = dateStr.split(/[\/\-\.]/);
+    const parts = dateStr.split(/[/.-]/);
     if (parts.length === 3) {
       let [month, day, year] = parts;
 

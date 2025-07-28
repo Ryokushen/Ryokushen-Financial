@@ -181,11 +181,11 @@ async function handleDebtSubmit(event, appState, onUpdate) {
         // Update with both snake_case and camelCase fields for consistency
         appState.appData.debtAccounts[index] = {
           ...savedDebt,
-          balance: savedDebt.balance != null ? parseFloat(savedDebt.balance) : 0,
-          interestRate: savedDebt.interest_rate != null ? parseFloat(savedDebt.interest_rate) : 0,
+          balance: savedDebt.balance !== null ? parseFloat(savedDebt.balance) : 0,
+          interestRate: savedDebt.interest_rate !== null ? parseFloat(savedDebt.interest_rate) : 0,
           minimumPayment:
-            savedDebt.minimum_payment != null ? parseFloat(savedDebt.minimum_payment) : 0,
-          creditLimit: savedDebt.credit_limit != null ? parseFloat(savedDebt.credit_limit) : null,
+            savedDebt.minimum_payment !== null ? parseFloat(savedDebt.minimum_payment) : 0,
+          creditLimit: savedDebt.credit_limit !== null ? parseFloat(savedDebt.credit_limit) : null,
           dueDate: savedDebt.due_date,
         };
       }
@@ -194,11 +194,11 @@ async function handleDebtSubmit(event, appState, onUpdate) {
       // Add with both snake_case and camelCase fields for consistency
       appState.appData.debtAccounts.push({
         ...savedDebt,
-        balance: savedDebt.balance != null ? parseFloat(savedDebt.balance) : 0,
-        interestRate: savedDebt.interest_rate != null ? parseFloat(savedDebt.interest_rate) : 0,
+        balance: savedDebt.balance !== null ? parseFloat(savedDebt.balance) : 0,
+        interestRate: savedDebt.interest_rate !== null ? parseFloat(savedDebt.interest_rate) : 0,
         minimumPayment:
-          savedDebt.minimum_payment != null ? parseFloat(savedDebt.minimum_payment) : 0,
-        creditLimit: savedDebt.credit_limit != null ? parseFloat(savedDebt.credit_limit) : null,
+          savedDebt.minimum_payment !== null ? parseFloat(savedDebt.minimum_payment) : 0,
+        creditLimit: savedDebt.credit_limit !== null ? parseFloat(savedDebt.credit_limit) : null,
         dueDate: savedDebt.due_date,
       });
     }

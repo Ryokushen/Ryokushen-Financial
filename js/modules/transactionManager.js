@@ -4011,6 +4011,7 @@ class TransactionManager {
       // Temporarily disable cache due to 406 errors
       return null;
 
+      /* Commented out while cache is disabled
       // Sanitize the cache key to ensure it's URL-safe
       const sanitizedKey = key.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 100);
 
@@ -4035,9 +4036,9 @@ class TransactionManager {
       }
 
       return null;
+      */
     } catch (error) {
-      // Cache miss is not an error
-      debug.log('Cache lookup failed (expected):', error.message);
+      // This catch is unreachable but required for syntax
       return null;
     }
   }
@@ -4051,6 +4052,7 @@ class TransactionManager {
       // Temporarily disable cache due to 406 errors
       return;
 
+      /* Commented out while cache is disabled
       // Sanitize the cache key to ensure it's URL-safe
       const sanitizedKey = key.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 100);
 
@@ -4062,9 +4064,10 @@ class TransactionManager {
         computed_data: data,
         ttl,
       });
+      */
     } catch (error) {
+      // This catch is unreachable but required for syntax
       debug.error('Failed to cache analytics result', error);
-      // Don't throw - caching failure shouldn't break analytics
     }
   }
 
@@ -4711,14 +4714,14 @@ class TransactionManager {
       // Calculate trends using linear regression
       const predictions = [];
 
+      // Simple linear regression for expenses
+      const expenseValues = monthlyArray.map(m => m.expenses);
+      const expenseTrend = this.calculateLinearRegression(expenseValues);
+
       for (let i = 1; i <= months; i++) {
         const targetDate = new Date();
         targetDate.setMonth(targetDate.getMonth() + i);
         const targetMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
-
-        // Simple linear regression for expenses
-        const expenseValues = monthlyArray.map(m => m.expenses);
-        const expenseTrend = this.calculateLinearRegression(expenseValues);
 
         // Apply seasonality adjustment if enabled
         let seasonalFactor = 1;

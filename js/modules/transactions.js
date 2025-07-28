@@ -872,18 +872,14 @@ async function addLinkedTransaction(fromTransactionData, toAccountValue, appStat
       transaction2.description = `${baseDescription} ← ${fromAccountName}`;
     }
 
-    // Save both transactions
+    // Save both transactions using TransactionManager for proper event handling
     const savedTransactions = [];
     const balanceChanges = [];
 
     try {
-      // Save first transaction
-      const saved1 = await db.addTransaction(transaction1);
-      savedTransactions.push(saved1);
-
-      // Save second transaction
-      const saved2 = await db.addTransaction(transaction2);
-      savedTransactions.push(saved2);
+      // Use transactionManager to save linked transactions
+      const saved = await transactionManager.addLinkedTransactions(transaction1, transaction2);
+      savedTransactions.push(...saved);
 
       // Update balances for both transactions
       // Transaction 1 balance update

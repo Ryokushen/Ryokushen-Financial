@@ -82,7 +82,7 @@ class SupabaseAuthManager {
    * Check if user's email is verified
    */
   isEmailVerified() {
-    return this.user?.email_confirmed_at != null;
+    return this.user?.email_confirmed_at !== null;
   }
 
   /**

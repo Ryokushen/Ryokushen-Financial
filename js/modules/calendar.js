@@ -103,7 +103,9 @@ export class Calendar {
     debug.log('Calendar: Month range', startOfMonth, 'to', endOfMonth);
 
     bills.forEach(bill => {
-      if (!bill.active && bill.active !== undefined) {return}
+      if (!bill.active && bill.active !== undefined) {
+        return;
+      }
 
       // Get the next due date
       let dueDate = new Date(bill.next_due || bill.nextDue);
@@ -229,7 +231,7 @@ export class Calendar {
   getMonthSummary() {
     const monthEvents = this.events.filter(event => {
       return (
-        event.date.getMonth() === this.currentMonth && event.date.getFullYear() === this.currentYear;
+        event.date.getMonth() === this.currentMonth && event.date.getFullYear() === this.currentYear
       );
     });
 
