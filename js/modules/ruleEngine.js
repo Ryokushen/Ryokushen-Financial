@@ -253,7 +253,7 @@ class RuleEngine {
         debug.error('RuleEngine: Error applying action', action, error);
         results.push({
           success: false,
-          action: action.type,
+          type: action.type,
           error: error.message,
         });
       }
@@ -274,7 +274,7 @@ class RuleEngine {
 
           return {
             success: true,
-            action: 'set_category',
+            type: 'set_category',
             value: action.value,
           };
         } catch (error) {
@@ -295,7 +295,7 @@ class RuleEngine {
 
           return {
             success: true,
-            action: 'add_tag',
+            type: 'add_tag',
             value: action.value,
           };
         } catch (error) {
@@ -315,7 +315,7 @@ class RuleEngine {
 
           return {
             success: true,
-            action: 'add_note',
+            type: 'add_note',
             value: action.value,
           };
         } catch (error) {
@@ -335,14 +335,14 @@ class RuleEngine {
 
         return {
           success: true,
-          action: 'alert',
+          type: 'alert',
           value: action.value,
         };
 
       default:
         return {
           success: false,
-          action: action.type,
+          type: action.type,
           error: 'Unknown action type',
         };
     }
