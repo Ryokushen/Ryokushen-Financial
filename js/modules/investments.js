@@ -437,7 +437,7 @@ async function updateSingleHolding(symbol, appState, onUpdate) {
     }
   } catch (error) {
     debug.error(`Error updating ${symbol}:`, error);
-    showError(`Failed to update ${symbol}: ${error.message || 'Unknown error'}`)`;
+    showError(`Failed to update ${symbol}: ${error.message || 'Unknown error'}`);
   }
 }
 
