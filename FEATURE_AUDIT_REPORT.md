@@ -7,6 +7,8 @@ This report provides a comprehensive audit of features marked as "IMPLEMENTED" i
 
 **Key Finding**: All features marked as implemented have corresponding code. No false claims were found.
 
+**Important Note**: The ✅ symbol in feature-ideas.md indicates web-compatibility, NOT implementation status. Only features explicitly marked with "IMPLEMENTED" are actually built.
+
 ## Audit Methodology
 
 1. Analyzed feature-ideas.md for all features marked as "✅ IMPLEMENTED"
@@ -133,6 +135,22 @@ Not listed but fully implemented:
    - Calendar Phase 3-4
    - Natural Language Queries expansion
 
+## Common Misconceptions
+
+### Gamification Features (#28, #29)
+- **Status**: NOT IMPLEMENTED
+- **Confusion**: These have ✅ but this only means web-compatible
+- **No Code Found For**:
+  - Financial achievements/badges
+  - Streak tracking
+  - Leaderboards
+  - Interactive tutorials
+  - Quiz challenges
+
 ## Conclusion
 
-The Ryokushen Financial project maintains excellent documentation-to-implementation alignment. All features marked as implemented have corresponding code, with only minor documentation gaps for features that were implemented but not tracked in feature-ideas.md.
+The Ryokushen Financial project maintains excellent documentation-to-implementation alignment. All features explicitly marked as "IMPLEMENTED" have corresponding code. The ✅ symbol should not be confused with implementation status - it only indicates web compatibility.
+
+### Key Clarification
+- ✅ = Web-compatible (can be built for web)
+- ✅ IMPLEMENTED = Actually built and in the codebase
