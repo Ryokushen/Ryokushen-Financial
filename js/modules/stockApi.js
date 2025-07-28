@@ -501,9 +501,6 @@ if (document.readyState === 'loading') {
 // Export the services
 export { stockApiService, holdingsUpdater, initializeServices };
 
-// Also export the classes for external use
-export { StockApiService, HoldingsUpdater };
-
 /**
  * Utility function to format the last update time
  */
