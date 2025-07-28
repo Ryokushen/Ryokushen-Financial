@@ -113,6 +113,20 @@ export function switchTab(tabName, appState) {
         // Note: Debt charts are created by createCharts() in charts.js
     } else if (tabName === "recurring") {
         Recurring.renderRecurringBills(appState);
+    } else if (tabName === "performance") {
+        // Initialize performance dashboard when switching to it
+        try {
+            // Use dynamic import to avoid circular dependency issues
+            import('./performanceDashboard.js').then(module => {
+                if (module.performanceDashboard) {
+                    module.performanceDashboard.init();
+                }
+            }).catch(error => {
+                debug.error('Failed to load performance dashboard module:', error);
+            });
+        } catch (error) {
+            debug.error('Failed to initialize performance dashboard:', error);
+        }
     } else if (tabName === "settings") {
         // Initialize privacy settings when switching to settings tab
         import('./privacySettings.js').then(module => {

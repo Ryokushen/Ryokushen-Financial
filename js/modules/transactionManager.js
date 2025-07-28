@@ -3615,7 +3615,7 @@ class TransactionManager {
             } = options;
             
             // Check analytics cache first
-            const cacheKey = `spending_trends_${JSON.stringify(options)}`;
+            const cacheKey = `spending_trends_${months}_${groupBy}_${includeIncome}_${categories.join(',')}`;
             const cached = await this.getAnalyticsFromCache(cacheKey);
             if (cached) {
                 debug.log('Analytics cache hit for spending trends');
@@ -3770,7 +3770,7 @@ class TransactionManager {
             } = options;
             
             // Check cache
-            const cacheKey = `merchant_analysis_${JSON.stringify(options)}`;
+            const cacheKey = `merchant_analysis_${months}_${minTransactions}_${limit}`;
             const cached = await this.getAnalyticsFromCache(cacheKey);
             if (cached) return cached;
             
@@ -3794,7 +3794,7 @@ class TransactionManager {
                 if (!description) return;
                 
                 // Extract merchant name (simple pattern matching)
-                const merchantKey = this.extractMerchantNameName(description);
+                const merchantKey = this.extractMerchantName(description);
                 
                 if (!merchantMap.has(merchantKey)) {
                     merchantMap.set(merchantKey, {
@@ -3872,7 +3872,7 @@ class TransactionManager {
                     key = t.category || 'Uncategorized';
                     break;
                 case 'merchant':
-                    key = this.extractMerchantNameName(t.description || '');
+                    key = this.extractMerchantName(t.description || '');
                     break;
                 case 'month':
                 default:
@@ -3960,13 +3960,24 @@ class TransactionManager {
      */
     async getAnalyticsFromCache(key) {
         try {
+            // Temporarily disable cache due to 406 errors
+            return null;
+            
+            // Sanitize the cache key to ensure it's URL-safe
+            const sanitizedKey = key.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 100);
+            
             const user = await database.getCurrentUserId();
-            const { data } = await database.supabase
+            const { data, error } = await database.supabase
                 .from('transaction_analytics_cache')
                 .select('*')
                 .eq('user_id', user)
-                .eq('metric_type', key)
+                .eq('metric_type', sanitizedKey)
                 .single();
+            
+            if (error) {
+                // Cache miss is expected, not an error
+                return null;
+            }
             
             if (data && data.computed_data) {
                 const age = (Date.now() - new Date(data.last_computed).getTime()) / 1000;
@@ -3978,6 +3989,7 @@ class TransactionManager {
             return null;
         } catch (error) {
             // Cache miss is not an error
+            debug.log('Cache lookup failed (expected):', error.message);
             return null;
         }
     }
@@ -3988,12 +4000,18 @@ class TransactionManager {
      */
     async cacheAnalyticsResult(key, data, ttl = 3600) {
         try {
+            // Temporarily disable cache due to 406 errors
+            return;
+            
+            // Sanitize the cache key to ensure it's URL-safe
+            const sanitizedKey = key.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 100);
+            
             const user = await database.getCurrentUserId();
             await database.supabase
                 .from('transaction_analytics_cache')
                 .upsert({
                     user_id: user,
-                    metric_type: key,
+                    metric_type: sanitizedKey,
                     date_range: { start: new Date().toISOString() },
                     computed_data: data,
                     ttl: ttl
@@ -4055,13 +4073,15 @@ class TransactionManager {
             const startDate = new Date();
             startDate.setDate(startDate.getDate() - lookbackDays);
             
-            const transactions = await this.searchTransactions({
+            const searchResult = await this.searchTransactions({
                 dateRange: {
                     start: startDate.toISOString(),
                     end: endDate.toISOString()
                 },
                 categories: categories.length > 0 ? categories : undefined
             });
+            
+            const transactions = searchResult.transactions || [];
             
             if (transactions.length < 10) {
                 return {
@@ -4156,9 +4176,9 @@ class TransactionManager {
                 
                 // Method 3: Frequency-based detection
                 if (transaction.description) {
-                    const merchant = this.extractMerchantNameName(transaction.description);
+                    const merchant = this.extractMerchantName(transaction.description);
                     const merchantTransactions = transactions.filter(t => 
-                        t.description && this.extractMerchantNameName(t.description) === merchant
+                        t.description && this.extractMerchantName(t.description) === merchant
                     );
                     
                     if (merchantTransactions.length >= 3) {
@@ -4323,14 +4343,14 @@ class TransactionManager {
                 
                 recentTransactions.forEach(t => {
                     if (t.description) {
-                        const merchant = this.extractMerchantNameName(t.description);
+                        const merchant = this.extractMerchantName(t.description);
                         if (merchant) recentMerchants.add(merchant);
                     }
                 });
                 
                 historicalTransactions.forEach(t => {
                     if (t.description) {
-                        const merchant = this.extractMerchantNameName(t.description);
+                        const merchant = this.extractMerchantName(t.description);
                         if (merchant) historicalMerchants.add(merchant);
                     }
                 });
@@ -4340,7 +4360,7 @@ class TransactionManager {
                 recentMerchants.forEach(merchant => {
                     if (!historicalMerchants.has(merchant)) {
                         const merchantTransactions = recentTransactions.filter(t =>
-                            t.description && this.extractMerchantNameName(t.description) === merchant
+                            t.description && this.extractMerchantName(t.description) === merchant
                         );
                         const totalSpent = merchantTransactions.reduce((sum, t) => 
                             sum + (t.amount < 0 ? Math.abs(t.amount) : 0), 0
@@ -4583,13 +4603,15 @@ class TransactionManager {
             const startDate = new Date();
             startDate.setMonth(startDate.getMonth() - lookbackMonths);
             
-            const transactions = await this.searchTransactions({
+            const searchResult = await this.searchTransactions({
                 dateRange: {
                     start: startDate.toISOString(),
                     end: endDate.toISOString()
                 },
                 categories: categories.length > 0 ? categories : undefined
             });
+            
+            const transactions = searchResult.transactions || [];
             
             if (transactions.length < 30) {
                 return {
@@ -5077,12 +5099,14 @@ class TransactionManager {
             const startDate = new Date();
             startDate.setMonth(startDate.getMonth() - 6);
             
-            const transactions = await this.searchTransactions({
+            const searchResult = await this.searchTransactions({
                 dateRange: {
                     start: startDate.toISOString(),
                     end: endDate.toISOString()
                 }
             });
+            
+            const transactions = searchResult.transactions || [];
             
             if (transactions.length < 20) {
                 return {
@@ -5234,7 +5258,7 @@ class TransactionManager {
             
             transactions.forEach(t => {
                 if (t.description) {
-                    const merchant = this.extractMerchantNameName(t.description);
+                    const merchant = this.extractMerchantName(t.description);
                     if (merchant) {
                         uniqueMerchants.add(merchant);
                         merchantFrequency.set(merchant, 
@@ -5932,13 +5956,14 @@ class TransactionManager {
             const startDate = new Date();
             startDate.setDate(startDate.getDate() - lookbackDays);
             
-            const transactions = await this.searchTransactions({
+            const searchResult = await this.searchTransactions({
                 dateRange: {
                     start: startDate.toISOString(),
                     end: endDate.toISOString()
                 }
             });
             
+            const transactions = searchResult.transactions || [];
             const existingRules = await database.getSmartRules(true);
             
             // Track patterns

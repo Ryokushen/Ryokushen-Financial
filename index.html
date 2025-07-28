@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="css/rules.css">
     <link rel="stylesheet" href="css/calendar.css">
     <link rel="stylesheet" href="css/dropdown-fix.css">
+    <link rel="stylesheet" href="css/performance-dashboard.css">
 </head>
 
 <body>
@@ -73,6 +74,11 @@
                     aria-label="Smart Rules tab">
                     <span class="icon">🎯</span>
                     <span>Rules</span>
+                </button>
+                <button class="tab-btn" data-tab="performance" id="performance-tab-btn"
+                    aria-label="Performance Dashboard tab">
+                    <span class="icon">📊</span>
+                    <span>Analytics</span>
                 </button>
                 <button class="tab-btn" data-tab="settings" id="settings-tab-btn"
                     aria-label="Settings tab">
@@ -908,6 +914,126 @@
                         </div>
                         <div class="card__body">
                             <p>Additional settings and preferences will appear here in future updates.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Dashboard Tab -->
+            <div id="performance" class="tab-content" role="region" aria-labelledby="performance-tab-btn">
+                <div class="perf-dashboard-container">
+                    <!-- Dashboard Header -->
+                    <div class="perf-dashboard-header">
+                        <div class="header-left">
+                            <h2 class="dashboard-title">Performance Analytics</h2>
+                            <p class="dashboard-subtitle">Comprehensive insights into your financial patterns</p>
+                        </div>
+                        <div class="header-right">
+                            <div class="date-range-selector">
+                                <button class="date-range-btn active" data-range="30">Last 30 Days</button>
+                                <button class="date-range-btn" data-range="90">Last 90 Days</button>
+                                <button class="date-range-btn" data-range="180">Last 6 Months</button>
+                                <button class="date-range-btn" data-range="custom">Custom Range</button>
+                            </div>
+                            <button class="refresh-dashboard-btn" id="refresh-dashboard" aria-label="Refresh dashboard">
+                                <span class="refresh-icon">↻</span>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Key Metrics Grid -->
+                    <div class="metric-cards-grid" id="metric-cards-grid">
+                        <!-- Cards will be dynamically generated -->
+                    </div>
+
+                    <!-- Main Content Area -->
+                    <div class="dashboard-content">
+                        <!-- Charts Section -->
+                        <div class="charts-section">
+                            <div class="chart-tabs-container">
+                                <div class="chart-tabs">
+                                    <button class="chart-tab active" data-chart="trends">Spending Trends</button>
+                                    <button class="chart-tab" data-chart="categories">Categories</button>
+                                    <button class="chart-tab" data-chart="merchants">Top Merchants</button>
+                                    <button class="chart-tab" data-chart="forecast">Cash Flow</button>
+                                </div>
+                                <div class="chart-actions">
+                                    <button class="chart-action-btn" id="export-chart" aria-label="Export chart">
+                                        <span>📊</span> Export
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="chart-container" id="main-chart-container">
+                                <div class="chart-loading">
+                                    <div class="spinner"></div>
+                                    <p>Loading chart data...</p>
+                                </div>
+                                <canvas id="performanceChart" style="display: none;"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Insights Sidebar -->
+                        <aside class="insights-sidebar">
+                            <!-- Anomaly Alerts -->
+                            <div class="insights-section">
+                                <h3 class="section-title">
+                                    <span class="section-icon">⚠️</span>
+                                    Anomalies Detected
+                                </h3>
+                                <div class="anomaly-alerts" id="anomaly-alerts">
+                                    <!-- Alerts will be dynamically generated -->
+                                </div>
+                            </div>
+
+                            <!-- Predictions -->
+                            <div class="insights-section">
+                                <h3 class="section-title">
+                                    <span class="section-icon">🔮</span>
+                                    Predictions
+                                </h3>
+                                <div class="predictions-panel" id="predictions-panel">
+                                    <!-- Predictions will be dynamically generated -->
+                                </div>
+                            </div>
+
+                            <!-- Smart Rules Recommendations -->
+                            <div class="insights-section">
+                                <h3 class="section-title">
+                                    <span class="section-icon">💡</span>
+                                    Recommendations
+                                </h3>
+                                <div class="recommendations-panel" id="recommendations-panel">
+                                    <!-- Recommendations will be dynamically generated -->
+                                </div>
+                            </div>
+                        </aside>
+                    </div>
+
+                    <!-- Additional Sections -->
+                    <div class="additional-sections">
+                        <!-- Budget Performance -->
+                        <div class="dashboard-section">
+                            <h3 class="section-header">Budget Performance</h3>
+                            <div class="budget-performance" id="budget-performance">
+                                <!-- Budget cards will be dynamically generated -->
+                            </div>
+                        </div>
+
+                        <!-- Data Quality -->
+                        <div class="dashboard-section">
+                            <h3 class="section-header">Data Quality</h3>
+                            <div class="data-quality" id="data-quality">
+                                <!-- Quality metrics will be dynamically generated -->
+                            </div>
+                        </div>
+
+                        <!-- System Performance -->
+                        <div class="dashboard-section">
+                            <h3 class="section-header">System Performance</h3>
+                            <div class="system-performance" id="system-performance">
+                                <!-- Performance metrics will be dynamically generated -->
+                            </div>
                         </div>
                     </div>
                 </div>
