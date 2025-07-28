@@ -16,7 +16,6 @@ class SmartRules {
 
   async init() {
     debug.log('SmartRules: Initializing');
-    console.log('🤖 Smart Rules: Starting initialization...'); // Console log for visibility
 
     try {
       await this.loadRules();
@@ -24,19 +23,12 @@ class SmartRules {
       // Listen for events that might need rule re-evaluation
       eventManager.addEventListener(window, 'transaction:added', async event => {
         debug.log('SmartRules: Received transaction:added event', event.detail);
-        console.log('🤖 Smart Rules: New transaction event received!', event.detail);
         
         if (event.detail && event.detail.transaction) {
           // For new transactions, check config to determine if we should force processing
           const isNewTransaction = true; // transaction:added always indicates a new transaction
           const forceProcess = isNewTransaction && this.config.processAllNewTransactions;
           
-          console.log(`🤖 Smart Rules: Processing new transaction:`, {
-            description: event.detail.transaction.description,
-            category: event.detail.transaction.category || 'EMPTY',
-            forceProcess,
-            rulesCount: this.rules.length
-          });
           
           debug.log('SmartRules: Processing new transaction', {
             transactionId: event.detail.transaction.id,
@@ -58,20 +50,12 @@ class SmartRules {
       // Listen for transaction:created:withBalance event (fired by TransactionManager)
       eventManager.addEventListener(window, 'transaction:created:withBalance', async event => {
         debug.log('SmartRules: Received transaction:created:withBalance event', event.detail);
-        console.log('🤖 Smart Rules: New transaction created with balance event!', event.detail);
         
         if (event.detail && event.detail.transaction) {
           // For new transactions, always process regardless of category
           const isNewTransaction = true;
           const forceProcess = true; // Force processing for newly created transactions
           
-          console.log(`🤖 Smart Rules: Processing newly created transaction:`, {
-            id: event.detail.transaction.id,
-            description: event.detail.transaction.description,
-            category: event.detail.transaction.category || 'EMPTY',
-            forceProcess,
-            rulesCount: this.rules.length
-          });
           
           await this.processTransaction(event.detail.transaction, forceProcess, isNewTransaction);
         } else {
@@ -184,10 +168,8 @@ class SmartRules {
       });
 
       debug.log('SmartRules: Initialized successfully');
-      console.log(`🤖 Smart Rules: Initialization complete! ${this.rules.length} rules loaded.`);
     } catch (error) {
       debug.error('SmartRules: Initialization failed', error);
-      console.error('🤖 Smart Rules: Initialization FAILED!', error);
     }
 
     return this;
@@ -307,7 +289,6 @@ class SmartRules {
    * @returns {Promise<Object>} Result of rule creation
    */
   async createTestRule() {
-    console.log('🤖 Smart Rules: Creating test rule for debugging...');
     
     const testRule = {
       name: 'Test Grocery Rule',
@@ -328,9 +309,7 @@ class SmartRules {
     const result = await this.createRule(testRule);
     
     if (result.error) {
-      console.error('🤖 Smart Rules: Failed to create test rule:', result.error);
     } else {
-      console.log('🤖 Smart Rules: Test rule created successfully!');
       await this.loadRules(); // Reload rules to include the new one
     }
     
@@ -341,7 +320,6 @@ class SmartRules {
    * Debug helper to list all loaded rules
    */
   debugListRules() {
-    console.log('🤖 Smart Rules: Current loaded rules:');
     if (this.rules.length === 0) {
       console.log('   ❌ No rules loaded!');
     } else {
@@ -464,7 +442,6 @@ class SmartRules {
     if (result.matched) {
       const newCategory = result.actions?.find(a => a.type === 'set_category')?.value;
       
-      console.log(`🤖 Smart Rules: MATCH FOUND! Rule "${result.rule.name}" will categorize as "${newCategory}"`);
       
       debug.log('SmartRules: Rule match found', {
         ruleName: result.rule.name,
@@ -490,7 +467,6 @@ class SmartRules {
         })
       );
     } else {
-      console.log(`🤖 Smart Rules: No match found for "${transaction.description}" (checked ${this.rules.length} rules)`);
       
       debug.log('SmartRules: No rules matched', {
         transactionId: transaction.id,
