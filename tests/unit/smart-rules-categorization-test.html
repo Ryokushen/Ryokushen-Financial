@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Rules Auto-Categorization Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Smart Rules Auto-Categorization Test</h1>
+        
+        <div class="test-section">
+            <h2>Test Setup</h2>
+            <button class="primary" onclick="setupTestRule()">1. Create Test Rule</button>
+            <button class="primary" onclick="testNewTransaction()">2. Test New Transaction</button>
+            <button class="primary" onclick="testImportedTransaction()">3. Test Imported Transaction</button>
+            <button class="secondary" onclick="cleanupTest()">Clean Up Test Data</button>
+            <div id="setup-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Results</h2>
+            <div id="test-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Event Log</h2>
+            <div id="event-log"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { database } from '../../js/database.js';
+        import { transactionManager } from '../../js/modules/transactionManager.js';
+        import { smartRules } from '../../js/modules/smartRules.js';
+        import { debug } from '../../js/modules/debug.js';
+        
+        let testRuleId = null;
+        let testTransactionIds = [];
+        const eventLog = [];
+        
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            debug.enable(true);
+            await database.init();
+            await smartRules.init();
+            setupEventListeners();
+            logEvent('Test page initialized');
+        });
+        
+        function setupEventListeners() {
+            // Log all relevant events
+            const events = [
+                'transaction:added',
+                'transaction:updated',
+                'rule:matched',
+                'transactions:imported',
+                'smartrules:importProcessed'
+            ];
+            
+            events.forEach(eventName => {
+                window.addEventListener(eventName, event => {
+                    logEvent(eventName, event.detail);
+                });
+            });
+        }
+        
+        function logEvent(message, detail = null) {
+            const timestamp = new Date().toISOString();
+            const logEntry = { timestamp, message, detail };
+            eventLog.push(logEntry);
+            
+            const logDiv = document.getElementById('event-log');
+            const entry = document.createElement('div');
+            entry.className = 'test-result info';
+            entry.innerHTML = `
+                <strong>${timestamp}</strong>: ${message}
+                ${detail ? '<pre>' + JSON.stringify(detail, null, 2) + '</pre>' : ''}
+            `;
+            logDiv.appendChild(entry);
+        }
+        
+        window.setupTestRule = async function() {
+            try {
+                // Create a test rule that matches "Test Transaction" in description
+                const testRule = {
+                    name: 'Test Auto-Categorization Rule',
+                    conditions: [
+                        {
+                            field: 'description',
+                            operator: 'contains',
+                            value: 'Test Transaction'
+                        }
+                    ],
+                    actions: [
+                        {
+                            type: 'set_category',
+                            value: 'Bills'
+                        }
+                    ],
+                    enabled: true,
+                    priority: 1
+                };
+                
+                const savedRule = await database.saveSmartRule(testRule);
+                testRuleId = savedRule.id;
+                
+                // Reload rules in smartRules module
+                await smartRules.loadRules();
+                
+                showResult('setup-results', 'success', 
+                    `Test rule created successfully! Rule ID: ${testRuleId}`);
+                logEvent('Test rule created', savedRule);
+            } catch (error) {
+                showResult('setup-results', 'error', 
+                    `Failed to create test rule: ${error.message}`);
+                console.error(error);
+            }
+        };
+        
+        window.testNewTransaction = async function() {
+            try {
+                const accounts = await database.getAccounts();
+                if (accounts.length === 0) {
+                    throw new Error('No accounts found. Please create an account first.');
+                }
+                
+                // Create a transaction with no category (empty string)
+                const testTransaction = {
+                    date: new Date().toISOString().split('T')[0],
+                    description: 'Test Transaction for Auto-Categorization',
+                    amount: -50.00,
+                    account_id: accounts[0].id,
+                    category: '' // Empty category to test auto-categorization
+                };
+                
+                logEvent('Creating test transaction', testTransaction);
+                
+                const savedTransaction = await transactionManager.addTransaction(testTransaction);
+                testTransactionIds.push(savedTransaction.id);
+                
+                // Wait a bit for async processing
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Check if the transaction was categorized
+                const updatedTransaction = await database.getTransaction(savedTransaction.id);
+                
+                showResult('test-results', 
+                    updatedTransaction.category === 'Bills' ? 'success' : 'error',
+                    `New Transaction Test: 
+                    Original category: "${testTransaction.category}"
+                    Final category: "${updatedTransaction.category}"
+                    Expected: "Bills"
+                    Result: ${updatedTransaction.category === 'Bills' ? 'PASSED' : 'FAILED'}`
+                );
+                
+                logEvent('Transaction after processing', updatedTransaction);
+            } catch (error) {
+                showResult('test-results', 'error', 
+                    `New transaction test failed: ${error.message}`);
+                console.error(error);
+            }
+        };
+        
+        window.testImportedTransaction = async function() {
+            try {
+                const accounts = await database.getAccounts();
+                if (accounts.length === 0) {
+                    throw new Error('No accounts found. Please create an account first.');
+                }
+                
+                // Simulate imported transactions
+                const importData = {
+                    transactions: [
+                        {
+                            date: new Date().toISOString().split('T')[0],
+                            description: 'Test Transaction Import 1',
+                            amount: -75.00,
+                            account_id: accounts[0].id,
+                            category: 'Uncategorized' // Test with "Uncategorized"
+                        },
+                        {
+                            date: new Date().toISOString().split('T')[0],
+                            description: 'Test Transaction Import 2',
+                            amount: -100.00,
+                            account_id: accounts[0].id,
+                            category: null // Test with null category
+                        }
+                    ]
+                };
+                
+                logEvent('Importing test transactions', importData);
+                
+                const result = await transactionManager.importTransactions(
+                    importData.transactions,
+                    accounts[0].id
+                );
+                
+                // Store IDs for cleanup
+                result.successful.forEach(item => {
+                    if (item.transaction?.id) {
+                        testTransactionIds.push(item.transaction.id);
+                    }
+                });
+                
+                // Wait for async processing
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Check results
+                let allPassed = true;
+                let resultText = 'Import Test Results:\n';
+                
+                for (const item of result.successful) {
+                    if (item.transaction?.id) {
+                        const updated = await database.getTransaction(item.transaction.id);
+                        const passed = updated.category === 'Bills';
+                        allPassed = allPassed && passed;
+                        resultText += `\nTransaction: ${updated.description}
+                        Original category: "${item.transaction.category}"
+                        Final category: "${updated.category}"
+                        Expected: "Bills"
+                        Result: ${passed ? 'PASSED' : 'FAILED'}`;
+                    }
+                }
+                
+                showResult('test-results', allPassed ? 'success' : 'error', resultText);
+                logEvent('Import results', result);
+            } catch (error) {
+                showResult('test-results', 'error', 
+                    `Import test failed: ${error.message}`);
+                console.error(error);
+            }
+        };
+        
+        window.cleanupTest = async function() {
+            try {
+                // Delete test transactions
+                for (const id of testTransactionIds) {
+                    await transactionManager.deleteTransaction(id);
+                }
+                
+                // Delete test rule
+                if (testRuleId) {
+                    await database.deleteSmartRule(testRuleId);
+                }
+                
+                // Reload rules
+                await smartRules.loadRules();
+                
+                testTransactionIds = [];
+                testRuleId = null;
+                
+                showResult('setup-results', 'success', 'Test data cleaned up successfully');
+                logEvent('Cleanup completed');
+            } catch (error) {
+                showResult('setup-results', 'error', 
+                    `Cleanup failed: ${error.message}`);
+                console.error(error);
+            }
+        };
+        
+        function showResult(containerId, type, message) {
+            const container = document.getElementById(containerId);
+            const result = document.createElement('div');
+            result.className = `test-result ${type}`;
+            result.textContent = message;
+            container.appendChild(result);
+        }
+    </script>
+</body>
+</html>

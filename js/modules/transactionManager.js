@@ -311,6 +311,11 @@ class TransactionManager {
     // Set defaults
     prepared.cleared = prepared.cleared || false;
     prepared.date = prepared.date || new Date().toISOString().split('T')[0];
+    
+    // Ensure a category is set - default to 'Uncategorized' if empty or missing
+    if (!prepared.category || prepared.category.trim() === '') {
+      prepared.category = 'Uncategorized';
+    }
 
     return prepared;
   }
