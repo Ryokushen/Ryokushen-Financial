@@ -26,7 +26,29 @@ export class StockApiService {
     }
   }
 
+  /**
+   * Update the API key and revalidate configuration
+   * @param {string} newApiKey 
+   */
+  updateApiKey(newApiKey) {
+    this.apiKey = newApiKey;
+    this.isConfigured = this.validateApiKey();
+    if (this.isConfigured) {
+      debug.log('Stock API service reconfigured with new API key');
+      this.clearCache(); // Clear cache to ensure fresh data with new key
+    }
+  }
+
   validateApiKey() {
+    // Also check localStorage as a fallback
+    if (!this.apiKey && window.localStorage) {
+      const storedKey = localStorage.getItem('finnhub_api_key');
+      if (storedKey && storedKey !== 'YOUR_API_KEY_HERE' && storedKey.trim() !== '') {
+        this.apiKey = storedKey;
+        debug.log('Using API key from localStorage');
+      }
+    }
+
     if (!this.apiKey || this.apiKey === 'YOUR_API_KEY_HERE' || this.apiKey.trim() === '') {
       debug.warn('Finnhub API key not configured. Stock price updates will be disabled.');
       return false;
@@ -43,7 +65,11 @@ export class StockApiService {
     try {
       // First check if we're configured properly
       if (!this.isConfigured) {
-        throw new Error('API key not configured');
+        // Try to revalidate in case config was loaded after initialization
+        this.isConfigured = this.validateApiKey();
+        if (!this.isConfigured) {
+          throw new Error('API key not configured');
+        }
       }
 
       // Check cache first
@@ -204,8 +230,15 @@ export class StockApiService {
 export class HoldingsUpdater {
   constructor(appState, stockApiService) {
     this.appState = appState;
-    this.stockApi = stockApiService;
+    this.stockApi = stockApiService || window.stockApiService; // Use global if not provided
     this.updateLock = new AsyncLock();
+  }
+
+  /**
+   * Update the stock API service reference
+   */
+  updateStockApiService(stockApiService) {
+    this.stockApi = stockApiService;
   }
 
   /**
@@ -213,6 +246,16 @@ export class HoldingsUpdater {
    * @returns {Promise<{updated: number, failed: number, skipped: number}>}
    */
   async updateAllHoldings() {
+    // Ensure we have a valid stock API service
+    if (!this.stockApi || !this.stockApi.isConfigured) {
+      // Try to get the global instance
+      if (window.stockApiService && window.stockApiService.isConfigured) {
+        this.stockApi = window.stockApiService;
+      } else {
+        throw new Error('Stock API service not configured');
+      }
+    }
+
     // Use async lock to prevent race conditions
     return this.updateLock.withLock(async () => {
       debug.log('Acquired update lock, starting holdings update...');
@@ -380,6 +423,16 @@ export class HoldingsUpdater {
    * @returns {Promise<boolean>}
    */
   async updateHoldingBySymbol(symbol) {
+    // Ensure we have a valid stock API service
+    if (!this.stockApi || !this.stockApi.isConfigured) {
+      // Try to get the global instance
+      if (window.stockApiService && window.stockApiService.isConfigured) {
+        this.stockApi = window.stockApiService;
+      } else {
+        throw new Error('Stock API service not configured');
+      }
+    }
+
     if (!this.stockApi.isValidSymbol(symbol)) {
       debug.log(`Invalid symbol: ${symbol}`);
       return false;
@@ -403,9 +456,53 @@ export class HoldingsUpdater {
   }
 }
 
-// Initialize the services
-export const stockApiService = new StockApiService();
-export const holdingsUpdater = new HoldingsUpdater(null, stockApiService); // Will be initialized with appState later
+// Initialize the services with delayed configuration support
+let stockApiService;
+let holdingsUpdater;
+
+// Create a function to initialize or reinitialize the services
+function initializeServices() {
+  // Check if finnhubConfig exists and has an API key
+  const apiKey = window.finnhubConfig?.apiKey || localStorage.getItem('finnhub_api_key');
+  
+  if (!stockApiService) {
+    stockApiService = new StockApiService(apiKey);
+    window.stockApiService = stockApiService; // Make it globally available
+  } else if (apiKey && !stockApiService.isConfigured) {
+    // Update the API key if service exists but isn't configured
+    stockApiService.updateApiKey(apiKey);
+  }
+
+  if (!holdingsUpdater) {
+    holdingsUpdater = new HoldingsUpdater(null, stockApiService);
+  } else {
+    // Update the stock API service reference
+    holdingsUpdater.updateStockApiService(stockApiService);
+  }
+
+  return { stockApiService, holdingsUpdater };
+}
+
+// Initialize services immediately
+const services = initializeServices();
+stockApiService = services.stockApiService;
+holdingsUpdater = services.holdingsUpdater;
+
+// Also set up a listener for when the DOM is ready to reinitialize if needed
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    // Reinitialize to pick up any config that was loaded after this module
+    const services = initializeServices();
+    stockApiService = services.stockApiService;
+    holdingsUpdater = services.holdingsUpdater;
+  });
+}
+
+// Export the services
+export { stockApiService, holdingsUpdater, initializeServices };
+
+// Also export the classes for external use
+export { StockApiService, HoldingsUpdater };
 
 /**
  * Utility function to format the last update time
