@@ -651,7 +651,30 @@ import { performanceDashboard } from './modules/performanceDashboard.js';
         
         // Listen for transaction events to refresh UI
         eventManager.addEventListener(window, 'transaction:added', onUpdate);
-        eventManager.addEventListener(window, 'transaction:updated', onUpdate);
+        
+        // Special handling for transaction:updated to sync local state
+        eventManager.addEventListener(window, 'transaction:updated', (event) => {
+            if (event.detail && event.detail.transaction) {
+                // Update the transaction in local app state
+                const updatedTransaction = event.detail.transaction;
+                const index = appState.appData.transactions.findIndex(t => t.id === updatedTransaction.id);
+                
+                if (index !== -1) {
+                    // Update the transaction in the array
+                    appState.appData.transactions[index] = {
+                        ...updatedTransaction,
+                        amount: parseFloat(updatedTransaction.amount)
+                    };
+                    debug.log('Updated transaction in app state:', updatedTransaction.id);
+                } else {
+                    debug.warn('Transaction not found in app state:', updatedTransaction.id);
+                }
+            }
+            
+            // Now refresh the UI with the updated data
+            onUpdate();
+        });
+        
         eventManager.addEventListener(window, 'transaction:deleted', onUpdate);
         
         // Listen for bulk transaction events and reload data from database
