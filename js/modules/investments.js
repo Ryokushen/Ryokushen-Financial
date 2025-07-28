@@ -2,7 +2,7 @@
 import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatCurrency, debounce } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
-import { stockApiService, HoldingsUpdater, formatLastUpdateTime } from './stockApi.js';
+import { stockApiService, HoldingsUpdater, formatLastUpdateTime, initializeServices } from './stockApi.js';
 import { loadingState, showButtonSuccess, showButtonError } from './loadingState.js';
 import { domCache, cacheFormElements } from './domCache.js';
 import { batchUpdateSavingsGoal, flushBatch } from './batchOperations.js';
@@ -330,9 +330,15 @@ async function deleteHolding(accountId, holdingId, appState, onUpdate) {
 
 // NEW: Stock price update functions
 async function updateAllStockPrices(appState, onUpdate) {
-  if (!holdingsUpdater || !holdingsUpdater.stockApiService.isConfigured) {
+  // Ensure services are initialized
+  const services = initializeServices();
+  if (!holdingsUpdater) {
+    holdingsUpdater = new HoldingsUpdater(appState, services.stockApiService);
+  }
+
+  if (!services.stockApiService.isConfigured) {
     showError(
-      'Stock price updates require a Finnhub API key. Get a free key at finnhub.io and add it to js/config.js'
+      'Stock price updates require a Finnhub API key. Get a free key at finnhub.io and configure it in Settings.'
     );
     return;
   }
@@ -371,12 +377,13 @@ async function updateAllStockPrices(appState, onUpdate) {
 
 async function updateSingleHolding(symbol, appState, onUpdate) {
   try {
-    if (!holdingsUpdater || !holdingsUpdater.stockApiService) {
-      showError('Stock API service not initialized. Please refresh the page.');
-      return;
+    // Ensure services are initialized
+    const services = initializeServices();
+    if (!holdingsUpdater) {
+      holdingsUpdater = new HoldingsUpdater(appState, services.stockApiService);
     }
 
-    if (!holdingsUpdater.stockApiService.isConfigured) {
+    if (!services.stockApiService.isConfigured) {
       showError(
         'Stock price updates require a Finnhub API key. Get a free key at finnhub.io and configure it in Settings.'
       );
@@ -575,6 +582,10 @@ export function renderInvestmentAccountsEnhanced(appState) {
         </div>
     `;
 
+  // Get the current stockApiService to check symbol validity
+  const services = initializeServices();
+  const currentStockApiService = services.stockApiService;
+
   // Render expandable account cards
   list.innerHTML =
     updateControlsHTML +
@@ -619,7 +630,7 @@ export function renderInvestmentAccountsEnhanced(appState) {
                         ? account.holdings
                             .map(h => {
                               const holdingIcon = getHoldingIcon(h.symbol, h.company);
-                              const isValidSymbol = stockApiService.isValidSymbol(h.symbol);
+                              const isValidSymbol = currentStockApiService.isValidSymbol(h.symbol);
                               const percentOfAccount =
                                 account.balance > 0
                                   ? ((h.value / account.balance) * 100).toFixed(1)
@@ -667,8 +678,9 @@ export function renderInvestmentAccountsEnhanced(appState) {
 }
 
 export function setupEventListeners(appState, onUpdate) {
-  // Initialize holdings updater with appState
-  holdingsUpdater = new HoldingsUpdater(appState, stockApiService);
+  // Initialize services and holdings updater with appState
+  const services = initializeServices();
+  holdingsUpdater = new HoldingsUpdater(appState, services.stockApiService);
 
   // Add a DIRECT event listener for the update prices button
   eventManager.addEventListener(document, 'click', event => {
