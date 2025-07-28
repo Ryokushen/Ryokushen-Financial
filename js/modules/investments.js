@@ -349,13 +349,45 @@ async function updateAllStockPrices(appState, onUpdate) {
     lastUpdateTime = Date.now();
     await onUpdate();
 
-    const message = `Updated ${results.updated} holdings, ${results.skipped} skipped, ${results.failed} failed`;
+    // Build detailed message including mutual funds
+    let message = `Updated ${results.updated} holdings`;
+    if (results.mutualFunds > 0) {
+      message += ` (${results.mutualFunds} mutual funds skipped - not supported by free tier)`;
+    }
+    if (results.skipped > 0) {
+      message += `, ${results.skipped} other skipped`;
+    }
+    if (results.failed > 0) {
+      message += `, ${results.failed} failed`;
+    }
+    
     announceToScreenReader(message);
 
-    if (results.failed === 0) {
+    // Show button status
+    if (results.failed === 0 && results.mutualFunds === 0) {
       showButtonSuccess('update-all-prices-btn', '✓ Updated');
-    } else {
+    } else if (results.failed > 0) {
       showButtonError('update-all-prices-btn', `⚠ ${results.failed} Failed`);
+    } else if (results.mutualFunds > 0) {
+      showButtonSuccess('update-all-prices-btn', `✓ Updated (${results.mutualFunds} funds skipped)`);
+    }
+
+    // Show info message if mutual funds were skipped
+    if (results.mutualFunds > 0) {
+      const infoDiv = document.createElement('div');
+      infoDiv.style.cssText = 'background: var(--color-warning-bg); color: var(--color-warning); padding: 0.75rem; border-radius: var(--radius-md); margin-top: 0.5rem; font-size: var(--font-size-sm);';
+      infoDiv.innerHTML = `ℹ️ ${results.mutualFunds} mutual fund${results.mutualFunds > 1 ? 's' : ''} (symbols ending in X) cannot be updated with the free Finnhub API. Consider using regular ETFs instead for real-time updates.`;
+      
+      const updateControls = document.querySelector('.investment-update-controls');
+      if (updateControls) {
+        // Remove any existing info message
+        const existingInfo = updateControls.querySelector('.mutual-fund-info');
+        if (existingInfo) {
+          existingInfo.remove();
+        }
+        infoDiv.className = 'mutual-fund-info';
+        updateControls.appendChild(infoDiv);
+      }
     }
 
     return results;
@@ -390,6 +422,12 @@ async function updateSingleHolding(symbol, appState, onUpdate) {
       return;
     }
 
+    // Check if it's a mutual fund
+    if (services.stockApiService.isMutualFundSymbol(symbol)) {
+      showError(`${symbol} is a mutual fund and cannot be updated with Finnhub free tier. Consider using ETFs instead.`);
+      return;
+    }
+
     const success = await holdingsUpdater.updateHoldingBySymbol(symbol);
     if (success) {
       await onUpdate();
@@ -399,7 +437,7 @@ async function updateSingleHolding(symbol, appState, onUpdate) {
     }
   } catch (error) {
     debug.error(`Error updating ${symbol}:`, error);
-    showError(`Failed to update ${symbol}: ${error.message || 'Unknown error'}`);
+    showError(`Failed to update ${symbol}: ${error.message || 'Unknown error'}`)`;
   }
 }
 
@@ -631,6 +669,7 @@ export function renderInvestmentAccountsEnhanced(appState) {
                             .map(h => {
                               const holdingIcon = getHoldingIcon(h.symbol, h.company);
                               const isValidSymbol = currentStockApiService.isValidSymbol(h.symbol);
+                              const isMutualFund = currentStockApiService.isMutualFundSymbol(h.symbol);
                               const percentOfAccount =
                                 account.balance > 0
                                   ? ((h.value / account.balance) * 100).toFixed(1)
@@ -641,7 +680,7 @@ export function renderInvestmentAccountsEnhanced(appState) {
                             <div class="holding-symbol">
                                 <div class="holding-icon">${holdingIcon}</div>
                                 <div class="holding-symbol-info">
-                                    <div class="symbol">${escapeHtml(h.symbol)}</div>
+                                    <div class="symbol">${escapeHtml(h.symbol)}${isMutualFund ? ' <span style="font-size: var(--font-size-xs); opacity: 0.7;">(Fund)</span>' : ''}</div>
                                     <div class="type">${h.company || 'Stock'}</div>
                                 </div>
                             </div>
@@ -651,7 +690,7 @@ export function renderInvestmentAccountsEnhanced(appState) {
                             <div>
                                 <div>${percentOfAccount}%</div>
                                 <div class="holdings-actions">
-                                    ${isValidSymbol ? `<button class="icon-btn btn-update-holding" data-symbol="${h.symbol}" title="Update price">📊</button>` : ''}
+                                    ${isValidSymbol && !isMutualFund ? `<button class="icon-btn btn-update-holding" data-symbol="${h.symbol}" title="Update price">📊</button>` : ''}
                                     <button class="icon-btn btn-edit-holding" title="Edit">✏️</button>
                                     <button class="icon-btn btn-delete-holding" title="Delete">🗑️</button>
                                 </div>
