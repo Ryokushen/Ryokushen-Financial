@@ -54,6 +54,34 @@ class SmartRules {
           );
         }
       });
+      
+      // Listen for transaction:created:withBalance event (fired by TransactionManager)
+      eventManager.addEventListener(window, 'transaction:created:withBalance', async event => {
+        debug.log('SmartRules: Received transaction:created:withBalance event', event.detail);
+        console.log('🤖 Smart Rules: New transaction created with balance event!', event.detail);
+        
+        if (event.detail && event.detail.transaction) {
+          // For new transactions, always process regardless of category
+          const isNewTransaction = true;
+          const forceProcess = true; // Force processing for newly created transactions
+          
+          console.log(`🤖 Smart Rules: Processing newly created transaction:`, {
+            id: event.detail.transaction.id,
+            description: event.detail.transaction.description,
+            category: event.detail.transaction.category || 'EMPTY',
+            forceProcess,
+            rulesCount: this.rules.length
+          });
+          
+          await this.processTransaction(event.detail.transaction, forceProcess, isNewTransaction);
+        } else {
+          console.error(
+            'SmartRules: Invalid event detail structure for transaction:created:withBalance',
+            event.detail
+          );
+        }
+      });
+      
       eventManager.addEventListener(window, 'transaction:updated', async event => {
         debug.log('SmartRules: Received transaction:updated event', event.detail);
         if (event.detail && event.detail.transaction) {
