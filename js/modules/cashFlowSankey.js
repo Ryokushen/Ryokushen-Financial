@@ -3,7 +3,7 @@
  * Provides Monarch Money-style Sankey diagrams for income and expense flow
  */
 
-import { utils } from './utils.js';
+import { formatCurrency } from './utils.js';
 import { isPrivacyMode } from './privacy.js';
 
 export const cashFlowSankey = {
@@ -239,7 +239,7 @@ export const cashFlowSankey = {
 
         const value = this.privacyMode || isPrivacyMode()
             ? '•••••'
-            : utils.formatCurrency(node.value);
+            : formatCurrency(node.value);
 
         nodeEl.innerHTML = `
             <div class="sankey-node-label">${node.name}</div>
@@ -401,7 +401,7 @@ export const cashFlowSankey = {
 
         const displayValue = this.privacyMode || isPrivacyMode()
             ? '•••••'
-            : utils.formatCurrency(value);
+            : formatCurrency(value);
 
         tooltip.innerHTML = `
             <strong>${source} → ${target}</strong><br>
@@ -441,7 +441,7 @@ export const cashFlowSankey = {
             if (element) {
                 element.textContent = this.privacyMode || isPrivacyMode()
                     ? '•••••'
-                    : utils.formatCurrency(value);
+                    : formatCurrency(value);
             }
         };
 
