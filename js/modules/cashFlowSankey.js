@@ -5,6 +5,7 @@
 
 import { formatCurrency } from './utils.js';
 import { isPrivacyMode } from './privacy.js';
+import db from '../database.js';
 
 export const cashFlowSankey = {
     container: null,
@@ -29,7 +30,7 @@ export const cashFlowSankey = {
             const startDate = this.getStartDate();
             const endDate = new Date();
             
-            const { data: transactions, error } = await window.db.supabase
+            const { data: transactions, error } = await db.supabase
                 .from('transactions')
                 .select('*')
                 .gte('date', startDate.toISOString())
