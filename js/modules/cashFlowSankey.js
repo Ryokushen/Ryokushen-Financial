@@ -3,8 +3,8 @@
  * Provides Monarch Money-style Sankey diagrams for income and expense flow
  */
 
-import { utils } from './utils.js';
-import { privacy } from './privacy.js';
+import { formatCurrency } from './utils.js';
+import { isPrivacyMode } from './privacy.js';
 
 export const cashFlowSankey = {
     container: null,
@@ -16,6 +16,7 @@ export const cashFlowSankey = {
      * Initialize the cash flow visualization
      */
     async init() {
+        this.privacyMode = isPrivacyMode();
         this.initialized = true;
         await this.loadData();
     },
@@ -236,9 +237,9 @@ export const cashFlowSankey = {
         nodeEl.style.background = `linear-gradient(135deg, ${color}20, ${color}10)`;
         nodeEl.style.borderColor = color + '40';
 
-        const value = this.privacyMode || privacy.isEnabled() 
-            ? '•••••' 
-            : utils.formatCurrency(node.value);
+        const value = this.privacyMode || isPrivacyMode()
+            ? '•••••'
+            : formatCurrency(node.value);
 
         nodeEl.innerHTML = `
             <div class="sankey-node-label">${node.name}</div>
@@ -398,9 +399,9 @@ export const cashFlowSankey = {
             document.body.appendChild(tooltip);
         }
 
-        const displayValue = this.privacyMode || privacy.isEnabled() 
-            ? '•••••' 
-            : utils.formatCurrency(value);
+        const displayValue = this.privacyMode || isPrivacyMode()
+            ? '•••••'
+            : formatCurrency(value);
 
         tooltip.innerHTML = `
             <strong>${source} → ${target}</strong><br>
@@ -438,9 +439,9 @@ export const cashFlowSankey = {
         const updateStat = (id, value) => {
             const element = document.getElementById(id);
             if (element) {
-                element.textContent = this.privacyMode || privacy.isEnabled() 
-                    ? '•••••' 
-                    : utils.formatCurrency(value);
+                element.textContent = this.privacyMode || isPrivacyMode()
+                    ? '•••••'
+                    : formatCurrency(value);
             }
         };
 
@@ -454,8 +455,8 @@ export const cashFlowSankey = {
         
         const rateElement = document.getElementById('sankey-savings-rate');
         if (rateElement) {
-            rateElement.textContent = this.privacyMode || privacy.isEnabled() 
-                ? '•••' 
+            rateElement.textContent = this.privacyMode || isPrivacyMode()
+                ? '•••'
                 : savingsRate + '%';
         }
     },
@@ -472,7 +473,7 @@ export const cashFlowSankey = {
      * Toggle privacy mode
      */
     togglePrivacy() {
-        this.privacyMode = !this.privacyMode;
+        this.privacyMode = isPrivacyMode();
         this.loadData();
     },
 
