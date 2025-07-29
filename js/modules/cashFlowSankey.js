@@ -4,7 +4,7 @@
  */
 
 import { utils } from './utils.js';
-import { privacy } from './privacy.js';
+import { isPrivacyMode } from './privacy.js';
 
 export const cashFlowSankey = {
     container: null,
@@ -16,6 +16,7 @@ export const cashFlowSankey = {
      * Initialize the cash flow visualization
      */
     async init() {
+        this.privacyMode = isPrivacyMode();
         this.initialized = true;
         await this.loadData();
     },
@@ -236,8 +237,8 @@ export const cashFlowSankey = {
         nodeEl.style.background = `linear-gradient(135deg, ${color}20, ${color}10)`;
         nodeEl.style.borderColor = color + '40';
 
-        const value = this.privacyMode || privacy.isEnabled() 
-            ? '•••••' 
+        const value = this.privacyMode || isPrivacyMode()
+            ? '•••••'
             : utils.formatCurrency(node.value);
 
         nodeEl.innerHTML = `
@@ -398,8 +399,8 @@ export const cashFlowSankey = {
             document.body.appendChild(tooltip);
         }
 
-        const displayValue = this.privacyMode || privacy.isEnabled() 
-            ? '•••••' 
+        const displayValue = this.privacyMode || isPrivacyMode()
+            ? '•••••'
             : utils.formatCurrency(value);
 
         tooltip.innerHTML = `
@@ -438,8 +439,8 @@ export const cashFlowSankey = {
         const updateStat = (id, value) => {
             const element = document.getElementById(id);
             if (element) {
-                element.textContent = this.privacyMode || privacy.isEnabled() 
-                    ? '•••••' 
+                element.textContent = this.privacyMode || isPrivacyMode()
+                    ? '•••••'
                     : utils.formatCurrency(value);
             }
         };
@@ -454,8 +455,8 @@ export const cashFlowSankey = {
         
         const rateElement = document.getElementById('sankey-savings-rate');
         if (rateElement) {
-            rateElement.textContent = this.privacyMode || privacy.isEnabled() 
-                ? '•••' 
+            rateElement.textContent = this.privacyMode || isPrivacyMode()
+                ? '•••'
                 : savingsRate + '%';
         }
     },
@@ -472,7 +473,7 @@ export const cashFlowSankey = {
      * Toggle privacy mode
      */
     togglePrivacy() {
-        this.privacyMode = !this.privacyMode;
+        this.privacyMode = isPrivacyMode();
         this.loadData();
     },
 
