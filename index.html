@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="css/calendar.css">
     <link rel="stylesheet" href="css/dropdown-fix.css">
     <link rel="stylesheet" href="css/performance-dashboard.css">
+    <link rel="stylesheet" href="css/cash-flow-sankey.css">
 </head>
 
 <body>
@@ -79,6 +80,11 @@
                     aria-label="Performance Dashboard tab">
                     <span class="icon">📊</span>
                     <span>Analytics</span>
+                </button>
+                <button class="tab-btn" data-tab="sankey" id="sankey-tab-btn"
+                    aria-label="Cash Flow Sankey tab">
+                    <span class="icon">🌊</span>
+                    <span>Sankey</span>
                 </button>
                 <button class="tab-btn" data-tab="settings" id="settings-tab-btn"
                     aria-label="Settings tab">
@@ -1011,14 +1017,14 @@
                     </div>
 
                     <!-- Additional Sections -->
-                    <div class="additional-sections">
-                        <!-- Budget Performance -->
-                        <div class="dashboard-section">
-                            <h3 class="section-header">Budget Performance</h3>
-                            <div class="budget-performance" id="budget-performance">
-                                <!-- Budget cards will be dynamically generated -->
-                            </div>
+                <div class="additional-sections">
+                    <!-- Budget Performance -->
+                    <div class="dashboard-section">
+                        <h3 class="section-header">Budget Performance</h3>
+                        <div class="budget-performance" id="budget-performance">
+                            <!-- Budget cards will be dynamically generated -->
                         </div>
+                    </div>
 
                         <!-- Data Quality -->
                         <div class="dashboard-section">
@@ -1037,6 +1043,44 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div id="sankey" class="tab-content" role="region" aria-labelledby="sankey-tab-btn">
+                <section class="cash-flow-section">
+                    <div class="cash-flow-header">
+                        <h2 class="cash-flow-title">Cash Flow Diagram</h2>
+                        <div class="cash-flow-controls">
+                            <div class="period-selector">
+                                <button class="period-btn active" data-period="month">Month</button>
+                                <button class="period-btn" data-period="quarter">Quarter</button>
+                                <button class="period-btn" data-period="year">Year</button>
+                            </div>
+                            <div class="cash-flow-actions">
+                                <button class="export-btn" id="export-sankey" aria-label="Export Sankey diagram">
+                                    <span>📤</span> Export
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sankey-container" id="cash-flow-sankey-container"></div>
+                    <div class="sankey-stats-grid">
+                        <div class="sankey-stat-card">
+                            <div class="sankey-stat-label">Total Income</div>
+                            <div class="sankey-stat-value" id="sankey-total-income" data-sensitive="true">$0.00</div>
+                        </div>
+                        <div class="sankey-stat-card">
+                            <div class="sankey-stat-label">Total Expenses</div>
+                            <div class="sankey-stat-value" id="sankey-total-expenses" data-sensitive="true">$0.00</div>
+                        </div>
+                        <div class="sankey-stat-card">
+                            <div class="sankey-stat-label">Net Savings</div>
+                            <div class="sankey-stat-value" id="sankey-net-savings" data-sensitive="true">$0.00</div>
+                        </div>
+                        <div class="sankey-stat-card">
+                            <div class="sankey-stat-label">Savings Rate</div>
+                            <div class="sankey-stat-value" id="sankey-savings-rate" data-sensitive="true">0%</div>
+                        </div>
+                    </div>
+                </section>
             </div>
         </main>
     </div>

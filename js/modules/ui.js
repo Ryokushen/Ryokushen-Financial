@@ -128,6 +128,34 @@ export function switchTab(tabName, appState) {
     } catch (error) {
       debug.error('Failed to initialize performance dashboard:', error);
     }
+  } else if (tabName === 'sankey') {
+    try {
+      import('./cashFlowSankey.js')
+        .then(module => {
+          if (module.cashFlowSankey) {
+            window.cashFlowSankey = module.cashFlowSankey;
+            module.cashFlowSankey.init();
+
+            const periodButtons = document.querySelectorAll('.period-btn');
+            periodButtons.forEach(btn => {
+              btn.addEventListener('click', () => {
+                periodButtons.forEach(b => b.classList.toggle('active', b === btn));
+                module.cashFlowSankey.setPeriod(btn.dataset.period);
+              });
+            });
+
+            const exportBtn = document.getElementById('export-sankey');
+            if (exportBtn) {
+              exportBtn.addEventListener('click', () => module.cashFlowSankey.exportDiagram());
+            }
+          }
+        })
+        .catch(error => {
+          debug.error('Failed to load cash flow sankey module:', error);
+        });
+    } catch (error) {
+      debug.error('Failed to initialize cash flow sankey:', error);
+    }
   } else if (tabName === 'settings') {
     // Initialize privacy settings when switching to settings tab
     import('./privacySettings.js')
