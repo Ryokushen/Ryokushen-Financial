@@ -27,6 +27,7 @@ import { calendar } from './modules/calendar.js';
 import { eventManager } from './modules/eventManager.js';
 import { populateAllCategoryDropdowns } from './modules/categories.js';
 import { performanceDashboard } from './modules/performanceDashboard.js';
+import { cashFlowSankey } from './modules/cashFlowSankey.js';
 
 // Initialize app after auth is ready
 (async function initApp() {
@@ -708,6 +709,8 @@ import { performanceDashboard } from './modules/performanceDashboard.js';
                     window.updateDebtCharts(appState);
                 } else if (activeTabId === 'investments' && window.lastInvestmentData && window.lastInvestmentChartType) {
                     window.updateInvestmentCharts(window.lastInvestmentData, window.lastInvestmentChartType);
+                } else if (activeTabId === 'sankey' && window.cashFlowSankey) {
+                    window.cashFlowSankey.togglePrivacy();
                 }
             }, 250); // Chart refresh delay - kept at 250ms for stability
         });
@@ -803,6 +806,11 @@ import { performanceDashboard } from './modules/performanceDashboard.js';
                 case 'recurring':
                     const recurringList = document.getElementById("all-recurring-bills-list");
                     if (recurringList) Recurring.renderRecurringBills(state);
+                    break;
+                case 'sankey':
+                    if (window.cashFlowSankey) {
+                        window.cashFlowSankey.init();
+                    }
                     break;
                 case 'rules':
                     // Rules UI manages its own rendering
