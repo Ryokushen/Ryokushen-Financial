@@ -28,7 +28,7 @@ export class StockApiService {
 
   /**
    * Update the API key and revalidate configuration
-   * @param {string} newApiKey 
+   * @param {string} newApiKey
    */
   updateApiKey(newApiKey) {
     this.apiKey = newApiKey;
@@ -153,7 +153,7 @@ export class StockApiService {
       if (error.message === 'API key not configured') {
         return null;
       }
-      
+
       // Don't log 403 errors as they're expected for unsupported symbols
       if (!error.message.includes('403')) {
         debug.error(`Error fetching price for ${symbol}:`, error);
@@ -371,7 +371,7 @@ export class HoldingsUpdater {
     let updated = 0;
     let failed = 0;
     let skipped = 0;
-    let mutualFunds = mutualFundCount;
+    const mutualFunds = mutualFundCount;
 
     // Import the database module
     const { default: db } = await import('../database.js');
@@ -533,7 +533,7 @@ let holdingsUpdater;
 function initializeServices() {
   // Check if finnhubConfig exists and has an API key
   const apiKey = window.finnhubConfig?.apiKey || localStorage.getItem('finnhub_api_key');
-  
+
   if (!stockApiService) {
     stockApiService = new StockApiService(apiKey);
     window.stockApiService = stockApiService; // Make it globally available

@@ -2,7 +2,12 @@
 import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatCurrency, debounce } from './utils.js';
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
-import { stockApiService, HoldingsUpdater, formatLastUpdateTime, initializeServices } from './stockApi.js';
+import {
+  stockApiService,
+  HoldingsUpdater,
+  formatLastUpdateTime,
+  initializeServices,
+} from './stockApi.js';
 import { loadingState, showButtonSuccess, showButtonError } from './loadingState.js';
 import { domCache, cacheFormElements } from './domCache.js';
 import { batchUpdateSavingsGoal, flushBatch } from './batchOperations.js';
@@ -360,7 +365,7 @@ async function updateAllStockPrices(appState, onUpdate) {
     if (results.failed > 0) {
       message += `, ${results.failed} failed`;
     }
-    
+
     announceToScreenReader(message);
 
     // Show button status
@@ -369,15 +374,19 @@ async function updateAllStockPrices(appState, onUpdate) {
     } else if (results.failed > 0) {
       showButtonError('update-all-prices-btn', `⚠ ${results.failed} Failed`);
     } else if (results.mutualFunds > 0) {
-      showButtonSuccess('update-all-prices-btn', `✓ Updated (${results.mutualFunds} funds skipped)`);
+      showButtonSuccess(
+        'update-all-prices-btn',
+        `✓ Updated (${results.mutualFunds} funds skipped)`
+      );
     }
 
     // Show info message if mutual funds were skipped
     if (results.mutualFunds > 0) {
       const infoDiv = document.createElement('div');
-      infoDiv.style.cssText = 'background: var(--color-warning-bg); color: var(--color-warning); padding: 0.75rem; border-radius: var(--radius-md); margin-top: 0.5rem; font-size: var(--font-size-sm);';
+      infoDiv.style.cssText =
+        'background: var(--color-warning-bg); color: var(--color-warning); padding: 0.75rem; border-radius: var(--radius-md); margin-top: 0.5rem; font-size: var(--font-size-sm);';
       infoDiv.innerHTML = `ℹ️ ${results.mutualFunds} mutual fund${results.mutualFunds > 1 ? 's' : ''} (symbols ending in X) cannot be updated with the free Finnhub API. Consider using regular ETFs instead for real-time updates.`;
-      
+
       const updateControls = document.querySelector('.investment-update-controls');
       if (updateControls) {
         // Remove any existing info message
@@ -424,7 +433,9 @@ async function updateSingleHolding(symbol, appState, onUpdate) {
 
     // Check if it's a mutual fund
     if (services.stockApiService.isMutualFundSymbol(symbol)) {
-      showError(`${symbol} is a mutual fund and cannot be updated with Finnhub free tier. Consider using ETFs instead.`);
+      showError(
+        `${symbol} is a mutual fund and cannot be updated with Finnhub free tier. Consider using ETFs instead.`
+      );
       return;
     }
 
@@ -669,7 +680,9 @@ export function renderInvestmentAccountsEnhanced(appState) {
                             .map(h => {
                               const holdingIcon = getHoldingIcon(h.symbol, h.company);
                               const isValidSymbol = currentStockApiService.isValidSymbol(h.symbol);
-                              const isMutualFund = currentStockApiService.isMutualFundSymbol(h.symbol);
+                              const isMutualFund = currentStockApiService.isMutualFundSymbol(
+                                h.symbol
+                              );
                               const percentOfAccount =
                                 account.balance > 0
                                   ? ((h.value / account.balance) * 100).toFixed(1)

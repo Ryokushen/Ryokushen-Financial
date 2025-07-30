@@ -31,6 +31,23 @@ This document contains potential feature enhancements organized by category. The
 - Capital gains/losses tracking for investments
 - Export reports for tax preparation
 
+### 4.1 Cash Flow Visualization (Sankey Diagram) ✅ IMPLEMENTED [January 29, 2025]
+**Status**: Fully implemented with interactive visualization
+- ✅ Monarch Money-style Sankey diagrams showing income and expense flow
+- ✅ Interactive visualization with hover tooltips
+- ✅ Period selection (month, quarter, year)
+- ✅ Real-time statistics (total income, expenses, net savings, savings rate)
+- ✅ Color-coded flows by category
+- ✅ Export functionality for diagrams
+- ✅ Privacy mode integration (blur sensitive amounts)
+- ✅ Responsive design with mobile support
+**Implementation Details:**
+- Module: js/modules/cashFlowSankey.js
+- Custom SVG-based visualization (no external charting library)
+- Dynamic flow calculation based on transaction amounts
+- Automatic categorization grouping with "Other" threshold
+- Integrated into main navigation as "Sankey" tab
+
 ## 💰 Investment Enhancements
 
 ### 5. Portfolio Analysis ✅

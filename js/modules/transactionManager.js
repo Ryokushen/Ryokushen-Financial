@@ -311,7 +311,7 @@ class TransactionManager {
     // Set defaults
     prepared.cleared = prepared.cleared || false;
     prepared.date = prepared.date || new Date().toISOString().split('T')[0];
-    
+
     // Ensure a category is set - default to 'Uncategorized' if empty or missing
     if (!prepared.category || prepared.category.trim() === '') {
       prepared.category = 'Uncategorized';
@@ -1862,96 +1862,7 @@ class TransactionManager {
 
   // ========== ADDITIONAL UTILITY METHODS ==========
 
-  /**
-   * Search transactions with advanced filtering
-   * @param {Object} searchCriteria - Search criteria
-   * @returns {Promise<Array>} Matching transactions
-   */
-  async searchTransactions(searchCriteria) {
-    const {
-      query,
-      dateFrom,
-      dateTo,
-      amountMin,
-      amountMax,
-      categories,
-      accounts,
-      cleared,
-      sortBy = 'date',
-      sortOrder = 'desc',
-      limit,
-      offset = 0,
-    } = searchCriteria;
-
-    // Get all transactions with basic filters
-    let transactions = await this.getTransactions({
-      dateFrom,
-      dateTo,
-      cleared,
-    });
-
-    // Apply text search if query provided
-    if (query) {
-      const searchQuery = query.toLowerCase();
-      transactions = transactions.filter(
-        t =>
-          t.description.toLowerCase().includes(searchQuery) ||
-          t.category.toLowerCase().includes(searchQuery) ||
-          (t.notes && t.notes.toLowerCase().includes(searchQuery))
-      );
-    }
-
-    // Apply amount range filter
-    if (amountMin !== undefined) {
-      transactions = transactions.filter(t => Math.abs(t.amount) >= amountMin);
-    }
-    if (amountMax !== undefined) {
-      transactions = transactions.filter(t => Math.abs(t.amount) <= amountMax);
-    }
-
-    // Apply category filter
-    if (categories && categories.length > 0) {
-      transactions = transactions.filter(t => categories.includes(t.category));
-    }
-
-    // Apply account filter
-    if (accounts && accounts.length > 0) {
-      transactions = transactions.filter(
-        t => accounts.includes(t.account_id) || accounts.includes(t.debt_account_id)
-      );
-    }
-
-    // Sort results
-    transactions.sort((a, b) => {
-      let compareValue = 0;
-
-      switch (sortBy) {
-        case 'date':
-          compareValue = new Date(a.date) - new Date(b.date);
-          break;
-        case 'amount':
-          compareValue = a.amount - b.amount;
-          break;
-        case 'description':
-          compareValue = a.description.localeCompare(b.description);
-          break;
-        case 'category':
-          compareValue = a.category.localeCompare(b.category);
-          break;
-        default:
-          compareValue = new Date(a.date) - new Date(b.date);
-      }
-
-      return sortOrder === 'desc' ? -compareValue : compareValue;
-    });
-
-    // Apply pagination
-    if (limit) {
-      transactions = transactions.slice(offset, offset + limit);
-    }
-
-    return transactions;
-  }
+  // Removed duplicate searchTransactions method - using the more comprehensive one below
 
   /**
    * Get transaction statistics
@@ -4012,11 +3923,11 @@ class TransactionManager {
    * @private
    */
   async getAnalyticsFromCache(key) {
-    try {
-      // Temporarily disable cache due to 406 errors
-      return null;
+    // Temporarily disable cache due to 406 errors
+    return null;
 
-      /* Commented out while cache is disabled
+    /* Commented out while cache is disabled
+    try {
       // Sanitize the cache key to ensure it's URL-safe
       const sanitizedKey = key.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 100);
 
@@ -4041,11 +3952,11 @@ class TransactionManager {
       }
 
       return null;
-      */
     } catch (error) {
-      // This catch is unreachable but required for syntax
+      // Cache lookup failed
       return null;
     }
+    */
   }
 
   /**
@@ -4053,11 +3964,11 @@ class TransactionManager {
    * @private
    */
   async cacheAnalyticsResult(key, data, ttl = 3600) {
-    try {
-      // Temporarily disable cache due to 406 errors
-      return;
+    // Temporarily disable cache due to 406 errors
+    return;
 
-      /* Commented out while cache is disabled
+    /* Commented out while cache is disabled
+    try {
       // Sanitize the cache key to ensure it's URL-safe
       const sanitizedKey = key.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 100);
 
@@ -4069,11 +3980,11 @@ class TransactionManager {
         computed_data: data,
         ttl,
       });
-      */
     } catch (error) {
-      // This catch is unreachable but required for syntax
+      // Cache write failed
       debug.error('Failed to cache analytics result', error);
     }
+    */
   }
 
   /**
@@ -4586,37 +4497,7 @@ class TransactionManager {
     };
   }
 
-  /**
-   * Calculate basic statistics for a set of values
-   * @private
-   * @param {Array<number>} values - Array of numeric values
-   * @returns {Object} Statistics including mean, stdDev, min, max
-   */
-  calculateStatistics(values) {
-    if (!values || values.length === 0) {
-      return { mean: 0, stdDev: 0, min: 0, max: 0, count: 0 };
-    }
-
-    const n = values.length;
-    const mean = values.reduce((sum, val) => sum + val, 0) / n;
-
-    // Calculate standard deviation
-    const variance =
-      values.reduce((sum, val) => {
-        const diff = val - mean;
-        return sum + diff * diff;
-      }, 0) / n;
-
-    const stdDev = Math.sqrt(variance);
-
-    return {
-      mean,
-      stdDev,
-      min: Math.min(...values),
-      max: Math.max(...values),
-      count: n,
-    };
-  }
+  // Removed duplicate calculateStatistics method
 
   /**
    * Calculate IQR (Interquartile Range) statistics
@@ -5647,7 +5528,7 @@ class TransactionManager {
             : 'on_track';
 
       return {
-        performance: {
+        budgetPerformance: {
           categories: categoryPerformance,
           overall: {
             totalBudget,

@@ -9,7 +9,9 @@ class RuleEngine {
       // String operators
       contains: (value, target) => {
         if (typeof value !== 'string' || typeof target !== 'string') {
-          debug.log(`RuleEngine: contains operator - value or target not string. value: ${typeof value}, target: ${typeof target}`);
+          debug.log(
+            `RuleEngine: contains operator - value or target not string. value: ${typeof value}, target: ${typeof target}`
+          );
           return false;
         }
         const result = value.toLowerCase().includes(target.toLowerCase());
@@ -193,7 +195,9 @@ class RuleEngine {
     // Special handling for empty/null/undefined values
     if (fieldValue === undefined || fieldValue === null) {
       fieldValue = ''; // Treat null/undefined as empty string
-      debug.log(`RuleEngine: Field value is undefined/null for field: ${field}, treating as empty string`);
+      debug.log(
+        `RuleEngine: Field value is undefined/null for field: ${field}, treating as empty string`
+      );
     }
 
     // Handle case sensitivity for string comparisons

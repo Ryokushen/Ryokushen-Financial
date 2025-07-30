@@ -4,8 +4,7 @@ import { transactionManager } from './transactionManager.js';
 import { modalManager } from './modalManager.js';
 import { showError, showSuccess, announceToScreenReader } from './ui.js';
 import { formatCurrency, escapeHtml } from './utils.js';
-import { populateCategoryDropdown } from './categories.js';
-import { getCategoryIcon } from './categories.js';
+import { populateCategoryDropdown, getCategoryIcon } from './categories.js';
 import { debug } from './debug.js';
 import { loadingState } from './loadingState.js';
 

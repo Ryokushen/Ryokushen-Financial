@@ -3,9 +3,8 @@ import { calendar } from './calendar.js';
 import { escapeHtml, formatCurrency } from './utils.js';
 import { debug } from './debug.js';
 import { isPrivacyMode } from './privacy.js';
-import { openModal, closeModal, showError } from './ui.js';
+import { openModal, closeModal, showError, announceToScreenReader } from './ui.js';
 import { paySchedule } from './paySchedule.js';
-import { announceToScreenReader } from './ui.js';
 import { eventManager } from './eventManager.js';
 
 export const calendarUI = {

@@ -1,7 +1,6 @@
 // js/modules/calendar.js
 import { debug } from './debug.js';
-import { formatDate, formatCurrency } from './utils.js';
-import { getNextDueDate } from './utils.js';
+import { formatDate, formatCurrency, getNextDueDate } from './utils.js';
 import { paySchedule } from './paySchedule.js';
 import { eventManager } from './eventManager.js';
 
