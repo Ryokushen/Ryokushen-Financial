@@ -156,6 +156,21 @@ export function switchTab(tabName, appState) {
     } catch (error) {
       debug.error('Failed to initialize cash flow sankey:', error);
     }
+  } else if (tabName === 'salary') {
+    try {
+      import('./payCalculator.js')
+        .then(module => {
+          if (module.payCalculator) {
+            window.payCalculator = module.payCalculator;
+            module.payCalculator.init();
+          }
+        })
+        .catch(error => {
+          debug.error('Failed to load pay calculator module:', error);
+        });
+    } catch (error) {
+      debug.error('Failed to initialize pay calculator:', error);
+    }
   } else if (tabName === 'settings') {
     // Initialize privacy settings when switching to settings tab
     import('./privacySettings.js')

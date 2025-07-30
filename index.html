@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="css/dropdown-fix.css">
     <link rel="stylesheet" href="css/performance-dashboard.css">
     <link rel="stylesheet" href="css/cash-flow-sankey.css">
+    <link rel="stylesheet" href="css/pay-calculator.css">
 </head>
 
 <body>
@@ -85,6 +86,11 @@
                     aria-label="Cash Flow Sankey tab">
                     <span class="icon">🌊</span>
                     <span>Sankey</span>
+                </button>
+                <button class="tab-btn" data-tab="salary" id="salary-tab-btn"
+                    aria-label="Salary Calculator tab">
+                    <span class="icon">💰</span>
+                    <span>Salary</span>
                 </button>
                 <button class="tab-btn" data-tab="settings" id="settings-tab-btn"
                     aria-label="Settings tab">
@@ -920,6 +926,224 @@
                         </div>
                         <div class="card__body">
                             <p>Additional settings and preferences will appear here in future updates.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Salary Calculator Tab -->
+            <div id="salary" class="tab-content" role="region" aria-labelledby="salary-tab-btn">
+                <div class="salary-container">
+                    <!-- Header -->
+                    <div class="salary-header">
+                        <h2 class="salary-title">Model My Pay</h2>
+                        <button class="btn btn--primary calculate-pay-btn" id="calculate-pay-btn">
+                            <span class="icon">🧮</span>
+                            <span>Calculate</span>
+                        </button>
+                    </div>
+
+                    <!-- Take Home Pay Display -->
+                    <div class="take-home-display card">
+                        <div class="card__body">
+                            <p class="take-home-label">My take-home pay</p>
+                            <p class="take-home-amount" data-sensitive="true">
+                                <span class="currency-symbol">$</span>
+                                <span id="take-home-pay">0.00</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Collapsible Sections -->
+                    <div class="pay-sections">
+                        <!-- Regular Pay Section -->
+                        <div class="pay-section card">
+                            <button class="section-header" data-section="regularPay">
+                                <div class="section-title">
+                                    <span class="icon">⏰</span>
+                                    <span>Regular pay</span>
+                                </div>
+                                <span class="chevron">▼</span>
+                            </button>
+                            <div class="section-content active" id="regularPay-content">
+                                <form id="regular-pay-form" class="pay-form">
+                                    <div class="form-group">
+                                        <label class="form-label" for="pay-frequency">Pay frequency</label>
+                                        <select id="pay-frequency" class="form-control">
+                                            <option value="weekly">Weekly</option>
+                                            <option value="biweekly" selected>Biweekly</option>
+                                            <option value="semimonthly">Semi-monthly</option>
+                                            <option value="monthly">Monthly</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label" for="scheduled-hours">Scheduled hours *</label>
+                                        <input type="number" id="scheduled-hours" class="form-control" 
+                                               value="80" step="0.01" min="0" required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label" for="annual-salary">Annual salary *</label>
+                                        <div class="input-group">
+                                            <span class="input-group-addon">$</span>
+                                            <input type="number" id="annual-salary" class="form-control" 
+                                                   value="50000" step="0.01" min="0" required>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="pay-rate-display">
+                                        <span class="pay-rate-label">Pay rate *</span>
+                                        <span class="pay-rate-value">$<span id="hourly-rate">24.04</span> Per Hour</span>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Federal Taxes Section -->
+                        <div class="pay-section card">
+                            <button class="section-header" data-section="federalTaxes">
+                                <div class="section-title">
+                                    <span class="icon">🏛️</span>
+                                    <span>Federal taxes: W-4</span>
+                                </div>
+                                <span class="chevron">▶</span>
+                            </button>
+                            <div class="section-content" id="federalTaxes-content">
+                                <form id="federal-tax-form" class="pay-form">
+                                    <div class="form-group">
+                                        <label class="form-label" for="filing-status">Filing Status *</label>
+                                        <select id="filing-status" class="form-control">
+                                            <option value="single">Single</option>
+                                            <option value="married-jointly" selected>Married, Filing Jointly</option>
+                                            <option value="married-separately">Married, Filing Separately</option>
+                                            <option value="head-of-household">Head of Household</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Are you subject to federal income tax?</label>
+                                        <div class="radio-group">
+                                            <label class="radio-label">
+                                                <input type="radio" name="subject-to-tax" value="yes" checked>
+                                                <span>Yes</span>
+                                            </label>
+                                            <label class="radio-label">
+                                                <input type="radio" name="subject-to-tax" value="no">
+                                                <span>No</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="qualifying-children">Qualifying children under 17</label>
+                                        <input type="number" id="qualifying-children" class="form-control" 
+                                               value="0" min="0" step="1">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="other-dependents">Other dependents</label>
+                                        <input type="number" id="other-dependents" class="form-control" 
+                                               value="0" min="0" step="1">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="extra-withholding">Extra withholding per paycheck</label>
+                                        <div class="input-group">
+                                            <span class="input-group-addon">$</span>
+                                            <input type="number" id="extra-withholding" class="form-control" 
+                                                   value="0" step="0.01" min="0">
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- State & Local Taxes Section -->
+                        <div class="pay-section card">
+                            <button class="section-header" data-section="stateTaxes">
+                                <div class="section-title">
+                                    <span class="icon">🏛️</span>
+                                    <span>State & local taxes</span>
+                                </div>
+                                <span class="chevron">▶</span>
+                            </button>
+                            <div class="section-content" id="stateTaxes-content">
+                                <form id="state-tax-form" class="pay-form">
+                                    <div class="form-group">
+                                        <label class="form-label" for="state-selection">State</label>
+                                        <select id="state-selection" class="form-control">
+                                            <option value="tennessee">Tennessee</option>
+                                            <option value="california">California</option>
+                                            <option value="newyork">New York</option>
+                                            <option value="texas">Texas</option>
+                                            <option value="florida">Florida</option>
+                                        </select>
+                                    </div>
+                                    <div class="state-tax-info">
+                                        <p id="state-tax-message">No state tax withholding for this area</p>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Earnings Section -->
+                        <div class="pay-section card">
+                            <button class="section-header" data-section="earnings">
+                                <div class="section-title">
+                                    <span class="icon">💵</span>
+                                    <span>Earnings</span>
+                                </div>
+                                <span class="chevron">▶</span>
+                            </button>
+                            <div class="section-content" id="earnings-content">
+                                <div id="earnings-list" class="dynamic-list">
+                                    <!-- Earnings items will be dynamically added here -->
+                                </div>
+                                <button class="btn btn--secondary add-item-btn" id="add-earning-btn">
+                                    <span class="icon">➕</span>
+                                    <span>Add Earning</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Deductions Section -->
+                        <div class="pay-section card">
+                            <button class="section-header" data-section="deductions">
+                                <div class="section-title">
+                                    <span class="icon">➖</span>
+                                    <span>Deductions & contributions</span>
+                                </div>
+                                <span class="chevron">▶</span>
+                            </button>
+                            <div class="section-content" id="deductions-content">
+                                <div id="deductions-list" class="dynamic-list">
+                                    <!-- Deduction items will be dynamically added here -->
+                                </div>
+                                <button class="btn btn--secondary add-item-btn" id="add-deduction-btn">
+                                    <span class="icon">➕</span>
+                                    <span>Add Deduction</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Calculate Button -->
+                    <button class="btn btn--primary calculate-pay-btn-bottom" id="calculate-pay-btn-bottom">
+                        <span class="icon">🧮</span>
+                        <span>Calculate</span>
+                    </button>
+
+                    <!-- Disclaimer -->
+                    <div class="disclaimer card">
+                        <div class="card__body">
+                            <p class="disclaimer-text">
+                                <strong>Important Notice:</strong> The calculations on this page provide general estimates. 
+                                The calculators should not be relied upon or used to calculate exact taxes, payroll, financial matters, 
+                                retirement or other calculations. By using the calculators you are agreeing that the company is not providing 
+                                you with legal, financial or tax advice and that nothing herein constitutes such advice. You should seek 
+                                legal counsel, accountant or other professionals regarding any specific requirements, questions or concerns.
+                            </p>
                         </div>
                     </div>
                 </div>

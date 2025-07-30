@@ -711,6 +711,8 @@ import { cashFlowSankey } from './modules/cashFlowSankey.js';
                     window.updateInvestmentCharts(window.lastInvestmentData, window.lastInvestmentChartType);
                 } else if (activeTabId === 'sankey' && window.cashFlowSankey) {
                     window.cashFlowSankey.togglePrivacy();
+                } else if (activeTabId === 'salary' && window.payCalculator) {
+                    window.payCalculator.calculatePay(); // Recalculate to update privacy display
                 }
             }, 250); // Chart refresh delay - kept at 250ms for stability
         });
@@ -810,6 +812,11 @@ import { cashFlowSankey } from './modules/cashFlowSankey.js';
                 case 'sankey':
                     if (window.cashFlowSankey) {
                         window.cashFlowSankey.init();
+                    }
+                    break;
+                case 'salary':
+                    if (window.payCalculator) {
+                        window.payCalculator.init();
                     }
                     break;
                 case 'rules':
