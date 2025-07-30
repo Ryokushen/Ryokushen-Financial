@@ -74,15 +74,17 @@ export const cashFlowSankey = {
         let totalExpenses = 0;
 
         transactions.forEach(transaction => {
-            const amount = Math.abs(parseFloat(transaction.amount));
+            const rawAmount = parseFloat(transaction.amount);
+            const amount = Math.abs(rawAmount);
             
-            if (transaction.type === 'income' || amount > 0) {
-                // Income
+            // Check the sign of the original amount to determine type
+            if (rawAmount > 0) {
+                // Income (positive amounts)
                 const category = transaction.category || 'Other Income';
                 incomeByCategory[category] = (incomeByCategory[category] || 0) + amount;
                 totalIncome += amount;
-            } else {
-                // Expense
+            } else if (rawAmount < 0) {
+                // Expense (negative amounts)
                 const category = transaction.category || 'Other';
                 
                 // Skip transfers between own accounts
@@ -91,6 +93,7 @@ export const cashFlowSankey = {
                 expensesByCategory[category] = (expensesByCategory[category] || 0) + amount;
                 totalExpenses += amount;
             }
+            // Skip zero amounts
         });
 
         // Convert to nodes and links format
