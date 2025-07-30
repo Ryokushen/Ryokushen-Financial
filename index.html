@@ -4,110 +4,273 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Financial Tracker</title>
+    <title>Ryokushen Financial Tracker</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
 
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/styles-redesign.css">
+    <link rel="stylesheet" href="css/debt-enhancements.css">
+    <link rel="stylesheet" href="css/privacy.css">
+    <link rel="stylesheet" href="css/rules.css">
+    <link rel="stylesheet" href="css/calendar.css">
+    <link rel="stylesheet" href="css/dropdown-fix.css">
+    <link rel="stylesheet" href="css/performance-dashboard.css">
+    <link rel="stylesheet" href="css/cash-flow-sankey.css">
+    <link rel="stylesheet" href="css/pay-calculator.css">
 </head>
 
 <body>
+    <!-- Privacy Mode UI Components -->
+    <button id="privacy-toggle-btn" aria-label="Toggle privacy mode">
+        <i class="privacy-icon">🔓</i> Privacy Off
+    </button>
+    
+    <button id="panic-button" aria-label="Enable privacy mode immediately" title="Panic Button - Hide all sensitive data">
+        🚨
+    </button>
+    
     <div class="container">
         <header class="header">
-            <h1>Financial Tracker</h1>
+            <div class="header-content">
+                <h1>Ryokushen Financial</h1>
+                <div class="user-actions">
+                    <span class="user-email" id="user-email"></span>
+                    <button class="btn-logout" id="logout-btn">Logout</button>
+                </div>
+            </div>
             <nav class="tab-nav">
                 <button class="tab-btn active" data-tab="dashboard" id="dashboard-tab-btn"
-                    aria-label="Dashboard tab">Dashboard</button>
+                    aria-label="Dashboard tab">
+                    <span class="icon">📊</span>
+                    <span>Dashboard</span>
+                </button>
                 <button class="tab-btn" data-tab="accounts" id="accounts-tab-btn"
-                    aria-label="Accounts tab">Accounts</button>
+                    aria-label="Accounts tab">
+                    <span class="icon">💼</span>
+                    <span>Accounts</span>
+                </button>
                 <button class="tab-btn" data-tab="transactions" id="transactions-tab-btn"
-                    aria-label="Transactions tab">Transactions</button>
+                    aria-label="Transactions tab">
+                    <span class="icon">💸</span>
+                    <span>Transactions</span>
+                </button>
                 <button class="tab-btn" data-tab="investments" id="investments-tab-btn"
-                    aria-label="Investments tab">Investments</button>
-                <button class="tab-btn" data-tab="debt" id="debt-tab-btn" aria-label="Debt tab">Debt</button>
+                    aria-label="Investments tab">
+                    <span class="icon">📈</span>
+                    <span>Investments</span>
+                </button>
+                <button class="tab-btn" data-tab="debt" id="debt-tab-btn" aria-label="Debt tab">
+                    <span class="icon">💳</span>
+                    <span>Debt</span>
+                </button>
                 <button class="tab-btn" data-tab="recurring" id="recurring-tab-btn"
-                    aria-label="Recurring Bills tab">Recurring Bills</button>
+                    aria-label="Recurring Bills tab">
+                    <span class="icon">📅</span>
+                    <span>Bills</span>
+                </button>
+                <button class="tab-btn" data-tab="rules" id="rules-tab-btn"
+                    aria-label="Smart Rules tab">
+                    <span class="icon">🎯</span>
+                    <span>Rules</span>
+                </button>
+                <button class="tab-btn" data-tab="performance" id="performance-tab-btn"
+                    aria-label="Performance Dashboard tab">
+                    <span class="icon">📊</span>
+                    <span>Analytics</span>
+                </button>
+                <button class="tab-btn" data-tab="sankey" id="sankey-tab-btn"
+                    aria-label="Cash Flow Sankey tab">
+                    <span class="icon">🌊</span>
+                    <span>Sankey</span>
+                </button>
+                <button class="tab-btn" data-tab="salary" id="salary-tab-btn"
+                    aria-label="Salary Calculator tab">
+                    <span class="icon">💰</span>
+                    <span>Salary</span>
+                </button>
+                <button class="tab-btn" data-tab="settings" id="settings-tab-btn"
+                    aria-label="Settings tab">
+                    <span class="icon">⚙️</span>
+                    <span>Settings</span>
+                </button>
+                <button id="voice-command-btn" aria-label="Voice command">
+                    <span>🎤</span>
+                    <span>Voice</span>
+                </button>
             </nav>
         </header>
 
         <main class="main-content">
             <div id="dashboard" class="tab-content active" role="region" aria-labelledby="dashboard-tab-btn">
                 <div class="dashboard-metrics">
-                    <div class="metric-card">
-                        <h3>Total Cash Balance</h3>
-                        <div class="metric-value" id="total-cash">$0.00</div>
+                    <div class="overview-header">
+                        <h2 class="overview-title">Financial Overview</h2>
+                        <div class="net-worth-highlight" id="net-worth-badge">Net Worth: $0.00</div>
                     </div>
-                    <div class="metric-card">
-                        <h3>Total Investment Value</h3>
-                        <div class="metric-value" id="total-investments">$0.00</div>
-                    </div>
-                    <div class="metric-card">
-                        <h3>Total Debt</h3>
-                        <div class="metric-value debt-value" id="total-debt">$0.00</div>
-                    </div>
-                    <div class="metric-card">
-                        <h3>Monthly Recurring Bills</h3>
-                        <div class="metric-value" id="monthly-recurring">$0.00</div>
-                    </div>
-                    <div class="metric-card">
-                        <h3>Net Worth</h3>
-                        <div class="metric-value" id="net-worth">$0.00</div>
-                    </div>
-                </div>
-
-                <div class="financial-health-section">
-                    <h2 class="section-title">Financial Health Overview</h2>
-                    <div class="health-score-container">
+                    <div class="metrics-grid">
+                        <div class="metric-card positive">
+                            <div class="metric-header">
+                                <h3>Cash Balance</h3>
+                                <span class="metric-trend up" id="cash-trend"></span>
+                            </div>
+                            <div class="metric-value positive" id="total-cash">$0.00</div>
                         </div>
+                        <div class="metric-card positive">
+                            <div class="metric-header">
+                                <h3>Investments</h3>
+                                <span class="metric-trend" id="investment-trend"></span>
+                            </div>
+                            <div class="metric-value positive" id="total-investments">$0.00</div>
+                        </div>
+                        <div class="metric-card negative">
+                            <div class="metric-header">
+                                <h3>Total Debt</h3>
+                                <span class="metric-trend" id="debt-trend"></span>
+                            </div>
+                            <div class="metric-value negative" id="total-debt">$0.00</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <h3>Monthly Bills</h3>
+                                <span class="metric-trend" id="bills-trend"></span>
+                            </div>
+                            <div class="metric-value" id="monthly-recurring">$0.00</div>
+                        </div>
+                    </div>
                 </div>
 
+                <!-- Compact Health & Bills Combo -->
+                <div class="status-combo">
+                    <div class="financial-health-section">
+                        <div class="health-score-container">
+                            <!-- Health score will be rendered here -->
+                        </div>
+                    </div>
+                    
+                    <div class="bills-timeline-section">
+                        <div class="bills-header">
+                            <h2 class="section-title">Upcoming Bills</h2>
+                            <span class="bills-count" id="bills-count">0</span>
+                        </div>
+                        <div id="bills-timeline-container">
+                            <!-- Bills will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Legacy components hidden by CSS -->
                 <div class="enhanced-charts-grid">
                     <div class="chart-card-enhanced">
                         <h3 class="chart-title-enhanced">Debt Health Gauge</h3>
                         <div class="chart-container">
-                           <canvas id="debtHealthGauge"></canvas>
-                        </div>
-                    </div>
-                    <div class="chart-card-enhanced">
-                        <h3 class="chart-title-enhanced">Investment Allocation</h3>
-                        <div class="chart-container">
-                           <canvas id="investmentAllocation"></canvas>
+                            <canvas id="debtHealthGauge"></canvas>
                         </div>
                     </div>
                 </div>
 
-                <div class="bills-timeline-section">
-                    <h2 class="section-title">Upcoming Bills Timeline</h2>
-                    <div id="bills-timeline-container">
-                        </div>
+                <!-- Time Budget Widget Section -->
+                <div class="time-budget-section">
+                    <div id="time-budget-widget"></div>
                 </div>
 
 
-                <div class="charts-section">
-                    <div class="charts-grid">
-                        <div class="chart-card">
-                            <h3>Net Worth Progress</h3>
-                            <div class="chart-container">
-                                <canvas id="netWorthChart"></canvas>
+                <!-- Compact Metrics Grid -->
+                <div class="compact-metrics-grid">
+                    <div class="metric-card-enhanced">
+                        <div class="metric-sparkline">
+                            <svg viewBox="0 0 300 60">
+                                <path d="M0,50 L50,45 L100,40 L150,35 L200,30 L250,25 L300,20" 
+                                      stroke="rgba(76, 175, 80, 0.5)" stroke-width="2" fill="none"/>
+                            </svg>
+                        </div>
+                        <div class="metric-enhanced-header">
+                            <div class="metric-enhanced-title">Net Worth</div>
+                            <div class="metric-badge positive" id="net-worth-change-badge">+0.0%</div>
+                        </div>
+                        <div class="metric-enhanced-value" id="net-worth-enhanced" data-sensitive="true">$0.00</div>
+                        <div class="metric-enhanced-change" id="net-worth-change">↑ $0 this month</div>
+                    </div>
+
+                    <div class="metric-card-enhanced">
+                        <div class="metric-sparkline">
+                            <svg viewBox="0 0 300 60">
+                                <rect x="20" y="40" width="20" height="20" fill="rgba(76, 175, 80, 0.5)"/>
+                                <rect x="60" y="35" width="20" height="25" fill="rgba(76, 175, 80, 0.5)"/>
+                                <rect x="100" y="30" width="20" height="30" fill="rgba(76, 175, 80, 0.5)"/>
+                                <rect x="140" y="25" width="20" height="35" fill="rgba(76, 175, 80, 0.5)"/>
+                                <rect x="180" y="20" width="20" height="40" fill="rgba(76, 175, 80, 0.5)"/>
+                                <rect x="220" y="15" width="20" height="45" fill="rgba(76, 175, 80, 0.5)"/>
+                                <rect x="260" y="25" width="20" height="35" fill="rgba(76, 175, 80, 0.5)"/>
+                            </svg>
+                        </div>
+                        <div class="metric-enhanced-header">
+                            <div class="metric-enhanced-title">Monthly Cash Flow</div>
+                            <div class="metric-badge" id="cash-flow-badge">Calculating...</div>
+                        </div>
+                        <div class="metric-enhanced-value" id="monthly-cash-flow" data-sensitive="true">$0.00</div>
+                        <div class="metric-enhanced-change" id="cash-flow-breakdown">Income: $0 • Expenses: $0</div>
+                    </div>
+
+                    <div class="metric-card-enhanced">
+                        <div class="metric-sparkline" style="background: linear-gradient(to top, rgba(255, 152, 0, 0.1), transparent);">
+                            <svg viewBox="0 0 300 60">
+                                <circle cx="150" cy="30" r="25" fill="none" stroke="rgba(255, 152, 0, 0.5)" stroke-width="8"/>
+                                <circle cx="150" cy="30" r="25" fill="none" stroke="rgba(76, 175, 80, 0.5)" stroke-width="8" 
+                                        stroke-dasharray="40 157" transform="rotate(-90 150 30)"/>
+                            </svg>
+                        </div>
+                        <div class="metric-enhanced-header">
+                            <div class="metric-enhanced-title">Investment Performance</div>
+                            <div class="metric-badge positive" id="investment-performance-badge">+0.0%</div>
+                        </div>
+                        <div class="metric-enhanced-value" id="investment-total" data-sensitive="true">$0.00</div>
+                        <div class="metric-enhanced-change" id="investment-gains">↑ $0 YTD gains</div>
+                    </div>
+
+                    <div class="metric-card-enhanced">
+                        <div class="metric-sparkline" style="background: linear-gradient(to top, rgba(244, 67, 54, 0.1), transparent);">
+                            <svg viewBox="0 0 300 60">
+                                <rect x="0" y="20" width="180" height="20" fill="rgba(76, 175, 80, 0.5)"/>
+                                <rect x="180" y="20" width="120" height="20" fill="rgba(244, 67, 54, 0.5)"/>
+                            </svg>
+                        </div>
+                        <div class="metric-enhanced-header">
+                            <div class="metric-enhanced-title">Assets vs Debt</div>
+                            <div class="metric-badge" id="assets-debt-ratio">0/0</div>
+                        </div>
+                        <div class="metric-enhanced-value" id="total-assets" data-sensitive="true">$0.00</div>
+                        <div class="metric-enhanced-change" id="assets-debt-breakdown">Assets: $0 • Debt: $0</div>
+                    </div>
+                </div>
+
+                <!-- Focus Charts -->
+                <div class="focus-charts-row">
+                    <div class="main-focus-chart">
+                        <div class="chart-container" id="main-chart-container">
+                            <canvas id="mainDashboardChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="side-focus-charts">
+                        <div class="mini-focus-chart">
+                            <h4>
+                                <span>Top Expenses</span>
+                                <span class="chart-subtitle" id="total-expenses" data-sensitive="true">$0/mo</span>
+                            </h4>
+                            <div class="expense-breakdown" id="expense-breakdown-list">
+                                <!-- Expense items will be rendered here -->
                             </div>
                         </div>
-                        <div class="chart-card">
-                            <h3>Expense Categories</h3>
-                            <div class="chart-container">
-                                <canvas id="expenseCategoryChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-card">
-                            <h3>Monthly Cash Flow</h3>
-                            <div class="chart-container">
-                                <canvas id="cashFlowChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-card">
-                            <h3>Assets vs Debt</h3>
-                            <div class="chart-container">
-                                <canvas id="assetsDebtChart"></canvas>
+                        <div class="mini-focus-chart">
+                            <h4>
+                                <span>Investment Mix</span>
+                                <span class="chart-subtitle" id="investment-mix-total" data-sensitive="true">$0</span>
+                            </h4>
+                            <div class="investment-breakdown" id="investment-breakdown-list">
+                                <!-- Investment items will be rendered here -->
                             </div>
                         </div>
                     </div>
@@ -120,49 +283,102 @@
                         </div>
                         <div class="card__body">
                             <div id="recent-transactions-list">
-                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div id="accounts" class="tab-content" role="region" aria-labelledby="accounts-tab-btn">
-                <div class="accounts-summary">
-                    <div class="card">
-                        <div class="card__header">
-                            <h3>Account Summary</h3>
-                            <button class="btn btn--primary" id="add-cash-account-btn">Add New Account</button>
-                        </div>
-                        <div class="card__body">
-                            <div class="investment-metrics">
-                                <div class="metric-item">
-                                    <span class="metric-label">Total Cash Accounts:</span>
-                                    <span class="metric-value" id="accounts-total-value">$0.00</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Number of Accounts:</span>
-                                    <span class="metric-value" id="accounts-count">0</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="accounts-header">
+                    <h2 class="section-title">All Accounts</h2>
+                    <button class="btn btn--primary" id="add-cash-account-btn">Add New Account</button>
                 </div>
+                
+                <div class="card-grid" id="accounts-grid">
+                    <!-- Account cards will be rendered here -->
+                </div>
+                
 
-                <div class="cash-accounts mt-16">
-                    <div class="card">
-                        <div class="card__header">
-                            <h3>Cash & Checking Accounts</h3>
-                        </div>
-                        <div class="card__body">
-                            <div id="cash-accounts-list">
-                                </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <div id="transactions" class="tab-content" role="region" aria-labelledby="transactions-tab-btn">
-                <div class="transaction-form-section">
+                <div class="transactions-header">
+                    <h2 class="section-title">Recent Transactions</h2>
+                    <div class="transaction-filters">
+                        <select id="filter-category" class="form-control" aria-label="Filter by category">
+                            <option value="">— All Categories —</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: var(--space-2);">
+                        <button class="btn btn--primary" id="add-transaction-btn">Add Transaction</button>
+                        <button class="btn btn--primary" id="templates-btn" title="Transaction Templates">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 4px;">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="9" y1="9" x2="15" y2="9"></line>
+                                <line x1="9" y1="13" x2="15" y2="13"></line>
+                                <line x1="9" y1="17" x2="11" y2="17"></line>
+                            </svg>
+                            <span>Templates</span>
+                        </button>
+                        <button class="btn btn--primary" id="advanced-search-btn" title="Advanced Search">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 4px;">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <span>Search</span>
+                        </button>
+                        <button class="btn btn--secondary" id="voice-add-transaction-btn" title="Add transaction by voice">
+                            <span>🎤</span>
+                            <span>Voice Add</span>
+                        </button>
+                        <button class="btn btn--secondary" id="import-transactions-btn" title="Import transactions from file">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 4px;">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span>Import</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Bulk Operations Toolbar -->
+                <div id="bulk-operations-toolbar" class="bulk-operations-toolbar" style="display: none;">
+                    <div class="bulk-operations-left">
+                        <input type="checkbox" id="select-all-transactions" class="form-checkbox">
+                        <label for="select-all-transactions" class="bulk-select-label">
+                            <span id="selected-count">0</span> selected
+                        </label>
+                    </div>
+                    <div class="bulk-operations-actions">
+                        <select id="bulk-action-select" class="form-select" disabled>
+                            <option value="">Choose bulk action...</option>
+                            <option value="categorize">Categorize</option>
+                            <option value="delete">Delete</option>
+                            <option value="export">Export</option>
+                        </select>
+                        <button id="apply-bulk-action" class="btn btn--secondary" disabled>Apply</button>
+                        <button id="cancel-bulk-selection" class="btn btn--ghost">Cancel</button>
+                    </div>
+                </div>
+                
+                <div class="enhanced-table" id="transactions-table">
+                    <div class="table-header bulk-selectable">
+                        <div class="table-checkbox-column"></div>
+                        <div>Transaction</div>
+                        <div>Amount</div>
+                        <div>Date</div>
+                        <div>Status</div>
+                        <div>Actions</div>
+                    </div>
+                    <div id="transactions-table-body">
+                        <!-- Transaction rows will be rendered here -->
+                    </div>
+                </div>
+                
+                <!-- Transaction form modal (hidden by default) -->
+                <div class="transaction-form-section" style="display: none;">
                     <div class="card">
                         <div class="card__header">
                             <h3>Add New Transaction</h3>
@@ -186,15 +402,7 @@
                                 <div class="form-group">
                                     <label class="form-label" for="transaction-category">Category</label>
                                     <select id="transaction-category" class="form-control" required>
-                                        <option value="" disabled selected>— Select category —</option>
-                                        <option value="Income">Income</option>
-                                        <option value="Bills">Bills</option>
-                                        <option value="Groceries">Groceries</option>
-                                        <option value="Transfer">Transfer</option>
-                                        <option value="Debt">Debt</option>
-                                        <option value="Interest">Interest</option>
-                                        <option value="Fees">Fees</option>
-                                        <option value="Misc">Misc</option>
+                                        <option value="">— Select category —</option>
                                     </select>
                                 </div>
                                 <div class="form-group" id="debt-account-group" style="display: none;">
@@ -203,199 +411,900 @@
                                         <option value="">Select Debt Account</option>
                                     </select>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group" id="transfer-account-group" style="display: none;">
+                                    <label class="form-label" for="transfer-to-account">To Account</label>
+                                    <select id="transfer-to-account" class="form-control">
+                                        <option value="">— Select destination account —</option>
+                                    </select>
+                                    <div class="info-note mt-8">
+                                        <small>For payments: Select the debt account being paid. For transfers: Select the receiving cash account.</small>
+                                    </div>
+                                </div>
+                                <div class="form-group voice-enabled">
                                     <label class="form-label" for="transaction-description">Description</label>
-                                    <input type="text" id="transaction-description" class="form-control" required>
+                                    <div class="input-with-voice">
+                                        <input type="text" id="transaction-description" class="form-control" required>
+                                        <button type="button" class="btn-voice" id="voice-input-btn" aria-label="Use voice input" title="Click to use voice input (Chrome/Safari only)">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                                <line x1="12" y1="19" x2="12" y2="23"></line>
+                                                <line x1="8" y1="23" x2="16" y2="23"></line>
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label" for="transaction-amount">Amount</label>
                                     <input type="number" id="transaction-amount" class="form-control" step="0.01"
                                         required>
+                                    <div id="transaction-time-preview" class="time-cost-preview" style="margin-top: 8px;">
+                                        <span class="time-cost-badge"></span>
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">
                                         <input type="checkbox" id="transaction-cleared"> Cleared
                                     </label>
                                 </div>
-                                <button type="submit" class="btn btn--primary">Add Transaction</button>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn--secondary" id="cancel-transaction-btn" style="margin-right: 10px;">Cancel</button>
+                                    <button type="submit" class="btn btn--primary">Add Transaction</button>
+                                </div>
                             </form>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="transactions-list">
-                    <div class="card">
-                        <div class="card__header">
-                            <h3>Transaction History</h3>
-                            <div class="transaction-filters">
-                                <select id="filter-category" class="form-control" aria-label="Filter by category">
-                                    <option value="">— All Categories —</option>
-                                    <option value="Income">Income</option>
-                                    <option value="Bills">Bills</option>
-                                    <option value="Groceries">Groceries</option>
-                                    <option value="Transfer">Transfer</option>
-                                    <option value="Debt">Debt</option>
-                                    <option value="Interest">Interest</option>
-                                    <option value="Fees">Fees</option>
-                                    <option value="Misc">Misc</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="card__body">
-                            <div class="transaction-table">
-                                <table id="transactions-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Account</th>
-                                            <th>Category</th>
-                                            <th>Description</th>
-                                            <th>Amount</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="transactions-table-body">
-                                    </tbody>
-                                </table>
-                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div id="investments" class="tab-content" role="region" aria-labelledby="investments-tab-btn">
-                <div class="investment-summary">
+                <div class="investments-header">
+                    <h2 class="section-title">Investment Portfolio</h2>
+                    <button class="btn btn--primary" id="add-investment-account-btn">Add New Account</button>
+                </div>
+                
+                <!-- Investment Summary Cards -->
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="summary-label">Total Portfolio Value</div>
+                        <div class="summary-value" id="investment-total-value" data-sensitive="true">$0.00</div>
+                        <div class="summary-change" id="investment-day-change-percent">↑ 0.0% Today</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Investment Accounts</div>
+                        <div class="summary-value" id="investment-accounts-count">0 Active</div>
+                        <div class="summary-change" id="investment-accounts-types">No accounts</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Total Holdings</div>
+                        <div class="summary-value" id="investment-holdings-count">0 Positions</div>
+                        <div class="summary-change" id="investment-holdings-breakdown">No holdings</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Day Change</div>
+                        <div class="summary-value" id="investment-day-change" data-sensitive="true">$0.00</div>
+                        <div class="summary-change" id="investment-best-performer">No data</div>
+                    </div>
+                </div>
+                
+                <!-- Expandable Investment Account Cards -->
+                <div id="investment-accounts-list" class="investment-accounts-container">
+                    <!-- Account cards will be rendered here -->
+                </div>
+
+                <div class="savings-goals mt-16">
+                    <div class="investments-header">
+                        <h2 class="section-title">Savings Goals</h2>
+                        <button class="btn btn--primary" id="add-goal-btn">Add New Goal</button>
+                    </div>
+                    <div id="savings-goals-list" class="card-grid">
+                        <!-- Goal cards will be rendered here -->
+                    </div>
+                </div>
+                
+                <!-- Investment Planning Section -->
+                <div class="investment-planning mt-16">
                     <div class="card">
                         <div class="card__header">
-                            <h3>Investment Summary</h3>
+                            <h3>Investment Planning</h3>
                         </div>
                         <div class="card__body">
-                            <div class="investment-metrics">
-                                <div class="metric-item">
-                                    <span class="metric-label">Total Value:</span>
-                                    <span class="metric-value" id="investment-total-value">$0.00</span>
+                            <!-- Calculator Type Selector -->
+                            <div class="calculator-selector">
+                                <label for="calculator-type">Select Calculator:</label>
+                                <select id="calculator-type" class="form-select">
+                                    <option value="contribution">Extra Contribution Calculator</option>
+                                    <option value="retirement">Retirement Goal Calculator</option>
+                                    <option value="growth">Portfolio Growth Projection</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Extra Contribution Calculator -->
+                            <div id="contribution-calculator" class="calculator-section mt-16">
+                                <h4>Extra Monthly Contribution Calculator</h4>
+                                <div class="calculator-form">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="contrib-account-select">Account (optional):</label>
+                                            <select id="contrib-account-select" class="form-select">
+                                                <option value="">All Accounts</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="contrib-extra-amount">Extra Monthly Amount:</label>
+                                            <input type="number" id="contrib-extra-amount" class="form-input" placeholder="0" min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="contrib-years">Years:</label>
+                                            <input type="number" id="contrib-years" class="form-input" value="10" min="1" max="50">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn--secondary" id="calculate-contribution-btn">Calculate Growth</button>
                                 </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Day Change:</span>
-                                    <span class="metric-value" id="investment-day-change">$0.00</span>
+                                <div id="contribution-results" class="calculator-results mt-16" style="display: none;">
+                                    <!-- Results will be inserted here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Retirement Goal Calculator -->
+                            <div id="retirement-calculator" class="calculator-section mt-16" style="display: none;">
+                                <h4>Retirement Goal Calculator</h4>
+                                <div class="calculator-form">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="retire-current-age">Current Age:</label>
+                                            <input type="number" id="retire-current-age" class="form-input" placeholder="30" min="18" max="100">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="retire-target-age">Retirement Age:</label>
+                                            <input type="number" id="retire-target-age" class="form-input" placeholder="65" min="50" max="100">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="retire-target-amount">Target Amount:</label>
+                                            <input type="number" id="retire-target-amount" class="form-input" placeholder="1000000" min="0" step="1000">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn--secondary" id="calculate-retirement-btn">Calculate Required Savings</button>
+                                </div>
+                                <div id="retirement-results" class="calculator-results mt-16" style="display: none;">
+                                    <!-- Results will be inserted here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Portfolio Growth Projection -->
+                            <div id="growth-calculator" class="calculator-section mt-16" style="display: none;">
+                                <h4>Portfolio Growth Projection</h4>
+                                <div class="calculator-form">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="growth-monthly-contrib">Monthly Contribution:</label>
+                                            <input type="number" id="growth-monthly-contrib" class="form-input" placeholder="500" min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="growth-years">Years to Project:</label>
+                                            <input type="number" id="growth-years" class="form-input" value="20" min="1" max="50">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn--secondary" id="calculate-growth-btn">Project Growth</button>
+                                </div>
+                                <div id="growth-results" class="calculator-results mt-16" style="display: none;">
+                                    <!-- Results will be inserted here -->
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <div class="savings-goals mt-16">
+                
+                <!-- Investment Planning Charts -->
+                <div class="investment-charts mt-16" style="display: none;">
                     <div class="card">
                         <div class="card__header">
-                            <h3>Savings Goals</h3>
-                            <button class="btn btn--primary" id="add-goal-btn">Add New Goal</button>
+                            <h3>Investment Projections</h3>
                         </div>
                         <div class="card__body">
-                            <div id="savings-goals-list" class="savings-goals-grid">
+                            <div class="charts-grid">
+                                <div class="chart-container">
+                                    <canvas id="investment-growth-chart"></canvas>
                                 </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="investment-accounts mt-16">
-                    <div class="card">
-                        <div class="card__header">
-                            <h3>Investment Accounts</h3>
-                            <button class="btn btn--primary" id="add-investment-account-btn">Add New Account</button>
-                        </div>
-                        <div class="card__body">
-                            <div id="investment-accounts-list">
+                                <div class="chart-container">
+                                    <canvas id="contribution-comparison-chart"></canvas>
                                 </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div id="debt" class="tab-content" role="region" aria-labelledby="debt-tab-btn">
-                <div class="debt-summary">
-                    <div class="card">
-                        <div class="card__header">
-                            <h3>Debt Summary</h3>
-                            <button class="btn btn--primary" id="add-debt-btn">Add New Debt Account</button>
+                <!-- Unified Debt Dashboard (Mockup 1 Strategy) -->
+                
+                <!-- Overview Metrics -->
+                <div class="debt-overview">
+                    <div class="debt-metric-card primary">
+                        <div class="debt-metric-label">Total Debt Balance</div>
+                        <div class="debt-metric-value" id="debt-total-balance" data-sensitive="true">$0.00</div>
+                        <div class="debt-metric-change" id="debt-balance-change">↓ $0 this month</div>
+                        <div class="debt-progress-bar">
+                            <div class="debt-progress-fill" id="debt-progress-fill" style="width: 0%;"></div>
                         </div>
-                        <div class="card__body">
-                            <div class="debt-metrics">
-                                <div class="metric-item">
-                                    <span class="metric-label">Total Debt:</span>
-                                    <span class="metric-value debt-value" id="debt-total-value">$0.00</span>
+                    </div>
+                    
+                    <div class="debt-metric-card">
+                        <div class="debt-metric-label">Monthly Payment</div>
+                        <div class="debt-metric-value" id="debt-monthly-total" data-sensitive="true">$0</div>
+                        <div class="debt-metric-change" id="debt-principal-info">Principal: $0</div>
+                    </div>
+                    
+                    <div class="debt-metric-card">
+                        <div class="debt-metric-label">Payoff Progress</div>
+                        <div class="debt-metric-value" id="debt-payoff-percent">0%</div>
+                        <div class="debt-metric-change positive" id="debt-progress-change">↑ 0% this quarter</div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="debt-charts-grid">
+                    <div class="debt-chart-container">
+                        <div class="debt-chart-header">
+                            <h3 class="debt-chart-title">Debt Payoff Timeline</h3>
+                            <div class="debt-chart-legend">
+                                <div class="debt-legend-item">
+                                    <div class="debt-legend-dot projected"></div>
+                                    <span>Projected</span>
                                 </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Monthly Payments:</span>
-                                    <span class="metric-value" id="debt-monthly-payments">$0.00</span>
+                                <div class="debt-legend-item">
+                                    <div class="debt-legend-dot current"></div>
+                                    <span>Current</span>
                                 </div>
                             </div>
+                        </div>
+                        <div class="debt-chart-placeholder">
+                            <canvas id="debt-payoff-timeline-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="debt-chart-container">
+                        <div class="debt-chart-header">
+                            <h3 class="debt-chart-title">Debt Breakdown</h3>
+                        </div>
+                        <div class="debt-chart-placeholder">
+                            <canvas id="debt-breakdown-chart"></canvas>
                         </div>
                     </div>
                 </div>
 
-                <div class="debt-accounts mt-16">
+                <!-- Individual Debt Cards -->
+                <div class="debt-accounts-header">
+                    <h3 class="debt-accounts-title">Debt Accounts</h3>
+                    <div class="debt-sort-controls">
+                        <label for="debt-sort-select">Sort by:</label>
+                        <select id="debt-sort-select" class="sort-select">
+                            <option value="alphabetical">Alphabetical (A-Z)</option>
+                            <option value="balance-high">Balance (High to Low)</option>
+                            <option value="balance-low">Balance (Low to High)</option>
+                            <option value="apr-high">APR (High to Low)</option>
+                            <option value="apr-low">APR (Low to High)</option>
+                            <option value="payment-high">Min Payment (High to Low)</option>
+                            <option value="payment-low">Min Payment (Low to High)</option>
+                            <option value="interest-high">Monthly Interest (High to Low)</option>
+                            <option value="interest-low">Monthly Interest (Low to High)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="debt-cards">
+                    <div id="debt-accounts-list">
+                        <!-- Debt cards will be rendered here -->
+                    </div>
+                </div>
+
+                <!-- Add New Debt Button -->
+                <div class="debt-actions">
+                    <button class="btn btn--primary" id="add-debt-btn">Add New Debt Account</button>
+                </div>
+
+                <!-- Payoff Strategy Section -->
+                <div class="debt-strategy">
                     <div class="card">
                         <div class="card__header">
-                            <h3>Debt Accounts</h3>
+                            <h3>Payoff Strategy</h3>
+                            <div class="strategy-selector">
+                                <label for="debt-strategy-select">Strategy:</label>
+                                <select id="debt-strategy-select" class="form-select">
+                                    <option value="avalanche">Avalanche (Highest Interest Rate First)</option>
+                                    <option value="snowball">Snowball (Lowest Balance First)</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="card__body">
-                            <div id="debt-accounts-list">
+                            <div class="payoff-calculator">
+                                <div class="form-group">
+                                    <label for="extra-payment-amount">Extra Monthly Payment:</label>
+                                    <input type="number" id="extra-payment-amount" class="form-input" placeholder="0" min="0" step="0.01">
                                 </div>
+                                <div class="payoff-calculator-button">
+                                    <button class="btn btn--secondary" id="calculate-payoff-btn">Calculate Payoff</button>
+                                </div>
+                            </div>
+                            <div id="payoff-results" class="payoff-results mt-16" style="display: none;">
+                                <div class="payoff-summary">
+                                    <div class="metric-item">
+                                        <span class="metric-label">Debt Free Date:</span>
+                                        <span class="metric-value" id="debt-free-date">-</span>
+                                    </div>
+                                    <div class="metric-item">
+                                        <span class="metric-label">Total Interest:</span>
+                                        <span class="metric-value" id="total-interest">$0.00</span>
+                                    </div>
+                                    <div class="metric-item">
+                                        <span class="metric-label">Months to Payoff:</span>
+                                        <span class="metric-value" id="months-to-payoff">0</span>
+                                    </div>
+                                </div>
+                                <div id="strategy-comparison" class="strategy-comparison mt-16" style="display: none;">
+                                    <h4>Strategy Comparison</h4>
+                                    <div class="comparison-results"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div id="recurring" class="tab-content" role="region" aria-labelledby="recurring-tab-btn">
-                <div class="recurring-summary">
+                <div class="bills-header-main">
+                    <h2 class="section-title">Recurring Bills</h2>
+                    <button class="btn btn--primary" id="add-recurring-btn">Add New Bill</button>
+                </div>
+                
+                <div class="card-grid" id="recurring-bills-grid">
+                    <!-- Bill cards will be rendered here -->
+                </div>
+                
+
+                <div class="calendar-view mt-16">
                     <div class="card">
                         <div class="card__header">
-                            <h3>Recurring Bills Summary</h3>
-                            <button class="btn btn--primary" id="add-recurring-btn">Add New Recurring Bill</button>
+                            <h3>Bills Calendar</h3>
+                            <div class="view-toggle">
+                                <label for="calendar-view-toggle" class="sr-only">Calendar View</label>
+                                <select id="calendar-view-toggle" class="form-control form-control--sm">
+                                    <option value="month">Month View</option>
+                                    <option value="list">List View</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="card__body">
-                            <div class="recurring-metrics">
-                                <div class="metric-item">
-                                    <span class="metric-label">Monthly Total:</span>
-                                    <span class="metric-value" id="recurring-monthly-total">$0.00</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Annual Total:</span>
-                                    <span class="metric-value" id="recurring-annual-total">$0.00</span>
-                                </div>
-                                <div class="metric-item">
-                                    <span class="metric-label">Active Bills:</span>
-                                    <span class="metric-value" id="recurring-count">0</span>
-                                </div>
+                            <div id="calendar-container">
+                                <!-- Calendar will be rendered here -->
+                            </div>
+                            <div id="upcoming-bills-list" style="display: none;">
+                                <!-- List view content -->
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="upcoming-bills mt-16">
-                    <div class="card">
-                        <div class="card__header">
-                            <h3>Upcoming Bills (Next 30 Days)</h3>
-                        </div>
-                        <div class="card__body">
-                            <div id="upcoming-bills-list">
-                                </div>
-                        </div>
-                    </div>
-                </div>
+            </div>
 
-                <div class="recurring-bills mt-16">
+            <div id="rules" class="tab-content" role="region" aria-labelledby="rules-tab-btn">
+                <div class="rules-container">
                     <div class="card">
                         <div class="card__header">
-                            <h3>All Recurring Bills</h3>
+                            <h3>Smart Rules</h3>
+                            <div class="button-group">
+                                <button class="btn btn--primary" id="add-rule-btn">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    Add Rule
+                                </button>
+                                <button class="btn btn--secondary" id="use-template-btn">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="9" y1="9" x2="15" y2="9"></line>
+                                        <line x1="9" y1="13" x2="15" y2="13"></line>
+                                        <line x1="9" y1="17" x2="11" y2="17"></line>
+                                    </svg>
+                                    Use Template
+                                </button>
+                                <button class="btn btn--secondary" id="reprocess-all-btn" title="Apply rules to all transactions, including already categorized ones">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M23 4v6h-6"></path>
+                                        <path d="M1 20v-6h6"></path>
+                                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                                    </svg>
+                                    Reprocess All
+                                </button>
+                            </div>
                         </div>
                         <div class="card__body">
-                            <div id="all-recurring-bills-list" class="recurring-bills-grid">
+                            <div class="rules-summary">
+                                <div class="summary-item">
+                                    <span class="summary-label">Active Rules:</span>
+                                    <span class="summary-value" id="active-rules-count">0</span>
                                 </div>
+                                <div class="summary-item">
+                                    <span class="summary-label">Total Matches:</span>
+                                    <span class="summary-value" id="total-matches-count">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rules-list mt-16">
+                        <div class="card">
+                            <div class="card__header">
+                                <h3>Your Rules</h3>
+                                <div class="rules-controls">
+                                    <button class="btn btn--sm btn--secondary" id="apply-rules-btn">Apply to Existing</button>
+                                </div>
+                            </div>
+                            <div class="card__body">
+                                <div id="rules-list-container" class="rules-list-container">
+                                    <div class="empty-state">
+                                        <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M9 11l3 3L22 4"></path>
+                                            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                                        </svg>
+                                        <p>No rules created yet</p>
+                                        <p class="empty-state-hint">Create your first rule to start automating your transactions</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div id="settings" class="tab-content" role="region" aria-labelledby="settings-tab-btn">
+                <div class="settings-container">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Time-Based Budgeting</h3>
+                            <div class="feature-toggle">
+                                <label class="switch">
+                                    <input type="checkbox" id="enable-time-budgets">
+                                    <span class="slider"></span>
+                                </label>
+                                <label for="enable-time-budgets" class="feature-label">Enable Time Costs</label>
+                            </div>
+                        </div>
+                        <div class="card__body" id="time-settings-body">
+                            <div class="info-note">
+                                <strong>See what your time is worth!</strong> Time-based budgeting shows you how many hours of work each purchase represents, helping you make more mindful spending decisions.
+                            </div>
+                            <form id="wage-config-form">
+                                <div class="form-group">
+                                    <label class="form-label" for="hourly-wage">Hourly Wage (After Tax)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-addon">$</span>
+                                        <input type="number" id="hourly-wage" class="form-control" step="0.01" min="0" placeholder="25.00">
+                                        <span class="input-group-addon">/hour</span>
+                                    </div>
+                                    <small class="form-text">Enter your take-home pay per hour</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label" for="tax-rate">Tax Rate (Optional)</label>
+                                    <div class="input-group">
+                                        <input type="number" id="tax-rate" class="form-control" step="0.01" min="0" max="100" placeholder="25">
+                                        <span class="input-group-addon">%</span>
+                                    </div>
+                                    <small class="form-text">If you enter gross wage above, specify tax rate for net calculations</small>
+                                </div>
+
+                                <div class="wage-preview" id="wage-preview" style="display: none;">
+                                    <h4>Preview</h4>
+                                    <div class="preview-examples">
+                                        <div class="example-item">
+                                            <span class="example-amount">$50 purchase</span>
+                                            <span class="example-arrow">→</span>
+                                            <span class="example-time" id="preview-50">2h</span>
+                                        </div>
+                                        <div class="example-item">
+                                            <span class="example-amount">$200 purchase</span>
+                                            <span class="example-arrow">→</span>
+                                            <span class="example-time" id="preview-200">8h</span>
+                                        </div>
+                                        <div class="example-item">
+                                            <span class="example-amount">$1000 purchase</span>
+                                            <span class="example-arrow">→</span>
+                                            <span class="example-time" id="preview-1000">40h</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn--primary">Save Time Settings</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <div class="card__header">
+                            <h3>Other Settings</h3>
+                        </div>
+                        <div class="card__body">
+                            <p>Additional settings and preferences will appear here in future updates.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Salary Calculator Tab -->
+            <div id="salary" class="tab-content" role="region" aria-labelledby="salary-tab-btn">
+                <div class="salary-container">
+                    <!-- Header -->
+                    <div class="salary-header">
+                        <h2 class="salary-title">Model My Pay</h2>
+                        <button class="btn btn--primary calculate-pay-btn" id="calculate-pay-btn">
+                            <span class="icon">🧮</span>
+                            <span>Calculate</span>
+                        </button>
+                    </div>
+
+                    <!-- Take Home Pay Display -->
+                    <div class="take-home-display card">
+                        <div class="card__body">
+                            <p class="take-home-label">My take-home pay</p>
+                            <p class="take-home-amount" data-sensitive="true">
+                                <span class="currency-symbol">$</span>
+                                <span id="take-home-pay">0.00</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Collapsible Sections -->
+                    <div class="pay-sections">
+                        <!-- Regular Pay Section -->
+                        <div class="pay-section card">
+                            <button class="section-header" data-section="regularPay">
+                                <div class="section-title">
+                                    <span class="icon">⏰</span>
+                                    <span>Regular pay</span>
+                                </div>
+                                <span class="chevron">▼</span>
+                            </button>
+                            <div class="section-content active" id="regularPay-content">
+                                <form id="regular-pay-form" class="pay-form">
+                                    <div class="form-group">
+                                        <label class="form-label" for="pay-frequency">Pay frequency</label>
+                                        <select id="pay-frequency" class="form-control">
+                                            <option value="weekly">Weekly</option>
+                                            <option value="biweekly" selected>Biweekly</option>
+                                            <option value="semimonthly">Semi-monthly</option>
+                                            <option value="monthly">Monthly</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label" for="scheduled-hours">Scheduled hours *</label>
+                                        <input type="number" id="scheduled-hours" class="form-control" 
+                                               value="80" step="0.01" min="0" required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label" for="annual-salary">Annual salary *</label>
+                                        <div class="input-group">
+                                            <span class="input-group-addon">$</span>
+                                            <input type="number" id="annual-salary" class="form-control" 
+                                                   value="50000" step="0.01" min="0" required>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="pay-rate-display">
+                                        <span class="pay-rate-label">Pay rate *</span>
+                                        <span class="pay-rate-value">$<span id="hourly-rate">24.04</span> Per Hour</span>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Federal Taxes Section -->
+                        <div class="pay-section card">
+                            <button class="section-header" data-section="federalTaxes">
+                                <div class="section-title">
+                                    <span class="icon">🏛️</span>
+                                    <span>Federal taxes: W-4</span>
+                                </div>
+                                <span class="chevron">▶</span>
+                            </button>
+                            <div class="section-content" id="federalTaxes-content">
+                                <form id="federal-tax-form" class="pay-form">
+                                    <div class="form-group">
+                                        <label class="form-label" for="filing-status">Filing Status *</label>
+                                        <select id="filing-status" class="form-control">
+                                            <option value="single">Single</option>
+                                            <option value="married-jointly" selected>Married, Filing Jointly</option>
+                                            <option value="married-separately">Married, Filing Separately</option>
+                                            <option value="head-of-household">Head of Household</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Are you subject to federal income tax?</label>
+                                        <div class="radio-group">
+                                            <label class="radio-label">
+                                                <input type="radio" name="subject-to-tax" value="yes" checked>
+                                                <span>Yes</span>
+                                            </label>
+                                            <label class="radio-label">
+                                                <input type="radio" name="subject-to-tax" value="no">
+                                                <span>No</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="qualifying-children">Qualifying children under 17</label>
+                                        <input type="number" id="qualifying-children" class="form-control" 
+                                               value="0" min="0" step="1">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="other-dependents">Other dependents</label>
+                                        <input type="number" id="other-dependents" class="form-control" 
+                                               value="0" min="0" step="1">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="extra-withholding">Extra withholding per paycheck</label>
+                                        <div class="input-group">
+                                            <span class="input-group-addon">$</span>
+                                            <input type="number" id="extra-withholding" class="form-control" 
+                                                   value="0" step="0.01" min="0">
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- State & Local Taxes Section -->
+                        <div class="pay-section card">
+                            <button class="section-header" data-section="stateTaxes">
+                                <div class="section-title">
+                                    <span class="icon">🏛️</span>
+                                    <span>State & local taxes</span>
+                                </div>
+                                <span class="chevron">▶</span>
+                            </button>
+                            <div class="section-content" id="stateTaxes-content">
+                                <form id="state-tax-form" class="pay-form">
+                                    <div class="form-group">
+                                        <label class="form-label" for="state-selection">State</label>
+                                        <select id="state-selection" class="form-control">
+                                            <option value="tennessee">Tennessee</option>
+                                            <option value="california">California</option>
+                                            <option value="newyork">New York</option>
+                                            <option value="texas">Texas</option>
+                                            <option value="florida">Florida</option>
+                                        </select>
+                                    </div>
+                                    <div class="state-tax-info">
+                                        <p id="state-tax-message">No state tax withholding for this area</p>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Earnings Section -->
+                        <div class="pay-section card">
+                            <button class="section-header" data-section="earnings">
+                                <div class="section-title">
+                                    <span class="icon">💵</span>
+                                    <span>Earnings</span>
+                                </div>
+                                <span class="chevron">▶</span>
+                            </button>
+                            <div class="section-content" id="earnings-content">
+                                <div id="earnings-list" class="dynamic-list">
+                                    <!-- Earnings items will be dynamically added here -->
+                                </div>
+                                <button class="btn btn--secondary add-item-btn" id="add-earning-btn">
+                                    <span class="icon">➕</span>
+                                    <span>Add Earning</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Deductions Section -->
+                        <div class="pay-section card">
+                            <button class="section-header" data-section="deductions">
+                                <div class="section-title">
+                                    <span class="icon">➖</span>
+                                    <span>Deductions & contributions</span>
+                                </div>
+                                <span class="chevron">▶</span>
+                            </button>
+                            <div class="section-content" id="deductions-content">
+                                <div id="deductions-list" class="dynamic-list">
+                                    <!-- Deduction items will be dynamically added here -->
+                                </div>
+                                <button class="btn btn--secondary add-item-btn" id="add-deduction-btn">
+                                    <span class="icon">➕</span>
+                                    <span>Add Deduction</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Calculate Button -->
+                    <button class="btn btn--primary calculate-pay-btn-bottom" id="calculate-pay-btn-bottom">
+                        <span class="icon">🧮</span>
+                        <span>Calculate</span>
+                    </button>
+
+                    <!-- Disclaimer -->
+                    <div class="disclaimer card">
+                        <div class="card__body">
+                            <p class="disclaimer-text">
+                                <strong>Important Notice:</strong> The calculations on this page provide general estimates. 
+                                The calculators should not be relied upon or used to calculate exact taxes, payroll, financial matters, 
+                                retirement or other calculations. By using the calculators you are agreeing that the company is not providing 
+                                you with legal, financial or tax advice and that nothing herein constitutes such advice. You should seek 
+                                legal counsel, accountant or other professionals regarding any specific requirements, questions or concerns.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Dashboard Tab -->
+            <div id="performance" class="tab-content" role="region" aria-labelledby="performance-tab-btn">
+                <div class="perf-dashboard-container">
+                    <!-- Dashboard Header -->
+                    <div class="perf-dashboard-header">
+                        <div class="header-left">
+                            <h2 class="dashboard-title">Performance Analytics</h2>
+                            <p class="dashboard-subtitle">Comprehensive insights into your financial patterns</p>
+                        </div>
+                        <div class="header-right">
+                            <div class="date-range-selector">
+                                <button class="date-range-btn active" data-range="30">Last 30 Days</button>
+                                <button class="date-range-btn" data-range="90">Last 90 Days</button>
+                                <button class="date-range-btn" data-range="180">Last 6 Months</button>
+                                <button class="date-range-btn" data-range="custom">Custom Range</button>
+                            </div>
+                            <button class="refresh-dashboard-btn" id="refresh-dashboard" aria-label="Refresh dashboard">
+                                <span class="refresh-icon">↻</span>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Key Metrics Grid -->
+                    <div class="metric-cards-grid" id="metric-cards-grid">
+                        <!-- Cards will be dynamically generated -->
+                    </div>
+
+                    <!-- Main Content Area -->
+                    <div class="dashboard-content">
+                        <!-- Charts Section -->
+                        <div class="charts-section">
+                            <div class="chart-tabs-container">
+                                <div class="chart-tabs">
+                                    <button class="chart-tab active" data-chart="trends">Spending Trends</button>
+                                    <button class="chart-tab" data-chart="categories">Categories</button>
+                                    <button class="chart-tab" data-chart="merchants">Top Merchants</button>
+                                    <button class="chart-tab" data-chart="forecast">Cash Flow</button>
+                                </div>
+                                <div class="chart-actions">
+                                    <button class="chart-action-btn" id="export-chart" aria-label="Export chart">
+                                        <span>📊</span> Export
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="chart-container" id="main-chart-container">
+                                <div class="chart-loading">
+                                    <div class="spinner"></div>
+                                    <p>Loading chart data...</p>
+                                </div>
+                                <canvas id="performanceChart" style="display: none;"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Insights Sidebar -->
+                        <aside class="insights-sidebar">
+                            <!-- Anomaly Alerts -->
+                            <div class="insights-section">
+                                <h3 class="section-title">
+                                    <span class="section-icon">⚠️</span>
+                                    Anomalies Detected
+                                </h3>
+                                <div class="anomaly-alerts" id="anomaly-alerts">
+                                    <!-- Alerts will be dynamically generated -->
+                                </div>
+                            </div>
+
+                            <!-- Predictions -->
+                            <div class="insights-section">
+                                <h3 class="section-title">
+                                    <span class="section-icon">🔮</span>
+                                    Predictions
+                                </h3>
+                                <div class="predictions-panel" id="predictions-panel">
+                                    <!-- Predictions will be dynamically generated -->
+                                </div>
+                            </div>
+
+                            <!-- Smart Rules Recommendations -->
+                            <div class="insights-section">
+                                <h3 class="section-title">
+                                    <span class="section-icon">💡</span>
+                                    Recommendations
+                                </h3>
+                                <div class="recommendations-panel" id="recommendations-panel">
+                                    <!-- Recommendations will be dynamically generated -->
+                                </div>
+                            </div>
+                        </aside>
+                    </div>
+
+                    <!-- Additional Sections -->
+                <div class="additional-sections">
+                    <!-- Budget Performance -->
+                    <div class="dashboard-section">
+                        <h3 class="section-header">Budget Performance</h3>
+                        <div class="budget-performance" id="budget-performance">
+                            <!-- Budget cards will be dynamically generated -->
+                        </div>
+                    </div>
+
+                        <!-- Data Quality -->
+                        <div class="dashboard-section">
+                            <h3 class="section-header">Data Quality</h3>
+                            <div class="data-quality" id="data-quality">
+                                <!-- Quality metrics will be dynamically generated -->
+                            </div>
+                        </div>
+
+                        <!-- System Performance -->
+                        <div class="dashboard-section">
+                            <h3 class="section-header">System Performance</h3>
+                            <div class="system-performance" id="system-performance">
+                                <!-- Performance metrics will be dynamically generated -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="sankey" class="tab-content" role="region" aria-labelledby="sankey-tab-btn">
+                <section class="cash-flow-section">
+                    <div class="cash-flow-header">
+                        <h2 class="cash-flow-title">Cash Flow Diagram</h2>
+                        <div class="cash-flow-controls">
+                            <div class="period-selector">
+                                <button class="period-btn active" data-period="month">Month</button>
+                                <button class="period-btn" data-period="quarter">Quarter</button>
+                                <button class="period-btn" data-period="year">Year</button>
+                            </div>
+                            <div class="cash-flow-actions">
+                                <button class="export-btn" id="export-sankey" aria-label="Export Sankey diagram">
+                                    <span>📤</span> Export
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sankey-container" id="cash-flow-sankey-container"></div>
+                    <div class="sankey-stats-grid">
+                        <div class="sankey-stat-card">
+                            <div class="sankey-stat-label">Total Income</div>
+                            <div class="sankey-stat-value" id="sankey-total-income" data-sensitive="true">$0.00</div>
+                        </div>
+                        <div class="sankey-stat-card">
+                            <div class="sankey-stat-label">Total Expenses</div>
+                            <div class="sankey-stat-value" id="sankey-total-expenses" data-sensitive="true">$0.00</div>
+                        </div>
+                        <div class="sankey-stat-card">
+                            <div class="sankey-stat-label">Net Savings</div>
+                            <div class="sankey-stat-value" id="sankey-net-savings" data-sensitive="true">$0.00</div>
+                        </div>
+                        <div class="sankey-stat-card">
+                            <div class="sankey-stat-label">Savings Rate</div>
+                            <div class="sankey-stat-value" id="sankey-savings-rate" data-sensitive="true">0%</div>
+                        </div>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
@@ -606,6 +1515,7 @@
         </div>
     </div>
 
+    <!-- UPDATED: Enhanced recurring bills modal with payment method selection -->
     <div id="recurring-modal" class="modal" tabindex="-1" role="dialog" aria-labelledby="recurring-modal-title">
         <div class="modal-content">
             <div class="modal-header">
@@ -623,16 +1533,7 @@
                     <div class="form-group">
                         <label class="form-label" for="recurring-category">Category</label>
                         <select id="recurring-category" class="form-control" required>
-                            <option value="">Select Category</option>
-                            <option value="Streaming">Streaming Services</option>
-                            <option value="Utilities">Utilities</option>
-                            <option value="Insurance">Insurance</option>
-                            <option value="Subscriptions">Subscriptions</option>
-                            <option value="Rent/Mortgage">Rent/Mortgage</option>
-                            <option value="Transportation">Transportation</option>
-                            <option value="Fitness">Fitness & Health</option>
-                            <option value="Software">Software & Apps</option>
-                            <option value="Other">Other</option>
+                            <option value="">— Select category —</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -654,12 +1555,35 @@
                         <label class="form-label" for="recurring-next-due">Next Due Date</label>
                         <input type="date" id="recurring-next-due" class="form-control" required>
                     </div>
+
+                    <!-- NEW: Payment Method Selection -->
                     <div class="form-group">
-                        <label class="form-label" for="recurring-account">Payment Account</label>
-                        <select id="recurring-account" class="form-control" required>
-                            <option value="">Select Account</option>
+                        <label class="form-label" for="recurring-payment-method">Payment Method</label>
+                        <select id="recurring-payment-method" class="form-control" required>
+                            <option value="">Select Payment Method</option>
+                            <option value="cash">Cash Account</option>
+                            <option value="credit">Credit Card</option>
                         </select>
                     </div>
+
+                    <!-- Cash Account Selection (shown when payment method is 'cash') -->
+                    <div class="form-group" id="cash-account-group" style="display: none;">
+                        <label class="form-label" for="recurring-account">Cash Account</label>
+                        <select id="recurring-account" class="form-control">
+                            <option value="">Select Cash Account</option>
+                        </select>
+                    </div>
+
+                    <!-- Credit Card Selection (shown when payment method is 'credit') -->
+                    <div class="form-group" id="credit-account-group" style="display: none;">
+                        <label class="form-label" for="recurring-debt-account">Credit Card</label>
+                        <select id="recurring-debt-account" class="form-control">
+                            <option value="">Select Credit Card</option>
+                        </select>
+                        <small class="form-text">Only credit card debt accounts are shown. Add credit cards in the Debt
+                            section if needed.</small>
+                    </div>
+
                     <div class="form-group">
                         <label class="form-label" for="recurring-notes">Notes (Optional)</label>
                         <textarea id="recurring-notes" class="form-control" rows="2"
@@ -731,7 +1655,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="contribution-modal-title">Contribute to Goal</h3>
-                <button class="close-btn" id="close-contribution-modal" aria-label="Close modal">&times;</button>
+                <button class="close-btn" id="close-contribution-modal" aria-label="Close modal">&times;</button> id="close-contribution-modal" aria-label="Close modal">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="contribution-form">
@@ -760,11 +1684,532 @@
         <button onclick="document.getElementById('error-banner').style.display='none'">&times;</button>
     </div>
 
+    <!-- Smart Rule Modal -->
+    <div id="rule-modal" class="modal" tabindex="-1" role="dialog" aria-labelledby="rule-modal-title">
+        <div class="modal-content modal-content--wide">
+            <div class="modal-header">
+                <h3 id="rule-modal-title">Create Smart Rule</h3>
+                <button class="close-btn" id="close-rule-modal" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="rule-form">
+                    <input type="hidden" id="rule-id">
+                    
+                    <div class="form-section">
+                        <h4>Rule Details</h4>
+                        <div class="form-group">
+                            <label class="form-label" for="rule-name">Rule Name</label>
+                            <input type="text" id="rule-name" class="form-control" required 
+                                   placeholder="e.g., Categorize Starbucks">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rule-description">Description (Optional)</label>
+                            <textarea id="rule-description" class="form-control" rows="2"
+                                      placeholder="What does this rule do?"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="rule-priority">Priority</label>
+                            <input type="number" id="rule-priority" class="form-control" value="0" min="0" 
+                                   title="Higher priority rules run first">
+                            <small class="form-text">Higher priority rules run first (0 = lowest)</small>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Conditions</h4>
+                        <div class="condition-builder" id="condition-builder">
+                            <div class="condition-item" data-condition-id="0">
+                                <select class="form-control condition-field" required>
+                                    <option value="">Select Field</option>
+                                    <option value="description">Description</option>
+                                    <option value="amount">Amount</option>
+                                    <option value="category">Category</option>
+                                    <option value="type">Transaction Type</option>
+                                </select>
+                                <select class="form-control condition-operator" required>
+                                    <option value="">Select Operator</option>
+                                    <option value="contains">Contains</option>
+                                    <option value="equals">Equals</option>
+                                    <option value="starts_with">Starts With</option>
+                                    <option value="ends_with">Ends With</option>
+                                    <option value="greater_than">Greater Than</option>
+                                    <option value="less_than">Less Than</option>
+                                </select>
+                                <input type="text" class="form-control condition-value" required 
+                                       placeholder="Value">
+                            </div>
+                        </div>
+                        <div class="form-text mt-8">All conditions must match (AND logic)</div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Actions</h4>
+                        <div class="form-group">
+                            <label class="form-label" for="rule-action-type">Action Type</label>
+                            <select id="rule-action-type" class="form-control" required>
+                                <option value="">Select Action</option>
+                                <option value="set_category">Set Category</option>
+                                <option value="add_tag">Add Tag</option>
+                                <option value="add_note">Add Note</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="action-value-group">
+                            <label class="form-label" for="rule-action-value">Value</label>
+                            <input type="text" id="rule-action-value" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="switch">
+                            <input type="checkbox" id="rule-enabled" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <label for="rule-enabled" class="feature-label">Enable Rule</label>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn--secondary" id="cancel-rule-btn">Cancel</button>
+                        <button type="submit" class="btn btn--primary">Save Rule</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rule Template Modal -->
+    <div id="rule-template-modal" class="modal" style="display: none;">
+        <div class="modal-content modal-content--wide">
+            <div class="modal-header">
+                <h2>Choose a Rule Template</h2>
+                <button class="modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="template-selector">
+                    <div class="template-categories" id="template-categories">
+                        <!-- Categories will be rendered here -->
+                    </div>
+                    
+                    <div class="template-list" id="template-list">
+                        <p class="template-hint">Select a category to view templates</p>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn--secondary" id="cancel-template">Cancel</button>
+                    <button type="button" class="btn btn--primary" id="use-template" disabled>Use Template</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pay Schedule Modal -->
+    <div id="pay-schedule-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configure Pay Schedule</h2>
+                <button class="modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="pay-schedule-form">
+                    <div class="form-group">
+                        <label for="pay-schedule-name">Schedule Name</label>
+                        <input type="text" id="pay-schedule-name" name="name" required 
+                               placeholder="e.g., Main Job, Side Gig">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pay-frequency">Pay Frequency</label>
+                        <select id="pay-frequency" name="frequency" required>
+                            <option value="">Select frequency</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="bi-weekly">Bi-weekly (every 2 weeks)</option>
+                            <option value="semi-monthly">Semi-monthly (twice a month)</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="start-date-group">
+                        <label for="pay-start-date">Start Date</label>
+                        <input type="date" id="pay-start-date" name="start_date" required>
+                        <small class="form-help">Date of your first or most recent paycheck</small>
+                    </div>
+
+                    <div class="form-group" id="weekly-options" style="display: none;">
+                        <label for="pay-day-of-week">Pay Day</label>
+                        <select id="pay-day-of-week" name="day_of_week">
+                            <option value="0">Sunday</option>
+                            <option value="1">Monday</option>
+                            <option value="2">Tuesday</option>
+                            <option value="3">Wednesday</option>
+                            <option value="4">Thursday</option>
+                            <option value="5" selected>Friday</option>
+                            <option value="6">Saturday</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="semi-monthly-options" style="display: none;">
+                        <label>Pay Days of Month</label>
+                        <div class="form-row">
+                            <div class="form-col">
+                                <label for="pay-day-1" class="form-label-sm">First Pay Day</label>
+                                <input type="number" id="pay-day-1" name="day_of_month_1" 
+                                       min="1" max="31" value="15" required>
+                            </div>
+                            <div class="form-col">
+                                <label for="pay-day-2" class="form-label-sm">Second Pay Day</label>
+                                <input type="number" id="pay-day-2" name="day_of_month_2" 
+                                       min="1" max="31" value="30" required>
+                            </div>
+                        </div>
+                        <small class="form-help">Days of the month you get paid (e.g., 1st and 15th)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pay-amount">Pay Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" id="pay-amount" name="amount" 
+                                   min="0" step="0.01" required placeholder="0.00">
+                        </div>
+                        <small class="form-help">Net amount (after taxes) per paycheck</small>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn--secondary" id="cancel-pay-schedule">Cancel</button>
+                        <button type="submit" class="btn btn--primary">Save Schedule</button>
+                    </div>
+                </form>
+
+                <!-- Existing Schedules -->
+                <div id="existing-schedules" class="existing-schedules-list" style="display: none;">
+                    <h3>Existing Pay Schedules</h3>
+                    <div id="pay-schedules-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Import Modal -->
+    <div id="import-transactions-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Import Transactions</h2>
+                <button class="modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="import-step" id="import-step-upload">
+                    <h3>Step 1: Select File</h3>
+                    <p>Upload a CSV, QFX, or QIF file containing your transactions.</p>
+                    
+                    <div class="file-upload-area" id="file-upload-area">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; opacity: 0.5;">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        <p>Drag and drop your file here, or click to browse</p>
+                        <input type="file" id="import-file-input" accept=".csv,.qfx,.qif" style="display: none;">
+                    </div>
+                    
+                    <div id="file-info" style="display: none; margin-top: var(--space-3);">
+                        <p><strong>Selected file:</strong> <span id="selected-filename"></span></p>
+                        <p><strong>File type:</strong> <span id="detected-format"></span></p>
+                    </div>
+                </div>
+                
+                <div class="import-step" id="import-step-mapping" style="display: none;">
+                    <h3>Step 2: Map Columns</h3>
+                    <p>Map your file's columns to the transaction fields.</p>
+                    
+                    <div id="column-mapping-container">
+                        <!-- Column mapping will be dynamically generated -->
+                    </div>
+                </div>
+                
+                <div class="import-step" id="import-step-preview" style="display: none;">
+                    <h3>Step 3: Preview & Import</h3>
+                    <p>Review the transactions before importing.</p>
+                    
+                    <div class="import-options">
+                        <label>
+                            <input type="checkbox" id="skip-duplicates" checked>
+                            Skip duplicate transactions
+                        </label>
+                        <label>
+                            <input type="checkbox" id="auto-categorize" checked>
+                            Apply smart categorization rules
+                        </label>
+                    </div>
+                    
+                    <div class="import-preview-table" id="import-preview-table">
+                        <!-- Preview table will be dynamically generated -->
+                    </div>
+                    
+                    <div class="import-summary" id="import-summary" style="display: none;">
+                        <p><strong>Total transactions:</strong> <span id="total-count">0</span></p>
+                        <p><strong>New transactions:</strong> <span id="new-count">0</span></p>
+                        <p><strong>Duplicates:</strong> <span id="duplicate-count">0</span></p>
+                    </div>
+                </div>
+                
+                <div class="import-step" id="import-step-progress" style="display: none;">
+                    <h3>Importing Transactions...</h3>
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" id="import-progress-bar" style="width: 0%"></div>
+                    </div>
+                    <p id="import-status">Preparing import...</p>
+                </div>
+                
+                <div class="import-step" id="import-step-complete" style="display: none;">
+                    <h3>Import Complete!</h3>
+                    <div class="import-results">
+                        <p><strong>Successfully imported:</strong> <span id="success-count">0</span> transactions</p>
+                        <p><strong>Failed:</strong> <span id="failed-count">0</span> transactions</p>
+                        <div id="import-errors" style="display: none;">
+                            <h4>Errors:</h4>
+                            <ul id="error-list"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary" id="import-cancel-btn">Cancel</button>
+                <button type="button" class="btn btn--secondary" id="import-back-btn" style="display: none;">Back</button>
+                <button type="button" class="btn btn--primary" id="import-next-btn" disabled>Next</button>
+                <button type="button" class="btn btn--primary" id="import-start-btn" style="display: none;">Start Import</button>
+                <button type="button" class="btn btn--primary" id="import-done-btn" style="display: none;">Done</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Transaction Templates Modal -->
+    <div id="templates-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Transaction Templates</h2>
+            </div>
+            <div class="modal-body">
+                <div class="templates-controls">
+                    <button class="btn btn--primary" id="create-template-btn">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Create Template
+                    </button>
+                    <input type="text" id="template-search" class="form-control" placeholder="Search templates..." style="max-width: 300px;">
+                </div>
+                
+                <!-- Suggested Templates Section -->
+                <div id="suggested-templates-section" class="templates-section" style="display: none;">
+                    <h3 class="section-subtitle">Suggested Templates</h3>
+                    <div id="suggested-templates-list" class="templates-grid">
+                        <!-- Suggested templates will be dynamically added here -->
+                    </div>
+                </div>
+                
+                <!-- All Templates Section -->
+                <div class="templates-section">
+                    <h3 class="section-subtitle">Your Templates</h3>
+                    <div id="templates-list" class="templates-grid">
+                        <!-- Templates will be dynamically added here -->
+                    </div>
+                    <div id="empty-templates-state" class="empty-state" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; opacity: 0.3;">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="9" y1="9" x2="15" y2="9"></line>
+                            <line x1="9" y1="13" x2="15" y2="13"></line>
+                        </svg>
+                        <p>No templates yet. Create your first template!</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary" id="cancel-templates-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Form Modal (for create/edit) -->
+    <div id="template-form-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title" id="template-form-title">Create Template</h2>
+            </div>
+            <div class="modal-body">
+                <form id="template-form">
+                    <input type="hidden" id="template-id">
+                    
+                    <div class="form-group">
+                        <label for="template-name" class="form-label">Template Name</label>
+                        <input type="text" id="template-name" class="form-control" required placeholder="e.g., Monthly Rent">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="template-description" class="form-label">Description Pattern</label>
+                        <input type="text" id="template-description" class="form-control" placeholder="e.g., Rent payment">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="template-category" class="form-label">Category</label>
+                        <select id="template-category" class="form-control template-category-select" required>
+                            <option value="">— Select Category —</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="template-amount" class="form-label">Default Amount</label>
+                        <input type="number" id="template-amount" class="form-control" step="0.01" placeholder="0.00">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="template-account" class="form-label">Default Account</label>
+                        <select id="template-account" class="form-control">
+                            <option value="">— Select Account —</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="template-notes" class="form-label">Notes</label>
+                        <textarea id="template-notes" class="form-control" rows="3" placeholder="Optional notes..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal__footer">
+                <button type="button" class="btn btn--ghost" data-modal-close>Cancel</button>
+                <button type="button" class="btn btn--primary" id="save-template-btn">Save Template</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Advanced Search Modal -->
+    <div id="advanced-search-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Advanced Transaction Search</h2>
+                <button class="modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="search-layout">
+                    <!-- Main Search Area -->
+                    <div class="search-main">
+                        <!-- Quick Search -->
+                        <div class="search-section">
+                            <h3>Quick Search</h3>
+                            <div class="form-group">
+                                <input type="text" id="search-text" class="form-control" placeholder="Search descriptions, notes, or amounts...">
+                                <label class="form-checkbox-label">
+                                    <input type="checkbox" id="search-fuzzy" class="form-checkbox" checked>
+                                    <span>Enable fuzzy matching</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Filters -->
+                        <div class="search-section">
+                            <h3>Filters</h3>
+                            <div class="search-filters-grid">
+                                <div class="form-group">
+                                    <label for="search-date-from" class="form-label">Date From</label>
+                                    <input type="date" id="search-date-from" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="search-date-to" class="form-label">Date To</label>
+                                    <input type="date" id="search-date-to" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label for="search-amount-min" class="form-label">Min Amount</label>
+                                    <input type="number" id="search-amount-min" class="form-control" step="0.01" placeholder="0.00">
+                                </div>
+                                <div class="form-group">
+                                    <label for="search-amount-max" class="form-label">Max Amount</label>
+                                    <input type="number" id="search-amount-max" class="form-control" step="0.01" placeholder="0.00">
+                                </div>
+                                <div class="form-group">
+                                    <label for="search-category" class="form-label">Category</label>
+                                    <select id="search-category" class="form-control" multiple style="min-height: 100px;">
+                                        <option value="">— All Categories —</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="search-account" class="form-label">Account</label>
+                                    <select id="search-account" class="form-control">
+                                        <option value="">— All Accounts —</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Advanced Query Builder -->
+                        <div class="search-section">
+                            <h3>Query Builder</h3>
+                            <div class="query-builder" id="query-builder">
+                                <div class="query-help">
+                                    <p>Build complex queries using AND, OR, and NOT operators.</p>
+                                    <details>
+                                        <summary>Examples</summary>
+                                        <ul>
+                                            <li><code>coffee AND amount:>5</code> - Coffee purchases over $5</li>
+                                            <li><code>grocery OR food NOT restaurant</code> - Grocery or food but not restaurants</li>
+                                            <li><code>category:shopping AND (amazon OR target)</code> - Shopping at Amazon or Target</li>
+                                        </ul>
+                                    </details>
+                                </div>
+                                <textarea id="search-query" class="form-control" rows="3" placeholder="Enter custom query..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- Search Actions -->
+                        <div class="search-actions">
+                            <button type="button" class="btn btn--secondary" id="clear-search-btn">Clear</button>
+                            <button type="button" class="btn btn--primary" id="execute-search-btn">Search</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Saved Searches Sidebar -->
+                    <div class="search-sidebar">
+                        <h3>Saved Searches</h3>
+                        <div class="saved-searches-list" id="saved-searches-list">
+                            <div class="empty-state">
+                                <p>No saved searches yet</p>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn--ghost btn--sm" id="save-current-search-btn" style="width: 100%; margin-top: var(--space-2);">
+                            Save Current Search
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Search Results -->
+                <div class="search-results-section" id="search-results-section" style="display: none;">
+                    <h3>Search Results</h3>
+                    <div class="search-results-header">
+                        <span id="search-results-count">0 results</span>
+                        <button type="button" class="btn btn--ghost btn--sm" id="export-results-btn">Export CSV</button>
+                    </div>
+                    <div class="search-results-container" id="search-results-container">
+                        <!-- Results will be rendered here -->
+                    </div>
+                    <div class="search-pagination" id="search-pagination">
+                        <!-- Pagination controls -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary" id="close-advanced-search-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
     <div aria-live="polite" class="sr-only" id="screen-reader-announcer"></div>
 
     <script type="module" src="js/config.js"></script>
     <script type="module" src="js/database.js"></script>
     <script type="module" src="js/app.js"></script>
+
+    <script type="module" src="js/modules/stockApi.js"></script>
+    
+
 </body>
 
 </html>

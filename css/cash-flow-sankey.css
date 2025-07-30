@@ -1,0 +1,322 @@
+/* Cash Flow Sankey Visualization Styles */
+
+.cash-flow-section {
+    padding: var(--space-4);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-xl);
+    margin: var(--space-4) 0;
+}
+
+.cash-flow-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+.cash-flow-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.cash-flow-controls {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.period-selector {
+    display: flex;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-lg);
+    padding: 2px;
+}
+
+.period-btn {
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.period-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.period-btn.active {
+    background: var(--primary);
+    color: white;
+}
+
+.sankey-container {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    min-height: 600px;
+    position: relative;
+    overflow: hidden;
+}
+
+.sankey-flow-container {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    height: 500px;
+    gap: 20%;
+    padding: var(--space-4);
+}
+
+.sankey-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    justify-content: center;
+    z-index: 2;
+    flex: 0 0 auto;
+    min-width: 150px;
+}
+
+.sankey-node {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    min-width: 180px;
+    position: relative;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+}
+
+.sankey-node:hover {
+    transform: translateX(5px);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.sankey-node-label {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: var(--space-1);
+    font-size: 0.95rem;
+}
+
+.sankey-node-value {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.sankey-flows-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.sankey-flow-path {
+    opacity: 0.6;
+    transition: all 0.3s ease;
+    pointer-events: auto;
+}
+
+.sankey-flow-path:hover {
+    opacity: 0.9;
+    stroke-width: calc(var(--stroke-width, 2px) * 1.2);
+}
+
+.sankey-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+}
+
+.sankey-stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.sankey-stat-card:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.sankey-stat-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: var(--space-1);
+}
+
+.sankey-stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.sankey-stat-value.positive {
+    color: var(--success);
+}
+
+.sankey-stat-value.negative {
+    color: var(--danger);
+}
+
+.sankey-tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    display: none;
+}
+
+.cash-flow-actions {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.export-btn {
+    padding: var(--space-2) var(--space-3);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.export-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+/* Income node colors */
+.sankey-node[data-name="Salary"] {
+    border-color: rgba(74, 222, 128, 0.4);
+}
+
+.sankey-node[data-name="Freelance"] {
+    border-color: rgba(52, 211, 153, 0.4);
+}
+
+.sankey-node[data-name="Investments"] {
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+/* Pool node */
+.sankey-node[data-name="Total Income"] {
+    background: linear-gradient(135deg, rgba(147, 51, 234, 0.2), rgba(147, 51, 234, 0.1));
+    border-color: rgba(147, 51, 234, 0.4);
+}
+
+/* Expense node colors */
+.sankey-node[data-name="Housing"],
+.sankey-node[data-name="Rent"],
+.sankey-node[data-name="Mortgage"] {
+    border-color: rgba(248, 113, 113, 0.4);
+}
+
+.sankey-node[data-name="Transportation"] {
+    border-color: rgba(251, 146, 60, 0.4);
+}
+
+.sankey-node[data-name="Food & Dining"],
+.sankey-node[data-name="Groceries"],
+.sankey-node[data-name="Restaurants"] {
+    border-color: rgba(251, 191, 36, 0.4);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .cash-flow-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .sankey-flow-container {
+        flex-direction: column;
+        height: auto;
+        gap: var(--space-4);
+    }
+
+    .sankey-column {
+        flex-direction: row;
+        overflow-x: auto;
+        gap: var(--space-2);
+        padding-bottom: var(--space-2);
+    }
+
+    .sankey-node {
+        min-width: 140px;
+        flex-shrink: 0;
+    }
+
+    .sankey-flows-svg {
+        display: none;
+    }
+}
+
+/* Loading state */
+.sankey-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    color: var(--text-secondary);
+}
+
+.sankey-loading .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    border-top-color: var(--primary);
+    animation: spin 1s ease-in-out infinite;
+}
+
+/* Empty state */
+.sankey-empty-state {
+    text-align: center;
+    padding: var(--space-8);
+    color: var(--text-secondary);
+}
+
+.sankey-empty-state h3 {
+    margin-bottom: var(--space-2);
+    color: var(--text-primary);
+}
+
+/* Integration with privacy mode */
+.privacy-mode .sankey-node-value[data-sensitive="true"],
+.privacy-mode .sankey-stat-value[data-sensitive="true"] {
+    filter: blur(8px);
+    transition: filter 0.3s ease;
+}
+
+.privacy-mode .sankey-node-value[data-sensitive="true"]:hover,
+.privacy-mode .sankey-stat-value[data-sensitive="true"]:hover {
+    filter: blur(0);
+}

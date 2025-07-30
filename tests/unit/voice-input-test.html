@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Input Test - Ryokushen Financial</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        body {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+        }
+        .browser-info {
+            padding: 10px;
+            background: var(--color-surface-secondary);
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <h1>Voice Input Feature Test</h1>
+    
+    <div class="browser-info">
+        <strong>Your Browser:</strong> <span id="browser-name"></span><br>
+        <strong>Voice Support:</strong> <span id="voice-support"></span>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Voice Input</h2>
+        <div class="form-group voice-enabled">
+            <label class="form-label" for="test-description">Transaction Description</label>
+            <div class="input-with-voice">
+                <input type="text" id="test-description" class="form-control" placeholder="Click the microphone to speak...">
+                <button type="button" class="btn-voice" id="test-voice-btn" aria-label="Use voice input">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div id="test-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Instructions</h2>
+        <ol>
+            <li>Click the microphone button next to the input field</li>
+            <li>Allow microphone access when prompted</li>
+            <li>Speak clearly into your microphone</li>
+            <li>Your speech will be converted to text in the input field</li>
+            <li>Click the microphone again to stop recording</li>
+        </ol>
+        
+        <h3>Sample Phrases to Try:</h3>
+        <ul>
+            <li>"Grocery shopping at Walmart"</li>
+            <li>"Monthly rent payment"</li>
+            <li>"Coffee at Starbucks"</li>
+            <li>"Gas station fill up"</li>
+            <li>"Dinner with friends"</li>
+        </ul>
+    </div>
+
+    <div id="screen-reader-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <script type="module">
+        // Check browser support
+        function checkBrowser() {
+            const browserName = document.getElementById('browser-name');
+            const voiceSupport = document.getElementById('voice-support');
+            
+            // Detect browser
+            const userAgent = navigator.userAgent;
+            let browser = 'Unknown';
+            
+            if (userAgent.indexOf('Chrome') > -1) {
+                browser = 'Chrome';
+            } else if (userAgent.indexOf('Safari') > -1 && userAgent.indexOf('Chrome') === -1) {
+                browser = 'Safari';
+            } else if (userAgent.indexOf('Firefox') > -1) {
+                browser = 'Firefox';
+            } else if (userAgent.indexOf('Edge') > -1) {
+                browser = 'Edge';
+            }
+            
+            browserName.textContent = browser;
+            
+            // Check voice support
+            const hasSupport = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+            voiceSupport.textContent = hasSupport ? '✅ Supported' : '❌ Not Supported';
+            voiceSupport.style.color = hasSupport ? 'green' : 'red';
+            
+            return hasSupport;
+        }
+        
+        // Setup voice input
+        async function setupVoiceTest() {
+            const supported = checkBrowser();
+            const statusDiv = document.getElementById('test-status');
+            
+            if (!supported) {
+                statusDiv.innerHTML = '<div class="status error">Voice input is not supported in your browser. Please use Chrome or Safari.</div>';
+                document.getElementById('test-voice-btn').disabled = true;
+                return;
+            }
+            
+            try {
+                const { voiceInput } = await import('./js/modules/voice/voiceInput.js');
+                const voiceButton = document.getElementById('test-voice-btn');
+                const input = document.getElementById('test-description');
+                
+                // Check browser support
+                if (!voiceInput.isSupported) {
+                    statusDiv.innerHTML = '<div class="status error">Voice input is not supported in your browser. Please use Chrome or Safari.</div>';
+                    voiceButton.disabled = true;
+                    return;
+                }
+                
+                voiceButton.addEventListener('click', async () => {
+                    if (voiceInput.isListening) {
+                        voiceInput.stopListening();
+                        voiceButton.classList.remove('recording');
+                        statusDiv.innerHTML = '<div class="status warning">Recording stopped</div>';
+                    } else {
+                        statusDiv.innerHTML = '<div class="status warning">Starting voice input...</div>';
+                        
+                        const started = await voiceInput.startListening(input, {
+                            onResult: (result) => {
+                                if (result.isFinal) {
+                                    voiceButton.classList.remove('recording');
+                                    statusDiv.innerHTML = `<div class="status success">Voice input complete! Confidence: ${(result.confidence * 100).toFixed(1)}%</div>`;
+                                }
+                            },
+                            onError: (error, message) => {
+                                voiceButton.classList.remove('recording');
+                                statusDiv.innerHTML = `<div class="status error">${message}</div>`;
+                            },
+                            onEnd: () => {
+                                voiceButton.classList.remove('recording');
+                            }
+                        });
+                        
+                        if (started) {
+                            voiceButton.classList.add('recording');
+                            statusDiv.innerHTML = '<div class="status success">🎤 Listening... Speak now!</div>';
+                        }
+                    }
+                });
+                
+                statusDiv.innerHTML = '<div class="status success">Voice input ready! Click the microphone to start.</div>';
+                
+            } catch (error) {
+                console.error('Failed to load voice module:', error);
+                statusDiv.innerHTML = '<div class="status error">Failed to load voice input module.</div>';
+            }
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', setupVoiceTest);
+    </script>
+</body>
+</html>

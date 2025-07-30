@@ -1,0 +1,376 @@
+/* Smart Rules Styles */
+
+/* Template Modal Styles */
+.template-selector {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 2rem;
+  min-height: 400px;
+}
+
+.template-categories {
+  border-right: 1px solid var(--border-color);
+  padding-right: 2rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.template-category {
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.template-category:hover {
+  background-color: var(--bg-light);
+  border-color: var(--primary);
+}
+
+.template-category.selected {
+  background-color: var(--primary-light);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(78, 115, 223, 0.1);
+}
+
+.template-category h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+}
+
+.template-category p {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.template-count {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background-color: var(--bg-lighter);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.template-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.template-hint {
+  text-align: center;
+  color: var(--text-muted);
+  margin-top: 2rem;
+}
+
+.template-item {
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.template-item:hover {
+  background-color: var(--bg-light);
+  border-color: var(--primary);
+}
+
+.template-item.selected {
+  background-color: var(--primary-light);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(78, 115, 223, 0.1);
+}
+
+.template-header h5 {
+  margin: 0 0 0.25rem 0;
+  color: var(--text-primary);
+}
+
+.template-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.rule-preview {
+  background-color: var(--bg-lighter);
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.preview-conditions,
+.preview-actions {
+  margin-bottom: 0.5rem;
+}
+
+.preview-conditions:last-child,
+.preview-actions:last-child {
+  margin-bottom: 0;
+}
+
+.preview-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-right: 0.5rem;
+}
+
+.rules-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.rules-summary {
+  display: flex;
+  gap: 2rem;
+  padding: 1rem 0;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.summary-label {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.summary-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Rules List */
+.rules-list-container {
+  min-height: 200px;
+}
+
+.rule-item {
+  background: var(--color-surface-secondary);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--color-border);
+  transition: all 0.2s ease;
+}
+
+.rule-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.rule-item.disabled {
+  opacity: 0.6;
+}
+
+.rule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.rule-info {
+  flex: 1;
+}
+
+.rule-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--color-text);
+}
+
+.rule-description {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.rule-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.rule-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.rule-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.rule-toggle {
+  margin-right: 1rem;
+}
+
+/* Rule Details */
+.rule-conditions,
+.rule-action {
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.rule-conditions {
+  border-left: 3px solid var(--color-info, #17a2b8);
+}
+
+.rule-action {
+  border-left: 3px solid var(--color-success);
+}
+
+.condition-label,
+.action-label {
+  font-weight: 500;
+  margin-right: 0.5rem;
+}
+
+/* Rule Builder */
+.condition-builder {
+  background: var(--color-surface-secondary);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.condition-item {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  align-items: center;
+}
+
+.condition-field,
+.condition-operator,
+.condition-value {
+  width: 100%;
+}
+
+/* Modal Styles */
+.modal-content--wide {
+  max-width: 600px;
+  width: 90%;
+}
+
+.form-section {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.form-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 1rem;
+}
+
+.form-section h4 {
+  margin-bottom: 1rem;
+  color: var(--color-text);
+  font-size: 1.125rem;
+}
+
+/* Action Value Dynamic Input */
+#action-value-group select {
+  width: 100%;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--color-text-secondary);
+}
+
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 1rem;
+  stroke: var(--color-text-secondary);
+  opacity: 0.3;
+}
+
+.empty-state p {
+  margin: 0.5rem 0;
+}
+
+.empty-state-hint {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+}
+
+/* Icon Button */
+.btn-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+/* Priority Badge */
+.priority-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  background: var(--color-primary);
+  background-opacity: 0.1;
+  color: var(--color-primary);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: 0.5rem;
+}
+
+/* Rule Controls */
+.rules-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .condition-item {
+    grid-template-columns: 1fr;
+  }
+  
+  .rule-header {
+    flex-direction: column;
+  }
+  
+  .rule-actions {
+    margin-top: 1rem;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .rules-summary {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+/* Privacy Mode Support */
+.privacy-mode .rule-name,
+.privacy-mode .rule-description,
+.privacy-mode .condition-value,
+.privacy-mode .rule-action {
+  filter: blur(4px);
+  user-select: none;
+}

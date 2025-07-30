@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Mode Test Suite</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/privacy.css">
+    <style>
+        .test-section {
+            margin: 20px;
+            padding: 20px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .pass { background-color: #d4f4dd; color: #0d7a2d; }
+        .fail { background-color: #fdd4d4; color: #7a0d0d; }
+        .test-button {
+            margin: 5px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .sensitive-test-data {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Privacy Mode Test Suite</h1>
+    
+    <!-- Privacy Toggle Button -->
+    <button id="privacy-toggle-btn" class="privacy-toggle">
+        <i class="privacy-icon">🔓</i> Privacy Off
+    </button>
+    
+    <div id="screen-reader-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <div class="test-section">
+        <h2>Test 1: Privacy Toggle Functionality</h2>
+        <button class="test-button" onclick="testPrivacyToggle()">Run Test</button>
+        <div id="test1-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Data Blurring</h2>
+        <button class="test-button" onclick="testDataBlurring()">Run Test</button>
+        <div id="test2-results"></div>
+        
+        <!-- Test sensitive elements -->
+        <div class="sensitive-test-data">
+            <div class="metric-value">$10,000.00</div>
+            <div class="account-info-value">$5,000.00</div>
+            <div class="transaction-amount">-$250.00</div>
+            <div class="balance">$15,000.00</div>
+            <div class="debt-value">$3,000.00</div>
+            <div data-sensitive="true">$999.99</div>
+            <table>
+                <tr><td>Test Cell</td><td>$123.45</td></tr>
+                <tr><td>Another Cell</td><td>-$67.89</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Temporary Reveal</h2>
+        <button class="test-button" onclick="testTemporaryReveal()">Run Test</button>
+        <div id="test3-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 4: Keyboard Shortcuts</h2>
+        <button class="test-button" onclick="testKeyboardShortcuts()">Run Test</button>
+        <div id="test4-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 5: Privacy Persistence</h2>
+        <button class="test-button" onclick="testPrivacyPersistence()">Run Test</button>
+        <div id="test5-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 6: Chart Integration</h2>
+        <button class="test-button" onclick="testChartIntegration()">Run Test</button>
+        <div id="test6-results"></div>
+        <canvas id="test-chart" width="400" height="200"></canvas>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module">
+        import { privacyManager, togglePrivacyMode, isPrivacyMode, reapplyPrivacy } from '../../js/modules/privacy.js';
+        import { debug } from '../../js/modules/debug.js';
+
+        // Make functions globally available for tests
+        window.privacyManager = privacyManager;
+        window.togglePrivacyMode = togglePrivacyMode;
+        window.isPrivacyMode = isPrivacyMode;
+        window.reapplyPrivacy = reapplyPrivacy;
+
+        function addTestResult(containerId, testName, passed, message) {
+            const container = document.getElementById(containerId);
+            const result = document.createElement('div');
+            result.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            result.textContent = `${testName}: ${passed ? 'PASSED' : 'FAILED'} - ${message}`;
+            container.appendChild(result);
+        }
+
+        window.testPrivacyToggle = async function() {
+            const resultsContainer = document.getElementById('test1-results');
+            resultsContainer.innerHTML = '';
+            
+            try {
+                // Get initial state
+                const initialState = isPrivacyMode();
+                
+                // Toggle privacy mode
+                togglePrivacyMode();
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+                const afterToggle = isPrivacyMode();
+                const bodyHasClass = document.body.classList.contains('privacy-mode');
+                const buttonUpdated = document.getElementById('privacy-toggle-btn').classList.contains('active');
+                
+                addTestResult('test1-results', 'Privacy Toggles', afterToggle !== initialState,
+                    `State changed: ${initialState} → ${afterToggle}`);
+                
+                addTestResult('test1-results', 'Body Class Updated', bodyHasClass === afterToggle,
+                    `Body has privacy-mode class: ${bodyHasClass}`);
+                
+                addTestResult('test1-results', 'Button State Updated', buttonUpdated === afterToggle,
+                    `Button active state: ${buttonUpdated}`);
+                
+                // Toggle back
+                togglePrivacyMode();
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+                const finalState = isPrivacyMode();
+                addTestResult('test1-results', 'Toggle Back Works', finalState === initialState,
+                    `Returned to initial state: ${finalState}`);
+                
+            } catch (error) {
+                addTestResult('test1-results', 'Privacy Toggle Test', false, `Error: ${error.message}`);
+            }
+        };
+
+        window.testDataBlurring = async function() {
+            const resultsContainer = document.getElementById('test2-results');
+            resultsContainer.innerHTML = '';
+            
+            try {
+                // Enable privacy mode
+                if (!isPrivacyMode()) {
+                    togglePrivacyMode();
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+                
+                // Test various sensitive elements
+                const sensitiveElements = [
+                    { selector: '.metric-value', name: 'Metric Values' },
+                    { selector: '.account-info-value', name: 'Account Values' },
+                    { selector: '.transaction-amount', name: 'Transaction Amounts' },
+                    { selector: '.balance', name: 'Balances' },
+                    { selector: '.debt-value', name: 'Debt Values' },
+                    { selector: '[data-sensitive="true"]', name: 'Data-Sensitive Elements' },
+                    { selector: 'td:nth-child(2)', name: 'Currency Table Cells' }
+                ];
+                
+                for (const test of sensitiveElements) {
+                    const elements = document.querySelectorAll(test.selector);
+                    const blurred = Array.from(elements).filter(el => 
+                        el.classList.contains('privacy-blur')
+                    );
+                    
+                    addTestResult('test2-results', test.name, 
+                        blurred.length === elements.length && elements.length > 0,
+                        `${blurred.length}/${elements.length} blurred`
+                    );
+                }
+                
+                // Test that blur can be removed
+                togglePrivacyMode();
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                const allUnblurred = document.querySelectorAll('.privacy-blur').length === 0;
+                addTestResult('test2-results', 'Blur Removed When Disabled', allUnblurred,
+                    'All blur classes removed');
+                
+            } catch (error) {
+                addTestResult('test2-results', 'Data Blurring Test', false, `Error: ${error.message}`);
+            }
+        };
+
+        window.testTemporaryReveal = async function() {
+            const resultsContainer = document.getElementById('test3-results');
+            resultsContainer.innerHTML = '';
+            
+            try {
+                // Enable privacy mode
+                if (!isPrivacyMode()) {
+                    togglePrivacyMode();
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+                
+                // Find a blurred element
+                const blurredElement = document.querySelector('.privacy-blur');
+                if (!blurredElement) {
+                    addTestResult('test3-results', 'Setup', false, 'No blurred elements found');
+                    return;
+                }
+                
+                // Click to reveal
+                const clickEvent = new MouseEvent('click', { bubbles: true });
+                blurredElement.dispatchEvent(clickEvent);
+                
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const isRevealed = !blurredElement.classList.contains('privacy-blur');
+                addTestResult('test3-results', 'Click Reveals Element', isRevealed,
+                    'Element temporarily revealed');
+                
+                // Wait for auto re-blur (3 seconds)
+                addTestResult('test3-results', 'Waiting for Auto Re-blur', true,
+                    'Waiting 3 seconds...');
+                
+                await new Promise(resolve => setTimeout(resolve, 3100));
+                
+                const isReblurred = blurredElement.classList.contains('privacy-blur');
+                addTestResult('test3-results', 'Auto Re-blur After 3s', isReblurred,
+                    'Element automatically re-blurred');
+                
+                // Test immediate re-blur on second click
+                blurredElement.dispatchEvent(clickEvent);
+                await new Promise(resolve => setTimeout(resolve, 100));
+                blurredElement.dispatchEvent(clickEvent);
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const immediateReblur = blurredElement.classList.contains('privacy-blur');
+                addTestResult('test3-results', 'Second Click Re-blurs', immediateReblur,
+                    'Manual re-blur works');
+                
+            } catch (error) {
+                addTestResult('test3-results', 'Temporary Reveal Test', false, `Error: ${error.message}`);
+            }
+        };
+
+        window.testKeyboardShortcuts = async function() {
+            const resultsContainer = document.getElementById('test4-results');
+            resultsContainer.innerHTML = '';
+            
+            try {
+                const initialState = isPrivacyMode();
+                
+                // Test Ctrl+Shift+P (Windows/Linux)
+                const ctrlShiftP = new KeyboardEvent('keydown', {
+                    key: 'P',
+                    ctrlKey: true,
+                    shiftKey: true,
+                    bubbles: true
+                });
+                
+                document.dispatchEvent(ctrlShiftP);
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+                const afterShortcut = isPrivacyMode();
+                addTestResult('test4-results', 'Ctrl+Shift+P Toggles', afterShortcut !== initialState,
+                    `State changed: ${initialState} → ${afterShortcut}`);
+                
+                // Test Cmd+Shift+P (Mac)
+                const cmdShiftP = new KeyboardEvent('keydown', {
+                    key: 'P',
+                    metaKey: true,
+                    shiftKey: true,
+                    bubbles: true
+                });
+                
+                document.dispatchEvent(cmdShiftP);
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+                const afterCmd = isPrivacyMode();
+                addTestResult('test4-results', 'Cmd+Shift+P Toggles', afterCmd === initialState,
+                    `State returned: ${afterCmd}`);
+                
+                // Test that other key combinations don't trigger
+                const wrongKey = new KeyboardEvent('keydown', {
+                    key: 'P',
+                    ctrlKey: true,
+                    bubbles: true
+                });
+                
+                document.dispatchEvent(wrongKey);
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+                const unchanged = isPrivacyMode() === initialState;
+                addTestResult('test4-results', 'Other Keys Ignored', unchanged,
+                    'Ctrl+P alone does not toggle');
+                
+            } catch (error) {
+                addTestResult('test4-results', 'Keyboard Shortcuts Test', false, `Error: ${error.message}`);
+            }
+        };
+
+        window.testPrivacyPersistence = async function() {
+            const resultsContainer = document.getElementById('test5-results');
+            resultsContainer.innerHTML = '';
+            
+            try {
+                // Enable privacy mode
+                if (!isPrivacyMode()) {
+                    togglePrivacyMode();
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+                
+                // Check localStorage
+                const stored = localStorage.getItem('privacyMode');
+                addTestResult('test5-results', 'Saved to localStorage', stored === 'true',
+                    `localStorage value: ${stored}`);
+                
+                // Simulate page reload by creating new privacy manager
+                const savedState = privacyManager.loadPrivacyState();
+                addTestResult('test5-results', 'Loads from localStorage', savedState === true,
+                    `Loaded state: ${savedState}`);
+                
+                // Disable and check
+                togglePrivacyMode();
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+                const disabledStored = localStorage.getItem('privacyMode');
+                addTestResult('test5-results', 'Updates localStorage', disabledStored === 'false',
+                    `Updated value: ${disabledStored}`);
+                
+                // Test localStorage failure handling
+                const originalSetItem = Storage.prototype.setItem;
+                Storage.prototype.setItem = function() { throw new Error('Storage full'); };
+                
+                try {
+                    togglePrivacyMode();
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    
+                    addTestResult('test5-results', 'Handles Storage Errors', true,
+                        'No crash on localStorage error');
+                } finally {
+                    Storage.prototype.setItem = originalSetItem;
+                }
+                
+            } catch (error) {
+                addTestResult('test5-results', 'Privacy Persistence Test', false, `Error: ${error.message}`);
+            }
+        };
+
+        window.testChartIntegration = async function() {
+            const resultsContainer = document.getElementById('test6-results');
+            resultsContainer.innerHTML = '';
+            
+            try {
+                // Create a test chart
+                const ctx = document.getElementById('test-chart').getContext('2d');
+                const chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Jan', 'Feb', 'Mar'],
+                        datasets: [{
+                            label: 'Test Data',
+                            data: [1000, 2000, 3000],
+                            borderColor: 'rgb(75, 192, 192)',
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: false,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        if (isPrivacyMode()) {
+                                            return 'Value: $***';
+                                        }
+                                        return `Value: $${context.parsed.y}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                ticks: {
+                                    callback: function(value) {
+                                        if (isPrivacyMode()) {
+                                            return '$***';
+                                        }
+                                        return '$' + value;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Test with privacy off
+                if (isPrivacyMode()) {
+                    togglePrivacyMode();
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+                
+                chart.update();
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                addTestResult('test6-results', 'Chart Renders', chart !== null,
+                    'Chart created successfully');
+                
+                // Enable privacy and update
+                togglePrivacyMode();
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                chart.update();
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Manual check - in automated test we'd simulate tooltip hover
+                addTestResult('test6-results', 'Privacy Mode Integration', true,
+                    'Chart should show $*** on Y-axis (manual verification needed)');
+                
+                // Cleanup
+                chart.destroy();
+                
+            } catch (error) {
+                addTestResult('test6-results', 'Chart Integration Test', false, `Error: ${error.message}`);
+            }
+        };
+
+        // Initialize privacy manager
+        document.addEventListener('DOMContentLoaded', () => {
+            privacyManager.init();
+        });
+    </script>
+</body>
+</html>

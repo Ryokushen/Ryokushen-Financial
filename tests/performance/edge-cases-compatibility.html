@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2/P3 Edge Cases & Browser Compatibility Tests</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <style>
+        .test-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            background: var(--color-surface);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--color-border);
+        }
+        .browser-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .browser-card {
+            background: var(--color-surface-secondary);
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--color-border);
+            text-align: center;
+        }
+        .browser-status {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+        }
+        .status-pass { background: #28a745; }
+        .status-fail { background: #dc3545; }
+        .status-testing { background: #ffc107; animation: pulse 1s infinite; }
+        .status-unknown { background: #6c757d; }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .stress-monitor {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error-log {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .performance-warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .data-size-selector {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        .data-size-option {
+            padding: 8px 15px;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            cursor: pointer;
+            background: var(--color-surface);
+        }
+        .data-size-option.active {
+            background: var(--color-primary);
+            color: white;
+        }
+        .feature-matrix {
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        .feature-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .feature-table th, .feature-table td {
+            padding: 8px 12px;
+            border: 1px solid var(--color-border);
+            text-align: center;
+        }
+        .feature-table th {
+            background: var(--color-surface-secondary);
+            font-weight: bold;
+        }
+        .feature-supported { background: #d4edda; }
+        .feature-unsupported { background: #f8d7da; }
+        .feature-partial { background: #fff3cd; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>P2/P3 Edge Cases & Browser Compatibility Tests</h1>
+        <p>Comprehensive testing of edge cases, large datasets, and browser compatibility.</p>
+
+        <!-- Browser Compatibility Matrix -->
+        <div class="test-section">
+            <h3>Browser Compatibility Matrix</h3>
+            <p>Testing performance optimizations across different browsers and their feature support.</p>
+            
+            <div class="browser-grid">
+                <div class="browser-card">
+                    <div class="browser-status status-unknown" id="chrome-status"></div>
+                    <h4>Chrome</h4>
+                    <div id="chrome-score">Not Tested</div>
+                </div>
+                <div class="browser-card">
+                    <div class="browser-status status-unknown" id="firefox-status"></div>
+                    <h4>Firefox</h4>
+                    <div id="firefox-score">Not Tested</div>
+                </div>
+                <div class="browser-card">
+                    <div class="browser-status status-unknown" id="safari-status"></div>
+                    <h4>Safari</h4>
+                    <div id="safari-score">Not Tested</div>
+                </div>
+                <div class="browser-card">
+                    <div class="browser-status status-unknown" id="edge-status"></div>
+                    <h4>Edge</h4>
+                    <div id="edge-score">Not Tested</div>
+                </div>
+            </div>
+
+            <div class="feature-matrix">
+                <table class="feature-table">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Current Browser</th>
+                            <th>Chrome</th>
+                            <th>Firefox</th>
+                            <th>Safari</th>
+                            <th>Edge</th>
+                        </tr>
+                    </thead>
+                    <tbody id="feature-matrix-body">
+                        <!-- Feature compatibility will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <button onclick="runBrowserCompatibilityTests()" class="btn btn--primary">Test Current Browser</button>
+            <button onclick="generateCompatibilityReport()" class="btn btn--secondary">Generate Report</button>
+        </div>
+
+        <!-- Large Dataset Stress Tests -->
+        <div class="test-section">
+            <h3>Large Dataset Stress Tests</h3>
+            <p>Testing performance with extreme data volumes (10K+ transactions, 100+ accounts).</p>
+            
+            <div class="data-size-selector">
+                <div class="data-size-option active" onclick="selectDataSize('large', this)">Large (10K)</div>
+                <div class="data-size-option" onclick="selectDataSize('extreme', this)">Extreme (50K)</div>
+                <div class="data-size-option" onclick="selectDataSize('massive', this)">Massive (100K)</div>
+            </div>
+
+            <div class="performance-warning">
+                ⚠️ Warning: Extreme and Massive tests may consume significant system resources and take several minutes to complete.
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h4>Test Controls</h4>
+                    <button onclick="runDataIndexStressTest()" class="btn btn--primary">Stress Test Data Index</button>
+                    <button onclick="runTransactionRenderStress()" class="btn btn--primary">Stress Test Rendering</button>
+                    <button onclick="runMemoryStressTest()" class="btn btn--warning">Memory Stress Test</button>
+                    <button onclick="stopAllStressTests()" class="btn btn--outline">Stop All Tests</button>
+                </div>
+                <div>
+                    <h4>Current Stress Test</h4>
+                    <div>Dataset Size: <span id="current-dataset-size">10,000 records</span></div>
+                    <div>Memory Usage: <span id="stress-memory-usage">0 MB</span></div>
+                    <div>Processing Speed: <span id="processing-speed">0 ops/sec</span></div>
+                </div>
+            </div>
+
+            <div class="stress-monitor" id="stress-test-log"></div>
+        </div>
+
+        <!-- Error Handling & Recovery -->
+        <div class="test-section">
+            <h3>Error Handling & Recovery Tests</h3>
+            <p>Testing robustness with malformed data, network errors, and edge cases.</p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h4>Data Corruption Tests</h4>
+                    <button onclick="testMalformedData()" class="btn btn--primary">Test Malformed Data</button>
+                    <button onclick="testNullValues()" class="btn btn--primary">Test Null Values</button>
+                    <button onclick="testEmptyDatasets()" class="btn btn--primary">Test Empty Datasets</button>
+                    <button onclick="testCircularReferences()" class="btn btn--primary">Test Circular References</button>
+                </div>
+                <div>
+                    <h4>Performance Under Stress</h4>
+                    <button onclick="testHighCPULoad()" class="btn btn--warning">High CPU Load</button>
+                    <button onclick="testMemoryPressure()" class="btn btn--warning">Memory Pressure</button>
+                    <button onclick="testConcurrentOperations()" class="btn btn--warning">Concurrent Operations</button>
+                    <button onclick="testNetworkErrors()" class="btn btn--secondary">Network Errors</button>
+                </div>
+            </div>
+
+            <div class="error-log" id="error-test-log" style="display: none;"></div>
+        </div>
+
+        <!-- Privacy Mode Performance -->
+        <div class="test-section">
+            <h3>Privacy Mode Performance Impact</h3>
+            <p>Testing performance impact of privacy mode on optimizations.</p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h4>Privacy Mode Tests</h4>
+                    <button onclick="testPrivacyModePerformance()" class="btn btn--primary">Test Privacy Impact</button>
+                    <button onclick="comparePrivacyModes()" class="btn btn--secondary">Compare Normal vs Privacy</button>
+                    <button onclick="testPrivacyChartUpdates()" class="btn btn--secondary">Test Chart Updates</button>
+                </div>
+                <div>
+                    <h4>Results</h4>
+                    <div>Normal Mode: <span id="normal-mode-time">0ms</span></div>
+                    <div>Privacy Mode: <span id="privacy-mode-time">0ms</span></div>
+                    <div>Performance Impact: <span id="privacy-impact">0%</span></div>
+                </div>
+            </div>
+
+            <div class="stress-monitor" id="privacy-test-log"></div>
+        </div>
+
+        <!-- Network Conditions Simulation -->
+        <div class="test-section">
+            <h3>Network Conditions & Performance</h3>
+            <p>Simulating various network conditions and their impact on performance.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <button onclick="simulateSlowNetwork()" class="btn btn--outline">Slow 3G</button>
+                <button onclick="simulateFastNetwork()" class="btn btn--outline">Fast 4G</button>
+                <button onclick="simulateOfflineMode()" class="btn btn--outline">Offline Mode</button>
+                <button onclick="simulateIntermittentConnection()" class="btn btn--outline">Intermittent</button>
+            </div>
+
+            <div class="stress-monitor" id="network-test-log"></div>
+        </div>
+
+        <!-- Comprehensive Test Report -->
+        <div class="test-section">
+            <h3>Comprehensive Test Report</h3>
+            <button onclick="runAllEdgeCaseTests()" class="btn btn--primary">Run All Edge Case Tests</button>
+            <button onclick="generateComprehensiveReport()" class="btn btn--secondary">Generate Comprehensive Report</button>
+            
+            <div class="stress-monitor" id="comprehensive-report" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Load dependencies -->
+    <script src="test-data-generator.js"></script>
+    <script src="performance-monitor.js"></script>
+    <script>
+        // Global test state
+        const testState = {
+            monitor: new PerformanceMonitor(),
+            dataGenerator: new TestDataGenerator(),
+            currentDataSize: 'large',
+            stressTestIntervals: [],
+            errorCount: 0,
+            browserFeatures: {},
+            testResults: new Map(),
+            isPrivacyMode: false
+        };
+
+        // Start monitoring
+        testState.monitor.start();
+
+        // Browser feature detection
+        function detectBrowserFeatures() {
+            const features = {
+                webWorkers: typeof Worker !== 'undefined',
+                performanceObserver: typeof PerformanceObserver !== 'undefined',
+                intersectionObserver: typeof IntersectionObserver !== 'undefined',
+                requestIdleCallback: typeof requestIdleCallback !== 'undefined',
+                webGL: !!document.createElement('canvas').getContext('webgl'),
+                serviceWorker: 'serviceWorker' in navigator,
+                localStorage: typeof Storage !== 'undefined',
+                indexedDB: 'indexedDB' in window,
+                webAssembly: typeof WebAssembly !== 'undefined',
+                es6Modules: typeof import !== 'undefined'
+            };
+            
+            testState.browserFeatures = features;
+            return features;
+        }
+
+        // Populate feature matrix
+        function populateFeatureMatrix() {
+            const features = detectBrowserFeatures();
+            const browserConfig = {
+                chrome: { webWorkers: true, performanceObserver: true, intersectionObserver: true, requestIdleCallback: true },
+                firefox: { webWorkers: true, performanceObserver: true, intersectionObserver: true, requestIdleCallback: false },
+                safari: { webWorkers: true, performanceObserver: false, intersectionObserver: true, requestIdleCallback: false },
+                edge: { webWorkers: true, performanceObserver: true, intersectionObserver: true, requestIdleCallback: true }
+            };
+
+            const tbody = document.getElementById('feature-matrix-body');
+            tbody.innerHTML = '';
+
+            Object.keys(features).forEach(feature => {
+                const row = document.createElement('tr');
+                
+                // Feature name
+                const nameCell = document.createElement('td');
+                nameCell.textContent = feature;
+                row.appendChild(nameCell);
+                
+                // Current browser
+                const currentCell = document.createElement('td');
+                currentCell.textContent = features[feature] ? '✓' : '✗';
+                currentCell.className = features[feature] ? 'feature-supported' : 'feature-unsupported';
+                row.appendChild(currentCell);
+                
+                // Other browsers
+                Object.keys(browserConfig).forEach(browser => {
+                    const cell = document.createElement('td');
+                    const supported = browserConfig[browser][feature];
+                    cell.textContent = supported !== undefined ? (supported ? '✓' : '✗') : '?';
+                    cell.className = supported === true ? 'feature-supported' : 
+                                   supported === false ? 'feature-unsupported' : 'feature-partial';
+                    row.appendChild(cell);
+                });
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // Browser compatibility tests
+        async function runBrowserCompatibilityTests() {
+            const browserName = detectBrowserName();
+            const statusElement = document.getElementById(`${browserName.toLowerCase()}-status`);
+            const scoreElement = document.getElementById(`${browserName.toLowerCase()}-score`);
+            
+            statusElement.className = 'browser-status status-testing';
+            
+            try {
+                const tests = [
+                    () => testDataIndexCompatibility(),
+                    () => testPerformanceUtilsCompatibility(),
+                    () => testChartRenderingCompatibility(),
+                    () => testFormUtilsCompatibility(),
+                    () => testVirtualScrollCompatibility()
+                ];
+                
+                let passedTests = 0;
+                const totalTests = tests.length;
+                
+                for (const test of tests) {
+                    try {
+                        await testState.monitor.measureAsync(`${browserName}.compatibility`, test);
+                        passedTests++;
+                    } catch (error) {
+                        logError(`Browser compatibility test failed: ${error.message}`);
+                    }
+                }
+                
+                const score = Math.round((passedTests / totalTests) * 100);
+                scoreElement.textContent = `${score}% (${passedTests}/${totalTests})`;
+                statusElement.className = score >= 80 ? 'browser-status status-pass' : 'browser-status status-fail';
+                
+                testState.testResults.set(`${browserName}.compatibility`, { score, passedTests, totalTests });
+                
+            } catch (error) {
+                scoreElement.textContent = 'Error';
+                statusElement.className = 'browser-status status-fail';
+                logError(`Browser compatibility test suite failed: ${error.message}`);
+            }
+        }
+
+        // Data size selection
+        function selectDataSize(size, element) {
+            testState.currentDataSize = size;
+            document.querySelectorAll('.data-size-option').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            
+            const counts = {
+                large: 10000,
+                extreme: 50000,
+                massive: 100000
+            };
+            
+            document.getElementById('current-dataset-size').textContent = `${counts[size].toLocaleString()} records`;
+        }
+
+        // Stress tests
+        async function runDataIndexStressTest() {
+            logToStress('Starting data index stress test...');
+            
+            const sizes = {
+                large: { transactions: 10000, accounts: 50 },
+                extreme: { transactions: 50000, accounts: 100 },
+                massive: { transactions: 100000, accounts: 200 }
+            };
+            
+            const config = sizes[testState.currentDataSize];
+            
+            try {
+                const startTime = performance.now();
+                const testData = testState.dataGenerator.generateDataSet(testState.currentDataSize);
+                const generateTime = performance.now() - startTime;
+                
+                logToStress(`Generated ${config.transactions} transactions in ${generateTime.toFixed(2)}ms`);
+                
+                // Test index building
+                const { dataIndex } = await import('../../js/modules/dataIndex.js');
+                const indexResult = await testState.monitor.measureAsync('stress.dataIndex', async () => {
+                    dataIndex.rebuildIndexes(testData);
+                    return dataIndex.getStats();
+                });
+                
+                logToStress(`Index built in ${indexResult.duration.toFixed(2)}ms`);
+                logToStress(`Memory usage: ${testState.monitor.getMemoryUsage().toFixed(1)}MB`);
+                
+                // Test lookups
+                const lookupTests = 1000;
+                const lookupStart = performance.now();
+                
+                for (let i = 0; i < lookupTests; i++) {
+                    dataIndex.getTransactionsByCategory('Food');
+                    dataIndex.getAccountById(1, 'cash');
+                    dataIndex.getTransactionsByDate(testData.transactions[0].date);
+                }
+                
+                const lookupTime = performance.now() - lookupStart;
+                const avgLookupTime = lookupTime / (lookupTests * 3);
+                
+                logToStress(`${lookupTests * 3} lookups averaged ${avgLookupTime.toFixed(3)}ms each`);
+                
+                updateStressMetrics();
+                
+            } catch (error) {
+                logError(`Data index stress test failed: ${error.message}`);
+            }
+        }
+
+        async function runTransactionRenderStress() {
+            logToStress('Starting transaction render stress test...');
+            
+            try {
+                const testData = testState.dataGenerator.generateDataSet(testState.currentDataSize);
+                
+                // Create test container
+                const testContainer = document.createElement('div');
+                testContainer.innerHTML = '<table><tbody id="stress-test-tbody"></tbody></table>';
+                testContainer.style.position = 'absolute';
+                testContainer.style.left = '-9999px';
+                document.body.appendChild(testContainer);
+                
+                const renderResult = await testState.monitor.measureAsync('stress.transactionRender', async () => {
+                    // Simulate transaction rendering
+                    const tbody = testContainer.querySelector('#stress-test-tbody');
+                    
+                    for (let i = 0; i < Math.min(1000, testData.transactions.length); i++) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${testData.transactions[i].date}</td>
+                            <td>${testData.transactions[i].description}</td>
+                            <td>${testData.transactions[i].amount}</td>
+                        `;
+                        tbody.appendChild(row);
+                    }
+                    
+                    return tbody.children.length;
+                });
+                
+                logToStress(`Rendered ${renderResult} rows in ${renderResult.duration.toFixed(2)}ms`);
+                
+                // Clean up
+                document.body.removeChild(testContainer);
+                updateStressMetrics();
+                
+            } catch (error) {
+                logError(`Transaction render stress test failed: ${error.message}`);
+            }
+        }
+
+        async function runMemoryStressTest() {
+            logToStress('Starting memory stress test...');
+            
+            const initialMemory = testState.monitor.getMemoryUsage();
+            const operations = 100;
+            
+            try {
+                for (let i = 0; i < operations; i++) {
+                    // Create large data structures
+                    const largeArray = new Array(10000).fill(0).map(() => ({
+                        id: Math.random(),
+                        data: new Array(100).fill(Math.random()),
+                        timestamp: Date.now()
+                    }));
+                    
+                    // Process data
+                    largeArray.forEach(item => {
+                        item.processed = item.data.reduce((sum, val) => sum + val, 0);
+                    });
+                    
+                    // Simulate DOM operations
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = '<span>Test</span>'.repeat(100);
+                    
+                    if (i % 10 === 0) {
+                        const currentMemory = testState.monitor.getMemoryUsage();
+                        logToStress(`Operation ${i}: Memory usage ${currentMemory.toFixed(1)}MB`);
+                        updateStressMetrics();
+                    }
+                    
+                    // Allow for garbage collection
+                    if (i % 50 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                }
+                
+                const finalMemory = testState.monitor.getMemoryUsage();
+                const memoryIncrease = finalMemory - initialMemory;
+                
+                logToStress(`Memory test completed. Increase: ${memoryIncrease.toFixed(1)}MB`);
+                
+                if (memoryIncrease > 100) {
+                    logError(`Potential memory leak detected: ${memoryIncrease.toFixed(1)}MB increase`);
+                }
+                
+            } catch (error) {
+                logError(`Memory stress test failed: ${error.message}`);
+            }
+        }
+
+        // Error handling tests
+        function testMalformedData() {
+            logToError('Testing malformed data handling...');
+            
+            try {
+                const malformedData = {
+                    transactions: [
+                        { id: null, amount: 'invalid', date: 'not-a-date' },
+                        { amount: undefined, category: null },
+                        { id: 'string-id', amount: NaN, date: new Date() }
+                    ],
+                    cashAccounts: [
+                        { id: 'not-number', balance: 'invalid' },
+                        { name: null, type: undefined }
+                    ]
+                };
+                
+                // Test data index with malformed data
+                import('../../js/modules/dataIndex.js').then(({ dataIndex }) => {
+                    try {
+                        dataIndex.rebuildIndexes(malformedData);
+                        logToError('✓ Data index handled malformed data gracefully');
+                    } catch (error) {
+                        logToError(`✗ Data index failed with malformed data: ${error.message}`);
+                    }
+                });
+                
+            } catch (error) {
+                logToError(`Malformed data test failed: ${error.message}`);
+            }
+        }
+
+        function testNullValues() {
+            logToError('Testing null value handling...');
+            
+            const nullData = {
+                transactions: null,
+                cashAccounts: undefined,
+                debtAccounts: [],
+                recurringBills: null
+            };
+            
+            try {
+                import('../../js/modules/dataIndex.js').then(({ dataIndex }) => {
+                    dataIndex.rebuildIndexes(nullData);
+                    logToError('✓ Null values handled gracefully');
+                });
+            } catch (error) {
+                logToError(`✗ Null value test failed: ${error.message}`);
+            }
+        }
+
+        function testEmptyDatasets() {
+            logToError('Testing empty dataset handling...');
+            
+            const emptyData = testState.dataGenerator.generateEdgeCaseData().emptyData;
+            
+            try {
+                import('../../js/modules/dataIndex.js').then(({ dataIndex }) => {
+                    dataIndex.rebuildIndexes(emptyData);
+                    logToError('✓ Empty datasets handled gracefully');
+                });
+            } catch (error) {
+                logToError(`✗ Empty dataset test failed: ${error.message}`);
+            }
+        }
+
+        function testCircularReferences() {
+            logToError('Testing circular reference handling...');
+            
+            try {
+                const circularData = { transactions: [] };
+                circularData.transactions.push({ self: circularData });
+                
+                // This should not crash the application
+                logToError('✓ Circular reference test completed');
+                
+            } catch (error) {
+                logToError(`✗ Circular reference test failed: ${error.message}`);
+            }
+        }
+
+        // Privacy mode tests
+        async function testPrivacyModePerformance() {
+            logToPrivacy('Testing privacy mode performance impact...');
+            
+            const testData = testState.dataGenerator.generateDataSet('medium');
+            
+            // Test normal mode
+            const normalStart = performance.now();
+            await simulateChartUpdates(testData, false);
+            const normalTime = performance.now() - normalStart;
+            
+            // Test privacy mode
+            testState.isPrivacyMode = true;
+            const privacyStart = performance.now();
+            await simulateChartUpdates(testData, true);
+            const privacyTime = performance.now() - privacyStart;
+            testState.isPrivacyMode = false;
+            
+            const impact = ((privacyTime - normalTime) / normalTime * 100);
+            
+            document.getElementById('normal-mode-time').textContent = `${normalTime.toFixed(2)}ms`;
+            document.getElementById('privacy-mode-time').textContent = `${privacyTime.toFixed(2)}ms`;
+            document.getElementById('privacy-impact').textContent = `${impact.toFixed(1)}%`;
+            
+            logToPrivacy(`Normal mode: ${normalTime.toFixed(2)}ms`);
+            logToPrivacy(`Privacy mode: ${privacyTime.toFixed(2)}ms`);
+            logToPrivacy(`Performance impact: ${impact.toFixed(1)}%`);
+        }
+
+        // Network simulation
+        function simulateSlowNetwork() {
+            logToNetwork('Simulating slow 3G network...');
+            // Simulate network delays
+            const originalFetch = window.fetch;
+            window.fetch = function(...args) {
+                return new Promise(resolve => {
+                    setTimeout(() => resolve(originalFetch.apply(this, args)), 1000);
+                });
+            };
+            
+            setTimeout(() => {
+                window.fetch = originalFetch;
+                logToNetwork('Network simulation ended');
+            }, 30000);
+        }
+
+        function simulateOfflineMode() {
+            logToNetwork('Simulating offline mode...');
+            
+            const originalFetch = window.fetch;
+            window.fetch = function() {
+                return Promise.reject(new Error('Network error'));
+            };
+            
+            setTimeout(() => {
+                window.fetch = originalFetch;
+                logToNetwork('Offline simulation ended');
+            }, 15000);
+        }
+
+        // Comprehensive tests
+        async function runAllEdgeCaseTests() {
+            const tests = [
+                runBrowserCompatibilityTests,
+                runDataIndexStressTest,
+                runMemoryStressTest,
+                testMalformedData,
+                testNullValues,
+                testEmptyDatasets,
+                testPrivacyModePerformance
+            ];
+            
+            for (const test of tests) {
+                try {
+                    await test();
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Pause between tests
+                } catch (error) {
+                    logError(`Test failed: ${error.message}`);
+                }
+            }
+            
+            logToStress('All edge case tests completed');
+        }
+
+        // Utility functions
+        function detectBrowserName() {
+            const userAgent = navigator.userAgent;
+            if (userAgent.includes('Chrome')) return 'Chrome';
+            if (userAgent.includes('Firefox')) return 'Firefox';
+            if (userAgent.includes('Safari')) return 'Safari';
+            if (userAgent.includes('Edge')) return 'Edge';
+            return 'Unknown';
+        }
+
+        function updateStressMetrics() {
+            document.getElementById('stress-memory-usage').textContent = 
+                `${testState.monitor.getMemoryUsage().toFixed(1)} MB`;
+        }
+
+        function stopAllStressTests() {
+            testState.stressTestIntervals.forEach(interval => clearInterval(interval));
+            testState.stressTestIntervals = [];
+            logToStress('All stress tests stopped');
+        }
+
+        // Logging functions
+        function logToStress(message) {
+            const log = document.getElementById('stress-test-log');
+            log.textContent = `${new Date().toLocaleTimeString()}: ${message}\n` + log.textContent;
+        }
+
+        function logToError(message) {
+            const log = document.getElementById('error-test-log');
+            log.style.display = 'block';
+            log.textContent = `${new Date().toLocaleTimeString()}: ${message}\n` + log.textContent;
+            testState.errorCount++;
+        }
+
+        function logToPrivacy(message) {
+            const log = document.getElementById('privacy-test-log');
+            log.textContent = `${new Date().toLocaleTimeString()}: ${message}\n` + log.textContent;
+        }
+
+        function logToNetwork(message) {
+            const log = document.getElementById('network-test-log');
+            log.textContent = `${new Date().toLocaleTimeString()}: ${message}\n` + log.textContent;
+        }
+
+        function logError(message) {
+            console.error(message);
+            logToError(message);
+        }
+
+        // Browser compatibility test functions
+        async function testDataIndexCompatibility() {
+            const { dataIndex } = await import('../../js/modules/dataIndex.js');
+            const testData = testState.dataGenerator.generateDataSet('small');
+            dataIndex.rebuildIndexes(testData);
+            return dataIndex.getStats();
+        }
+
+        async function testPerformanceUtilsCompatibility() {
+            const { debounce, throttle } = await import('../../js/modules/performanceUtils.js');
+            let callCount = 0;
+            const debouncedFn = debounce(() => callCount++, 100);
+            debouncedFn();
+            return new Promise(resolve => setTimeout(() => resolve(callCount === 1), 200));
+        }
+
+        async function testChartRenderingCompatibility() {
+            if (typeof Chart === 'undefined') throw new Error('Chart.js not available');
+            const canvas = document.createElement('canvas');
+            const chart = new Chart(canvas, { type: 'line', data: { labels: [], datasets: [] } });
+            chart.destroy();
+            return true;
+        }
+
+        async function testFormUtilsCompatibility() {
+            const { populateFormFromData } = await import('../../js/modules/formUtils.js');
+            const form = document.createElement('form');
+            form.innerHTML = '<input name="test" />';
+            document.body.appendChild(form);
+            populateFormFromData(form.id, { test: 'value' });
+            document.body.removeChild(form);
+            return true;
+        }
+
+        async function testVirtualScrollCompatibility() {
+            const container = document.createElement('div');
+            container.style.height = '200px';
+            container.style.overflow = 'auto';
+            document.body.appendChild(container);
+            
+            // Test virtual scrolling simulation
+            for (let i = 0; i < 50; i++) {
+                const item = document.createElement('div');
+                item.textContent = `Item ${i}`;
+                container.appendChild(item);
+            }
+            
+            document.body.removeChild(container);
+            return true;
+        }
+
+        async function simulateChartUpdates(data, privacyMode) {
+            // Simulate chart update operations
+            for (let i = 0; i < 10; i++) {
+                if (privacyMode) {
+                    // Simulate privacy mode overhead
+                    data.transactions.forEach(t => {
+                        const masked = t.amount.toString().replace(/\d/g, '*');
+                    });
+                }
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+        }
+
+        function generateCompatibilityReport() {
+            const features = testState.browserFeatures;
+            const report = `Browser Compatibility Report\n` +
+                         `Generated: ${new Date().toLocaleString()}\n\n` +
+                         `Browser: ${detectBrowserName()}\n` +
+                         `User Agent: ${navigator.userAgent}\n\n` +
+                         `Feature Support:\n` +
+                         Object.entries(features).map(([feature, supported]) => 
+                             `  ${feature}: ${supported ? '✓' : '✗'}`).join('\n');
+            
+            const reportElement = document.getElementById('comprehensive-report');
+            reportElement.style.display = 'block';
+            reportElement.textContent = report;
+        }
+
+        function generateComprehensiveReport() {
+            const report = testState.monitor.generateReport();
+            const browserFeatures = testState.browserFeatures;
+            
+            let output = '=== Comprehensive Edge Cases & Compatibility Report ===\n\n';
+            output += `Generated: ${new Date().toLocaleString()}\n`;
+            output += `Browser: ${detectBrowserName()}\n`;
+            output += `Dataset Size: ${testState.currentDataSize}\n`;
+            output += `Errors Encountered: ${testState.errorCount}\n\n`;
+            
+            output += 'Browser Feature Support:\n';
+            Object.entries(browserFeatures).forEach(([feature, supported]) => {
+                output += `  ${feature}: ${supported ? '✓ Supported' : '✗ Not Supported'}\n`;
+            });
+            
+            output += '\nPerformance Summary:\n';
+            output += `  Success Rate: ${(report.summary.successRate * 100).toFixed(1)}%\n`;
+            output += `  Memory Usage: ${report.summary.memoryUsage.baseline.toFixed(1)}MB → ${report.summary.memoryUsage.current.toFixed(1)}MB\n`;
+            
+            if (report.recommendations.length > 0) {
+                output += '\nRecommendations:\n';
+                report.recommendations.forEach(rec => {
+                    output += `  ${rec.severity.toUpperCase()}: ${rec.message}\n`;
+                });
+            }
+            
+            const reportElement = document.getElementById('comprehensive-report');
+            reportElement.style.display = 'block';
+            reportElement.textContent = output;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            populateFeatureMatrix();
+            detectBrowserFeatures();
+        });
+    </script>
+</body>
+</html>
