@@ -2095,14 +2095,18 @@ tr:hover td {
 
   .table-row > .table-transaction {
     display: grid;
+
     grid-template-columns: 32px 1fr;
-    gap: calc(var(--space-3) * 0.7);
+    gap: calc(var(--space-3) * 0.5);
+
     align-items: center;
   }
 
   .table-row > .table-transaction .table-icon {
+
     width: 32px;
     height: 32px;
+
   }
   
   .table-row > div:before {
