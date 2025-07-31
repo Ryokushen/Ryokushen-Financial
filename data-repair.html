@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Repair Utility - Ryokushen Financial</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .repair-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+        }
+        .repair-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--color-primary-dark);
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+        }
+        .repair-section h3 {
+            margin-bottom: 1rem;
+            color: var(--color-text-primary);
+        }
+        .repair-section p {
+            margin-bottom: 1rem;
+            color: var(--color-text-secondary);
+        }
+        .repair-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .report-output {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--color-background);
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        .status-good { background-color: var(--color-success); }
+        .status-warning { background-color: var(--color-warning); }
+        .status-error { background-color: var(--color-error); }
+    </style>
+</head>
+<body>
+    <div class="repair-container">
+        <h1>Data Repair Utility</h1>
+        
+        <div class="repair-section">
+            <h3>Data Integrity Check</h3>
+            <p>Run a comprehensive check on your financial data to identify any issues.</p>
+            <div class="repair-actions">
+                <button id="check-integrity-btn" class="btn btn--primary">
+                    Run Integrity Check
+                </button>
+            </div>
+            <div id="integrity-report" class="report-output" style="display: none;"></div>
+        </div>
+
+        <div class="repair-section">
+            <h3>Orphaned Transactions</h3>
+            <p>Find and fix transactions that reference deleted accounts.</p>
+            <div class="repair-actions">
+                <button id="find-orphaned-btn" class="btn btn--secondary">
+                    Find Orphaned Transactions
+                </button>
+                <button id="repair-orphaned-btn" class="btn btn--primary" style="display: none;">
+                    Repair Orphaned Transactions
+                </button>
+                <button id="delete-orphaned-btn" class="btn btn--danger" style="display: none;">
+                    Delete Orphaned Transactions
+                </button>
+            </div>
+            <div id="orphaned-report" class="report-output" style="display: none;"></div>
+        </div>
+
+        <div class="repair-section">
+            <h3>Quick Actions</h3>
+            <div class="repair-actions">
+                <button id="return-to-app-btn" class="btn btn--secondary">
+                    Return to App
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { loadAppData } from './js/app.js';
+        import { dataRepair } from './js/modules/dataRepair.js';
+        import { showError, showSuccess } from './js/modules/ui.js';
+
+        let appData = null;
+
+        // Load app data on page load
+        async function init() {
+            try {
+                appData = await loadAppData();
+                console.log('App data loaded successfully');
+            } catch (error) {
+                console.error('Failed to load app data:', error);
+                showError('Failed to load application data');
+            }
+        }
+
+        // Check data integrity
+        document.getElementById('check-integrity-btn').addEventListener('click', async () => {
+            if (!appData) {
+                showError('App data not loaded');
+                return;
+            }
+
+            const reportDiv = document.getElementById('integrity-report');
+            reportDiv.style.display = 'block';
+            reportDiv.textContent = 'Running integrity check...';
+
+            try {
+                const report = await dataRepair.checkDataIntegrity(appData);
+                
+                let output = 'DATA INTEGRITY REPORT\n';
+                output += '====================\n\n';
+                
+                // Orphaned transactions
+                const orphanedCount = report.orphanedTransactions.length;
+                output += `<span class="status-indicator ${orphanedCount === 0 ? 'status-good' : 'status-error'}"></span>`;
+                output += `Orphaned Transactions: ${orphanedCount}\n`;
+                if (orphanedCount > 0) {
+                    report.orphanedTransactions.forEach(({ transaction, reason }) => {
+                        output += `  - ${transaction.description} (${transaction.date}): ${reason}\n`;
+                    });
+                }
+                output += '\n';
+
+                // Duplicate transactions
+                const duplicateCount = report.duplicateTransactions.length;
+                output += `<span class="status-indicator ${duplicateCount === 0 ? 'status-good' : 'status-warning'}"></span>`;
+                output += `Duplicate Transactions: ${duplicateCount}\n`;
+                if (duplicateCount > 0) {
+                    report.duplicateTransactions.forEach(({ transaction1, transaction2 }) => {
+                        output += `  - ${transaction1.description} on ${transaction1.date}\n`;
+                    });
+                }
+                output += '\n';
+
+                // Invalid dates
+                const invalidDateCount = report.invalidDates.length;
+                output += `<span class="status-indicator ${invalidDateCount === 0 ? 'status-good' : 'status-error'}"></span>`;
+                output += `Invalid Dates: ${invalidDateCount}\n`;
+                if (invalidDateCount > 0) {
+                    report.invalidDates.forEach(t => {
+                        output += `  - ${t.description}: ${t.date}\n`;
+                    });
+                }
+                output += '\n';
+
+                // Negative balances
+                const negativeCount = report.negativeBalances.length;
+                output += `<span class="status-indicator ${negativeCount === 0 ? 'status-good' : 'status-warning'}"></span>`;
+                output += `Negative Account Balances: ${negativeCount}\n`;
+                if (negativeCount > 0) {
+                    report.negativeBalances.forEach(a => {
+                        output += `  - ${a.name}: $${a.balance}\n`;
+                    });
+                }
+                output += '\n';
+
+                // Missing categories
+                const missingCategoryCount = report.missingCategories.length;
+                output += `<span class="status-indicator ${missingCategoryCount === 0 ? 'status-good' : 'status-warning'}"></span>`;
+                output += `Missing Categories: ${missingCategoryCount}\n`;
+                if (missingCategoryCount > 0) {
+                    report.missingCategories.slice(0, 5).forEach(t => {
+                        output += `  - ${t.description} on ${t.date}\n`;
+                    });
+                    if (missingCategoryCount > 5) {
+                        output += `  ... and ${missingCategoryCount - 5} more\n`;
+                    }
+                }
+
+                reportDiv.innerHTML = output;
+            } catch (error) {
+                console.error('Integrity check failed:', error);
+                reportDiv.textContent = 'Error: ' + error.message;
+                showError('Integrity check failed');
+            }
+        });
+
+        // Find orphaned transactions
+        document.getElementById('find-orphaned-btn').addEventListener('click', async () => {
+            if (!appData) {
+                showError('App data not loaded');
+                return;
+            }
+
+            const reportDiv = document.getElementById('orphaned-report');
+            reportDiv.style.display = 'block';
+            reportDiv.textContent = 'Searching for orphaned transactions...';
+
+            try {
+                const orphaned = await dataRepair.findOrphanedTransactions(appData);
+                
+                if (orphaned.length === 0) {
+                    reportDiv.textContent = 'No orphaned transactions found. Your data is clean!';
+                    document.getElementById('repair-orphaned-btn').style.display = 'none';
+                    document.getElementById('delete-orphaned-btn').style.display = 'none';
+                } else {
+                    let output = `Found ${orphaned.length} orphaned transaction(s):\n\n`;
+                    orphaned.forEach(({ transaction, reason }) => {
+                        output += `Transaction: ${transaction.description}\n`;
+                        output += `  Date: ${transaction.date}\n`;
+                        output += `  Amount: $${transaction.amount}\n`;
+                        output += `  Issue: ${reason}\n\n`;
+                    });
+                    reportDiv.textContent = output;
+                    
+                    // Show repair buttons
+                    document.getElementById('repair-orphaned-btn').style.display = 'inline-block';
+                    document.getElementById('delete-orphaned-btn').style.display = 'inline-block';
+                }
+            } catch (error) {
+                console.error('Failed to find orphaned transactions:', error);
+                reportDiv.textContent = 'Error: ' + error.message;
+                showError('Failed to find orphaned transactions');
+            }
+        });
+
+        // Repair orphaned transactions
+        document.getElementById('repair-orphaned-btn').addEventListener('click', async () => {
+            if (!appData) {
+                showError('App data not loaded');
+                return;
+            }
+
+            const reportDiv = document.getElementById('orphaned-report');
+            reportDiv.textContent = 'Repairing orphaned transactions...';
+
+            try {
+                const result = await dataRepair.repairOrphanedTransactions(appData);
+                reportDiv.textContent = `Repair complete:\n- Repaired: ${result.repaired} transactions\n- Failed: ${result.failed} transactions`;
+                
+                if (result.repaired > 0) {
+                    reportDiv.textContent += '\n\nTransactions have been assigned to your default account.';
+                    showSuccess('Orphaned transactions repaired successfully');
+                }
+            } catch (error) {
+                console.error('Failed to repair transactions:', error);
+                reportDiv.textContent = 'Error: ' + error.message;
+                showError('Failed to repair transactions');
+            }
+        });
+
+        // Delete orphaned transactions
+        document.getElementById('delete-orphaned-btn').addEventListener('click', async () => {
+            if (!appData) {
+                showError('App data not loaded');
+                return;
+            }
+
+            const reportDiv = document.getElementById('orphaned-report');
+            
+            try {
+                const result = await dataRepair.deleteOrphanedTransactions(appData);
+                reportDiv.textContent = `Delete complete:\n- Deleted: ${result.deleted} transactions\n- Failed: ${result.failed} transactions`;
+                
+                if (result.deleted > 0) {
+                    showSuccess('Orphaned transactions deleted successfully');
+                }
+            } catch (error) {
+                console.error('Failed to delete transactions:', error);
+                reportDiv.textContent = 'Error: ' + error.message;
+                showError('Failed to delete transactions');
+            }
+        });
+
+        // Return to app
+        document.getElementById('return-to-app-btn').addEventListener('click', () => {
+            window.location.href = '/';
+        });
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>

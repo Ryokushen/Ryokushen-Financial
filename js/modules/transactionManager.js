@@ -278,6 +278,66 @@ class TransactionManager {
   }
 
   /**
+   * Validate that account IDs exist in the database
+   * @param {Object} transactionData - Transaction data with account IDs
+   * @returns {Promise<Object>} Validation result with account existence checks
+   */
+  async validateAccountsExist(transactionData) {
+    const errors = {};
+
+    try {
+      // Check cash account if specified
+      if (transactionData.account_id) {
+        try {
+          const account = await database.getCashAccountById(transactionData.account_id);
+          if (!account) {
+            errors.account_id = 'Cash account not found';
+          }
+        } catch (error) {
+          // If the error is specifically about not finding the account
+          if (error.message && error.message.includes('getCashAccountById')) {
+            errors.account_id = 'Invalid cash account ID';
+          } else {
+            // Re-throw unexpected errors
+            throw error;
+          }
+        }
+      }
+
+      // Check debt account if specified
+      if (transactionData.debt_account_id) {
+        try {
+          const debtAccount = await database.getDebtAccountById(transactionData.debt_account_id);
+          if (!debtAccount) {
+            errors.debt_account_id = 'Debt account not found';
+          }
+        } catch (error) {
+          // If the error is specifically about not finding the account
+          if (error.message && error.message.includes('getDebtAccountById')) {
+            errors.debt_account_id = 'Invalid debt account ID';
+          } else {
+            // Re-throw unexpected errors
+            throw error;
+          }
+        }
+      }
+
+      return {
+        valid: Object.keys(errors).length === 0,
+        errors,
+        hasErrors: Object.keys(errors).length > 0,
+      };
+    } catch (error) {
+      debug.error('TransactionManager: Error validating account existence', error);
+      return {
+        valid: false,
+        errors: { general: 'Error validating accounts' },
+        hasErrors: true,
+      };
+    }
+  }
+
+  /**
    * Prepare transaction data for saving
    * @param {Object} transactionData - Raw transaction data
    * @returns {Object} Prepared transaction data
@@ -565,6 +625,12 @@ class TransactionManager {
         throw new Error(`Validation failed: ${JSON.stringify(validation.errors)}`);
       }
 
+      // Validate account existence
+      const accountValidation = await this.validateAccountsExist(prepared);
+      if (!accountValidation.valid) {
+        throw new Error(`Invalid account reference: ${JSON.stringify(accountValidation.errors)}`);
+      }
+
       // Save to database
       const savedTransaction = await database.addTransaction(prepared);
 
@@ -648,6 +714,14 @@ class TransactionManager {
 
       if (!validation.valid && this.strictMode) {
         throw new Error(`Validation failed: ${JSON.stringify(validation.errors)}`);
+      }
+
+      // Validate account existence if account IDs changed
+      if (updates.account_id !== undefined || updates.debt_account_id !== undefined) {
+        const accountValidation = await this.validateAccountsExist(prepared);
+        if (!accountValidation.valid) {
+          throw new Error(`Invalid account reference: ${JSON.stringify(accountValidation.errors)}`);
+        }
       }
 
       // Update in database

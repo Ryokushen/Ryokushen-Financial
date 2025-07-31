@@ -781,6 +781,13 @@ class TransactionImport {
     this.showStep('progress');
 
     try {
+      // Check if any cash accounts exist
+      if (!window.appState.appData.cashAccounts || window.appState.appData.cashAccounts.length === 0) {
+        showError('No cash accounts found. Please create an account before importing transactions.');
+        this.showStep('preview');
+        return;
+      }
+
       // Prepare transactions for import
       const transactionsToImport = [];
       const existingTransactions = this.importOptions.skipDuplicates
@@ -797,13 +804,21 @@ class TransactionImport {
         }
 
         // Prepare transaction data
+        const defaultAccountId = window.appState.appData.cashAccounts[0]?.id;
+        
+        // Skip if no default account available
+        if (!defaultAccountId) {
+          debug.warn('TransactionImport: No cash accounts available for import');
+          continue;
+        }
+        
         const transactionData = {
           date: transaction.date,
           description: transaction.description,
           amount: transaction.amount,
           category: transaction.category || 'Uncategorized',
           notes: transaction.notes || '',
-          account_id: window.appState.appData.cashAccounts[0]?.id, // Default to first cash account
+          account_id: defaultAccountId,
         };
 
         transactionsToImport.push(transactionData);
