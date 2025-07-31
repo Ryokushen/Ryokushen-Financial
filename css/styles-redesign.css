@@ -2068,28 +2068,106 @@ tr:hover td {
 
 /* Mobile responsiveness for tables */
 @media (max-width: 768px) {
+  /* Keep table header visible but reduce font size */
   .table-header {
+    font-size: var(--font-size-xs);
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
+  
+  /* Maintain grid layout but with adjusted columns for mobile */
+  .table-row {
+    grid-template-columns: 40px minmax(0, 1fr) 80px 50px;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    min-height: 44px; /* Ensure touch-friendly tap target */
+  }
+  
+  /* Adjust bulk-selectable grid for mobile */
+  .table-row.bulk-selectable {
+    grid-template-columns: 32px 40px minmax(0, 1fr) 80px 50px;
+  }
+  
+  /* Reduce checkbox size on mobile */
+  .table-checkbox-column {
+    width: 32px;
+  }
+  
+  .transaction-checkbox {
+    width: 16px;
+    height: 16px;
+  }
+  
+  /* Compact transaction display */
+  .table-transaction {
+    gap: var(--space-2);
+  }
+  
+  /* Smaller icon on mobile */
+  .table-icon {
+    width: 32px;
+    height: 32px;
+    font-size: var(--font-size-sm);
+  }
+  
+  /* Reduce font sizes for transaction details */
+  .table-transaction > div > div:first-child {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+  }
+  
+  .table-transaction > div > div:last-child {
+    font-size: var(--font-size-xs);
+  }
+  
+  /* Adjust amount column */
+  .table-amount {
+    font-size: var(--font-size-sm);
+  }
+  
+  /* Hide date and category columns on very small screens */
+  .table-date,
+  .table-category {
     display: none;
   }
   
-  .table-row {
-    grid-template-columns: 1fr;
-    gap: var(--space-2);
-    padding: var(--space-4);
+  /* Smaller status badges */
+  .status-badge {
+    font-size: 10px;
+    padding: 2px 6px;
   }
   
-  .table-row > div {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .table-row > div:before {
-    content: attr(data-label);
-    font-weight: 600;
+  /* Smaller action buttons */
+  .table-actions .btn--icon {
+    width: 28px;
+    height: 28px;
     font-size: var(--font-size-xs);
-    text-transform: uppercase;
-    opacity: 0.7;
+  }
+}
+
+/* Even more compact layout for small phones */
+@media (max-width: 480px) {
+  .table-row {
+    grid-template-columns: minmax(0, 1fr) 75px 45px;
+    padding: var(--space-2);
+  }
+  
+  .table-row.bulk-selectable {
+    grid-template-columns: 28px minmax(0, 1fr) 75px 45px;
+  }
+  
+  /* Hide icon on very small screens to save space */
+  .table-icon {
+    display: none;
+  }
+  
+  .table-transaction {
+    gap: 0;
+  }
+  
+  /* Ensure minimum tap target height */
+  .table-row {
+    min-height: 40px;
   }
 }
 
@@ -3369,17 +3447,7 @@ label.feature-label {
     flex: 1;
   }
   
-  .table-header.bulk-selectable,
-  .table-row.bulk-selectable {
-    grid-template-columns: 40px 1fr auto;
-  }
-  
-  .table-header.bulk-selectable > div:nth-child(4),
-  .table-header.bulk-selectable > div:nth-child(5),
-  .table-row.bulk-selectable > div:nth-child(4),
-  .table-row.bulk-selectable > div:nth-child(5) {
-    display: none;
-  }
+  /* Remove these conflicting styles as they're handled in our main mobile media query above */
 }
 
 /* Transaction Templates UI */

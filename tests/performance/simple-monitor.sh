@@ -1,0 +1,60 @@
+#!/bin/bash
+
+echo "🔍 P0 Critical Path Tests - Manual Monitor"
+echo "=========================================="
+echo ""
+echo "🌐 Test URL: http://localhost:8080/tests/performance/critical-path-tests.html"
+echo ""
+echo "📋 P0 Test Checklist (CRITICAL - Must all pass):"
+echo ""
+echo "1. ⏳ Data Index System Performance"
+echo "   Expected: <50ms for 100 records, <200ms for 1K records"
+echo "   Tests: O(1) lookups, index rebuilding, merchant extraction"
+echo ""
+echo "2. ⏳ Transaction Rendering with Category Filtering" 
+echo "   Expected: <100ms rendering, 300ms debounce delay"
+echo "   Tests: Category filtering, transaction list performance"
+echo ""
+echo "3. ⏳ Form Utilities Performance"
+echo "   Expected: <20ms population, <15ms extraction"
+echo "   Tests: Form data handling, validation flows"
+echo ""
+echo "4. ⏳ Chart Rendering Performance"
+echo "   Expected: <500ms rendering, no memory leaks"
+echo "   Tests: Throttled updates, memory management"
+echo ""
+echo "5. ⏳ Core User Workflows"
+echo "   Expected: <200ms per workflow"
+echo "   Tests: Add transaction, view accounts, navigate tabs"
+echo ""
+echo "🎯 SUCCESS CRITERIA:"
+echo "   ✅ 100% Success Rate Required"
+echo "   ✅ All Performance Benchmarks Met"
+echo "   ✅ No Critical Errors"
+echo "   ✅ Memory Usage Stable"
+echo ""
+echo "📊 REAL-TIME MONITORING:"
+echo "   - Open browser to the test URL above"
+echo "   - Watch the progress bar and metrics in upper-right"
+echo "   - Monitor console for any errors"
+echo "   - Check memory usage doesn't exceed 100MB growth"
+echo ""
+echo "🚀 TO START TESTS:"
+echo "   1. Open the URL in your browser"
+echo "   2. Click 'Run Data Index Tests' to begin"
+echo "   3. Wait for each test to complete"
+echo "   4. Review results before proceeding to next test"
+echo ""
+echo "Press Ctrl+C to stop monitoring"
+echo ""
+
+# Simple loop to check server status
+while true; do
+    # Check if server is still running
+    if curl -s -f http://localhost:8080 > /dev/null 2>&1; then
+        echo -ne "\r✅ Server Status: RUNNING | Time: $(date '+%H:%M:%S') | Monitoring Active..."
+    else
+        echo -ne "\r❌ Server Status: DOWN | Time: $(date '+%H:%M:%S') | Check server..."
+    fi
+    sleep 5
+done
