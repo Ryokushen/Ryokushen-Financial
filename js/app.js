@@ -361,6 +361,10 @@ import { cashFlowSankey } from './modules/cashFlowSankey.js';
             
             // Build data indexes for fast lookups
             dataIndex.rebuildIndexes(appState.appData);
+            
+            // Check data integrity and log any issues
+            const { logIntegrityIssues } = await import('./modules/dataIntegrity.js');
+            logIntegrityIssues(appState.appData);
         } catch (error) {
             debug.error("Data Loading Error:", error);
             showError("Could not load financial data from the database. Please refresh the page.");

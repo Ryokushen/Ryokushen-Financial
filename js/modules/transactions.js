@@ -987,16 +987,23 @@ async function addLinkedTransaction(fromTransactionData, toAccountValue, appStat
   }
 }
 
-// Helper function to get account name
+// Helper function to get account name with improved fallbacks
 function getAccountName(accountId, debtAccountId, appState) {
   if (accountId) {
     const account = appState.appData.cashAccounts.find(a => a.id === accountId);
-    return account ? account.name : 'Unknown Account';
+    if (account) {
+      return account.name;
+    }
+    // Provide more helpful fallback with partial account ID
+    return `Deleted Account (${accountId.substring(0, 8)}...)`;
   } else if (debtAccountId) {
     const debtAccount = appState.appData.debtAccounts.find(d => d.id === debtAccountId);
-    return debtAccount ? debtAccount.name : 'Unknown Account';
+    if (debtAccount) {
+      return debtAccount.name;
+    }
+    return `Deleted Credit Card (${debtAccountId.substring(0, 8)}...)`;
   }
-  return 'Unknown Account';
+  return 'Account Not Found';
 }
 
 async function addNewTransaction(transactionData, appState, onUpdate) {
@@ -1377,23 +1384,30 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
   // For smaller lists, render all at once
   tbody.innerHTML = transactions
     .map(t => {
-      // Handle both cash account transactions and credit card transactions
-      let accountName = 'Credit Card Transaction';
+      // Handle both cash account transactions and credit card transactions with improved fallbacks
+      let accountName = 'Account Not Found';
 
       if (t.account_id) {
         // Regular cash account transaction - use index for O(1) lookup
         const account =
           dataIndex?.indexes?.cashAccountsById?.get(t.account_id) ||
           appData.cashAccounts.find(a => a.id === t.account_id);
-        accountName = account ? escapeHtml(account.name) : 'Unknown Account';
+        if (account) {
+          accountName = escapeHtml(account.name);
+        } else {
+          // Provide more helpful fallback with partial account ID
+          accountName = `Deleted Account (${t.account_id.substring(0, 8)}...)`;
+        }
       } else if (t.debt_account_id) {
         // Credit card transaction - show the credit card name - use index for O(1) lookup
         const debtAccount =
           dataIndex?.indexes?.debtAccountsById?.get(t.debt_account_id) ||
           appData.debtAccounts.find(d => d.id === t.debt_account_id);
-        accountName = debtAccount
-          ? `${escapeHtml(debtAccount.name)} (Credit Card)`
-          : 'Unknown Credit Card';
+        if (debtAccount) {
+          accountName = `${escapeHtml(debtAccount.name)} (Credit Card)`;
+        } else {
+          accountName = `Deleted Credit Card (${t.debt_account_id.substring(0, 8)}...)`;
+        }
       }
 
       let description = escapeHtml(t.description);
@@ -1742,22 +1756,29 @@ function renderVisibleTransactions(tbody, transactions, appState) {
 function createTransactionRow(t, appData) {
   const row = document.createElement('tr');
 
-  // Handle both cash account transactions and credit card transactions
-  let accountName = 'Credit Card Transaction';
+  // Handle both cash account transactions and credit card transactions with improved fallbacks
+  let accountName = 'Account Not Found';
 
   if (t.account_id) {
     // Use dataIndex for O(1) lookup if available
     const account =
       dataIndex?.indexes?.cashAccountsById?.get(t.account_id) ||
       appData.cashAccounts.find(a => a.id === t.account_id);
-    accountName = account ? escapeHtml(account.name) : 'Unknown Account';
+    if (account) {
+      accountName = escapeHtml(account.name);
+    } else {
+      // Provide more helpful fallback with partial account ID
+      accountName = `Deleted Account (${t.account_id.substring(0, 8)}...)`;
+    }
   } else if (t.debt_account_id) {
     const debtAccount =
       dataIndex?.indexes?.debtAccountsById?.get(t.debt_account_id) ||
       appData.debtAccounts.find(d => d.id === t.debt_account_id);
-    accountName = debtAccount
-      ? `${escapeHtml(debtAccount.name)} (Credit Card)`
-      : 'Unknown Credit Card';
+    if (debtAccount) {
+      accountName = `${escapeHtml(debtAccount.name)} (Credit Card)`;
+    } else {
+      accountName = `Deleted Credit Card (${t.debt_account_id.substring(0, 8)}...)`;
+    }
   }
 
   let description = escapeHtml(t.description);

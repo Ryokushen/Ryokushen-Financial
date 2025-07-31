@@ -127,8 +127,26 @@ function renderRecentTransactions(appData) {
   }
   list.innerHTML = recent
     .map(t => {
-      const account = appData.cashAccounts.find(a => a.id === t.account_id);
-      const accountName = account ? escapeHtml(account.name) : 'Unknown';
+      // Improved account lookup logic with better fallbacks
+      let accountName = 'Account Not Found';
+
+      if (t.account_id) {
+        const cashAccount = appData.cashAccounts.find(a => a.id === t.account_id);
+        if (cashAccount) {
+          accountName = escapeHtml(cashAccount.name);
+        } else {
+          // Provide more helpful fallback with account ID
+          accountName = `Deleted Account (${t.account_id.substring(0, 8)}...)`;
+        }
+      } else if (t.debt_account_id) {
+        const debtAccount = appData.debtAccounts.find(d => d.id === t.debt_account_id);
+        if (debtAccount) {
+          accountName = `${escapeHtml(debtAccount.name)} (Credit Card)`;
+        } else {
+          accountName = `Deleted Credit Card (${t.debt_account_id.substring(0, 8)}...)`;
+        }
+      }
+
       const isPositive = t.amount >= 0;
       const isIncome = t.category === 'Income' || t.amount > 0;
       const categoryIcon = getCategoryIcon(t.category, isIncome);
