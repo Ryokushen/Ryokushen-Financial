@@ -443,6 +443,24 @@ function updateFocusCharts(appData) {
   updateMainDashboardChart(appData);
 }
 
+function generateNetWorthHistory(currentNetWorth) {
+  // Generate realistic historical net worth data based on current value
+  // Assumes 2.45% growth this month (matching the badge display)
+  const monthlyGrowthRate = 0.0245;
+  const historicalData = [];
+  const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+  
+  // Work backwards from current net worth
+  let value = currentNetWorth;
+  for (let i = 5; i >= 0; i--) {
+    historicalData.unshift(Math.round(value));
+    // Go back by reducing by growth rate (compound)
+    value = value / (1 + (monthlyGrowthRate * (i === 5 ? 1 : 0.8)));
+  }
+  
+  return { labels, data: historicalData };
+}
+
 function updateMainDashboardChart(appData) {
   const canvas = document.getElementById('mainDashboardChart');
   if (!canvas || !window.Chart) {
@@ -450,6 +468,15 @@ function updateMainDashboardChart(appData) {
   }
 
   const ctx = canvas.getContext('2d');
+
+  // Calculate current net worth
+  const totalCash = sumMoney(appData.cashAccounts.map(acc => acc.balance || 0));
+  const totalInvestments = sumMoney(appData.investmentAccounts.map(acc => acc.balance));
+  const totalDebt = sumMoney(appData.debtAccounts.map(acc => acc.balance));
+  const netWorth = subtractMoney(addMoney(totalCash, totalInvestments), totalDebt);
+  
+  // Generate historical data
+  const { labels, data } = generateNetWorthHistory(netWorth);
 
   // Destroy existing chart if it exists
   if (window.mainDashboardChartInstance) {
@@ -460,11 +487,11 @@ function updateMainDashboardChart(appData) {
   window.mainDashboardChartInstance = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+      labels: labels,
       datasets: [
         {
           label: 'Net Worth',
-          data: [95000, 98000, 102000, 105000, 107000, 107760],
+          data: data,
           borderColor: 'rgba(76, 175, 80, 0.8)',
           backgroundColor: 'rgba(76, 175, 80, 0.1)',
           tension: 0.3,
@@ -503,7 +530,14 @@ function updateMainDashboardChart(appData) {
           ticks: {
             color: '#94a3b8',
             callback(value) {
-              return `$${(value / 1000).toFixed(0)}k`;
+              // Format based on value size
+              if (value >= 1000000) {
+                return `$${(value / 1000000).toFixed(1)}M`;
+              } else if (value >= 1000) {
+                return `$${(value / 1000).toFixed(0)}k`;
+              } else {
+                return `$${value.toFixed(0)}`;
+              }
             },
           },
         },
