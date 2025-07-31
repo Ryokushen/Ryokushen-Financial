@@ -12,6 +12,12 @@ export const cashFlowSankey = {
   initialized: false,
   currentPeriod: 'month',
   privacyMode: false,
+  currentZoom: 1,
+  currentPanX: 0,
+  currentPanY: 0,
+  isDragging: false,
+  dragStartX: 0,
+  dragStartY: 0,
 
   /**
    * Initialize the cash flow visualization
@@ -187,16 +193,38 @@ export const cashFlowSankey = {
     // Clear existing content
     this.container.innerHTML = '';
 
+    // Create zoom controls
+    const zoomControls = document.createElement('div');
+    zoomControls.className = 'sankey-zoom-controls';
+    zoomControls.innerHTML = `
+      <button class="zoom-btn" id="zoom-in" title="Zoom In">+</button>
+      <button class="zoom-btn" id="zoom-out" title="Zoom Out">−</button>
+      <button class="zoom-btn" id="zoom-reset" title="Reset View">⟲</button>
+      <span class="zoom-level">${Math.round(this.currentZoom * 100)}%</span>
+    `;
+    this.container.appendChild(zoomControls);
+
+    // Create scrollable wrapper
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'sankey-scroll-wrapper';
+    
     // Create the visualization structure
     const flowContainer = document.createElement('div');
     flowContainer.className = 'sankey-flow-container';
+    flowContainer.style.transform = `scale(${this.currentZoom}) translate(${this.currentPanX}px, ${this.currentPanY}px)`;
     flowContainer.innerHTML = `
             <div class="sankey-column" id="income-column"></div>
             <div class="sankey-column" id="pool-column"></div>
             <div class="sankey-column" id="expense-column"></div>
             <svg class="sankey-flows-svg" id="flows-svg"></svg>
         `;
-    this.container.appendChild(flowContainer);
+    
+    scrollWrapper.appendChild(flowContainer);
+    this.container.appendChild(scrollWrapper);
+    
+    // Set up event listeners
+    this.setupZoomControls();
+    this.setupPanControls(scrollWrapper);
 
     // Render nodes
     this.renderNodes(data.nodes);
@@ -489,6 +517,110 @@ export const cashFlowSankey = {
   togglePrivacy() {
     this.privacyMode = isPrivacyMode();
     this.loadData();
+  },
+
+  /**
+   * Set up zoom controls
+   */
+  setupZoomControls() {
+    const zoomIn = document.getElementById('zoom-in');
+    const zoomOut = document.getElementById('zoom-out');
+    const zoomReset = document.getElementById('zoom-reset');
+    const flowContainer = document.querySelector('.sankey-flow-container');
+    
+    zoomIn?.addEventListener('click', () => {
+      this.currentZoom = Math.min(this.currentZoom + 0.1, 3);
+      this.updateTransform(flowContainer);
+    });
+    
+    zoomOut?.addEventListener('click', () => {
+      this.currentZoom = Math.max(this.currentZoom - 0.1, 0.5);
+      this.updateTransform(flowContainer);
+    });
+    
+    zoomReset?.addEventListener('click', () => {
+      this.currentZoom = 1;
+      this.currentPanX = 0;
+      this.currentPanY = 0;
+      this.updateTransform(flowContainer);
+    });
+
+    // Mouse wheel zoom
+    this.container.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        this.currentZoom = Math.max(0.5, Math.min(3, this.currentZoom + delta));
+        this.updateTransform(flowContainer);
+      }
+    });
+  },
+
+  /**
+   * Set up pan controls
+   */
+  setupPanControls(scrollWrapper) {
+    const flowContainer = document.querySelector('.sankey-flow-container');
+    
+    // Mouse drag to pan
+    scrollWrapper.addEventListener('mousedown', (e) => {
+      if (e.button === 0) { // Left click
+        this.isDragging = true;
+        this.dragStartX = e.clientX - this.currentPanX;
+        this.dragStartY = e.clientY - this.currentPanY;
+        scrollWrapper.style.cursor = 'grabbing';
+      }
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (this.isDragging) {
+        this.currentPanX = e.clientX - this.dragStartX;
+        this.currentPanY = e.clientY - this.dragStartY;
+        this.updateTransform(flowContainer);
+      }
+    });
+    
+    document.addEventListener('mouseup', () => {
+      this.isDragging = false;
+      const wrapper = document.querySelector('.sankey-scroll-wrapper');
+      if (wrapper) {
+        wrapper.style.cursor = 'grab';
+      }
+    });
+
+    // Touch support for mobile
+    let touchStartX = 0;
+    let touchStartY = 0;
+    
+    scrollWrapper.addEventListener('touchstart', (e) => {
+      const touch = e.touches[0];
+      touchStartX = touch.clientX - this.currentPanX;
+      touchStartY = touch.clientY - this.currentPanY;
+    });
+    
+    scrollWrapper.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      this.currentPanX = touch.clientX - touchStartX;
+      this.currentPanY = touch.clientY - touchStartY;
+      this.updateTransform(flowContainer);
+    });
+  },
+
+  /**
+   * Update transform of the flow container
+   */
+  updateTransform(container) {
+    if (container) {
+      container.style.transform = `scale(${this.currentZoom}) translate(${this.currentPanX}px, ${this.currentPanY}px)`;
+      container.style.transformOrigin = '0 0';
+      
+      // Update zoom level display
+      const zoomLevel = document.querySelector('.zoom-level');
+      if (zoomLevel) {
+        zoomLevel.textContent = `${Math.round(this.currentZoom * 100)}%`;
+      }
+    }
   },
 
   /**
