@@ -129,15 +129,22 @@ class PerformanceDashboard {
    * Set up event listeners
    */
   setupEventListeners() {
+    console.log('=== SETUP EVENT LISTENERS CALLED ===');
+    
     // View toggle buttons (Metrics/Charts)
     const viewToggleBtns = document.querySelectorAll('.view-toggle-btn');
+    console.log('Found view toggle buttons:', viewToggleBtns.length);
     if (viewToggleBtns.length > 0) {
       viewToggleBtns.forEach(btn => {
+        console.log('Adding click listener to button with view:', btn.dataset.view);
         btn.addEventListener('click', e => {
+          console.log('View toggle button clicked!');
           const view = e.target.dataset.view;
           this.switchDashboardView(view);
         });
       });
+    } else {
+      console.warn('No view toggle buttons found!');
     }
 
     // Date range selector
@@ -188,7 +195,13 @@ class PerformanceDashboard {
    * Switch between metrics and charts views
    */
   switchDashboardView(view) {
+    console.log(`=== SWITCH DASHBOARD VIEW CALLED: ${view} ===`);
+    console.log('Current view:', this.currentDashboardView);
+    console.log('Charts initialized:', this.chartsInitialized);
+    console.log('Data loaded:', !!this.data.trends);
+    
     if (this.currentDashboardView === view) {
+      console.log('Already in this view, returning');
       return;
     }
 
@@ -212,26 +225,66 @@ class PerformanceDashboard {
       
       // Initialize charts if not already done
       if (!this.chartsInitialized) {
+        console.log('Charts not initialized, attempting to initialize...');
         debug.log('Attempting to initialize charts with simpleCharts module...');
         debug.log('Chart.js available:', !!window.Chart);
         debug.log('Data available:', !!this.data.trends);
+        console.log('simpleCharts object:', simpleCharts);
         
-        // First, try to render a test chart to verify Chart.js is working
-        setTimeout(() => {
-          simpleCharts.renderTestChart();
-          this.chartsInitialized = true;
-          
-          // After successful test, render actual data after a delay
-          setTimeout(() => {
-            if (this.data.trends) {
-              simpleCharts.renderDataChart('trends', this.data.trends);
-            }
-          }, 2000);
-        }, 500);
+        // Check if we have data first
+        if (!this.data || !this.data.trends) {
+          console.warn('No data available yet, loading data first...');
+          this.loadDashboardData().then(() => {
+            console.log('Data loaded, now rendering charts');
+            this.renderChartsInView();
+          }).catch(error => {
+            console.error('Failed to load data:', error);
+          });
+        } else {
+          // Data is available, render charts
+          this.renderChartsInView();
+        }
+      } else {
+        console.log('Charts already initialized');
       }
     }
 
     this.currentDashboardView = view;
+  }
+
+  /**
+   * Render charts in the charts view with proper error handling
+   */
+  renderChartsInView() {
+    console.log('=== RENDER CHARTS IN VIEW ===');
+    
+    try {
+      // First, try to render a test chart to verify Chart.js is working
+      console.log('Rendering test chart...');
+      simpleCharts.renderTestChart();
+      this.chartsInitialized = true;
+      console.log('Test chart rendered successfully');
+      
+      // After successful test, render actual data after a delay
+      setTimeout(() => {
+        try {
+          if (this.data && this.data.trends) {
+            console.log('Rendering data chart with trends data...');
+            simpleCharts.renderDataChart('trends', this.data.trends);
+            console.log('Data chart rendered successfully');
+          } else {
+            console.warn('No trends data available');
+          }
+        } catch (error) {
+          console.error('Error rendering data chart:', error);
+        }
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error rendering test chart:', error);
+      console.error('Error details:', error.stack);
+      this.chartsInitialized = false;
+    }
   }
 
   /**
