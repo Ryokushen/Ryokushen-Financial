@@ -11,6 +11,7 @@ class PerformanceDashboard {
   constructor() {
     this.chartInstance = null;
     this.currentView = 'trends';
+    this.currentDashboardView = 'metrics'; // Track metrics vs charts view
     this.dateRange = 30; // Default to last 30 days
     this.data = {
       trends: null,
@@ -25,6 +26,7 @@ class PerformanceDashboard {
     };
     this.isLoading = false;
     this.refreshInterval = null;
+    this.chartsInitialized = false;
   }
 
   /**
@@ -44,13 +46,6 @@ class PerformanceDashboard {
 
     // Additional delay to ensure tab content is rendered
     await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Check if the performance tab is visible
-    const perfTab = document.getElementById('performance');
-    if (!perfTab || !perfTab.classList.contains('active')) {
-      debug.log('Performance tab not active, deferring initialization');
-      return;
-    }
 
     // Set up event listeners
     this.setupEventListeners();
@@ -86,6 +81,17 @@ class PerformanceDashboard {
    * Set up event listeners
    */
   setupEventListeners() {
+    // View toggle buttons (Metrics/Charts)
+    const viewToggleBtns = document.querySelectorAll('.view-toggle-btn');
+    if (viewToggleBtns.length > 0) {
+      viewToggleBtns.forEach(btn => {
+        btn.addEventListener('click', e => {
+          const view = e.target.dataset.view;
+          this.switchDashboardView(view);
+        });
+      });
+    }
+
     // Date range selector
     const dateRangeBtns = document.querySelectorAll('.date-range-btn');
     if (dateRangeBtns.length > 0) {
@@ -119,6 +125,42 @@ class PerformanceDashboard {
     if (exportBtn) {
       exportBtn.addEventListener('click', () => this.exportChart());
     }
+  }
+
+  /**
+   * Switch between metrics and charts views
+   */
+  switchDashboardView(view) {
+    if (this.currentDashboardView === view) {
+      return;
+    }
+
+    debug.log(`Switching dashboard view to: ${view}`);
+
+    // Update active button
+    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.view === view);
+    });
+
+    // Show/hide views
+    const metricsView = document.getElementById('metrics-view');
+    const chartsView = document.getElementById('charts-view');
+
+    if (view === 'metrics') {
+      if (metricsView) metricsView.style.display = 'block';
+      if (chartsView) chartsView.style.display = 'none';
+    } else if (view === 'charts') {
+      if (metricsView) metricsView.style.display = 'none';
+      if (chartsView) chartsView.style.display = 'block';
+      
+      // Initialize charts if not already done
+      if (!this.chartsInitialized && this.data.trends) {
+        this.renderChart();
+        this.chartsInitialized = true;
+      }
+    }
+
+    this.currentDashboardView = view;
   }
 
   /**
@@ -197,7 +239,13 @@ class PerformanceDashboard {
 
       // Render all components
       this.renderMetricCards();
-      this.renderChart();
+      
+      // Only render chart if we're in charts view and Chart.js is available
+      if (this.currentDashboardView === 'charts' && window.Chart) {
+        this.renderChart();
+        this.chartsInitialized = true;
+      }
+      
       this.renderAnomalyAlerts();
       this.renderPredictions();
       this.renderRecommendations();
@@ -349,7 +397,7 @@ class PerformanceDashboard {
   /**
    * Render main chart
    */
-  renderChart() {
+  async renderChart() {
     const container = document.getElementById('main-chart-container');
     if (!container) {
       return;
@@ -380,7 +428,7 @@ class PerformanceDashboard {
     }
 
     // Get chart data based on current view
-    const chartData = this.getChartData();
+    const chartData = await this.getChartData();
 
     // Check if chart data is valid
     if (!chartData || !chartData.data) {
@@ -388,52 +436,83 @@ class PerformanceDashboard {
       return;
     }
 
+    // Check if Chart.js is available
+    if (!window.Chart) {
+      debug.error('Chart.js is not available');
+      // Show a message in the chart container
+      const container = document.getElementById('main-chart-container');
+      if (container) {
+        container.innerHTML = '<div class="chart-error">Charts are loading. Please try again in a moment.</div>';
+      }
+      return;
+    }
+
     // Create new chart
     const ctx = canvas.getContext('2d');
-    this.chartInstance = new Chart(ctx, {
-      type: chartData.type,
-      data: chartData.data,
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: chartData.showLegend,
-            position: 'top',
-            labels: {
-              color: '#94a3b8',
-              padding: 15,
-              font: {
-                size: 12,
-              },
-            },
-          },
-          tooltip: {
-            backgroundColor: 'rgba(30, 41, 59, 0.9)',
-            titleColor: '#ffffff',
-            bodyColor: '#cbd5e1',
-            borderColor: 'rgba(255, 255, 255, 0.1)',
-            borderWidth: 1,
-            padding: 12,
-            displayColors: true,
-            callbacks: {
-              label: context => {
-                const label = context.dataset.label || '';
-                const value = formatCurrency(context.parsed.y || context.parsed);
-                return `${label}: ${value}`;
-              },
+    
+    // Build chart options
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: chartData.showLegend,
+          position: 'top',
+          labels: {
+            color: '#94a3b8',
+            padding: 15,
+            font: {
+              size: 12,
             },
           },
         },
-        scales: chartData.scales,
+        tooltip: {
+          backgroundColor: 'rgba(30, 41, 59, 0.9)',
+          titleColor: '#ffffff',
+          bodyColor: '#cbd5e1',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          padding: 12,
+          displayColors: true,
+          callbacks: {
+            label: context => {
+              // Handle horizontal bar chart
+              if (this.currentView === 'topExpenses') {
+                const category = chartData.data.labels[context.dataIndex];
+                const amount = formatCurrency(context.parsed.x);
+                const totalExpenses = chartData.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                const percentage = ((context.parsed.x / totalExpenses) * 100).toFixed(1);
+                return isPrivacyMode() 
+                  ? `Amount: $•••.••` 
+                  : `${category}: ${amount} (${percentage}%)`;
+              }
+              // Default handling for other charts
+              const label = context.dataset.label || '';
+              const value = formatCurrency(context.parsed.y || context.parsed);
+              return `${label}: ${value}`;
+            },
+          },
+        },
       },
+      scales: chartData.scales,
+    };
+    
+    // Add indexAxis if specified (for horizontal bar charts)
+    if (chartData.indexAxis) {
+      chartOptions.indexAxis = chartData.indexAxis;
+    }
+    
+    this.chartInstance = new Chart(ctx, {
+      type: chartData.type,
+      data: chartData.data,
+      options: chartOptions,
     });
   }
 
   /**
    * Get chart data based on current view
    */
-  getChartData() {
+  async getChartData() {
     switch (this.currentView) {
       case 'trends':
         return this.getTrendsChartData();
@@ -441,6 +520,8 @@ class PerformanceDashboard {
         return this.getCategoriesChartData();
       case 'merchants':
         return this.getMerchantsChartData();
+      case 'topExpenses':
+        return await this.getTopExpensesChartData();
       case 'forecast':
         return this.getForecastChartData();
       default:
@@ -570,6 +651,111 @@ class PerformanceDashboard {
         },
       },
     };
+  }
+
+  /**
+   * Get top expenses chart data
+   */
+  async getTopExpensesChartData() {
+    try {
+      // Calculate date range
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - this.dateRange);
+
+      // Get transactions for the period
+      const transactions = await transactionManager.searchTransactions({
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+        // Remove type filter to get all transactions, then filter manually
+      });
+
+      // Group expenses by category
+      const expensesByCategory = {};
+      let totalExpenses = 0;
+
+      transactions.forEach(transaction => {
+        if (transaction.amount < 0 || transaction.category === 'Debt') { 
+          // Include regular expenses (negative) and all debt payments
+          const category = transaction.category || 'Uncategorized';
+          const amount = Math.abs(transaction.amount);
+          expensesByCategory[category] = (expensesByCategory[category] || 0) + amount;
+          totalExpenses += amount;
+        }
+      });
+
+      // Sort and get top 8 categories
+      const sortedCategories = Object.entries(expensesByCategory)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8);
+
+      // Prepare chart data
+      const labels = sortedCategories.map(([category]) => category);
+      const data = sortedCategories.map(([, amount]) => amount);
+      const percentages = data.map(amount => ((amount / totalExpenses) * 100).toFixed(1));
+
+      // Use consistent colors with categories chart
+      const colors = [
+        '#3b82f6', // blue
+        '#06b6d4', // cyan
+        '#10b981', // emerald
+        '#f59e0b', // amber
+        '#ef4444', // red
+        '#8b5cf6', // violet
+        '#ec4899', // pink
+        '#6366f1', // indigo
+      ];
+
+      return {
+        type: 'bar',
+        showLegend: false,
+        data: {
+          labels: isPrivacyMode() ? labels.map(() => '••••••') : labels,
+          datasets: [{
+            label: 'Amount Spent',
+            data: isPrivacyMode() ? data.map(() => Math.random() * 1000) : data,
+            backgroundColor: colors,
+            borderColor: colors.map(color => color + '33'),
+            borderWidth: 1,
+          }]
+        },
+        indexAxis: 'y', // Horizontal bar chart
+        scales: {
+          x: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.05)',
+            },
+            ticks: {
+              color: '#94a3b8',
+              callback: value => formatCurrency(value),
+            },
+          },
+          y: {
+            grid: {
+              display: false,
+            },
+            ticks: {
+              color: '#94a3b8',
+            },
+          },
+        }
+      };
+    } catch (error) {
+      debug.error('Failed to get top expenses data:', error);
+      // Return empty chart data on error
+      return {
+        type: 'bar',
+        showLegend: false,
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Top Expenses',
+            data: [],
+            backgroundColor: [],
+          }]
+        }
+      };
+    }
   }
 
   /**

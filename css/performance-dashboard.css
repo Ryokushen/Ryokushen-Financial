@@ -41,6 +41,59 @@
     align-items: center;
 }
 
+/* View Toggle Buttons */
+.view-toggle {
+    display: flex;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-1);
+}
+
+.view-toggle-btn {
+    padding: var(--space-2) var(--space-4);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    color: #94a3b8;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.view-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+}
+
+.view-toggle-btn.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+/* Analytics Views */
+.analytics-view {
+    animation: fadeIn 0.3s ease;
+}
+
+.analytics-view.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* Date Range Selector */
 .date-range-selector {
     display: flex;
@@ -201,6 +254,12 @@
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-xl);
     overflow: hidden;
+}
+
+/* When in charts view, make charts full width */
+#charts-view .charts-section {
+    width: 100%;
+    margin: 0;
 }
 
 .chart-tabs-container {

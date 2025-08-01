@@ -268,7 +268,8 @@ function updateEnhancedMetrics(appData) {
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   const monthlyTransactions = appData.transactions.filter(t => {
-    const tDate = new Date(t.date);
+    // Parse date in local timezone
+    const tDate = new Date(t.date + 'T00:00:00');
     return tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear;
   });
 
@@ -338,9 +339,12 @@ function updateFocusCharts(appData) {
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   const monthlyExpenses = appData.transactions.filter(t => {
-    const tDate = new Date(t.date);
-    return tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear && t.amount < 0;
+    // Parse date in local timezone by adding time component
+    const tDate = new Date(t.date + 'T00:00:00');
+    return tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear && 
+           (t.amount < 0 || t.category === 'Debt');
   });
+
 
   // Group expenses by category
   const expenseByCategory = {};
@@ -368,30 +372,41 @@ function updateFocusCharts(appData) {
 
   // Render expense breakdown
   const expenseList = document.getElementById('expense-breakdown-list');
-  if (expenseList && topExpenses.length > 0) {
-    const maxExpense = topExpenses[0][1];
-    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#dfe6e9'];
+  if (expenseList) {
+    if (topExpenses.length > 0) {
+      const maxExpense = topExpenses[0][1];
+      const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#dfe6e9'];
 
-    expenseList.innerHTML = topExpenses
-      .map(([category, amount], index) => {
-        const percentage = (amount / maxExpense) * 100;
-        const icon = getCategoryIcon(category);
+      expenseList.innerHTML = topExpenses
+        .map(([category, amount], index) => {
+          const percentage = (amount / maxExpense) * 100;
+          const icon = getCategoryIcon(category);
 
-        return `
-                <div class="expense-item">
-                    <div class="expense-bar">
-                        <div class="expense-fill" style="width: ${percentage}%; background: ${colors[index]};">
-                            <span class="expense-icon">${icon}</span>
-                        </div>
-                    </div>
-                    <div class="expense-details">
-                        <span>${escapeHtml(category)}</span>
-                        <span data-sensitive="true">${formatCurrency(amount)}</span>
-                    </div>
-                </div>
-            `;
-      })
-      .join('');
+          return `
+                  <div class="expense-item">
+                      <div class="expense-bar">
+                          <div class="expense-fill" style="width: ${percentage}%; background: ${colors[index]};">
+                              <span class="expense-icon">${icon}</span>
+                          </div>
+                      </div>
+                      <div class="expense-details">
+                          <span>${escapeHtml(category)}</span>
+                          <span data-sensitive="true">${formatCurrency(amount)}</span>
+                      </div>
+                  </div>
+              `;
+        })
+        .join('');
+    } else {
+      // Show empty state message
+      expenseList.innerHTML = `
+        <div class="empty-state" style="text-align: center; padding: 20px; color: #94a3b8;">
+          <div style="font-size: 2em; margin-bottom: 10px;">📊</div>
+          <div>No expenses recorded for this month yet</div>
+          <div style="font-size: 0.9em; margin-top: 5px;">Add transactions or wait for the month to progress</div>
+        </div>
+      `;
+    }
   }
 
   // Update investment mix
