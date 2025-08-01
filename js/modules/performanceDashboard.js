@@ -266,7 +266,6 @@ class PerformanceDashboard {
             // Data is available, render charts
             this.renderChartsInView();
           }
-        }
         } else {
           console.log('Charts already initialized');
         }
