@@ -31,7 +31,39 @@ This document contains potential feature enhancements organized by category. The
 - Capital gains/losses tracking for investments
 - Export reports for tax preparation
 
-### 4.1 Cash Flow Visualization (Sankey Diagram) ✅ IMPLEMENTED [January 29, 2025]
+### 4.1 Pay Calculator ✅ IMPLEMENTED [August 1, 2025]
+**Status**: Fully implemented with comprehensive tax calculations
+- ✅ Salary and tax calculations for all 50 states
+- ✅ Federal tax calculations with 2025 tax brackets
+- ✅ Support for all filing statuses (Single, MFJ, MFS, HOH)
+- ✅ Pre-tax deductions (401k, Health Insurance, HSA, FSA, etc.)
+- ✅ Post-tax deductions and custom deductions
+- ✅ Pay frequency conversions (Annual, Monthly, Bi-weekly, Weekly)
+- ✅ Take-home pay visualization with charts
+- ✅ Tax bracket breakdown display
+- ✅ Detailed deduction summaries
+**Implementation Details:**
+- Module: js/modules/payCalculator.js
+- Dedicated "Salary" tab in main navigation
+- Real-time calculation updates
+- Support for all state tax rates including no-tax states
+
+### 4.2 Historical Financial Tracking ✅ IMPLEMENTED [August 1, 2025]
+**Status**: Fully implemented with database-backed tracking
+- ✅ Automatic daily financial snapshots on dashboard load
+- ✅ Historical comparison for all metrics (week/month/year)
+- ✅ Accurate percentage change calculations for all financial badges
+- ✅ Debt reduction tracking with actual month-over-month changes
+- ✅ Database functions for snapshot capture and comparison
+- ✅ Fallback to session-based tracking when no history exists
+- ✅ Full RLS implementation for data security
+**Implementation Details:**
+- Database table: financial_snapshots
+- Functions: capture_financial_snapshot(), get_snapshot_comparison()
+- JavaScript methods: db.captureFinancialSnapshot(), db.getSnapshotComparison()
+- Manual testing utility: window.dashboardUtils.captureSnapshot()
+
+### 4.3 Cash Flow Visualization (Sankey Diagram) ✅ IMPLEMENTED [January 29, 2025]
 **Status**: Fully implemented with interactive visualization
 - ✅ Monarch Money-style Sankey diagrams showing income and expense flow
 - ✅ Interactive visualization with hover tooltips
@@ -121,8 +153,8 @@ This document contains potential feature enhancements organized by category. The
   - ✅ 30+ pre-built templates for popular services
   - ✅ Template selector UI with preview
   - ✅ Enhanced rule engine supporting complex conditions
-- ✅ **Phase 3:** AI suggestions, analytics dashboard, import/export [January 27, 2025]
-- ✅ **Phase 4:** Analytics Dashboard UI - Comprehensive performance analytics interface [January 27, 2025]
+- ✅ **Phase 3:** AI suggestions, analytics dashboard, import/export [January 27, 2025] ✅ IMPLEMENTED
+- ✅ **Phase 4:** Analytics Dashboard UI - Comprehensive performance analytics interface [January 27, 2025] ✅ IMPLEMENTED
   - ✅ Spending trends visualization with interactive charts
   - ✅ Category breakdown analysis with doughnut charts  
   - ✅ Anomaly detection alerts with severity indicators

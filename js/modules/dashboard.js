@@ -33,7 +33,7 @@ window.dashboardUtils = {
       throw error;
     }
   },
-  getHistoricalData: () => historicalComparison
+  getHistoricalData: () => historicalComparison,
 };
 
 function renderFinancialHealth(kpiResults) {

@@ -12,11 +12,12 @@ Ryokushen Financial is a vanilla JavaScript application with an event-driven arc
 - **Charts**: Chart.js
 - **Voice**: Web Speech API
 - **Biometric**: WebAuthn API
+- **Historical Tracking**: Database snapshots with time-series comparison
 - **Build Process**: None (native ES6 modules)
 
 ## Module Architecture
 
-### Module Categories (60+ Total)
+### Module Categories (65+ Total)
 
 #### 1. Core Infrastructure (4 modules)
 Essential modules that all others depend on:
@@ -32,7 +33,7 @@ Centralized data handling:
 - **validation.js** - Data validation framework
 - **errorHandler.js** - Centralized error handling
 
-#### 3. Feature Modules (13 modules)
+#### 3. Feature Modules (18 modules)
 Business logic implementation:
 - **accounts.js** - Account management
 - **transactions.js** - Transaction UI
@@ -47,8 +48,13 @@ Business logic implementation:
 - **timeline.js** - Bill timeline
 - **batchOperations.js** - Bulk actions
 - **transactionImport.js** - Import wizard
+- **cashFlowSankey.js** - Sankey diagram visualization
+- **payCalculator.js** - Salary and tax calculations
+- **simpleCharts.js** - Simplified chart implementations
+- **bulkOperations.js** - Bulk transaction operations
+- **transactionTemplates.js** - Transaction templates
 
-#### 4. UI/UX Modules (10 modules)
+#### 4. UI/UX Modules (12 modules)
 User interface management:
 - **modalManager.js** - Modal coordination
 - **loadingState.js** - Loading indicators
@@ -60,6 +66,8 @@ User interface management:
 - **investmentAccounts.js** - Investment UI
 - **debtAccounts.js** - Debt account UI
 - **rulesUI.js** - Rules interface
+- **dataIntegrityUI.js** - Data integrity interface
+- **advancedSearch.js** - Advanced search UI
 
 #### 5. Voice System (11 modules)
 Complete voice command architecture:
@@ -75,7 +83,7 @@ Complete voice command architecture:
 - **speechToText.js** - Transcription
 - **smartFormFiller.js** - Form automation
 
-#### 6. Utility Modules (8+ modules)
+#### 6. Utility Modules (10+ modules)
 Supporting functionality:
 - **memoization.js** - Function caching
 - **performanceUtils.js** - Debounce/throttle
@@ -85,6 +93,8 @@ Supporting functionality:
 - **debug.js** - Debug logging
 - **asyncLock.js** - Concurrency control
 - **categories.js** - Category management
+- **dataRepair.js** - Data integrity repair utilities
+- **performanceDashboard.js** - Performance analytics
 
 ## Design Patterns
 

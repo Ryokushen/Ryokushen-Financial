@@ -2,12 +2,13 @@
 
 ## Test Execution Instructions
 
-1. Open the application in Chrome: `/Users/charlesdorfeuille/Documents/GitHub/Ryokushen-Financial/index.html`
-2. Open Chrome DevTools Console (Cmd+Option+J)
-3. The test runner is now loaded. Execute tests by running:
-   - `testRunner.runAllTests()` - Run all tests
-   - `testRunner.testAccountsModule()` - Test only Accounts
-   - etc.
+1. Start the local server: `python3 server.py` (runs on port 8080)
+2. Open the application in Chrome: `http://localhost:8080/index.html`
+3. Open Chrome DevTools Console (F12 or Cmd+Option+J)
+4. Available manual testing utilities:
+   - `window.dashboardUtils.captureSnapshot()` - Test financial snapshot capture
+   - `window.searchTransactions({criteria})` - Test transaction search
+   - Various module-specific testing functions
 
 ### TransactionManager Tests
 1. Open `/tests/unit/transaction-manager-test.html` in browser

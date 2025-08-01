@@ -1,13 +1,13 @@
 # Current Features - Ryokushen Financial
 
 > Last Updated: August 1, 2025
-> Total Features: 52 Major Features
+> Total Features: 54 Major Features
 
 ## Feature Summary
-- ✅ **35 Features with Full UI** - Complete implementation
-- 🖥️ **1 Console-Only Feature** - Developer access via console
+- ✅ **37 Features with Full UI** - Complete implementation
+- 🖥️ **0 Console-Only Features** - All features now have UI
 - ⚙️ **3 Partial Features** - Backend complete, limited UI
-- 🔧 **19 Infrastructure Components** - Supporting services
+- 🔧 **20 Infrastructure Components** - Supporting services
 - 🎤 **15 Voice-Enabled Features** - Natural language access
 
 ## Core Financial Management
@@ -338,6 +338,22 @@ npm run format:check  # Verify formatting
 
 ## Additional Features
 
+### 💰 Pay Calculator ✅ IMPLEMENTED
+**Status**: ✅ Full UI Implementation
+**Module**: payCalculator.js
+**Features**:
+- Comprehensive salary and tax calculations
+- Support for multiple filing statuses (Single, Married Filing Jointly/Separately, Head of Household)
+- Federal tax calculations with 2025 tax brackets
+- State tax support (all 50 states including no-tax states)
+- Pre-tax deductions (401k, Health Insurance, HSA, etc.)
+- Post-tax deductions
+- Pay frequency conversions (Annual, Monthly, Bi-weekly, Weekly)
+- Take-home pay breakdown with visual charts
+- Tax bracket visualization
+- Detailed deduction summaries
+**UI Access**: "Salary" tab in main navigation
+
 ### 📊 Bill Payment Tracking
 **Status**: ✅ Full UI Implementation
 - Mark bills as paid
@@ -376,14 +392,21 @@ npm run format:check  # Verify formatting
 **UI Features**: Glass-morphism design, responsive layout, privacy mode compatible
 **Voice Commands**: "Show analytics", "Performance dashboard"
 
-### 🔍 Advanced Search
-**Status**: 🖥️ Console-Only
+### 🔍 Advanced Search ✅ IMPLEMENTED [January 2025]
+**Status**: ✅ Full UI Implementation
+**Module**: advancedSearch.js
 **Features**:
-- Multi-criteria search
-- Date range filtering
-- Amount ranges
-- Category filtering
-**Console Access**: `window.searchTransactions(criteria)`
+- Full-text search with fuzzy matching toggle
+- Multi-filter search (date range, amount range, category, account)
+- Account filter supports all account types (cash, debt, investment)
+- Complex query builder with AND/OR/NOT operators
+- Query examples and syntax help
+- Saved searches with persistence
+- Load and delete saved searches
+- Paginated results display (20 per page)
+- Export search results to CSV
+- Glass-morphism modal design
+**UI Access**: Search button with magnifying glass icon in Transactions tab
 
 ### 📥 Data Import/Export
 **Status**: ✅ Full UI Implementation
@@ -420,18 +443,6 @@ npm run format:check  # Verify formatting
 - Offline capability
 
 ## Recent Updates
-
-### Advanced Search UI (January 2025)
-- Full-text search with fuzzy matching toggle
-- Multi-filter search (date range, amount range, category, account)
-- Account filter supports all account types (cash, debt, investment)
-- Complex query builder with AND/OR/NOT operators
-- Query examples and syntax help
-- Saved searches with persistence
-- Load and delete saved searches
-- Paginated results display (20 per page)
-- Export search results to CSV
-- Glass-morphism modal design
 - Responsive mobile layout
 
 ### Transaction Import UI (January 2025)

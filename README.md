@@ -10,6 +10,10 @@ A privacy-focused personal financial management application with unique time-bud
 - ⏰ **Time-Budget System**: Convert expenses to work hours
 - 📊 **Advanced Analytics**: Spending trends, anomaly detection, and predictive forecasting
 - 🤖 **Smart Rules Engine**: Auto-categorization with pattern matching
+- 💰 **Pay Calculator**: Comprehensive salary and tax calculations for all 50 states
+- 📈 **Historical Tracking**: Database-backed financial snapshots with time-series analysis
+- 🔍 **Advanced Search**: Full-text search with complex query builder
+- 📊 **Sankey Diagrams**: Interactive cash flow visualizations
 - 🎨 **Modern Glass-Morphism UI**: Dark theme optimized with smooth animations
 
 ## Quick Start
