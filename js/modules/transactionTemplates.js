@@ -283,6 +283,18 @@ class TransactionTemplatesUI {
       }
       dateInput.focus();
     }
+
+    // Show the transaction form section
+    const formSection = document.querySelector('.transaction-form-section');
+    if (formSection) {
+      formSection.style.display = 'block';
+      
+      // Scroll to form for better UX
+      const form = document.getElementById('transaction-form');
+      if (form) {
+        form.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
   }
 
   renderTemplates() {
