@@ -782,11 +782,13 @@ async function handleTransactionSubmit(event, appState, onUpdate) {
 
       // Auto-negate amounts for expense categories (not Income, Investments, ATM/Cash, Gifts)
       const flexibleCategories = ['Income', 'Investments', 'ATM/Cash', 'Gifts'];
-      
+
       if (!flexibleCategories.includes(transactionData.category) && transactionData.amount > 0) {
         // This is an expense category with positive amount - negate it
         transactionData.amount = -Math.abs(transactionData.amount);
-        debug.log(`Auto-negated expense: ${transactionData.category} amount to ${transactionData.amount}`);
+        debug.log(
+          `Auto-negated expense: ${transactionData.category} amount to ${transactionData.amount}`
+        );
       }
     }
 

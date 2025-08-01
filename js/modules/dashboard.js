@@ -269,7 +269,7 @@ function updateEnhancedMetrics(appData) {
   const currentYear = new Date().getFullYear();
   const monthlyTransactions = appData.transactions.filter(t => {
     // Parse date in local timezone
-    const tDate = new Date(t.date + 'T00:00:00');
+    const tDate = new Date(`${t.date}T00:00:00`);
     return tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear;
   });
 
@@ -340,11 +340,13 @@ function updateFocusCharts(appData) {
   const currentYear = new Date().getFullYear();
   const monthlyExpenses = appData.transactions.filter(t => {
     // Parse date in local timezone by adding time component
-    const tDate = new Date(t.date + 'T00:00:00');
-    return tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear && 
-           (t.amount < 0 || t.category === 'Debt');
+    const tDate = new Date(`${t.date}T00:00:00`);
+    return (
+      tDate.getMonth() === currentMonth &&
+      tDate.getFullYear() === currentYear &&
+      (t.amount < 0 || t.category === 'Debt')
+    );
   });
-
 
   // Group expenses by category
   const expenseByCategory = {};
@@ -464,15 +466,15 @@ function generateNetWorthHistory(currentNetWorth) {
   const monthlyGrowthRate = 0.0245;
   const historicalData = [];
   const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-  
+
   // Work backwards from current net worth
   let value = currentNetWorth;
   for (let i = 5; i >= 0; i--) {
     historicalData.unshift(Math.round(value));
     // Go back by reducing by growth rate (compound)
-    value = value / (1 + (monthlyGrowthRate * (i === 5 ? 1 : 0.8)));
+    value = value / (1 + monthlyGrowthRate * (i === 5 ? 1 : 0.8));
   }
-  
+
   return { labels, data: historicalData };
 }
 
@@ -489,7 +491,7 @@ function updateMainDashboardChart(appData) {
   const totalInvestments = sumMoney(appData.investmentAccounts.map(acc => acc.balance));
   const totalDebt = sumMoney(appData.debtAccounts.map(acc => acc.balance));
   const netWorth = subtractMoney(addMoney(totalCash, totalInvestments), totalDebt);
-  
+
   // Generate historical data
   const { labels, data } = generateNetWorthHistory(netWorth);
 
@@ -502,11 +504,11 @@ function updateMainDashboardChart(appData) {
   window.mainDashboardChartInstance = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: labels,
+      labels,
       datasets: [
         {
           label: 'Net Worth',
-          data: data,
+          data,
           borderColor: 'rgba(76, 175, 80, 0.8)',
           backgroundColor: 'rgba(76, 175, 80, 0.1)',
           tension: 0.3,

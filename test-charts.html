@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Charts Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        body {
+            background: #1e293b;
+            color: white;
+            font-family: sans-serif;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .chart-container {
+            background: #2d3748;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            height: 400px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background: #059669; }
+        .error { background: #dc2626; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Chart.js Test Page</h1>
+        
+        <div id="status"></div>
+        
+        <div class="chart-container">
+            <canvas id="testChart"></canvas>
+        </div>
+        
+        <button onclick="location.reload()">Reload Page</button>
+    </div>
+    
+    <script>
+        const status = document.getElementById('status');
+        
+        // Check if Chart.js is loaded
+        if (window.Chart) {
+            status.innerHTML = '<div class="status success">✅ Chart.js loaded successfully</div>';
+            
+            // Get canvas
+            const canvas = document.getElementById('testChart');
+            const ctx = canvas.getContext('2d');
+            
+            // Check canvas dimensions
+            console.log('Canvas client dimensions:', canvas.clientWidth, 'x', canvas.clientHeight);
+            
+            // Create test chart
+            try {
+                const chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['January', 'February', 'March', 'April', 'May', 'June'],
+                        datasets: [{
+                            label: 'Test Data',
+                            data: [12, 19, 3, 5, 2, 3],
+                            borderColor: 'rgb(75, 192, 192)',
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Test Chart - If you see this, Chart.js is working!',
+                                color: 'white'
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                ticks: { color: 'white' }
+                            },
+                            y: {
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                ticks: { color: 'white' }
+                            }
+                        }
+                    }
+                });
+                
+                status.innerHTML += '<div class="status success">✅ Chart created successfully</div>';
+                console.log('Chart instance:', chart);
+                console.log('Canvas dimensions after chart:', canvas.width, 'x', canvas.height);
+                
+            } catch (error) {
+                status.innerHTML += '<div class="status error">❌ Error creating chart: ' + error.message + '</div>';
+                console.error('Chart creation error:', error);
+            }
+            
+        } else {
+            status.innerHTML = '<div class="status error">❌ Chart.js not loaded</div>';
+        }
+    </script>
+</body>
+</html>

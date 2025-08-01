@@ -208,7 +208,7 @@ export const cashFlowSankey = {
     // Create scrollable wrapper
     const scrollWrapper = document.createElement('div');
     scrollWrapper.className = 'sankey-scroll-wrapper';
-    
+
     // Create the visualization structure
     const flowContainer = document.createElement('div');
     flowContainer.className = 'sankey-flow-container';
@@ -219,10 +219,10 @@ export const cashFlowSankey = {
             <div class="sankey-column" id="expense-column"></div>
             <svg class="sankey-flows-svg" id="flows-svg"></svg>
         `;
-    
+
     scrollWrapper.appendChild(flowContainer);
     this.container.appendChild(scrollWrapper);
-    
+
     // Set up event listeners
     this.setupZoomControls();
     this.setupPanControls(scrollWrapper);
@@ -534,17 +534,17 @@ export const cashFlowSankey = {
     const zoomOut = document.getElementById('zoom-out');
     const zoomReset = document.getElementById('zoom-reset');
     const flowContainer = document.querySelector('.sankey-flow-container');
-    
+
     zoomIn?.addEventListener('click', () => {
       this.currentZoom = Math.min(this.currentZoom + 0.1, 3);
       this.updateTransform(flowContainer);
     });
-    
+
     zoomOut?.addEventListener('click', () => {
       this.currentZoom = Math.max(this.currentZoom - 0.1, 0.5);
       this.updateTransform(flowContainer);
     });
-    
+
     zoomReset?.addEventListener('click', () => {
       this.currentZoom = 1;
       this.currentPanX = 0;
@@ -553,7 +553,7 @@ export const cashFlowSankey = {
     });
 
     // Mouse wheel zoom
-    this.container.addEventListener('wheel', (e) => {
+    this.container.addEventListener('wheel', e => {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -0.1 : 0.1;
@@ -568,25 +568,26 @@ export const cashFlowSankey = {
    */
   setupPanControls(scrollWrapper) {
     const flowContainer = document.querySelector('.sankey-flow-container');
-    
+
     // Mouse drag to pan
-    scrollWrapper.addEventListener('mousedown', (e) => {
-      if (e.button === 0) { // Left click
+    scrollWrapper.addEventListener('mousedown', e => {
+      if (e.button === 0) {
+        // Left click
         this.isDragging = true;
         this.dragStartX = e.clientX - this.currentPanX;
         this.dragStartY = e.clientY - this.currentPanY;
         scrollWrapper.style.cursor = 'grabbing';
       }
     });
-    
-    document.addEventListener('mousemove', (e) => {
+
+    document.addEventListener('mousemove', e => {
       if (this.isDragging) {
         this.currentPanX = e.clientX - this.dragStartX;
         this.currentPanY = e.clientY - this.dragStartY;
         this.updateTransform(flowContainer);
       }
     });
-    
+
     document.addEventListener('mouseup', () => {
       this.isDragging = false;
       const wrapper = document.querySelector('.sankey-scroll-wrapper');
@@ -598,14 +599,14 @@ export const cashFlowSankey = {
     // Touch support for mobile
     let touchStartX = 0;
     let touchStartY = 0;
-    
-    scrollWrapper.addEventListener('touchstart', (e) => {
+
+    scrollWrapper.addEventListener('touchstart', e => {
       const touch = e.touches[0];
       touchStartX = touch.clientX - this.currentPanX;
       touchStartY = touch.clientY - this.currentPanY;
     });
-    
-    scrollWrapper.addEventListener('touchmove', (e) => {
+
+    scrollWrapper.addEventListener('touchmove', e => {
       e.preventDefault();
       const touch = e.touches[0];
       this.currentPanX = touch.clientX - touchStartX;
@@ -621,13 +622,13 @@ export const cashFlowSankey = {
     if (container) {
       container.style.transform = `scale(${this.currentZoom}) translate(${this.currentPanX}px, ${this.currentPanY}px)`;
       container.style.transformOrigin = '0 0';
-      
+
       // Update zoom level display
       const zoomLevel = document.querySelector('.zoom-level');
       if (zoomLevel) {
         zoomLevel.textContent = `${Math.round(this.currentZoom * 100)}%`;
       }
-      
+
       // Redraw flows to fix coordinate alignment
       if (this.lastRenderedData) {
         requestAnimationFrame(() => {

@@ -15,52 +15,52 @@ class SimpleCharts {
   init() {
     console.log('=== SimpleCharts: INIT CALLED ===');
     debug.log('SimpleCharts: Initializing...');
-    
+
     // Find container and canvas
     this.container = document.getElementById('main-chart-container');
     this.canvas = document.getElementById('performanceChart');
-    
+
     console.log('Container element:', this.container);
     console.log('Canvas element:', this.canvas);
-    
+
     if (!this.container) {
       console.error('SimpleCharts: Container #main-chart-container not found!');
       debug.error('SimpleCharts: Missing container element');
       return false;
     }
-    
+
     if (!this.canvas) {
       console.error('SimpleCharts: Canvas #performanceChart not found!');
       debug.error('SimpleCharts: Missing canvas element');
       return false;
     }
-    
+
     // Check visibility and dimensions
     console.log('Canvas display style:', this.canvas.style.display);
     console.log('Canvas computed style:', window.getComputedStyle(this.canvas).display);
     console.log('Container display style:', this.container.style.display);
-    
+
     // Check all parent dimensions
     console.log('=== Parent Container Dimensions ===');
     console.log('Container dimensions:', this.container.getBoundingClientRect());
-    
+
     const chartsSection = this.container.closest('.charts-section');
     if (chartsSection) {
       console.log('Charts section dimensions:', chartsSection.getBoundingClientRect());
     }
-    
+
     const chartsView = this.container.closest('#charts-view');
     if (chartsView) {
       console.log('Charts view dimensions:', chartsView.getBoundingClientRect());
       console.log('Charts view display:', window.getComputedStyle(chartsView).display);
     }
-    
+
     const performanceTab = this.container.closest('#performance');
     if (performanceTab) {
       console.log('Performance tab dimensions:', performanceTab.getBoundingClientRect());
       console.log('Performance tab display:', window.getComputedStyle(performanceTab).display);
     }
-    
+
     // Check for Chart.js
     if (!window.Chart) {
       console.error('SimpleCharts: Chart.js is not loaded!');
@@ -68,7 +68,7 @@ class SimpleCharts {
       this.showError('Chart.js is not loaded. Charts cannot be displayed.');
       return false;
     }
-    
+
     console.log('SimpleCharts: Initialization successful');
     debug.log('SimpleCharts: Initialization successful');
     return true;
@@ -156,108 +156,110 @@ class SimpleCharts {
   renderTestChart() {
     console.log('=== SimpleCharts: RENDER TEST CHART CALLED ===');
     debug.log('SimpleCharts: Rendering test chart...');
-    
+
     if (!this.init()) {
       console.error('SimpleCharts: Init failed, cannot render test chart');
       return;
     }
-    
+
     // First, ensure canvas is visible BEFORE creating chart
     console.log('Ensuring canvas is visible before chart creation...');
     const loadingDiv = this.container.querySelector('.chart-loading');
     if (loadingDiv) {
       loadingDiv.style.display = 'none';
     }
-    
+
     // Show canvas and ensure it has dimensions
     this.canvas.style.display = 'block';
-    
+
     // Set container minimum height if it doesn't have one
     if (!this.container.style.height && !this.container.style.minHeight) {
       console.log('Setting container min-height to 400px');
       this.container.style.minHeight = '400px';
     }
-    
+
     // Force layout recalculation
     this.container.offsetHeight;
-    
+
     // Wait for next frame to ensure dimensions are calculated
     requestAnimationFrame(() => {
       try {
         console.log('Canvas dimensions after making visible:');
         console.log('Canvas client width:', this.canvas.clientWidth);
         console.log('Canvas client height:', this.canvas.clientHeight);
-        
+
         // Destroy any existing chart
         this.destroy();
-        
+
         // Get context
         const ctx = this.canvas.getContext('2d');
         if (!ctx) {
           throw new Error('Cannot get canvas context');
         }
-        
+
         // Create simple test data
         const testData = {
-        labels: ['January', 'February', 'March', 'April', 'May', 'June'],
-        datasets: [{
-          label: 'Test Data',
-          data: [1000, 1200, 1100, 1400, 1300, 1500],
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          tension: 0.3,
-          fill: true
-        }]
-      };
-      
-      // Create chart
-      console.log('Creating new Chart instance...');
-      this.chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: testData,
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: true,
-              labels: {
-                color: '#94a3b8'
-              }
+          labels: ['January', 'February', 'March', 'April', 'May', 'June'],
+          datasets: [
+            {
+              label: 'Test Data',
+              data: [1000, 1200, 1100, 1400, 1300, 1500],
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              tension: 0.3,
+              fill: true,
             },
-            title: {
-              display: true,
-              text: 'Test Chart - If you see this, Chart.js is working!',
-              color: '#ffffff',
-              font: {
-                size: 16
-              }
-            }
+          ],
+        };
+
+        // Create chart
+        console.log('Creating new Chart instance...');
+        this.chartInstance = new Chart(ctx, {
+          type: 'line',
+          data: testData,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: true,
+                labels: {
+                  color: '#94a3b8',
+                },
+              },
+              title: {
+                display: true,
+                text: 'Test Chart - If you see this, Chart.js is working!',
+                color: '#ffffff',
+                font: {
+                  size: 16,
+                },
+              },
+            },
+            scales: {
+              x: {
+                grid: {
+                  color: 'rgba(255, 255, 255, 0.1)',
+                },
+                ticks: {
+                  color: '#94a3b8',
+                },
+              },
+              y: {
+                grid: {
+                  color: 'rgba(255, 255, 255, 0.1)',
+                },
+                ticks: {
+                  color: '#94a3b8',
+                  callback(value) {
+                    return formatCurrency(value);
+                  },
+                },
+              },
+            },
           },
-          scales: {
-            x: {
-              grid: {
-                color: 'rgba(255, 255, 255, 0.1)'
-              },
-              ticks: {
-                color: '#94a3b8'
-              }
-            },
-            y: {
-              grid: {
-                color: 'rgba(255, 255, 255, 0.1)'
-              },
-              ticks: {
-                color: '#94a3b8',
-                callback: function(value) {
-                  return formatCurrency(value);
-                }
-              }
-            }
-          }
-        }
-      });
-      
+        });
+
         // Verify chart was created
         console.log('Chart instance created:', !!this.chartInstance);
         console.log('Chart ID:', this.chartInstance?.id);
@@ -266,15 +268,14 @@ class SimpleCharts {
         console.log('Canvas height:', this.canvas.height);
         console.log('Canvas client width:', this.canvas.clientWidth);
         console.log('Canvas client height:', this.canvas.clientHeight);
-        
+
         // Force chart resize to ensure proper dimensions
         if (this.chartInstance && this.canvas.clientWidth > 0) {
           console.log('Forcing chart resize...');
           this.chartInstance.resize();
         }
-        
+
         debug.log('SimpleCharts: Test chart rendered successfully');
-        
       } catch (error) {
         console.error('SimpleCharts: Failed to render test chart', error);
         debug.error('SimpleCharts: Failed to render test chart', error);
@@ -288,70 +289,69 @@ class SimpleCharts {
    */
   renderDataChart(type, data) {
     debug.log(`SimpleCharts: Rendering ${type} chart...`);
-    
+
     if (!this.init()) {
       return;
     }
-    
+
     if (!data) {
       debug.error('SimpleCharts: No data provided');
       this.showError('No data available for chart');
       return;
     }
-    
+
     // Ensure canvas is visible before creating chart
     const loadingDiv = this.container.querySelector('.chart-loading');
     if (loadingDiv) {
       loadingDiv.style.display = 'none';
     }
     this.canvas.style.display = 'block';
-    
+
     // Ensure container has height
     if (!this.container.style.height && !this.container.style.minHeight) {
       this.container.style.minHeight = '400px';
     }
-    
+
     // Force layout recalculation
     this.container.offsetHeight;
-    
+
     // Wait for next frame
     requestAnimationFrame(() => {
       try {
         // Destroy any existing chart
         this.destroy();
-        
+
         // Get context
         const ctx = this.canvas.getContext('2d');
         if (!ctx) {
           throw new Error('Cannot get canvas context');
         }
-      
-      let chartConfig;
-      
-      switch (type) {
-        case 'topExpenses':
-          chartConfig = this.getTopExpensesConfig(data);
-          break;
-        case 'trends':
-          chartConfig = this.getTrendsConfig(data);
-          break;
-        case 'categories':
-          chartConfig = this.getCategoriesConfig(data);
-          break;
-        default:
-          chartConfig = this.getTrendsConfig(data);
-      }
-      
+
+        let chartConfig;
+
+        switch (type) {
+          case 'topExpenses':
+            chartConfig = this.getTopExpensesConfig(data);
+            break;
+          case 'trends':
+            chartConfig = this.getTrendsConfig(data);
+            break;
+          case 'categories':
+            chartConfig = this.getCategoriesConfig(data);
+            break;
+          default:
+            chartConfig = this.getTrendsConfig(data);
+        }
+
         // Create chart
         this.chartInstance = new Chart(ctx, chartConfig);
-        
+
         // Force resize if needed
         if (this.chartInstance && this.canvas.clientWidth > 0) {
           this.chartInstance.resize();
         }
-        
+
         debug.log(`SimpleCharts: ${type} chart rendered successfully`);
-        
       } catch (error) {
         console.error(`SimpleCharts: Failed to render ${type} chart`, error);
         debug.error(`SimpleCharts: Failed to render ${type} chart`, error);
@@ -366,46 +366,46 @@ class SimpleCharts {
   getTopExpensesConfig(data) {
     return {
       type: 'bar',
-      data: data,
+      data,
       options: {
         indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            display: false
+            display: false,
           },
           title: {
             display: true,
             text: 'Top Expenses',
             color: '#ffffff',
             font: {
-              size: 16
-            }
-          }
+              size: 16,
+            },
+          },
         },
         scales: {
           x: {
             grid: {
-              color: 'rgba(255, 255, 255, 0.1)'
+              color: 'rgba(255, 255, 255, 0.1)',
             },
             ticks: {
               color: '#94a3b8',
-              callback: function(value) {
+              callback(value) {
                 return formatCurrency(value);
-              }
-            }
+              },
+            },
           },
           y: {
             grid: {
-              display: false
+              display: false,
             },
             ticks: {
-              color: '#94a3b8'
-            }
-          }
-        }
-      }
+              color: '#94a3b8',
+            },
+          },
+        },
+      },
     };
   }
 
@@ -415,7 +415,7 @@ class SimpleCharts {
   getTrendsConfig(data) {
     return {
       type: 'line',
-      data: data,
+      data,
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -423,40 +423,40 @@ class SimpleCharts {
           legend: {
             display: true,
             labels: {
-              color: '#94a3b8'
-            }
+              color: '#94a3b8',
+            },
           },
           title: {
             display: true,
             text: 'Spending Trends',
             color: '#ffffff',
             font: {
-              size: 16
-            }
-          }
+              size: 16,
+            },
+          },
         },
         scales: {
           x: {
             grid: {
-              color: 'rgba(255, 255, 255, 0.1)'
-            },
-            ticks: {
-              color: '#94a3b8'
-            }
-          },
-          y: {
-            grid: {
-              color: 'rgba(255, 255, 255, 0.1)'
+              color: 'rgba(255, 255, 255, 0.1)',
             },
             ticks: {
               color: '#94a3b8',
-              callback: function(value) {
+            },
+          },
+          y: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)',
+            },
+            ticks: {
+              color: '#94a3b8',
+              callback(value) {
                 return formatCurrency(value);
-              }
-            }
-          }
-        }
-      }
+              },
+            },
+          },
+        },
+      },
     };
   }
 
@@ -466,7 +466,7 @@ class SimpleCharts {
   getCategoriesConfig(data) {
     return {
       type: 'doughnut',
-      data: data,
+      data,
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -478,20 +478,20 @@ class SimpleCharts {
               color: '#94a3b8',
               padding: 15,
               font: {
-                size: 12
-              }
-            }
+                size: 12,
+              },
+            },
           },
           title: {
             display: true,
             text: 'Expenses by Category',
             color: '#ffffff',
             font: {
-              size: 16
-            }
-          }
-        }
-      }
+              size: 16,
+            },
+          },
+        },
+      },
     };
   }
 }

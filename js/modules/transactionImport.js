@@ -782,8 +782,13 @@ class TransactionImport {
 
     try {
       // Check if any cash accounts exist
-      if (!window.appState.appData.cashAccounts || window.appState.appData.cashAccounts.length === 0) {
-        showError('No cash accounts found. Please create an account before importing transactions.');
+      if (
+        !window.appState.appData.cashAccounts ||
+        window.appState.appData.cashAccounts.length === 0
+      ) {
+        showError(
+          'No cash accounts found. Please create an account before importing transactions.'
+        );
         this.showStep('preview');
         return;
       }
@@ -805,13 +810,13 @@ class TransactionImport {
 
         // Prepare transaction data
         const defaultAccountId = window.appState.appData.cashAccounts[0]?.id;
-        
+
         // Skip if no default account available
         if (!defaultAccountId) {
           debug.warn('TransactionImport: No cash accounts available for import');
           continue;
         }
-        
+
         const transactionData = {
           date: transaction.date,
           description: transaction.description,

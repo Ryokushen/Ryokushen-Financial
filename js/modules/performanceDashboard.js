@@ -39,7 +39,7 @@ class PerformanceDashboard {
       debug.log('Initializing Performance Dashboard');
       debug.log('Chart.js available at init:', !!window.Chart);
       console.log('Chart object:', window.Chart);
-      
+
       // Check if already initialized
       if (this.refreshInterval) {
         debug.log('Performance Dashboard already initialized, skipping');
@@ -57,33 +57,33 @@ class PerformanceDashboard {
 
       // Additional delay to ensure tab content is rendered
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Check Chart.js availability after load
       debug.log('Chart.js available after load:', !!window.Chart);
-      
+
       // Check if performance tab is in the DOM
       const perfTab = document.getElementById('performance');
       const chartContainer = document.getElementById('main-chart-container');
       const canvas = document.getElementById('performanceChart');
-      
+
       console.log('DOM Elements Check:');
       console.log('- Performance tab:', perfTab ? 'FOUND' : 'NOT FOUND');
       console.log('- Chart container:', chartContainer ? 'FOUND' : 'NOT FOUND');
       console.log('- Canvas element:', canvas ? 'FOUND' : 'NOT FOUND');
-      
+
       if (!perfTab) {
         console.error('Performance tab not found in DOM!');
         return;
       }
-      
+
       // Verify required DOM elements exist
       const requiredElements = [
         'metrics-view',
         'charts-view',
         'performanceChart',
-        'main-chart-container'
+        'main-chart-container',
       ];
-      
+
       const missingElements = requiredElements.filter(id => !document.getElementById(id));
       if (missingElements.length > 0) {
         throw new Error(`Missing required DOM elements: ${missingElements.join(', ')}`);
@@ -102,7 +102,7 @@ class PerformanceDashboard {
         },
         5 * 60 * 1000
       );
-      
+
       debug.log('Performance Dashboard initialization complete');
     } catch (error) {
       debug.error('Failed to initialize Performance Dashboard:', error);
@@ -130,7 +130,7 @@ class PerformanceDashboard {
    */
   setupEventListeners() {
     console.log('=== SETUP EVENT LISTENERS CALLED ===');
-    
+
     // View toggle buttons (Metrics/Charts)
     const viewToggleBtns = document.querySelectorAll('.view-toggle-btn');
     console.log('Found view toggle buttons:', viewToggleBtns.length);
@@ -199,7 +199,7 @@ class PerformanceDashboard {
     console.log('Current view:', this.currentDashboardView);
     console.log('Charts initialized:', this.chartsInitialized);
     console.log('Data loaded:', !!this.data.trends);
-    
+
     if (this.currentDashboardView === view) {
       console.log('Already in this view, returning');
       return;
@@ -233,18 +233,19 @@ class PerformanceDashboard {
       if (chartsView) {
         chartsView.style.display = 'block';
         chartsView.classList.add('active');
-      
+      }
+
       // Log parent container dimensions
       console.log('Charts view dimensions:');
       console.log('- chartsView display:', window.getComputedStyle(chartsView).display);
       console.log('- chartsView dimensions:', chartsView.getBoundingClientRect());
-      
+
       // Wait for view to be fully visible
       setTimeout(() => {
         console.log('After timeout, charts view dimensions:');
         console.log('- chartsView display:', window.getComputedStyle(chartsView).display);
         console.log('- chartsView dimensions:', chartsView.getBoundingClientRect());
-        
+
         // Initialize charts if not already done
         if (!this.chartsInitialized) {
           console.log('Charts not initialized, attempting to initialize...');
@@ -252,16 +253,18 @@ class PerformanceDashboard {
           debug.log('Chart.js available:', !!window.Chart);
           debug.log('Data available:', !!this.data.trends);
           console.log('simpleCharts object:', simpleCharts);
-          
+
           // Check if we have data first
           if (!this.data || !this.data.trends) {
             console.warn('No data available yet, loading data first...');
-            this.loadDashboardData().then(() => {
-              console.log('Data loaded, now rendering charts');
-              this.renderChartsInView();
-            }).catch(error => {
-              console.error('Failed to load data:', error);
-            });
+            this.loadDashboardData()
+              .then(() => {
+                console.log('Data loaded, now rendering charts');
+                this.renderChartsInView();
+              })
+              .catch(error => {
+                console.error('Failed to load data:', error);
+              });
           } else {
             // Data is available, render charts
             this.renderChartsInView();
@@ -280,14 +283,14 @@ class PerformanceDashboard {
    */
   renderChartsInView() {
     console.log('=== RENDER CHARTS IN VIEW ===');
-    
+
     try {
       // First, try to render a test chart to verify Chart.js is working
       console.log('Rendering test chart...');
       simpleCharts.renderTestChart();
       this.chartsInitialized = true;
       console.log('Test chart rendered successfully');
-      
+
       // After successful test, render actual data after a delay
       setTimeout(() => {
         try {
@@ -302,7 +305,6 @@ class PerformanceDashboard {
           console.error('Error rendering data chart:', error);
         }
       }, 2000);
-      
     } catch (error) {
       console.error('Error rendering test chart:', error);
       console.error('Error details:', error.stack);
@@ -386,13 +388,13 @@ class PerformanceDashboard {
 
       // Render all components
       this.renderMetricCards();
-      
+
       // Only render chart if we're in charts view and Chart.js is available
       if (this.currentDashboardView === 'charts' && window.Chart) {
         this.renderChart();
         this.chartsInitialized = true;
       }
-      
+
       this.renderAnomalyAlerts();
       this.renderPredictions();
       this.renderRecommendations();
@@ -546,13 +548,13 @@ class PerformanceDashboard {
    */
   async renderChart() {
     debug.log('Rendering performance chart using simpleCharts module');
-    
+
     // Check if we have data to display
     if (!this.data || !this.data.trends) {
       debug.error('No trends data available for chart');
       return;
     }
-    
+
     // Get chart data based on current view
     const chartData = await this.getChartData();
 
@@ -728,7 +730,7 @@ class PerformanceDashboard {
       // Get transactions for the period
       const transactions = await transactionManager.searchTransactions({
         startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0]
+        endDate: endDate.toISOString().split('T')[0],
         // Remove type filter to get all transactions, then filter manually
       });
 
@@ -737,7 +739,7 @@ class PerformanceDashboard {
       let totalExpenses = 0;
 
       transactions.forEach(transaction => {
-        if (transaction.amount < 0 || transaction.category === 'Debt') { 
+        if (transaction.amount < 0 || transaction.category === 'Debt') {
           // Include regular expenses (negative) and all debt payments
           const category = transaction.category || 'Uncategorized';
           const amount = Math.abs(transaction.amount);
@@ -773,13 +775,15 @@ class PerformanceDashboard {
         showLegend: false,
         data: {
           labels: isPrivacyMode() ? labels.map(() => '••••••') : labels,
-          datasets: [{
-            label: 'Amount Spent',
-            data: isPrivacyMode() ? data.map(() => Math.random() * 1000) : data,
-            backgroundColor: colors,
-            borderColor: colors.map(color => color + '33'),
-            borderWidth: 1,
-          }]
+          datasets: [
+            {
+              label: 'Amount Spent',
+              data: isPrivacyMode() ? data.map(() => Math.random() * 1000) : data,
+              backgroundColor: colors,
+              borderColor: colors.map(color => color + '33'),
+              borderWidth: 1,
+            },
+          ],
         },
         indexAxis: 'y', // Horizontal bar chart
         scales: {
@@ -800,7 +804,7 @@ class PerformanceDashboard {
               color: '#94a3b8',
             },
           },
-        }
+        },
       };
     } catch (error) {
       debug.error('Failed to get top expenses data:', error);
@@ -810,12 +814,14 @@ class PerformanceDashboard {
         showLegend: false,
         data: {
           labels: [],
-          datasets: [{
-            label: 'Top Expenses',
-            data: [],
-            backgroundColor: [],
-          }]
-        }
+          datasets: [
+            {
+              label: 'Top Expenses',
+              data: [],
+              backgroundColor: [],
+            },
+          ],
+        },
       };
     }
   }

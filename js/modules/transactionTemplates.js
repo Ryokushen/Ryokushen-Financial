@@ -288,7 +288,7 @@ class TransactionTemplatesUI {
     const formSection = document.querySelector('.transaction-form-section');
     if (formSection) {
       formSection.style.display = 'block';
-      
+
       // Scroll to form for better UX
       const form = document.getElementById('transaction-form');
       if (form) {

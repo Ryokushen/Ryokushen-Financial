@@ -50,7 +50,7 @@ export const dataRepair = {
   async repairOrphanedTransactions(appData, defaultAccountId = null) {
     try {
       const orphaned = await this.findOrphanedTransactions(appData);
-      
+
       if (orphaned.length === 0) {
         showSuccess('No orphaned transactions found.');
         return { repaired: 0, failed: 0 };
@@ -75,7 +75,7 @@ export const dataRepair = {
       for (const { transaction, reason } of orphaned) {
         try {
           debug.log(`Repairing transaction ${transaction.id}: ${reason}`);
-          
+
           // Update the transaction to use the default account
           const updates = {
             account_id: defaultAccountId,
@@ -83,11 +83,11 @@ export const dataRepair = {
           };
 
           await db.updateTransaction(transaction.id, updates);
-          
+
           // Update local state
           transaction.account_id = defaultAccountId;
           transaction.debt_account_id = null;
-          
+
           repaired++;
         } catch (error) {
           debug.error(`Failed to repair transaction ${transaction.id}:`, error);
@@ -116,7 +116,7 @@ export const dataRepair = {
   async deleteOrphanedTransactions(appData) {
     try {
       const orphaned = await this.findOrphanedTransactions(appData);
-      
+
       if (orphaned.length === 0) {
         showSuccess('No orphaned transactions found.');
         return { deleted: 0, failed: 0 };
@@ -125,7 +125,7 @@ export const dataRepair = {
       const confirmDelete = confirm(
         `Found ${orphaned.length} orphaned transactions. Delete them permanently?`
       );
-      
+
       if (!confirmDelete) {
         return { deleted: 0, failed: 0 };
       }
@@ -136,13 +136,13 @@ export const dataRepair = {
       for (const { transaction } of orphaned) {
         try {
           await db.deleteTransaction(transaction.id);
-          
+
           // Remove from local state
           const index = appData.transactions.findIndex(t => t.id === transaction.id);
           if (index > -1) {
             appData.transactions.splice(index, 1);
           }
-          
+
           deleted++;
         } catch (error) {
           debug.error(`Failed to delete transaction ${transaction.id}:`, error);
@@ -224,7 +224,7 @@ export const dataRepair = {
    */
   async displayIntegrityReport(appData) {
     const report = await this.checkDataIntegrity(appData);
-    
+
     console.group('Data Integrity Report');
     console.log('Orphaned Transactions:', report.orphanedTransactions.length);
     console.log('Duplicate Transactions:', report.duplicateTransactions.length);

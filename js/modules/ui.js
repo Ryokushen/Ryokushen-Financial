@@ -117,7 +117,7 @@ export function switchTab(tabName, appState) {
     debug.log('=== SWITCHING TO PERFORMANCE TAB ===');
     console.log('Chart.js status:', typeof window.Chart, window.Chart ? 'LOADED' : 'NOT LOADED');
     debug.log('Switching to performance tab...');
-    
+
     // Check if Chart.js is loaded
     if (!window.Chart) {
       debug.warn('Chart.js not loaded yet, waiting...');
@@ -129,7 +129,7 @@ export function switchTab(tabName, appState) {
           loadPerformanceDashboard();
         }
       }, 100);
-      
+
       // Timeout after 5 seconds
       setTimeout(() => {
         clearInterval(checkChartJs);
@@ -141,7 +141,7 @@ export function switchTab(tabName, appState) {
     } else {
       loadPerformanceDashboard();
     }
-    
+
     function loadPerformanceDashboard() {
       try {
         // Use dynamic import to avoid circular dependency issues
@@ -152,7 +152,8 @@ export function switchTab(tabName, appState) {
               // Small delay to ensure DOM is ready
               setTimeout(() => {
                 debug.log('Initializing performance dashboard...');
-                module.performanceDashboard.init()
+                module.performanceDashboard
+                  .init()
                   .then(() => {
                     debug.log('Performance dashboard initialized successfully');
                   })
