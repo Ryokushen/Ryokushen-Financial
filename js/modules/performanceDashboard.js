@@ -217,36 +217,60 @@ class PerformanceDashboard {
     const chartsView = document.getElementById('charts-view');
 
     if (view === 'metrics') {
-      if (metricsView) metricsView.style.display = 'block';
-      if (chartsView) chartsView.style.display = 'none';
-    } else if (view === 'charts') {
-      if (metricsView) metricsView.style.display = 'none';
-      if (chartsView) chartsView.style.display = 'block';
-      
-      // Initialize charts if not already done
-      if (!this.chartsInitialized) {
-        console.log('Charts not initialized, attempting to initialize...');
-        debug.log('Attempting to initialize charts with simpleCharts module...');
-        debug.log('Chart.js available:', !!window.Chart);
-        debug.log('Data available:', !!this.data.trends);
-        console.log('simpleCharts object:', simpleCharts);
-        
-        // Check if we have data first
-        if (!this.data || !this.data.trends) {
-          console.warn('No data available yet, loading data first...');
-          this.loadDashboardData().then(() => {
-            console.log('Data loaded, now rendering charts');
-            this.renderChartsInView();
-          }).catch(error => {
-            console.error('Failed to load data:', error);
-          });
-        } else {
-          // Data is available, render charts
-          this.renderChartsInView();
-        }
-      } else {
-        console.log('Charts already initialized');
+      if (metricsView) {
+        metricsView.style.display = 'block';
+        metricsView.classList.add('active');
       }
+      if (chartsView) {
+        chartsView.style.display = 'none';
+        chartsView.classList.remove('active');
+      }
+    } else if (view === 'charts') {
+      if (metricsView) {
+        metricsView.style.display = 'none';
+        metricsView.classList.remove('active');
+      }
+      if (chartsView) {
+        chartsView.style.display = 'block';
+        chartsView.classList.add('active');
+      
+      // Log parent container dimensions
+      console.log('Charts view dimensions:');
+      console.log('- chartsView display:', window.getComputedStyle(chartsView).display);
+      console.log('- chartsView dimensions:', chartsView.getBoundingClientRect());
+      
+      // Wait for view to be fully visible
+      setTimeout(() => {
+        console.log('After timeout, charts view dimensions:');
+        console.log('- chartsView display:', window.getComputedStyle(chartsView).display);
+        console.log('- chartsView dimensions:', chartsView.getBoundingClientRect());
+        
+        // Initialize charts if not already done
+        if (!this.chartsInitialized) {
+          console.log('Charts not initialized, attempting to initialize...');
+          debug.log('Attempting to initialize charts with simpleCharts module...');
+          debug.log('Chart.js available:', !!window.Chart);
+          debug.log('Data available:', !!this.data.trends);
+          console.log('simpleCharts object:', simpleCharts);
+          
+          // Check if we have data first
+          if (!this.data || !this.data.trends) {
+            console.warn('No data available yet, loading data first...');
+            this.loadDashboardData().then(() => {
+              console.log('Data loaded, now rendering charts');
+              this.renderChartsInView();
+            }).catch(error => {
+              console.error('Failed to load data:', error);
+            });
+          } else {
+            // Data is available, render charts
+            this.renderChartsInView();
+          }
+        }
+        } else {
+          console.log('Charts already initialized');
+        }
+      }, 100); // Wait 100ms for layout
     }
 
     this.currentDashboardView = view;

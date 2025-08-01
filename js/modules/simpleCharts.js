@@ -35,10 +35,31 @@ class SimpleCharts {
       return false;
     }
     
-    // Check visibility
+    // Check visibility and dimensions
     console.log('Canvas display style:', this.canvas.style.display);
     console.log('Canvas computed style:', window.getComputedStyle(this.canvas).display);
     console.log('Container display style:', this.container.style.display);
+    
+    // Check all parent dimensions
+    console.log('=== Parent Container Dimensions ===');
+    console.log('Container dimensions:', this.container.getBoundingClientRect());
+    
+    const chartsSection = this.container.closest('.charts-section');
+    if (chartsSection) {
+      console.log('Charts section dimensions:', chartsSection.getBoundingClientRect());
+    }
+    
+    const chartsView = this.container.closest('#charts-view');
+    if (chartsView) {
+      console.log('Charts view dimensions:', chartsView.getBoundingClientRect());
+      console.log('Charts view display:', window.getComputedStyle(chartsView).display);
+    }
+    
+    const performanceTab = this.container.closest('#performance');
+    if (performanceTab) {
+      console.log('Performance tab dimensions:', performanceTab.getBoundingClientRect());
+      console.log('Performance tab display:', window.getComputedStyle(performanceTab).display);
+    }
     
     // Check for Chart.js
     if (!window.Chart) {
