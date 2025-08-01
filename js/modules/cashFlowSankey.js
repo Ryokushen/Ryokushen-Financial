@@ -18,6 +18,7 @@ export const cashFlowSankey = {
   isDragging: false,
   dragStartX: 0,
   dragStartY: 0,
+  lastRenderedData: null,
 
   /**
    * Initialize the cash flow visualization
@@ -226,6 +227,9 @@ export const cashFlowSankey = {
     this.setupZoomControls();
     this.setupPanControls(scrollWrapper);
 
+    // Store data for redraws
+    this.lastRenderedData = data;
+
     // Render nodes
     this.renderNodes(data.nodes);
 
@@ -340,7 +344,8 @@ export const cashFlowSankey = {
       return;
     }
 
-    const containerRect = svg.parentElement.getBoundingClientRect();
+    const flowContainer = svg.parentElement;
+    const containerRect = flowContainer.getBoundingClientRect();
     svg.innerHTML = '';
 
     // Create defs for gradients
@@ -365,10 +370,12 @@ export const cashFlowSankey = {
       const sourceRect = sourceNode.getBoundingClientRect();
       const targetRect = targetNode.getBoundingClientRect();
 
-      const startX = sourceRect.right - containerRect.left;
-      const startY = sourceRect.top + sourceRect.height / 2 - containerRect.top;
-      const endX = targetRect.left - containerRect.left;
-      const endY = targetRect.top + targetRect.height / 2 - containerRect.top;
+      // Account for zoom scale in coordinate calculations
+      const scale = this.currentZoom;
+      const startX = (sourceRect.right - containerRect.left) / scale;
+      const startY = (sourceRect.top + sourceRect.height / 2 - containerRect.top) / scale;
+      const endX = (targetRect.left - containerRect.left) / scale;
+      const endY = (targetRect.top + targetRect.height / 2 - containerRect.top) / scale;
 
       // Calculate stroke width based on value
       const maxValue = Math.max(...links.map(l => l.value));
@@ -619,6 +626,13 @@ export const cashFlowSankey = {
       const zoomLevel = document.querySelector('.zoom-level');
       if (zoomLevel) {
         zoomLevel.textContent = `${Math.round(this.currentZoom * 100)}%`;
+      }
+      
+      // Redraw flows to fix coordinate alignment
+      if (this.lastRenderedData) {
+        requestAnimationFrame(() => {
+          this.drawFlows(this.lastRenderedData.links, this.lastRenderedData.nodes);
+        });
       }
     }
   },
