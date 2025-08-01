@@ -188,6 +188,32 @@ class SimpleCharts {
         console.log('Canvas client width:', this.canvas.clientWidth);
         console.log('Canvas client height:', this.canvas.clientHeight);
 
+        // Validate canvas has dimensions
+        if (this.canvas.clientWidth === 0 || this.canvas.clientHeight === 0) {
+          console.error('Canvas has 0 dimensions, attempting to fix...');
+
+          // Force container to be visible
+          this.container.style.display = 'block';
+          this.container.style.visibility = 'visible';
+          this.container.style.width = '100%';
+          this.container.style.minHeight = '400px';
+
+          // Force canvas dimensions
+          this.canvas.style.width = '100%';
+          this.canvas.style.height = '400px';
+
+          // Try again after forcing dimensions
+          setTimeout(() => {
+            console.log('Retrying after forcing dimensions...');
+            console.log('Canvas client width:', this.canvas.clientWidth);
+            console.log('Canvas client height:', this.canvas.clientHeight);
+
+            if (this.canvas.clientWidth === 0 || this.canvas.clientHeight === 0) {
+              console.error('Canvas still has 0 dimensions. Chart may not display.');
+            }
+          }, 100);
+        }
+
         // Destroy any existing chart
         this.destroy();
 

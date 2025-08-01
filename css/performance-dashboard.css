@@ -257,6 +257,7 @@
     border-radius: var(--radius-xl);
     overflow: hidden;
     min-height: 500px; /* Ensure minimum height */
+    display: block !important; /* Override any hidden state */
 }
 
 /* When in charts view, make charts full width */
@@ -264,6 +265,13 @@
     width: 100%;
     margin: 0;
     height: 100%; /* Fill available height */
+    display: block !important;
+}
+
+/* Ensure charts section is visible in performance tab */
+#performance .charts-section {
+    display: block !important;
+    visibility: visible !important;
 }
 
 .chart-tabs-container {
