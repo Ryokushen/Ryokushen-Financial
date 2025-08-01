@@ -141,20 +141,43 @@ class SimpleCharts {
       return;
     }
     
-    this.showLoading();
+    // First, ensure canvas is visible BEFORE creating chart
+    console.log('Ensuring canvas is visible before chart creation...');
+    const loadingDiv = this.container.querySelector('.chart-loading');
+    if (loadingDiv) {
+      loadingDiv.style.display = 'none';
+    }
     
-    try {
-      // Destroy any existing chart
-      this.destroy();
-      
-      // Get context
-      const ctx = this.canvas.getContext('2d');
-      if (!ctx) {
-        throw new Error('Cannot get canvas context');
-      }
-      
-      // Create simple test data
-      const testData = {
+    // Show canvas and ensure it has dimensions
+    this.canvas.style.display = 'block';
+    
+    // Set container minimum height if it doesn't have one
+    if (!this.container.style.height && !this.container.style.minHeight) {
+      console.log('Setting container min-height to 400px');
+      this.container.style.minHeight = '400px';
+    }
+    
+    // Force layout recalculation
+    this.container.offsetHeight;
+    
+    // Wait for next frame to ensure dimensions are calculated
+    requestAnimationFrame(() => {
+      try {
+        console.log('Canvas dimensions after making visible:');
+        console.log('Canvas client width:', this.canvas.clientWidth);
+        console.log('Canvas client height:', this.canvas.clientHeight);
+        
+        // Destroy any existing chart
+        this.destroy();
+        
+        // Get context
+        const ctx = this.canvas.getContext('2d');
+        if (!ctx) {
+          throw new Error('Cannot get canvas context');
+        }
+        
+        // Create simple test data
+        const testData = {
         labels: ['January', 'February', 'March', 'April', 'May', 'June'],
         datasets: [{
           label: 'Test Data',
@@ -214,22 +237,29 @@ class SimpleCharts {
         }
       });
       
-      // Verify chart was created
-      console.log('Chart instance created:', !!this.chartInstance);
-      console.log('Chart ID:', this.chartInstance?.id);
-      console.log('Chart canvas:', this.chartInstance?.canvas);
-      console.log('Canvas width:', this.canvas.width);
-      console.log('Canvas height:', this.canvas.height);
-      console.log('Canvas client width:', this.canvas.clientWidth);
-      console.log('Canvas client height:', this.canvas.clientHeight);
-      
-      this.hideLoading();
-      debug.log('SimpleCharts: Test chart rendered successfully');
-      
-    } catch (error) {
-      debug.error('SimpleCharts: Failed to render test chart', error);
-      this.showError(`Failed to render chart: ${error.message}`);
-    }
+        // Verify chart was created
+        console.log('Chart instance created:', !!this.chartInstance);
+        console.log('Chart ID:', this.chartInstance?.id);
+        console.log('Chart canvas:', this.chartInstance?.canvas);
+        console.log('Canvas width:', this.canvas.width);
+        console.log('Canvas height:', this.canvas.height);
+        console.log('Canvas client width:', this.canvas.clientWidth);
+        console.log('Canvas client height:', this.canvas.clientHeight);
+        
+        // Force chart resize to ensure proper dimensions
+        if (this.chartInstance && this.canvas.clientWidth > 0) {
+          console.log('Forcing chart resize...');
+          this.chartInstance.resize();
+        }
+        
+        debug.log('SimpleCharts: Test chart rendered successfully');
+        
+      } catch (error) {
+        console.error('SimpleCharts: Failed to render test chart', error);
+        debug.error('SimpleCharts: Failed to render test chart', error);
+        this.showError(`Failed to render chart: ${error.message}`);
+      }
+    });
   }
 
   /**
@@ -248,17 +278,32 @@ class SimpleCharts {
       return;
     }
     
-    this.showLoading();
+    // Ensure canvas is visible before creating chart
+    const loadingDiv = this.container.querySelector('.chart-loading');
+    if (loadingDiv) {
+      loadingDiv.style.display = 'none';
+    }
+    this.canvas.style.display = 'block';
     
-    try {
-      // Destroy any existing chart
-      this.destroy();
-      
-      // Get context
-      const ctx = this.canvas.getContext('2d');
-      if (!ctx) {
-        throw new Error('Cannot get canvas context');
-      }
+    // Ensure container has height
+    if (!this.container.style.height && !this.container.style.minHeight) {
+      this.container.style.minHeight = '400px';
+    }
+    
+    // Force layout recalculation
+    this.container.offsetHeight;
+    
+    // Wait for next frame
+    requestAnimationFrame(() => {
+      try {
+        // Destroy any existing chart
+        this.destroy();
+        
+        // Get context
+        const ctx = this.canvas.getContext('2d');
+        if (!ctx) {
+          throw new Error('Cannot get canvas context');
+        }
       
       let chartConfig;
       
@@ -276,16 +321,22 @@ class SimpleCharts {
           chartConfig = this.getTrendsConfig(data);
       }
       
-      // Create chart
-      this.chartInstance = new Chart(ctx, chartConfig);
-      
-      this.hideLoading();
-      debug.log(`SimpleCharts: ${type} chart rendered successfully`);
-      
-    } catch (error) {
-      debug.error(`SimpleCharts: Failed to render ${type} chart`, error);
-      this.showError(`Failed to render chart: ${error.message}`);
-    }
+        // Create chart
+        this.chartInstance = new Chart(ctx, chartConfig);
+        
+        // Force resize if needed
+        if (this.chartInstance && this.canvas.clientWidth > 0) {
+          this.chartInstance.resize();
+        }
+        
+        debug.log(`SimpleCharts: ${type} chart rendered successfully`);
+        
+      } catch (error) {
+        console.error(`SimpleCharts: Failed to render ${type} chart`, error);
+        debug.error(`SimpleCharts: Failed to render ${type} chart`, error);
+        this.showError(`Failed to render chart: ${error.message}`);
+      }
+    });
   }
 
   /**
