@@ -119,7 +119,10 @@ export function switchTab(tabName, appState) {
       import('./performanceDashboard.js')
         .then(module => {
           if (module.performanceDashboard) {
+            debug.log('Initializing performance dashboard from ui.js');
             module.performanceDashboard.init();
+          } else {
+            debug.error('performanceDashboard not found in module');
           }
         })
         .catch(error => {
