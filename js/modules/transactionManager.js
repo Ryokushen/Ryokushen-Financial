@@ -6545,26 +6545,6 @@ if (typeof window !== 'undefined') {
   window.getSmartRuleRecommendations = () => transactionManager.getSmartRuleRecommendations();
   window.evaluateRuleEffectiveness = () => transactionManager.evaluateRuleEffectiveness();
 
-  console.log('🎯 TransactionManager Phase 4 Analytics Available:');
-  console.log('📊 Milestone 1 - Core Analytics:');
-  console.log('   window.getSpendingTrends({ months: 6, groupBy: "category" })');
-  console.log('   window.getCategoryTrends("Food", 3)');
-  console.log('   window.getMerchantAnalysis({ months: 6, limit: 10 })');
-  console.log('');
-  console.log('🚨 Milestone 2 - Anomaly Detection:');
-  console.log('   window.detectAnomalies({ sensitivity: "medium", lookbackDays: 90 })');
-  console.log('   window.getSpendingAlerts({ lookbackDays: 30 })');
-  console.log('');
-  console.log('🔮 Milestone 2 - Predictive Analytics:');
-  console.log('   window.predictMonthlySpending({ months: 3, confidence: 0.95 })');
-  console.log('   window.getCashFlowForecast(30)');
-  console.log('   window.getTransactionInsights()');
-  console.log('   window.getBudgetPerformance({ Food: 600, Entertainment: 200 })');
-  console.log('');
-  console.log('⚡ Milestone 3 - Performance & Integration:');
-  console.log('   window.getPerformanceMetrics()');
-  console.log('   window.optimizePerformance()');
-  console.log('   window.getDataQualityReport()');
-  console.log('   window.getSmartRuleRecommendations()');
-  console.log('   window.evaluateRuleEffectiveness()');
+  // Analytics methods are now available on window object
+  // Removed verbose console logging to keep console clean
 }

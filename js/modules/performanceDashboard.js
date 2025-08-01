@@ -35,10 +35,10 @@ class PerformanceDashboard {
    */
   async init() {
     try {
-      console.log('=== PERFORMANCE DASHBOARD INIT CALLED ===');
+      // Performance Dashboard initialization
       debug.log('Initializing Performance Dashboard');
       debug.log('Chart.js available at init:', !!window.Chart);
-      console.log('Chart object:', window.Chart);
+      // Chart.js is available
 
       // Check if already initialized
       if (this.refreshInterval) {
@@ -66,10 +66,7 @@ class PerformanceDashboard {
       const chartContainer = document.getElementById('main-chart-container');
       const canvas = document.getElementById('performanceChart');
 
-      console.log('DOM Elements Check:');
-      console.log('- Performance tab:', perfTab ? 'FOUND' : 'NOT FOUND');
-      console.log('- Chart container:', chartContainer ? 'FOUND' : 'NOT FOUND');
-      console.log('- Canvas element:', canvas ? 'FOUND' : 'NOT FOUND');
+      // DOM elements verified
 
       if (!perfTab) {
         console.error('Performance tab not found in DOM!');
@@ -129,16 +126,16 @@ class PerformanceDashboard {
    * Set up event listeners
    */
   setupEventListeners() {
-    console.log('=== SETUP EVENT LISTENERS CALLED ===');
+    // Setting up event listeners
 
     // View toggle buttons (Metrics/Charts)
     const viewToggleBtns = document.querySelectorAll('.view-toggle-btn');
-    console.log('Found view toggle buttons:', viewToggleBtns.length);
+    // View toggle buttons found
     if (viewToggleBtns.length > 0) {
       viewToggleBtns.forEach(btn => {
-        console.log('Adding click listener to button with view:', btn.dataset.view);
+        // Adding click listener
         btn.addEventListener('click', e => {
-          console.log('View toggle button clicked!');
+          // View toggle button clicked
           const view = e.target.dataset.view;
           this.switchDashboardView(view);
         });
@@ -195,13 +192,10 @@ class PerformanceDashboard {
    * Switch between metrics and charts views
    */
   switchDashboardView(view) {
-    console.log(`=== SWITCH DASHBOARD VIEW CALLED: ${view} ===`);
-    console.log('Current view:', this.currentDashboardView);
-    console.log('Charts initialized:', this.chartsInitialized);
-    console.log('Data loaded:', !!this.data.trends);
+    // Switching dashboard view to: ${view}
 
     if (this.currentDashboardView === view) {
-      console.log('Already in this view, returning');
+      // Already in this view
       return;
     }
 
@@ -235,42 +229,33 @@ class PerformanceDashboard {
         chartsView.classList.add('active');
       }
 
-      // Log parent container dimensions
-      console.log('Charts view dimensions:');
-      console.log('- chartsView display:', window.getComputedStyle(chartsView).display);
-      console.log('- chartsView dimensions:', chartsView.getBoundingClientRect());
+      // Parent container dimensions verified
 
       // Wait for view to be fully visible
       setTimeout(() => {
-        console.log('After timeout, charts view dimensions:');
-        console.log('- chartsView display:', window.getComputedStyle(chartsView).display);
-        console.log('- chartsView dimensions:', chartsView.getBoundingClientRect());
+        // Charts view is now visible
 
         // Initialize charts if not already done
         if (!this.chartsInitialized) {
-          console.log('Charts not initialized, attempting to initialize...');
-          debug.log('Attempting to initialize charts with simpleCharts module...');
-          debug.log('Chart.js available:', !!window.Chart);
-          debug.log('Data available:', !!this.data.trends);
-          console.log('simpleCharts object:', simpleCharts);
+          // Initializing charts
 
           // Check if we have data first
           if (!this.data || !this.data.trends) {
-            console.warn('No data available yet, loading data first...');
+            debug.log('No data available yet, loading data first...');
             this.loadDashboardData()
               .then(() => {
-                console.log('Data loaded, now rendering charts');
+                // Data loaded, rendering charts
                 this.renderChartsInView();
               })
               .catch(error => {
-                console.error('Failed to load data:', error);
+                debug.error('Failed to load data:', error);
               });
           } else {
             // Data is available, render charts
             this.renderChartsInView();
           }
         } else {
-          console.log('Charts already initialized');
+          // Charts already initialized
         }
       }, 100); // Wait 100ms for layout
     }
@@ -282,17 +267,17 @@ class PerformanceDashboard {
    * Render charts in the charts view with proper error handling
    */
   renderChartsInView() {
-    console.log('=== RENDER CHARTS IN VIEW ===');
+    // Rendering charts in view
 
     try {
       // Check if we have data to render
       if (this.data && this.data.trends) {
-        console.log('Rendering chart with trends data...');
+        // Rendering chart with trends data
         simpleCharts.renderDataChart('trends', this.data.trends);
         this.chartsInitialized = true;
-        console.log('Chart rendered successfully');
+        // Chart rendered successfully
       } else {
-        console.warn('No trends data available, loading data first...');
+        debug.log('No trends data available, loading data first...');
         // Load data if not available
         this.loadDashboardData().then(() => {
           if (this.data && this.data.trends) {

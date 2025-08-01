@@ -8,6 +8,9 @@ import {
   getDueDateClass,
   getDueDateText,
 } from './utils.js';
+
+// Cache for historical debt change
+let debtHistoricalChange = null;
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
 import {
   validateForm,
@@ -305,8 +308,15 @@ function calculateDebtMetrics(debtAccounts) {
 }
 
 // Update debt overview metrics
-function updateDebtOverview(debtAccounts) {
+async function updateDebtOverview(debtAccounts) {
   const metrics = calculateDebtMetrics(debtAccounts);
+
+  // Fetch historical debt change
+  try {
+    debtHistoricalChange = await db.getDebtHistoricalChange();
+  } catch (error) {
+    console.warn('Failed to fetch historical debt change:', error);
+  }
 
   // Update total debt balance
   const totalBalanceEl = document.getElementById('debt-total-balance');
@@ -338,12 +348,28 @@ function updateDebtOverview(debtAccounts) {
     progressFillEl.style.width = `${metrics.payoffProgress}%`;
   }
 
-  // Update balance change (for demo, show a small decrease)
+  // Update balance change with actual historical data
   const balanceChangeEl = document.getElementById('debt-balance-change');
-  if (balanceChangeEl && metrics.totalBalance > 0) {
-    const monthlyChange = metrics.totalPrincipal;
-    balanceChangeEl.textContent = `↓ ${formatCurrency(monthlyChange)} this month`;
-    balanceChangeEl.className = 'debt-metric-change positive';
+  if (balanceChangeEl) {
+    if (debtHistoricalChange && !debtHistoricalChange.isEstimate) {
+      // Use actual historical data
+      const change = debtHistoricalChange.change;
+      if (change !== 0) {
+        balanceChangeEl.textContent = `${change > 0 ? '↓' : '↑'} ${formatCurrency(Math.abs(change))} this month`;
+        balanceChangeEl.className = `debt-metric-change ${change > 0 ? 'positive' : 'negative'}`;
+      } else {
+        balanceChangeEl.textContent = '→ No change this month';
+        balanceChangeEl.className = 'debt-metric-change neutral';
+      }
+    } else if (metrics.totalBalance > 0) {
+      // Fallback to calculated estimate
+      const monthlyChange = metrics.totalPrincipal;
+      balanceChangeEl.textContent = `↓ ${formatCurrency(monthlyChange)} this month (est.)`;
+      balanceChangeEl.className = 'debt-metric-change positive';
+    } else {
+      balanceChangeEl.textContent = '→ No debt';
+      balanceChangeEl.className = 'debt-metric-change neutral';
+    }
   }
 
   // Update progress change
@@ -354,7 +380,7 @@ function updateDebtOverview(debtAccounts) {
 }
 
 // Render individual debt cards using the new design
-export function renderDebtAccounts(appState) {
+export async function renderDebtAccounts(appState) {
   const { appData } = appState;
   const debtAccountsList = document.getElementById('debt-accounts-list');
   if (!debtAccountsList) {
@@ -362,7 +388,7 @@ export function renderDebtAccounts(appState) {
   }
 
   // Update overview metrics
-  updateDebtOverview(appData.debtAccounts);
+  await updateDebtOverview(appData.debtAccounts);
 
   if (appData.debtAccounts.length === 0) {
     debtAccountsList.innerHTML = `

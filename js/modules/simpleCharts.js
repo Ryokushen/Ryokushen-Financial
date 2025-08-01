@@ -14,7 +14,7 @@ class SimpleCharts {
    * Initialize the chart module
    */
   init() {
-    console.log('=== SimpleCharts: INIT CALLED ===');
+    // SimpleCharts initialization
     debug.log('SimpleCharts: Initializing...');
 
     // Find container and canvas
@@ -23,15 +23,11 @@ class SimpleCharts {
 
     // Check if already initialized with same elements
     if (this.initialized && this.container === container && this.canvas === canvas) {
-      console.log('SimpleCharts: Already initialized with same elements, skipping');
       return true;
     }
 
     this.container = container;
     this.canvas = canvas;
-
-    console.log('Container element:', this.container);
-    console.log('Canvas element:', this.canvas);
 
     if (!this.container) {
       console.error('SimpleCharts: Container #main-chart-container not found!');
@@ -46,30 +42,9 @@ class SimpleCharts {
     }
 
     // Check visibility and dimensions
-    console.log('Canvas display style:', this.canvas.style.display);
-    console.log('Canvas computed style:', window.getComputedStyle(this.canvas).display);
-    console.log('Container display style:', this.container.style.display);
-
-    // Check all parent dimensions
-    console.log('=== Parent Container Dimensions ===');
-    console.log('Container dimensions:', this.container.getBoundingClientRect());
-
     const chartsSection = this.container.closest('.charts-section');
-    if (chartsSection) {
-      console.log('Charts section dimensions:', chartsSection.getBoundingClientRect());
-    }
-
     const chartsView = this.container.closest('#charts-view');
-    if (chartsView) {
-      console.log('Charts view dimensions:', chartsView.getBoundingClientRect());
-      console.log('Charts view display:', window.getComputedStyle(chartsView).display);
-    }
-
     const performanceTab = this.container.closest('#performance');
-    if (performanceTab) {
-      console.log('Performance tab dimensions:', performanceTab.getBoundingClientRect());
-      console.log('Performance tab display:', window.getComputedStyle(performanceTab).display);
-    }
 
     // Check for Chart.js
     if (!window.Chart) {
@@ -79,7 +54,6 @@ class SimpleCharts {
       return false;
     }
 
-    console.log('SimpleCharts: Initialization successful');
     debug.log('SimpleCharts: Initialization successful');
     this.initialized = true;
     return true;
@@ -114,7 +88,6 @@ class SimpleCharts {
    * Show loading state
    */
   showLoading() {
-    debug.log('SimpleCharts: Showing loading state');
     if (this.container) {
       const loadingDiv = this.container.querySelector('.chart-loading');
       if (loadingDiv) {
@@ -130,22 +103,15 @@ class SimpleCharts {
    * Hide loading state
    */
   hideLoading() {
-    console.log('SimpleCharts: Hiding loading state');
-    debug.log('SimpleCharts: Hiding loading state');
     if (this.container) {
       const loadingDiv = this.container.querySelector('.chart-loading');
       if (loadingDiv) {
-        console.log('Found loading div, hiding it');
         loadingDiv.style.display = 'none';
-      } else {
-        console.log('No loading div found');
       }
       if (this.canvas) {
-        console.log('Showing canvas by setting display to block');
         this.canvas.style.display = 'block';
         // Force a reflow to ensure the canvas is visible
         this.canvas.offsetHeight;
-        console.log('Canvas display after show:', this.canvas.style.display);
       }
     }
   }
@@ -175,7 +141,6 @@ class SimpleCharts {
    * Render a simple test chart
    */
   renderTestChart() {
-    console.log('=== SimpleCharts: RENDER TEST CHART CALLED ===');
     debug.log('SimpleCharts: Rendering test chart...');
 
     if (!this.init()) {
@@ -184,7 +149,6 @@ class SimpleCharts {
     }
 
     // First, ensure canvas is visible BEFORE creating chart
-    console.log('Ensuring canvas is visible before chart creation...');
     const loadingDiv = this.container.querySelector('.chart-loading');
     if (loadingDiv) {
       loadingDiv.style.display = 'none';
@@ -195,7 +159,6 @@ class SimpleCharts {
 
     // Set container minimum height if it doesn't have one
     if (!this.container.style.height && !this.container.style.minHeight) {
-      console.log('Setting container min-height to 400px');
       this.container.style.minHeight = '400px';
     }
 
@@ -205,13 +168,9 @@ class SimpleCharts {
     // Wait for next frame to ensure dimensions are calculated
     requestAnimationFrame(() => {
       try {
-        console.log('Canvas dimensions after making visible:');
-        console.log('Canvas client width:', this.canvas.clientWidth);
-        console.log('Canvas client height:', this.canvas.clientHeight);
-
         // Validate canvas has dimensions
         if (this.canvas.clientWidth === 0 || this.canvas.clientHeight === 0) {
-          console.error('Canvas has 0 dimensions, attempting to fix...');
+          debug.error('Canvas has 0 dimensions, attempting to fix...');
 
           // Force container to be visible
           this.container.style.display = 'block';
@@ -225,12 +184,8 @@ class SimpleCharts {
 
           // Try again after forcing dimensions
           setTimeout(() => {
-            console.log('Retrying after forcing dimensions...');
-            console.log('Canvas client width:', this.canvas.clientWidth);
-            console.log('Canvas client height:', this.canvas.clientHeight);
-
             if (this.canvas.clientWidth === 0 || this.canvas.clientHeight === 0) {
-              console.error('Canvas still has 0 dimensions. Chart may not display.');
+              debug.error('Canvas still has 0 dimensions. Chart may not display.');
             }
           }, 100);
         }
@@ -260,7 +215,6 @@ class SimpleCharts {
         };
 
         // Create chart
-        console.log('Creating new Chart instance...');
         this.chartInstance = new Chart(ctx, {
           type: 'line',
           data: testData,
@@ -307,18 +261,8 @@ class SimpleCharts {
           },
         });
 
-        // Verify chart was created
-        console.log('Chart instance created:', !!this.chartInstance);
-        console.log('Chart ID:', this.chartInstance?.id);
-        console.log('Chart canvas:', this.chartInstance?.canvas);
-        console.log('Canvas width:', this.canvas.width);
-        console.log('Canvas height:', this.canvas.height);
-        console.log('Canvas client width:', this.canvas.clientWidth);
-        console.log('Canvas client height:', this.canvas.clientHeight);
-
         // Force chart resize to ensure proper dimensions
         if (this.chartInstance && this.canvas.clientWidth > 0) {
-          console.log('Forcing chart resize...');
           this.chartInstance.resize();
         }
 

@@ -737,7 +737,7 @@ import { cashFlowSankey } from './modules/cashFlowSankey.js';
         if (specificUpdate) {
             switch (specificUpdate) {
                 case 'dashboard':
-                    updateDashboard(state);
+                    await updateDashboard(state);
                     return;
                 case 'accounts':
                     Accounts.renderCashAccounts(state);
@@ -753,7 +753,7 @@ import { cashFlowSankey } from './modules/cashFlowSankey.js';
         }
         
         // Always update dashboard metrics and dropdowns as they're lightweight
-        updateDashboard(state);
+        await updateDashboard(state);
         Accounts.populateAccountDropdowns(state.appData);
         Debt.populateDebtAccountDropdown(state.appData);
         
@@ -776,7 +776,7 @@ import { cashFlowSankey } from './modules/cashFlowSankey.js';
             if (savingsList) Savings.renderSavingsGoals(state);
 
             const debtList = document.getElementById("debt-accounts-list");
-            if (debtList) Debt.renderDebtAccounts(state);
+            if (debtList) await Debt.renderDebtAccounts(state);
 
             const recurringList = document.getElementById("all-recurring-bills-list");
             if (recurringList) Recurring.renderRecurringBills(state);
@@ -803,7 +803,7 @@ import { cashFlowSankey } from './modules/cashFlowSankey.js';
                     break;
                 case 'debt':
                     const debtList = document.getElementById("debt-accounts-list");
-                    if (debtList) Debt.renderDebtAccounts(state);
+                    if (debtList) await Debt.renderDebtAccounts(state);
                     if (window.updateDebtCharts) {
                         window.updateDebtCharts(state);
                     }

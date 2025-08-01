@@ -800,6 +800,109 @@ class FinancialDatabase {
         await Promise.all(updatePromises);
         return results;
     }
+
+    // Financial Snapshots - Historical Tracking
+    async captureFinancialSnapshot(snapshotType = 'daily') {
+        try {
+            const userId = await this.getCurrentUserId();
+            const { data, error } = await this.supabase
+                .rpc('capture_financial_snapshot', {
+                    p_user_id: userId,
+                    p_snapshot_type: snapshotType
+                });
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            this.handleError('captureFinancialSnapshot', error);
+        }
+    }
+
+    async getSnapshotComparison(comparisonType = 'month') {
+        try {
+            const userId = await this.getCurrentUserId();
+            const { data, error } = await this.supabase
+                .rpc('get_snapshot_comparison', {
+                    p_user_id: userId,
+                    p_comparison_type: comparisonType
+                });
+
+            if (error) throw error;
+            return data?.[0] || null; // RPC returns array, we need first row
+        } catch (error) {
+            this.handleError('getSnapshotComparison', error);
+        }
+    }
+
+    async getHistoricalSnapshots(limit = 30, snapshotType = null) {
+        try {
+            const userId = await this.getCurrentUserId();
+            let query = this.supabase
+                .from('financial_snapshots')
+                .select('*')
+                .eq('user_id', userId)
+                .order('snapshot_date', { ascending: false })
+                .limit(limit);
+
+            if (snapshotType) {
+                query = query.eq('snapshot_type', snapshotType);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+            return data || [];
+        } catch (error) {
+            this.handleError('getHistoricalSnapshots', error);
+        }
+    }
+
+    async getDebtHistoricalChange(debtAccountId = null) {
+        try {
+            const userId = await this.getCurrentUserId();
+            
+            // Get current month and last month snapshots
+            const currentDate = new Date();
+            const lastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+            
+            const { data: snapshots, error } = await this.supabase
+                .from('financial_snapshots')
+                .select('snapshot_date, total_debt, account_details')
+                .eq('user_id', userId)
+                .gte('snapshot_date', lastMonth.toISOString().split('T')[0])
+                .order('snapshot_date', { ascending: false })
+                .limit(2);
+
+            if (error) throw error;
+            
+            if (!snapshots || snapshots.length < 2) {
+                return { change: 0, isEstimate: true };
+            }
+
+            const current = snapshots[0];
+            const previous = snapshots[1];
+            
+            if (debtAccountId && current.account_details?.debt_accounts && previous.account_details?.debt_accounts) {
+                // Calculate change for specific debt account
+                const currentAccount = current.account_details.debt_accounts.find(a => a.id === debtAccountId);
+                const previousAccount = previous.account_details.debt_accounts.find(a => a.id === debtAccountId);
+                
+                if (currentAccount && previousAccount) {
+                    return {
+                        change: previousAccount.balance - currentAccount.balance,
+                        isEstimate: false
+                    };
+                }
+            }
+            
+            // Calculate total debt change
+            return {
+                change: previous.total_debt - current.total_debt,
+                isEstimate: false
+            };
+        } catch (error) {
+            this.handleError('getDebtHistoricalChange', error);
+        }
+    }
 }
 
 const db = new FinancialDatabase();

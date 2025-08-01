@@ -7,16 +7,33 @@ import * as Debt from './debt.js';
 import { addMoney, subtractMoney, sumMoney, convertToMonthlyPrecise } from './financialMath.js';
 import { TimeBudgetWidget } from './widgets/timeBudgetWidget.js';
 import { getCategoryIcon } from './categories.js';
+import db from '../database.js';
 
 // Initialize time budget widget
 let timeBudgetWidget = null;
 
-// Store previous values for trend calculation
-let previousMetrics = {
-  totalCash: 0,
-  totalInvestments: 0,
-  totalDebt: 0,
-  monthlyRecurring: 0,
+// Store current comparison period (can be changed by user)
+const currentComparisonPeriod = 'month'; // 'week', 'month', 'year'
+
+// Cache for historical comparison data
+let historicalComparison = null;
+let lastSnapshotCapture = null;
+
+// Export functions for testing
+window.dashboardUtils = {
+  captureSnapshot: async () => {
+    try {
+      console.log('Manually capturing financial snapshot...');
+      const result = await db.captureFinancialSnapshot('daily');
+      console.log('Snapshot captured successfully:', result);
+      await fetchHistoricalComparison();
+      return result;
+    } catch (error) {
+      console.error('Failed to capture snapshot:', error);
+      throw error;
+    }
+  },
+  getHistoricalData: () => historicalComparison
 };
 
 function renderFinancialHealth(kpiResults) {
@@ -61,55 +78,142 @@ function calculateTrend(current, previous) {
   };
 }
 
-function updateMetricTrends(metrics) {
+// Fetch historical comparison data from database
+async function fetchHistoricalComparison() {
+  try {
+    historicalComparison = await db.getSnapshotComparison(currentComparisonPeriod);
+    return historicalComparison;
+  } catch (error) {
+    console.warn('Failed to fetch historical comparison:', error);
+    return null;
+  }
+}
+
+// Capture a financial snapshot
+async function captureFinancialSnapshot() {
+  try {
+    // Only capture once per day
+    const today = new Date().toDateString();
+    if (lastSnapshotCapture === today) {
+      return;
+    }
+
+    await db.captureFinancialSnapshot('daily');
+    lastSnapshotCapture = today;
+
+    // Refresh historical comparison after capturing
+    await fetchHistoricalComparison();
+  } catch (error) {
+    console.warn('Failed to capture financial snapshot:', error);
+  }
+}
+
+async function updateMetricTrends(metrics) {
   const { totalCash, totalInvestments, totalDebt, monthlyRecurring } = metrics;
 
-  // Calculate trends
-  const cashTrend = calculateTrend(totalCash, previousMetrics.totalCash);
-  const investmentTrend = calculateTrend(totalInvestments, previousMetrics.totalInvestments);
-  const debtTrend = calculateTrend(totalDebt, previousMetrics.totalDebt);
-  const billsTrend = calculateTrend(monthlyRecurring, previousMetrics.monthlyRecurring);
+  // Try to use historical data first
+  if (historicalComparison) {
+    // Update cash trend
+    const cashTrendEl = document.getElementById('cash-trend');
+    if (cashTrendEl) {
+      const change = historicalComparison.cash_change_percent || 0;
+      const direction = change > 0.1 ? 'up' : change < -0.1 ? 'down' : 'neutral';
+      cashTrendEl.textContent =
+        direction === 'neutral'
+          ? '→ 0%'
+          : `${direction === 'up' ? '↗' : '↘'} ${Math.abs(change).toFixed(1)}%`;
+      cashTrendEl.className = `metric-trend ${direction}`;
+    }
 
-  // Update trend displays
-  const cashTrendEl = document.getElementById('cash-trend');
-  if (cashTrendEl) {
-    cashTrendEl.textContent =
-      cashTrend.direction === 'neutral'
-        ? '→ 0%'
-        : `${cashTrend.direction === 'up' ? '↗' : '↘'} ${cashTrend.value}%`;
-    cashTrendEl.className = `metric-trend ${cashTrend.direction}`;
+    // Update investment trend
+    const investmentTrendEl = document.getElementById('investment-trend');
+    if (investmentTrendEl) {
+      const change = historicalComparison.investments_change_percent || 0;
+      const direction = change > 0.1 ? 'up' : change < -0.1 ? 'down' : 'neutral';
+      investmentTrendEl.textContent =
+        direction === 'neutral'
+          ? '→ 0%'
+          : `${direction === 'up' ? '↗' : '↘'} ${Math.abs(change).toFixed(1)}%`;
+      investmentTrendEl.className = `metric-trend ${direction}`;
+    }
+
+    // Update debt trend (down is good for debt)
+    const debtTrendEl = document.getElementById('debt-trend');
+    if (debtTrendEl) {
+      const change = historicalComparison.debt_change_percent || 0;
+      const direction = change > 0.1 ? 'up' : change < -0.1 ? 'down' : 'neutral';
+      debtTrendEl.textContent =
+        direction === 'neutral'
+          ? '→ 0%'
+          : `${direction === 'up' ? '↗' : '↘'} ${Math.abs(change).toFixed(1)}%`;
+      debtTrendEl.className = `metric-trend ${direction === 'down' ? 'up' : direction === 'up' ? 'down' : ''}`;
+    }
+
+    // Update bills trend
+    const billsTrendEl = document.getElementById('bills-trend');
+    if (billsTrendEl) {
+      const change = historicalComparison.bills_change_percent || 0;
+      const direction = change > 0.1 ? 'up' : change < -0.1 ? 'down' : 'neutral';
+      billsTrendEl.textContent =
+        direction === 'neutral'
+          ? '→ 0%'
+          : `${direction === 'up' ? '↗' : '↘'} ${Math.abs(change).toFixed(1)}%`;
+      billsTrendEl.className = `metric-trend ${direction}`;
+    }
+  } else {
+    // Fallback to session-based comparison
+    const previousMetrics = window._dashboardPreviousMetrics || {
+      totalCash: 0,
+      totalInvestments: 0,
+      totalDebt: 0,
+      monthlyRecurring: 0,
+    };
+    const cashTrend = calculateTrend(totalCash, previousMetrics.totalCash);
+    const investmentTrend = calculateTrend(totalInvestments, previousMetrics.totalInvestments);
+    const debtTrend = calculateTrend(totalDebt, previousMetrics.totalDebt);
+    const billsTrend = calculateTrend(monthlyRecurring, previousMetrics.monthlyRecurring);
+
+    // Update trend displays
+    const cashTrendEl = document.getElementById('cash-trend');
+    if (cashTrendEl) {
+      cashTrendEl.textContent =
+        cashTrend.direction === 'neutral'
+          ? '→ 0%'
+          : `${cashTrend.direction === 'up' ? '↗' : '↘'} ${cashTrend.value}%`;
+      cashTrendEl.className = `metric-trend ${cashTrend.direction}`;
+    }
+
+    const investmentTrendEl = document.getElementById('investment-trend');
+    if (investmentTrendEl) {
+      investmentTrendEl.textContent =
+        investmentTrend.direction === 'neutral'
+          ? '→ 0%'
+          : `${investmentTrend.direction === 'up' ? '↗' : '↘'} ${investmentTrend.value}%`;
+      investmentTrendEl.className = `metric-trend ${investmentTrend.direction}`;
+    }
+
+    const debtTrendEl = document.getElementById('debt-trend');
+    if (debtTrendEl) {
+      // For debt, down is good
+      debtTrendEl.textContent =
+        debtTrend.direction === 'neutral'
+          ? '→ 0%'
+          : `${debtTrend.direction === 'up' ? '↗' : '↘'} ${debtTrend.value}%`;
+      debtTrendEl.className = `metric-trend ${debtTrend.direction === 'down' ? 'up' : debtTrend.direction === 'up' ? 'down' : ''}`;
+    }
+
+    const billsTrendEl = document.getElementById('bills-trend');
+    if (billsTrendEl) {
+      billsTrendEl.textContent =
+        billsTrend.direction === 'neutral'
+          ? '→ 0%'
+          : `${billsTrend.direction === 'up' ? '↗' : '↘'} ${billsTrend.value}%`;
+      billsTrendEl.className = `metric-trend ${billsTrend.direction}`;
+    }
+
+    // Store current values for next comparison (fallback only)
+    window._dashboardPreviousMetrics = { totalCash, totalInvestments, totalDebt, monthlyRecurring };
   }
-
-  const investmentTrendEl = document.getElementById('investment-trend');
-  if (investmentTrendEl) {
-    investmentTrendEl.textContent =
-      investmentTrend.direction === 'neutral'
-        ? '→ 0%'
-        : `${investmentTrend.direction === 'up' ? '↗' : '↘'} ${investmentTrend.value}%`;
-    investmentTrendEl.className = `metric-trend ${investmentTrend.direction}`;
-  }
-
-  const debtTrendEl = document.getElementById('debt-trend');
-  if (debtTrendEl) {
-    // For debt, down is good
-    debtTrendEl.textContent =
-      debtTrend.direction === 'neutral'
-        ? '→ 0%'
-        : `${debtTrend.direction === 'up' ? '↗' : '↘'} ${debtTrend.value}%`;
-    debtTrendEl.className = `metric-trend ${debtTrend.direction === 'down' ? 'up' : debtTrend.direction === 'up' ? 'down' : ''}`;
-  }
-
-  const billsTrendEl = document.getElementById('bills-trend');
-  if (billsTrendEl) {
-    billsTrendEl.textContent =
-      billsTrend.direction === 'neutral'
-        ? '→ 0%'
-        : `${billsTrend.direction === 'up' ? '↗' : '↘'} ${billsTrend.value}%`;
-    billsTrendEl.className = `metric-trend ${billsTrend.direction}`;
-  }
-
-  // Store current values for next comparison
-  previousMetrics = { totalCash, totalInvestments, totalDebt, monthlyRecurring };
 }
 
 function renderRecentTransactions(appData) {
@@ -168,7 +272,10 @@ function renderRecentTransactions(appData) {
     .join('');
 }
 
-export function updateDashboard({ appData }) {
+export async function updateDashboard({ appData }) {
+  // Capture snapshot and fetch historical data
+  await captureFinancialSnapshot();
+  await fetchHistoricalComparison();
   const totalCash = sumMoney(appData.cashAccounts.map(acc => acc.balance || 0));
   const totalInvestments = sumMoney(appData.investmentAccounts.map(acc => acc.balance));
   const totalDebt = sumMoney(appData.debtAccounts.map(acc => acc.balance));
@@ -219,7 +326,7 @@ export function updateDashboard({ appData }) {
   }
 
   // Update metric trends
-  updateMetricTrends({ totalCash, totalInvestments, totalDebt, monthlyRecurring });
+  await updateMetricTrends({ totalCash, totalInvestments, totalDebt, monthlyRecurring });
 
   renderRecentTransactions(appData);
 
@@ -251,17 +358,40 @@ function updateEnhancedMetrics(appData) {
     netWorthEl.textContent = formatCurrency(netWorth);
   }
 
-  // Calculate net worth change (simplified - just show trend)
-  const netWorthChange = netWorth * 0.024; // Mock 2.4% change
+  // Calculate net worth change using historical data
   const netWorthChangeEl = document.getElementById('net-worth-change');
-  if (netWorthChangeEl) {
-    netWorthChangeEl.textContent = `↑ ${formatCurrency(netWorthChange)} this month`;
-  }
-
   const netWorthBadge = document.getElementById('net-worth-change-badge');
-  if (netWorthBadge) {
-    netWorthBadge.textContent = '+2.4%';
-    netWorthBadge.className = 'metric-badge positive';
+
+  if (historicalComparison && historicalComparison.net_worth_change_percent !== null) {
+    // Use actual historical data
+    const changePercent = historicalComparison.net_worth_change_percent;
+    const previousNetWorth = historicalComparison.previous_net_worth || 0;
+    const netWorthChange = netWorth - previousNetWorth;
+
+    if (netWorthChangeEl) {
+      if (changePercent !== 0) {
+        netWorthChangeEl.textContent = `${changePercent > 0 ? '↑' : '↓'} ${formatCurrency(Math.abs(netWorthChange))} this ${currentComparisonPeriod}`;
+      } else {
+        netWorthChangeEl.textContent = '→ No change';
+      }
+    }
+
+    if (netWorthBadge) {
+      netWorthBadge.textContent =
+        changePercent >= 0 ? `+${changePercent.toFixed(1)}%` : `${changePercent.toFixed(1)}%`;
+      netWorthBadge.className =
+        changePercent >= 0 ? 'metric-badge positive' : 'metric-badge negative';
+    }
+  } else {
+    // Fallback to estimated change
+    const netWorthChange = netWorth * 0.024; // Mock 2.4% change
+    if (netWorthChangeEl) {
+      netWorthChangeEl.textContent = `↑ ${formatCurrency(netWorthChange)} this month (est.)`;
+    }
+    if (netWorthBadge) {
+      netWorthBadge.textContent = '+2.4%';
+      netWorthBadge.className = 'metric-badge positive';
+    }
   }
 
   // Monthly Cash Flow
@@ -518,6 +648,14 @@ function updateMainDashboardChart(appData) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: {
+        padding: {
+          left: 5,
+          right: 5,
+          top: 5,
+          bottom: 5,
+        },
+      },
       plugins: {
         legend: {
           display: false,
