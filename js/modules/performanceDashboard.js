@@ -6,6 +6,7 @@ import { debug } from './debug.js';
 import { eventManager } from './eventManager.js';
 import { isPrivacyMode } from './privacy.js';
 import { showError, showSuccess } from './ui.js';
+import { simpleCharts } from './simpleCharts.js';
 
 class PerformanceDashboard {
   constructor() {
@@ -34,6 +35,7 @@ class PerformanceDashboard {
    */
   async init() {
     debug.log('Initializing Performance Dashboard');
+    debug.log('Chart.js available at init:', !!window.Chart);
 
     // Wait for DOM to be ready
     await new Promise(resolve => {
@@ -46,6 +48,9 @@ class PerformanceDashboard {
 
     // Additional delay to ensure tab content is rendered
     await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Check Chart.js availability after load
+    debug.log('Chart.js available after load:', !!window.Chart);
 
     // Set up event listeners
     this.setupEventListeners();
@@ -120,6 +125,15 @@ class PerformanceDashboard {
       });
     }
 
+    // Test button
+    const testBtn = document.getElementById('test-chart');
+    if (testBtn) {
+      testBtn.addEventListener('click', () => {
+        debug.log('Test button clicked - rendering test chart');
+        simpleCharts.renderTestChart();
+      });
+    }
+
     // Export button
     const exportBtn = document.getElementById('export-chart');
     if (exportBtn) {
@@ -154,9 +168,23 @@ class PerformanceDashboard {
       if (chartsView) chartsView.style.display = 'block';
       
       // Initialize charts if not already done
-      if (!this.chartsInitialized && this.data.trends) {
-        this.renderChart();
-        this.chartsInitialized = true;
+      if (!this.chartsInitialized) {
+        debug.log('Attempting to initialize charts with simpleCharts module...');
+        debug.log('Chart.js available:', !!window.Chart);
+        debug.log('Data available:', !!this.data.trends);
+        
+        // First, try to render a test chart to verify Chart.js is working
+        setTimeout(() => {
+          simpleCharts.renderTestChart();
+          this.chartsInitialized = true;
+          
+          // After successful test, render actual data after a delay
+          setTimeout(() => {
+            if (this.data.trends) {
+              simpleCharts.renderDataChart('trends', this.data.trends);
+            }
+          }, 2000);
+        }, 500);
       }
     }
 
@@ -398,35 +426,14 @@ class PerformanceDashboard {
    * Render main chart
    */
   async renderChart() {
-    const container = document.getElementById('main-chart-container');
-    if (!container) {
-      return;
-    }
-
-    // Show canvas, hide loading
-    const chartLoading = container.querySelector('.chart-loading');
-    if (chartLoading) {
-      chartLoading.style.display = 'none';
-    }
-    const canvas = document.getElementById('performanceChart');
-    if (canvas) {
-      canvas.style.display = 'block';
-    } else {
-      debug.error('Performance chart canvas not found');
-      return;
-    }
-
+    debug.log('Rendering performance chart using simpleCharts module');
+    
     // Check if we have data to display
     if (!this.data || !this.data.trends) {
       debug.error('No trends data available for chart');
       return;
     }
-
-    // Destroy existing chart
-    if (this.chartInstance) {
-      this.chartInstance.destroy();
-    }
-
+    
     // Get chart data based on current view
     const chartData = await this.getChartData();
 
@@ -436,77 +443,13 @@ class PerformanceDashboard {
       return;
     }
 
-    // Check if Chart.js is available
-    if (!window.Chart) {
-      debug.error('Chart.js is not available');
-      // Show a message in the chart container
-      const container = document.getElementById('main-chart-container');
-      if (container) {
-        container.innerHTML = '<div class="chart-error">Charts are loading. Please try again in a moment.</div>';
-      }
-      return;
+    // Use simpleCharts module to render
+    try {
+      simpleCharts.renderDataChart(this.currentView, chartData.data);
+      debug.log(`Chart rendered successfully for view: ${this.currentView}`);
+    } catch (error) {
+      debug.error('Failed to render chart:', error);
     }
-
-    // Create new chart
-    const ctx = canvas.getContext('2d');
-    
-    // Build chart options
-    const chartOptions = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: chartData.showLegend,
-          position: 'top',
-          labels: {
-            color: '#94a3b8',
-            padding: 15,
-            font: {
-              size: 12,
-            },
-          },
-        },
-        tooltip: {
-          backgroundColor: 'rgba(30, 41, 59, 0.9)',
-          titleColor: '#ffffff',
-          bodyColor: '#cbd5e1',
-          borderColor: 'rgba(255, 255, 255, 0.1)',
-          borderWidth: 1,
-          padding: 12,
-          displayColors: true,
-          callbacks: {
-            label: context => {
-              // Handle horizontal bar chart
-              if (this.currentView === 'topExpenses') {
-                const category = chartData.data.labels[context.dataIndex];
-                const amount = formatCurrency(context.parsed.x);
-                const totalExpenses = chartData.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                const percentage = ((context.parsed.x / totalExpenses) * 100).toFixed(1);
-                return isPrivacyMode() 
-                  ? `Amount: $•••.••` 
-                  : `${category}: ${amount} (${percentage}%)`;
-              }
-              // Default handling for other charts
-              const label = context.dataset.label || '';
-              const value = formatCurrency(context.parsed.y || context.parsed);
-              return `${label}: ${value}`;
-            },
-          },
-        },
-      },
-      scales: chartData.scales,
-    };
-    
-    // Add indexAxis if specified (for horizontal bar charts)
-    if (chartData.indexAxis) {
-      chartOptions.indexAxis = chartData.indexAxis;
-    }
-    
-    this.chartInstance = new Chart(ctx, {
-      type: chartData.type,
-      data: chartData.data,
-      options: chartOptions,
-    });
   }
 
   /**
