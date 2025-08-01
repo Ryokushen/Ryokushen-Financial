@@ -13,24 +13,42 @@ class SimpleCharts {
    * Initialize the chart module
    */
   init() {
+    console.log('=== SimpleCharts: INIT CALLED ===');
     debug.log('SimpleCharts: Initializing...');
     
     // Find container and canvas
     this.container = document.getElementById('main-chart-container');
     this.canvas = document.getElementById('performanceChart');
     
-    if (!this.container || !this.canvas) {
-      debug.error('SimpleCharts: Missing container or canvas element');
+    console.log('Container element:', this.container);
+    console.log('Canvas element:', this.canvas);
+    
+    if (!this.container) {
+      console.error('SimpleCharts: Container #main-chart-container not found!');
+      debug.error('SimpleCharts: Missing container element');
       return false;
     }
     
+    if (!this.canvas) {
+      console.error('SimpleCharts: Canvas #performanceChart not found!');
+      debug.error('SimpleCharts: Missing canvas element');
+      return false;
+    }
+    
+    // Check visibility
+    console.log('Canvas display style:', this.canvas.style.display);
+    console.log('Canvas computed style:', window.getComputedStyle(this.canvas).display);
+    console.log('Container display style:', this.container.style.display);
+    
     // Check for Chart.js
     if (!window.Chart) {
+      console.error('SimpleCharts: Chart.js is not loaded!');
       debug.error('SimpleCharts: Chart.js is not loaded');
       this.showError('Chart.js is not loaded. Charts cannot be displayed.');
       return false;
     }
     
+    console.log('SimpleCharts: Initialization successful');
     debug.log('SimpleCharts: Initialization successful');
     return true;
   }
@@ -80,14 +98,22 @@ class SimpleCharts {
    * Hide loading state
    */
   hideLoading() {
+    console.log('SimpleCharts: Hiding loading state');
     debug.log('SimpleCharts: Hiding loading state');
     if (this.container) {
       const loadingDiv = this.container.querySelector('.chart-loading');
       if (loadingDiv) {
+        console.log('Found loading div, hiding it');
         loadingDiv.style.display = 'none';
+      } else {
+        console.log('No loading div found');
       }
       if (this.canvas) {
+        console.log('Showing canvas by setting display to block');
         this.canvas.style.display = 'block';
+        // Force a reflow to ensure the canvas is visible
+        this.canvas.offsetHeight;
+        console.log('Canvas display after show:', this.canvas.style.display);
       }
     }
   }
@@ -107,9 +133,11 @@ class SimpleCharts {
    * Render a simple test chart
    */
   renderTestChart() {
+    console.log('=== SimpleCharts: RENDER TEST CHART CALLED ===');
     debug.log('SimpleCharts: Rendering test chart...');
     
     if (!this.init()) {
+      console.error('SimpleCharts: Init failed, cannot render test chart');
       return;
     }
     
@@ -139,6 +167,7 @@ class SimpleCharts {
       };
       
       // Create chart
+      console.log('Creating new Chart instance...');
       this.chartInstance = new Chart(ctx, {
         type: 'line',
         data: testData,
@@ -184,6 +213,15 @@ class SimpleCharts {
           }
         }
       });
+      
+      // Verify chart was created
+      console.log('Chart instance created:', !!this.chartInstance);
+      console.log('Chart ID:', this.chartInstance?.id);
+      console.log('Chart canvas:', this.chartInstance?.canvas);
+      console.log('Canvas width:', this.canvas.width);
+      console.log('Canvas height:', this.canvas.height);
+      console.log('Canvas client width:', this.canvas.clientWidth);
+      console.log('Canvas client height:', this.canvas.clientHeight);
       
       this.hideLoading();
       debug.log('SimpleCharts: Test chart rendered successfully');
