@@ -285,28 +285,24 @@ class PerformanceDashboard {
     console.log('=== RENDER CHARTS IN VIEW ===');
 
     try {
-      // First, try to render a test chart to verify Chart.js is working
-      console.log('Rendering test chart...');
-      simpleCharts.renderTestChart();
-      this.chartsInitialized = true;
-      console.log('Test chart rendered successfully');
-
-      // After successful test, render actual data after a delay
-      setTimeout(() => {
-        try {
+      // Check if we have data to render
+      if (this.data && this.data.trends) {
+        console.log('Rendering chart with trends data...');
+        simpleCharts.renderDataChart('trends', this.data.trends);
+        this.chartsInitialized = true;
+        console.log('Chart rendered successfully');
+      } else {
+        console.warn('No trends data available, loading data first...');
+        // Load data if not available
+        this.loadDashboardData().then(() => {
           if (this.data && this.data.trends) {
-            console.log('Rendering data chart with trends data...');
             simpleCharts.renderDataChart('trends', this.data.trends);
-            console.log('Data chart rendered successfully');
-          } else {
-            console.warn('No trends data available');
+            this.chartsInitialized = true;
           }
-        } catch (error) {
-          console.error('Error rendering data chart:', error);
-        }
-      }, 2000);
+        });
+      }
     } catch (error) {
-      console.error('Error rendering test chart:', error);
+      console.error('Error rendering chart:', error);
       console.error('Error details:', error.stack);
       this.chartsInitialized = false;
     }
@@ -728,11 +724,14 @@ class PerformanceDashboard {
       startDate.setDate(startDate.getDate() - this.dateRange);
 
       // Get transactions for the period
-      const transactions = await transactionManager.searchTransactions({
+      const searchResult = await transactionManager.searchTransactions({
         startDate: startDate.toISOString().split('T')[0],
         endDate: endDate.toISOString().split('T')[0],
         // Remove type filter to get all transactions, then filter manually
       });
+
+      // Extract transactions array from search result
+      const transactions = searchResult.transactions || [];
 
       // Group expenses by category
       const expensesByCategory = {};

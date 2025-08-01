@@ -7,6 +7,7 @@ class SimpleCharts {
     this.chartInstance = null;
     this.container = null;
     this.canvas = null;
+    this.initialized = false;
   }
 
   /**
@@ -17,8 +18,17 @@ class SimpleCharts {
     debug.log('SimpleCharts: Initializing...');
 
     // Find container and canvas
-    this.container = document.getElementById('main-chart-container');
-    this.canvas = document.getElementById('performanceChart');
+    const container = document.getElementById('main-chart-container');
+    const canvas = document.getElementById('performanceChart');
+
+    // Check if already initialized with same elements
+    if (this.initialized && this.container === container && this.canvas === canvas) {
+      console.log('SimpleCharts: Already initialized with same elements, skipping');
+      return true;
+    }
+
+    this.container = container;
+    this.canvas = canvas;
 
     console.log('Container element:', this.container);
     console.log('Canvas element:', this.canvas);
@@ -71,6 +81,7 @@ class SimpleCharts {
 
     console.log('SimpleCharts: Initialization successful');
     debug.log('SimpleCharts: Initialization successful');
+    this.initialized = true;
     return true;
   }
 
@@ -148,6 +159,16 @@ class SimpleCharts {
       this.chartInstance.destroy();
       this.chartInstance = null;
     }
+  }
+
+  /**
+   * Reset initialization state
+   */
+  reset() {
+    this.destroy();
+    this.initialized = false;
+    this.container = null;
+    this.canvas = null;
   }
 
   /**
@@ -506,6 +527,36 @@ class SimpleCharts {
               font: {
                 size: 12,
               },
+              generateLabels(chart) {
+                const data = chart.data;
+                if (data.labels.length && data.datasets.length) {
+                  return data.labels.map((label, i) => {
+                    const meta = chart.getDatasetMeta(0);
+                    const style = meta.controller.getStyle(i);
+                    const value = data.datasets[0].data[i];
+
+                    // Truncate long labels
+                    const maxLength = 15;
+                    const truncatedLabel =
+                      label.length > maxLength ? `${label.substring(0, maxLength)}...` : label;
+
+                    return {
+                      text: truncatedLabel,
+                      fillStyle: style.backgroundColor,
+                      strokeStyle: style.borderColor,
+                      lineWidth: style.borderWidth,
+                      hidden: isNaN(value) || meta.data[i].hidden,
+                      index: i,
+                      // Store full label for tooltip
+                      fullLabel: label,
+                    };
+                  });
+                }
+                return [];
+              },
+              // Add box width to give more space for text
+              boxWidth: 15,
+              boxHeight: 15,
             },
           },
           title: {
@@ -515,6 +566,26 @@ class SimpleCharts {
             font: {
               size: 16,
             },
+          },
+          tooltip: {
+            callbacks: {
+              label(context) {
+                const label = context.label || '';
+                const value = context.parsed || 0;
+                const formattedValue = formatCurrency(value);
+                const percentage = (
+                  (value / context.dataset.data.reduce((a, b) => a + b, 0)) *
+                  100
+                ).toFixed(1);
+                return `${label}: ${formattedValue} (${percentage}%)`;
+              },
+            },
+          },
+        },
+        // Add layout padding to prevent cutoff
+        layout: {
+          padding: {
+            right: 20,
           },
         },
       },
