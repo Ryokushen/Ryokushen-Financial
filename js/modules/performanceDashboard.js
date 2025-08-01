@@ -34,37 +34,80 @@ class PerformanceDashboard {
    * Initialize the performance dashboard
    */
   async init() {
-    debug.log('Initializing Performance Dashboard');
-    debug.log('Chart.js available at init:', !!window.Chart);
-
-    // Wait for DOM to be ready
-    await new Promise(resolve => {
-      if (document.readyState === 'complete') {
-        resolve();
-      } else {
-        window.addEventListener('load', resolve, { once: true });
+    try {
+      console.log('=== PERFORMANCE DASHBOARD INIT CALLED ===');
+      debug.log('Initializing Performance Dashboard');
+      debug.log('Chart.js available at init:', !!window.Chart);
+      console.log('Chart object:', window.Chart);
+      
+      // Check if already initialized
+      if (this.refreshInterval) {
+        debug.log('Performance Dashboard already initialized, skipping');
+        return;
       }
-    });
 
-    // Additional delay to ensure tab content is rendered
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Check Chart.js availability after load
-    debug.log('Chart.js available after load:', !!window.Chart);
+      // Wait for DOM to be ready
+      await new Promise(resolve => {
+        if (document.readyState === 'complete') {
+          resolve();
+        } else {
+          window.addEventListener('load', resolve, { once: true });
+        }
+      });
 
-    // Set up event listeners
-    this.setupEventListeners();
+      // Additional delay to ensure tab content is rendered
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Check Chart.js availability after load
+      debug.log('Chart.js available after load:', !!window.Chart);
+      
+      // Check if performance tab is in the DOM
+      const perfTab = document.getElementById('performance');
+      const chartContainer = document.getElementById('main-chart-container');
+      const canvas = document.getElementById('performanceChart');
+      
+      console.log('DOM Elements Check:');
+      console.log('- Performance tab:', perfTab ? 'FOUND' : 'NOT FOUND');
+      console.log('- Chart container:', chartContainer ? 'FOUND' : 'NOT FOUND');
+      console.log('- Canvas element:', canvas ? 'FOUND' : 'NOT FOUND');
+      
+      if (!perfTab) {
+        console.error('Performance tab not found in DOM!');
+        return;
+      }
+      
+      // Verify required DOM elements exist
+      const requiredElements = [
+        'metrics-view',
+        'charts-view',
+        'performanceChart',
+        'main-chart-container'
+      ];
+      
+      const missingElements = requiredElements.filter(id => !document.getElementById(id));
+      if (missingElements.length > 0) {
+        throw new Error(`Missing required DOM elements: ${missingElements.join(', ')}`);
+      }
 
-    // Load initial data
-    await this.loadDashboardData();
+      // Set up event listeners
+      this.setupEventListeners();
 
-    // Set up auto-refresh (every 5 minutes)
-    this.refreshInterval = setInterval(
-      () => {
-        this.refreshDashboard();
-      },
-      5 * 60 * 1000
-    );
+      // Load initial data
+      await this.loadDashboardData();
+
+      // Set up auto-refresh (every 5 minutes)
+      this.refreshInterval = setInterval(
+        () => {
+          this.refreshDashboard();
+        },
+        5 * 60 * 1000
+      );
+      
+      debug.log('Performance Dashboard initialization complete');
+    } catch (error) {
+      debug.error('Failed to initialize Performance Dashboard:', error);
+      throw error; // Re-throw to be caught by caller
+    }
   }
 
   /**
@@ -1120,3 +1163,8 @@ class PerformanceDashboard {
 
 // Export singleton instance
 export const performanceDashboard = new PerformanceDashboard();
+
+// Expose to window for debugging
+if (typeof window !== 'undefined') {
+  window.performanceDashboard = performanceDashboard;
+}

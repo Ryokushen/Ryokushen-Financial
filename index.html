@@ -9,7 +9,6 @@
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
 
     <link rel="stylesheet" href="css/styles-redesign.css">
@@ -251,7 +250,7 @@
                 <!-- Focus Charts -->
                 <div class="focus-charts-row">
                     <div class="main-focus-chart">
-                        <div class="chart-container" id="main-chart-container">
+                        <div class="chart-container" id="dashboard-chart-container">
                             <canvas id="mainDashboardChart"></canvas>
                         </div>
                     </div>
@@ -2234,6 +2233,19 @@
 
     <div aria-live="polite" class="sr-only" id="screen-reader-announcer"></div>
 
+    <!-- Load Chart.js before modules to ensure it's available -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Verify Chart.js loaded
+        window.addEventListener('load', function() {
+            if (window.Chart) {
+                console.log('Chart.js loaded successfully, version:', Chart.version);
+            } else {
+                console.error('Chart.js failed to load!');
+            }
+        });
+    </script>
+    
     <script type="module" src="js/config.js"></script>
     <script type="module" src="js/database.js"></script>
     <script type="module" src="js/app.js"></script>

@@ -114,22 +114,66 @@ export function switchTab(tabName, appState) {
     Recurring.renderRecurringBills(appState);
   } else if (tabName === 'performance') {
     // Initialize performance dashboard when switching to it
-    try {
-      // Use dynamic import to avoid circular dependency issues
-      import('./performanceDashboard.js')
-        .then(module => {
-          if (module.performanceDashboard) {
-            debug.log('Initializing performance dashboard from ui.js');
-            module.performanceDashboard.init();
-          } else {
-            debug.error('performanceDashboard not found in module');
-          }
-        })
-        .catch(error => {
-          debug.error('Failed to load performance dashboard module:', error);
-        });
-    } catch (error) {
-      debug.error('Failed to initialize performance dashboard:', error);
+    debug.log('=== SWITCHING TO PERFORMANCE TAB ===');
+    console.log('Chart.js status:', typeof window.Chart, window.Chart ? 'LOADED' : 'NOT LOADED');
+    debug.log('Switching to performance tab...');
+    
+    // Check if Chart.js is loaded
+    if (!window.Chart) {
+      debug.warn('Chart.js not loaded yet, waiting...');
+      // Wait for Chart.js to load
+      const checkChartJs = setInterval(() => {
+        if (window.Chart) {
+          clearInterval(checkChartJs);
+          debug.log('Chart.js now available, proceeding with dashboard init');
+          loadPerformanceDashboard();
+        }
+      }, 100);
+      
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        clearInterval(checkChartJs);
+        if (!window.Chart) {
+          debug.error('Chart.js failed to load after 5 seconds');
+          showError('Unable to load charting library. Please refresh the page.');
+        }
+      }, 5000);
+    } else {
+      loadPerformanceDashboard();
+    }
+    
+    function loadPerformanceDashboard() {
+      try {
+        // Use dynamic import to avoid circular dependency issues
+        import('./performanceDashboard.js')
+          .then(module => {
+            if (module && module.performanceDashboard) {
+              debug.log('Performance dashboard module loaded successfully');
+              // Small delay to ensure DOM is ready
+              setTimeout(() => {
+                debug.log('Initializing performance dashboard...');
+                module.performanceDashboard.init()
+                  .then(() => {
+                    debug.log('Performance dashboard initialized successfully');
+                  })
+                  .catch(error => {
+                    debug.error('Error during dashboard initialization:', error);
+                    showError('Failed to initialize performance dashboard');
+                  });
+              }, 100);
+            } else {
+              debug.error('performanceDashboard not found in module', module);
+              showError('Performance dashboard module is not properly configured');
+            }
+          })
+          .catch(error => {
+            debug.error('Failed to load performance dashboard module:', error);
+            showError('Failed to load performance dashboard');
+          });
+      } catch (error) {
+        debug.error('Failed to initialize performance dashboard:', error);
+        showError('An error occurred while loading the performance dashboard');
+      }
     }
   } else if (tabName === 'sankey') {
     try {

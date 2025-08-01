@@ -26,7 +26,6 @@ import { initRulesUI } from './modules/rulesUI.js';
 import { calendar } from './modules/calendar.js';
 import { eventManager } from './modules/eventManager.js';
 import { populateAllCategoryDropdowns } from './modules/categories.js';
-import { performanceDashboard } from './modules/performanceDashboard.js';
 import { cashFlowSankey } from './modules/cashFlowSankey.js';
 
 // Initialize app after auth is ready
