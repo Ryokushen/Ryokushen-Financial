@@ -214,6 +214,15 @@ export class VoiceInput {
                             if (amountField) {
                                 amountField.focus();
                             }
+                        } else {
+                            // If not editing, submit the form automatically
+                            const transactionForm = document.getElementById('transaction-form');
+                            if (transactionForm) {
+                                debug.log('Submitting transaction form after voice confirmation');
+                                // Trigger form submission
+                                const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                                transactionForm.dispatchEvent(submitEvent);
+                            }
                         }
                     },
                     onCancel: () => {

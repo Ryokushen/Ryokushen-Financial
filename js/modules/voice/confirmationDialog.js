@@ -41,7 +41,6 @@ export class ConfirmationDialog {
                 <div class="voice-confirmation-content">
                     <div class="voice-confirmation-header">
                         <h3>Voice Input Confirmation</h3>
-                        <button class="voice-confirmation-close" aria-label="Close">&times;</button>
                     </div>
                     
                     <div class="voice-confirmation-body">
@@ -159,7 +158,7 @@ export class ConfirmationDialog {
 
             .voice-confirmation-header {
                 display: flex;
-                justify-content: space-between;
+                justify-content: center;
                 align-items: center;
                 padding: var(--space-5, 20px);
                 margin-bottom: var(--space-4, 16px);
@@ -170,27 +169,6 @@ export class ConfirmationDialog {
                 color: #ffffff;
                 font-size: var(--font-size-lg, 1.25rem);
                 font-weight: 700;
-            }
-
-            .voice-confirmation-close {
-                background: var(--glass-bg, rgba(255, 255, 255, 0.1));
-                border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
-                font-size: 20px;
-                cursor: pointer;
-                color: #e2e8f0;
-                padding: 0;
-                width: 32px;
-                height: 32px;
-                border-radius: var(--radius-md, 8px);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                transition: all 0.2s ease;
-            }
-
-            .voice-confirmation-close:hover {
-                background: var(--glass-hover, rgba(255, 255, 255, 0.15));
-                border-color: rgba(255, 255, 255, 0.2);
             }
 
             .voice-confirmation-body {
@@ -341,19 +319,12 @@ export class ConfirmationDialog {
      * Setup event listeners for dialog
      */
     setupEventListeners() {
-        // Close button
-        const closeBtn = this.dialog.querySelector('.voice-confirmation-close');
-        if (closeBtn) {
-            eventManager.addEventListener(closeBtn, 'click', () => {
-                this.hide();
-            });
-        }
-
-        // Overlay click to close
+        // Overlay click to close - but not if clicking on content
         const overlay = this.dialog.querySelector('.voice-confirmation-overlay');
         if (overlay) {
             eventManager.addEventListener(overlay, 'click', (e) => {
-                if (e.target === e.currentTarget) {
+                // Only close if clicking the overlay itself, not the content
+                if (e.target === overlay) {
                     this.hide();
                 }
             });
