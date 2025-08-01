@@ -780,7 +780,7 @@ class PerformanceDashboard {
               label: 'Amount Spent',
               data: isPrivacyMode() ? data.map(() => Math.random() * 1000) : data,
               backgroundColor: colors,
-              borderColor: colors.map(color => color + '33'),
+              borderColor: colors.map(color => `${color}33`),
               borderWidth: 1,
             },
           ],
