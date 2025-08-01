@@ -1,12 +1,14 @@
 // js/modules/voice/nlpParser.js - Natural Language Processing for Transaction Parsing
 
 import { debug } from '../debug.js';
+import DateParser from './utils/dateParser.js';
 
 /**
  * NLP Parser for extracting transaction data from natural language
  */
 export class NLPParser {
     constructor() {
+        this.dateParser = new DateParser();
         this.initializePatterns();
     }
 
@@ -207,38 +209,118 @@ export class NLPParser {
     }
 
     /**
-     * Extract date from text
+     * Extract date from text using advanced date parser
      */
     extractDate(text) {
-        const today = new Date();
+        // First check for specific date patterns like "July 25th", "on the 15th"
         
-        // Yesterday, today, tomorrow
-        if (/\byesterday\b/i.test(text)) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - 1);
-            return date.toISOString().split('T')[0];
+        // Check for month + day patterns first (most specific)
+        const monthDayPattern = /\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:st|nd|rd|th)?\b/gi;
+        const monthDayMatch = text.match(monthDayPattern);
+        if (monthDayMatch) {
+            const fullMatch = monthDayMatch[0];
+            const parts = fullMatch.split(/\s+/);
+            const monthStr = parts[0];
+            const dayStr = parts[1].replace(/[^\d]/g, ''); // Remove st, nd, rd, th
+            
+            const monthIndex = this.dateParser.monthNames[monthStr.toLowerCase()];
+            if (monthIndex !== undefined) {
+                const currentYear = new Date().getFullYear();
+                const date = new Date(currentYear, monthIndex, parseInt(dayStr));
+                if (!isNaN(date.getTime())) {
+                    return date.toISOString().split('T')[0];
+                }
+            }
         }
         
-        if (/\btoday\b/i.test(text)) {
-            return today.toISOString().split('T')[0];
+        // Check for day + month patterns (e.g., "25th of July", "15th December")
+        const dayMonthPattern = /\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(january|february|march|april|may|june|july|august|september|october|november|december)\b/gi;
+        const dayMonthMatch = text.match(dayMonthPattern);
+        if (dayMonthMatch) {
+            const fullMatch = dayMonthMatch[0];
+            const dayMatch = fullMatch.match(/(\d{1,2})/);
+            const monthMatch = fullMatch.match(/(january|february|march|april|may|june|july|august|september|october|november|december)/i);
+            
+            if (dayMatch && monthMatch) {
+                const dayStr = dayMatch[1];
+                const monthStr = monthMatch[1];
+                const monthIndex = this.dateParser.monthNames[monthStr.toLowerCase()];
+                
+                if (monthIndex !== undefined) {
+                    const currentYear = new Date().getFullYear();
+                    const date = new Date(currentYear, monthIndex, parseInt(dayStr));
+                    if (!isNaN(date.getTime())) {
+                        return date.toISOString().split('T')[0];
+                    }
+                }
+            }
         }
         
-        if (/\btomorrow\b/i.test(text)) {
-            const date = new Date(today);
-            date.setDate(date.getDate() + 1);
-            return date.toISOString().split('T')[0];
+        // Check for other specific date formats
+        const datePatterns = [
+            // Just "on the Xth"
+            /\bon\s+the\s+(\d{1,2})(?:st|nd|rd|th)?/gi,
+            // ISO date format
+            /\b(\d{4}-\d{2}-\d{2})\b/g,
+            // US date format
+            /\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/g
+        ];
+
+        // Check other specific date patterns
+        for (const pattern of datePatterns) {
+            const match = text.match(pattern);
+            if (match) {
+                // Handle different match formats
+                if (match[0].includes('/')) {
+                    // US format MM/DD/YYYY
+                    const parts = match[0].split('/');
+                    const month = parts[0];
+                    const day = parts[1];
+                    const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+                    const date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+                    if (!isNaN(date.getTime())) {
+                        return date.toISOString().split('T')[0];
+                    }
+                } else if (match[0].match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    // ISO format
+                    return match[0];
+                } else if (match[1]) {
+                    // "on the Xth" - use current month
+                    const day = parseInt(match[1]);
+                    const today = new Date();
+                    const date = new Date(today.getFullYear(), today.getMonth(), day);
+                    return date.toISOString().split('T')[0];
+                }
+            }
+        }
+
+        // Try to extract just the date phrase for relative dates
+        const relativeDatePatterns = [
+            /\b(yesterday|today|tomorrow)\b/gi,
+            /\b(last|this|next)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi,
+            /\b(\d+|a|an)\s+(day|week|month|year)s?\s+ago\b/gi,
+            /\b(last|this|next)\s+(week|month|year)\b/gi,
+            /\b(last|this|next)\s+\d+\s+(day|week|month|year)s?\b/gi
+        ];
+        
+        for (const pattern of relativeDatePatterns) {
+            const match = text.match(pattern);
+            if (match) {
+                // Parse just the matched date phrase
+                const parsed = this.dateParser.parseNaturalLanguage(match[0]);
+                if (parsed && parsed.startDate) {
+                    return parsed.startDate.toISOString().split('T')[0];
+                }
+            }
         }
         
-        // X days ago
-        const daysAgoMatch = text.match(/\b(\d+)\s+days?\s+ago\b/i);
-        if (daysAgoMatch) {
-            const daysAgo = parseInt(daysAgoMatch[1]);
-            const date = new Date(today);
-            date.setDate(date.getDate() - daysAgo);
-            return date.toISOString().split('T')[0];
+        // Fall back to DateParser for the full text
+        const parsed = this.dateParser.parseNaturalLanguage(text);
+        if (parsed && parsed.startDate) {
+            return parsed.startDate.toISOString().split('T')[0];
         }
         
-        // Default to today
+        // Default to null (will use today's date in form)
         return null;
     }
 

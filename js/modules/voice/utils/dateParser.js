@@ -86,10 +86,11 @@ class DateParser {
         }
         
         // Check for "X days/weeks/months ago" pattern
-        const agoPattern = /^(\d+) (day|week|month|year)s? ago$/i;
+        const agoPattern = /^(\d+|a|an) (day|week|month|year)s? ago$/i;
         const agoMatch = normalized.match(agoPattern);
         if (agoMatch) {
-            return this.parsePastDate(parseInt(agoMatch[1]), agoMatch[2], referenceDate);
+            const amount = agoMatch[1] === 'a' || agoMatch[1] === 'an' ? 1 : parseInt(agoMatch[1]);
+            return this.parsePastDate(amount, agoMatch[2], referenceDate);
         }
         
         // Check for "last/next X days/weeks/months" pattern

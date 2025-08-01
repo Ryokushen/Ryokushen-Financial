@@ -19,7 +19,27 @@ export class TransactionExtractor {
         // Common transaction phrase patterns
         this.transactionPatterns = [
             {
-                // "Spent X at Y for Z"
+                // "Spent X at Y DATE" - more flexible date capture
+                pattern: /\b(?:spent|paid)\s+([^a-zA-Z]*(?:\d+|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)\s*)+[^a-zA-Z]*)\s+(?:at|to|in|on)\s+([^,]+?)(?:\s+(?:on\s+)?((?:yesterday|today|tomorrow|last\s+\w+|next\s+\w+|\d+\s+(?:days?|weeks?|months?)\s+ago|(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d+(?:st|nd|rd|th)?).*))?$/gi,
+                extract: (match, text) => ({
+                    amount: match[1],
+                    merchant: match[2].trim(),
+                    date: match[3] ? match[3].trim() : null,
+                    type: 'expense'
+                })
+            },
+            {
+                // "Spent X on Y DATE" - for phrases like "spent 50 on groceries yesterday"
+                pattern: /\b(?:spent|paid|bought)\s+([^a-zA-Z]*(?:\d+|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)\s*)+[^a-zA-Z]*)\s+(?:on|for)\s+([^,]+?)\s+(yesterday|today|tomorrow|last\s+\w+|next\s+\w+|\d+\s+(?:days?|weeks?|months?)\s+ago)$/gi,
+                extract: (match, text) => ({
+                    amount: match[1],
+                    context: match[2].trim(),
+                    date: match[3].trim(),
+                    type: 'expense'
+                })
+            },
+            {
+                // "Spent X at Y for Z" (keeping for backward compatibility)
                 pattern: /\b(?:spent|paid)\s+([^a-zA-Z]*(?:\d+|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)\s*)+[^a-zA-Z]*)\s+(?:at|to|in)\s+([^f]+?)\s+for\s+(.+)/gi,
                 extract: (match, text) => ({
                     amount: match[1],
@@ -29,12 +49,13 @@ export class TransactionExtractor {
                 })
             },
             {
-                // "Bought X for Y at Z"
-                pattern: /\b(?:bought|purchased)\s+(.+?)\s+for\s+([^a-zA-Z]*(?:\d+|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)\s*)+[^a-zA-Z]*)\s+(?:at|from|in)\s+(.+)/gi,
+                // "Bought X for Y at Z on DATE"
+                pattern: /\b(?:bought|purchased)\s+(.+?)\s+for\s+([^a-zA-Z]*(?:\d+|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)\s*)+[^a-zA-Z]*)\s+(?:at|from|in)\s+([^o]+?)(?:\s+on\s+(.+?))?$/gi,
                 extract: (match, text) => ({
                     amount: match[2],
                     merchant: match[3].trim(),
                     context: match[1].trim(),
+                    date: match[4] ? match[4].trim() : null,
                     type: 'expense'
                 })
             },
@@ -77,6 +98,16 @@ export class TransactionExtractor {
                     context: 'gas',
                     type: 'expense',
                     category: 'Transportation'
+                })
+            },
+            {
+                // General pattern with date at end: "X at/for Y [Z days ago/yesterday/etc]"
+                pattern: /\b(?:spent|paid|bought)\s+([^a-zA-Z]*(?:\d+|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)\s*)+[^a-zA-Z]*)\s+(?:at|for|on)\s+(.+?)\s+((?:\d+|a|an?)\s+(?:days?|weeks?|months?|years?)\s+ago|yesterday|today|tomorrow|last\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month|year))$/gi,
+                extract: (match, text) => ({
+                    amount: match[1],
+                    context: match[2].trim(),
+                    date: match[3].trim(),
+                    type: 'expense'
                 })
             }
         ];
@@ -138,6 +169,7 @@ export class TransactionExtractor {
                     context: extracted.context,
                     type: extracted.type,
                     category: extracted.category || this.getCategoryFromContext(extracted.context),
+                    date: extracted.date || null,
                     confidence: 85 // High confidence for pattern matches
                 };
             }
@@ -179,12 +211,22 @@ export class TransactionExtractor {
     combineResults(patternResult, nlpResult) {
         // If pattern matching found a good match, use it as base
         if (patternResult.matched && patternResult.amount !== null) {
+            // If pattern has a date string, parse it to ISO format
+            let finalDate = nlpResult.date; // Default to NLP date
+            if (patternResult.date) {
+                // Use NLP parser to convert date string to ISO format
+                const parsedDate = this.nlpParser.extractDate(patternResult.date);
+                if (parsedDate) {
+                    finalDate = parsedDate;
+                }
+            }
+            
             return {
                 originalText: nlpResult.originalText,
                 amount: patternResult.amount,
                 category: patternResult.category || nlpResult.category,
                 description: this.generateDescription(patternResult, nlpResult),
-                date: nlpResult.date, // NLP is better at dates
+                date: finalDate,
                 merchant: patternResult.merchant || nlpResult.merchant,
                 type: patternResult.type || nlpResult.type,
                 confidence: Math.max(patternResult.confidence, nlpResult.confidence),
