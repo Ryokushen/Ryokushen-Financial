@@ -73,7 +73,7 @@
 }
 
 .pay-section {
-    overflow: hidden;
+    overflow: visible;
 }
 
 /* Section Headers */
@@ -127,6 +127,39 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
+}
+
+/* Input Group Styling for Pay Calculator */
+.pay-form .input-group {
+    display: inline-flex;
+    position: relative;
+    align-items: stretch;
+}
+
+.pay-form .input-group-addon {
+    display: flex;
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
+    color: #94a3b8;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    white-space: nowrap;
+    border-right: none;
+}
+
+.pay-form .input-group .form-control {
+    width: auto;
+    min-width: 150px;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0 !important;
+    border-left: none !important;
+}
+
+/* Ensure form groups have proper spacing */
+.pay-form .form-group {
+    margin-bottom: var(--space-3);
 }
 
 /* Pay Rate Display */
