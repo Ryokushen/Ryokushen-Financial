@@ -1444,19 +1444,18 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
     transactions = categoryTransactions.filter(t => {
       // Check if transaction belongs to the selected account
       // Handle both cash accounts (account_id) and credit cards (debt_account_id)
-      return t.account_id === parseInt(accountFilter) || t.debt_account_id === parseInt(accountFilter);
+      return String(t.account_id) === accountFilter || String(t.debt_account_id) === accountFilter;
     });
   } else if (categoryFilter) {
     // Only category filter
     transactions = dataIndex.getTransactionsByCategory(categoryFilter);
   } else if (accountFilter) {
     // Only account filter - need to handle both cash and credit card transactions
-    const accountId = parseInt(accountFilter);
-    const accountTransactions = dataIndex.getTransactionsByAccount(accountId);
+    const accountTransactions = dataIndex.getTransactionsByAccount(accountFilter);
     
     // Also check for credit card transactions
     const allTransactions = [...appData.transactions];
-    const creditCardTransactions = allTransactions.filter(t => t.debt_account_id === accountId);
+    const creditCardTransactions = allTransactions.filter(t => String(t.debt_account_id) === accountFilter);
     
     // Combine and deduplicate
     const combinedMap = new Map();
