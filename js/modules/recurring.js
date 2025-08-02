@@ -410,7 +410,7 @@ async function payRecurringBill(id, appState, onUpdate) {
           account_id: null, // No cash account involved
           category: bill.category,
           description: `${bill.name} (Recurring - Credit Card)`,
-          amount: bill.amount, // Positive amount increases debt
+          amount: -bill.amount, // Negative amount will be negated to positive by transactionManager
           cleared: true,
           debt_account_id: debtAccountId,
         };
@@ -418,7 +418,7 @@ async function payRecurringBill(id, appState, onUpdate) {
         // Use atomic operation to create transaction and update balance
         savedTransaction = await transactionManager.createTransactionWithBalanceUpdate(
           transaction,
-          [{ accountType: 'debt', accountId: debtAccountId, amount: bill.amount }]
+          [{ accountType: 'debt', accountId: debtAccountId, amount: -bill.amount }]
         );
 
         appState.appData.transactions.unshift({
