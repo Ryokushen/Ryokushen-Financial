@@ -450,6 +450,23 @@ async function payRecurringBill(id, appState, onUpdate) {
         debt_account_id: bill.debtAccountId || bill.debt_account_id,
       });
 
+      // Fetch the updated bill from database to ensure all fields are current
+      const updatedBill = await db.getRecurringBillById(bill.id);
+      if (updatedBill) {
+        // Update the bill in appState with all the latest data
+        const billIndex = appState.appData.recurringBills.findIndex(b => b.id === bill.id);
+        if (billIndex !== -1) {
+          appState.appData.recurringBills[billIndex] = {
+            ...updatedBill,
+            amount: parseFloat(updatedBill.amount),
+            nextDue: updatedBill.next_due,
+            paymentMethod: updatedBill.payment_method,
+            debtAccountId: updatedBill.debt_account_id,
+            active: updatedBill.active
+          };
+        }
+      }
+
       onUpdate();
       announceToScreenReader('Payment recorded successfully.');
     } catch (error) {

@@ -114,7 +114,8 @@ function openGoalModal(appData, goalId = null) {
       document.getElementById('goal-name').value = goal.name;
       document.getElementById('goal-target').value = goal.targetAmount;
       document.getElementById('goal-account').value = goal.linkedAccountId;
-      document.getElementById('goal-current').value = goal.currentAmount;
+      // Current amount is now automatically tracked from linked account
+      document.getElementById('goal-current').value = 0;
       document.getElementById('goal-target-date').value = goal.targetDate || '';
       document.getElementById('goal-description').value = goal.description || '';
 
@@ -140,7 +141,8 @@ async function handleGoalSubmit(event, appState, onUpdate) {
       name: document.getElementById('goal-name').value,
       targetAmount: safeParseFloat(document.getElementById('goal-target').value),
       linkedAccountId,
-      currentAmount: safeParseFloat(document.getElementById('goal-current').value),
+      // Current amount is automatically tracked from linked account
+      currentAmount: 0,
       target_date: document.getElementById('goal-target-date').value || null,
       description: document.getElementById('goal-description').value,
     };
@@ -486,9 +488,6 @@ export function renderSavingsGoals(appState) {
 
   list.innerHTML = appState.appData.savingsGoals
     .map(goal => {
-      const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
-      const clampedProgress = Math.min(progress, 100);
-
       // Check if linked account exists and show appropriate status
       const cashAccount = appState.appData.cashAccounts.find(
         acc => acc.id === goal.linkedAccountId
@@ -498,6 +497,19 @@ export function renderSavingsGoals(appState) {
       );
       const linkedAccount = cashAccount || investmentAccount;
       const accountDeleted = !linkedAccount;
+
+      // Calculate current amount based on linked account balance
+      let currentAmount = 0;
+      if (cashAccount) {
+        // For cash accounts, get the balance from the cache or calculate it
+        currentAmount = appState.balanceCache.get(cashAccount.id) || cashAccount.balance || 0;
+      } else if (investmentAccount) {
+        // For investment accounts, use the stored balance
+        currentAmount = investmentAccount.balance || 0;
+      }
+
+      const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
+      const clampedProgress = Math.min(progress, 100);
 
       // Determine icon based on completion status
       const icon = goal.completedDate ? '✅' : '🎯';
@@ -517,7 +529,7 @@ export function renderSavingsGoals(appState) {
                 <div class="goal-card__progress-text">
                     <div class="goal-card__progress-percent">${Math.round(clampedProgress)}%</div>
                     <div class="goal-card__amounts">
-                        <span class="goal-card__current">${formatCurrency(goal.currentAmount)}</span>
+                        <span class="goal-card__current">${formatCurrency(currentAmount)}</span>
                         <span class="goal-card__target">of ${formatCurrency(goal.targetAmount)}</span>
                     </div>
                 </div>

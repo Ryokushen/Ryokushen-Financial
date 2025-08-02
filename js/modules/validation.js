@@ -329,7 +329,7 @@ export const ValidationSchemas = {
     name: [ValidationRules.required, ValidationRules.minLength(2)],
     targetAmount: [ValidationRules.required, ValidationRules.positiveNumber],
     linkedAccountId: ValidationRules.required,
-    currentAmount: ValidationRules.nonNegativeNumber,
+    // currentAmount is now automatically tracked from linked account balance
   },
 
   holding: {
@@ -440,10 +440,7 @@ export const CrossFieldValidators = {
   savingsGoal: formData => {
     const errors = {};
 
-    // Check if current amount exceeds target amount
-    if (formData.currentAmount > formData.targetAmount) {
-      errors.currentAmount = 'Current amount cannot exceed target amount';
-    }
+    // currentAmount is now automatically tracked from linked account balance
 
     // Check if target date is in the past
     if (formData.target_date) {

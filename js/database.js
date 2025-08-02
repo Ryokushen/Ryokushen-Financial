@@ -559,6 +559,14 @@ class FinancialDatabase {
         }
     }
 
+    async getRecurringBillById(id) {
+        return this.executeWithRetry(async () => {
+            const { data, error } = await this.supabase.from('recurring_bills').select('*').eq('id', id).single();
+            if (error) throw error;
+            return data;
+        }, 'getRecurringBillById');
+    }
+
     async deleteRecurringBill(id) {
         try {
             await this.supabase.from('recurring_bills').delete().eq('id', id);
