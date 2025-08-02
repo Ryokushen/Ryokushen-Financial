@@ -103,7 +103,7 @@ export function populateAccountFilterDropdown(appState) {
   }
   
   // Add credit card accounts
-  const creditCards = debtAccounts.filter(a => a.type === 'Credit Card' && a.is_active);
+  const creditCards = debtAccounts.filter(a => a.type === 'Credit Card');
   if (creditCards.length > 0) {
     const creditGroup = document.createElement('optgroup');
     creditGroup.label = 'Credit Cards';
