@@ -134,6 +134,7 @@
     display: inline-flex;
     position: relative;
     align-items: stretch;
+    box-sizing: border-box;
 }
 
 .pay-form .input-group-addon {
@@ -148,13 +149,16 @@
     font-weight: 600;
     white-space: nowrap;
     border-right: none;
+    box-sizing: border-box;
 }
 
 .pay-form .input-group .form-control {
     width: auto;
     min-width: 150px;
+    box-sizing: border-box !important;
     border-radius: 0 var(--radius-md) var(--radius-md) 0 !important;
     border-left: none !important;
+    border-right: 1px solid var(--glass-border) !important;
 }
 
 /* Ensure form groups have proper spacing */
