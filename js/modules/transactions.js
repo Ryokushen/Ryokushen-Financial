@@ -21,6 +21,7 @@ import { getCategoryIcon } from './categories.js';
 import { transactionManager } from './transactionManager.js';
 
 let currentCategoryFilter = '';
+let currentAccountFilter = '';
 let editingTransactionId = null;
 let originalTransaction = null;
 let appStateReference = null;
@@ -70,6 +71,51 @@ function populateTransferToAccount(type, excludeAccount = null) {
     if (activeAccounts.length === 0) {
       transferToSelect.innerHTML = '<option value="">No other cash accounts available</option>';
     }
+  }
+}
+
+// Function to populate the account filter dropdown
+export function populateAccountFilterDropdown(appState) {
+  const filterSelect = document.getElementById('filter-account');
+  if (!filterSelect || !appState || !appState.appData) {
+    return;
+  }
+
+  const { cashAccounts, debtAccounts } = appState.appData;
+  
+  // Clear existing options
+  filterSelect.innerHTML = '<option value="">— All Accounts —</option>';
+  
+  // Add cash accounts
+  const activeCashAccounts = cashAccounts.filter(a => a.isActive);
+  if (activeCashAccounts.length > 0) {
+    const cashGroup = document.createElement('optgroup');
+    cashGroup.label = 'Cash Accounts';
+    
+    activeCashAccounts.forEach(account => {
+      const option = document.createElement('option');
+      option.value = account.id;
+      option.textContent = account.name;
+      cashGroup.appendChild(option);
+    });
+    
+    filterSelect.appendChild(cashGroup);
+  }
+  
+  // Add credit card accounts
+  const creditCards = debtAccounts.filter(a => a.type === 'Credit Card' && a.is_active);
+  if (creditCards.length > 0) {
+    const creditGroup = document.createElement('optgroup');
+    creditGroup.label = 'Credit Cards';
+    
+    creditCards.forEach(account => {
+      const option = document.createElement('option');
+      option.value = account.id;
+      option.textContent = `${account.name} (Credit Card)`;
+      creditGroup.appendChild(option);
+    });
+    
+    filterSelect.appendChild(creditGroup);
   }
 }
 
@@ -262,12 +308,23 @@ export function setupEventListeners(appState, onUpdate) {
   // Debounced filter handler for better performance
   const debouncedFilter = debounce(e => {
     currentCategoryFilter = e.target.value;
-    renderTransactions(appState, currentCategoryFilter);
+    renderTransactions(appState, currentCategoryFilter, currentAccountFilter);
   }, 300);
 
   const filterCategory = document.getElementById('filter-category');
   if (filterCategory) {
     eventManager.addEventListener(filterCategory, 'change', debouncedFilter);
+  }
+
+  // Debounced account filter handler
+  const debouncedAccountFilter = debounce(e => {
+    currentAccountFilter = e.target.value;
+    renderTransactions(appState, currentCategoryFilter, currentAccountFilter);
+  }, 300);
+
+  const filterAccount = document.getElementById('filter-account');
+  if (filterAccount) {
+    eventManager.addEventListener(filterAccount, 'change', debouncedAccountFilter);
   }
 
   const transactionsTableBody = document.getElementById('transactions-table-body');
@@ -320,7 +377,7 @@ export function setupEventListeners(appState, onUpdate) {
         transaction.category = newCategory;
 
         // Refresh the transaction display
-        renderTransactions(appState, currentCategoryFilter);
+        renderTransactions(appState, currentCategoryFilter, currentAccountFilter);
 
         debug.log(`Transaction ${transactionId} categorized as ${newCategory}`);
       }
@@ -335,7 +392,7 @@ export function setupEventListeners(appState, onUpdate) {
       appState.appData.transactions = freshTransactions;
 
       // Refresh the display
-      renderTransactions(appState, currentCategoryFilter);
+      renderTransactions(appState, currentCategoryFilter, currentAccountFilter);
 
       debug.log('Transactions refreshed from database');
     } catch (error) {
@@ -1361,22 +1418,56 @@ const VISIBLE_ROWS = 50; // Number of rows to render at once
 const BUFFER_ROWS = 10; // Extra rows to render for smooth scrolling
 let visibleStartIndex = 0;
 
-export function renderTransactions(appState, categoryFilter = currentCategoryFilter) {
+export function renderTransactions(appState, categoryFilter = currentCategoryFilter, accountFilter = currentAccountFilter) {
   const { appData } = appState;
   const tbody = document.getElementById('transactions-table-body');
   if (!tbody) {
     return;
   }
 
-  const filterSelect = document.getElementById('filter-category');
-  if (filterSelect && categoryFilter) {
-    filterSelect.value = categoryFilter;
+  const filterCategorySelect = document.getElementById('filter-category');
+  if (filterCategorySelect && categoryFilter) {
+    filterCategorySelect.value = categoryFilter;
   }
 
-  // Use dataIndex for faster category filtering
-  const transactions = categoryFilter
-    ? dataIndex.getTransactionsByCategory(categoryFilter)
-    : [...appData.transactions];
+  const filterAccountSelect = document.getElementById('filter-account');
+  if (filterAccountSelect && accountFilter) {
+    filterAccountSelect.value = accountFilter;
+  }
+
+  // Get transactions based on filters
+  let transactions;
+  
+  if (categoryFilter && accountFilter) {
+    // Both filters active - need to filter by both
+    const categoryTransactions = dataIndex.getTransactionsByCategory(categoryFilter);
+    transactions = categoryTransactions.filter(t => {
+      // Check if transaction belongs to the selected account
+      // Handle both cash accounts (account_id) and credit cards (debt_account_id)
+      return t.account_id === parseInt(accountFilter) || t.debt_account_id === parseInt(accountFilter);
+    });
+  } else if (categoryFilter) {
+    // Only category filter
+    transactions = dataIndex.getTransactionsByCategory(categoryFilter);
+  } else if (accountFilter) {
+    // Only account filter - need to handle both cash and credit card transactions
+    const accountId = parseInt(accountFilter);
+    const accountTransactions = dataIndex.getTransactionsByAccount(accountId);
+    
+    // Also check for credit card transactions
+    const allTransactions = [...appData.transactions];
+    const creditCardTransactions = allTransactions.filter(t => t.debt_account_id === accountId);
+    
+    // Combine and deduplicate
+    const combinedMap = new Map();
+    [...accountTransactions, ...creditCardTransactions].forEach(t => {
+      combinedMap.set(t.id, t);
+    });
+    transactions = Array.from(combinedMap.values());
+  } else {
+    // No filters
+    transactions = [...appData.transactions];
+  }
 
   transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -1851,6 +1942,7 @@ export function cleanup() {
 
   // Clear module-level state
   currentCategoryFilter = '';
+  currentAccountFilter = '';
   editingTransactionId = null;
   originalTransaction = null;
   appStateReference = null;

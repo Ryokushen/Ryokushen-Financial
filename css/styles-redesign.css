@@ -1774,12 +1774,14 @@ tr:hover td {
   flex: 1;
   display: flex;
   justify-content: center;
+  gap: var(--space-2);
   min-width: 200px;
-  max-width: 300px;
+  max-width: 500px;
 }
 
 .transaction-filters select {
-  width: 100%;
+  flex: 1;
+  min-width: 150px;
 }
 
 /* ===== CARD GRID LAYOUT (Accounts & Bills) ===== */

@@ -67,7 +67,7 @@ export class DataIndex {
     // Index transactions
     if (appData.transactions) {
       appData.transactions.forEach(transaction => {
-        // By account
+        // By account (cash accounts)
         const accountId =
           transaction.account_id || transaction.accountId || transaction.cashAccountId;
         if (accountId) {
@@ -75,6 +75,14 @@ export class DataIndex {
             this.indexes.transactionsByAccount.set(accountId, []);
           }
           this.indexes.transactionsByAccount.get(accountId).push(transaction);
+        }
+        
+        // By debt account (credit cards)
+        if (transaction.debt_account_id) {
+          if (!this.indexes.transactionsByAccount.has(transaction.debt_account_id)) {
+            this.indexes.transactionsByAccount.set(transaction.debt_account_id, []);
+          }
+          this.indexes.transactionsByAccount.get(transaction.debt_account_id).push(transaction);
         }
 
         // By date (YYYY-MM-DD)

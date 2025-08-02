@@ -745,6 +745,7 @@ import { cashFlowSankey } from './modules/cashFlowSankey.js';
                     return;
                 case 'transactions':
                     Transactions.renderTransactions(state);
+                    Transactions.populateAccountFilterDropdown(state);
                     return;
                 case 'charts':
                     createCharts(state);
@@ -756,6 +757,7 @@ import { cashFlowSankey } from './modules/cashFlowSankey.js';
         await updateDashboard(state);
         Accounts.populateAccountDropdowns(state.appData);
         Debt.populateDebtAccountDropdown(state.appData);
+        Transactions.populateAccountFilterDropdown(state);
         
         // Get the current active tab
         const activeTab = document.querySelector('.tab-content.active');
