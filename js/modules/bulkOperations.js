@@ -90,7 +90,6 @@ class BulkOperationsUI {
                 <div class="modal__content bulk-action-modal">
                     <div class="modal__header">
                         <h3>Categorize Transactions</h3>
-                        <button class="modal__close" data-modal-close aria-label="Close">&times;</button>
                     </div>
                     <div class="modal__body">
                         <form class="bulk-action-form" id="bulk-category-form">
@@ -106,23 +105,81 @@ class BulkOperationsUI {
                         </form>
                     </div>
                     <div class="modal__footer">
-                        <button type="button" class="btn btn--ghost" data-modal-close>Cancel</button>
                         <button type="button" class="btn btn--primary" id="apply-category-btn">Apply Category</button>
+                        <button type="button" class="btn btn--secondary" id="close-category-modal">Close</button>
                     </div>
                 </div>
             </div>
         `;
     document.body.insertAdjacentHTML('beforeend', categoryModalHtml);
 
+    // Create account update modal
+    const accountUpdateModalHtml = `
+            <div id="bulk-account-modal" class="modal" style="display: none;">
+                <div class="modal__backdrop"></div>
+                <div class="modal__content bulk-action-modal">
+                    <div class="modal__header">
+                        <h3>Update Account</h3>
+                    </div>
+                    <div class="modal__body">
+                        <form class="bulk-action-form" id="bulk-account-form">
+                            <div class="form-group">
+                                <label for="bulk-account-select">Select Account</label>
+                                <select id="bulk-account-select" class="bulk-account-select" required>
+                                    <option value="">— Choose an account —</option>
+                                </select>
+                            </div>
+                            <div class="bulk-action-summary">
+                                This will update the account for <strong id="account-update-count">0</strong> selected transactions.
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal__footer">
+                        <button type="button" class="btn btn--primary" id="apply-account-btn">Update Account</button>
+                        <button type="button" class="btn btn--secondary" id="close-account-modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    document.body.insertAdjacentHTML('beforeend', accountUpdateModalHtml);
+
     // Register modals
     modalManager.register('bulk-progress-modal');
     modalManager.register('bulk-category-modal');
+    modalManager.register('bulk-account-modal');
+    
+    // Setup modal listeners after dynamic creation
+    modalManager.setupModalListeners('bulk-category-modal');
+    modalManager.setupModalListeners('bulk-account-modal');
 
     // Setup category form submit
     const applyCategoryBtn = document.getElementById('apply-category-btn');
     if (applyCategoryBtn) {
       eventManager.addEventListener(applyCategoryBtn, 'click', () => {
         this.applyBulkCategory();
+      });
+    }
+
+    // Setup account update form submit
+    const applyAccountBtn = document.getElementById('apply-account-btn');
+    if (applyAccountBtn) {
+      eventManager.addEventListener(applyAccountBtn, 'click', () => {
+        this.applyBulkAccountUpdate();
+      });
+    }
+
+    // Setup close buttons
+    const closeCategoryBtn = document.getElementById('close-category-modal');
+    if (closeCategoryBtn) {
+      eventManager.addEventListener(closeCategoryBtn, 'click', () => {
+        modalManager.close('bulk-category-modal');
+      });
+    }
+
+    const closeAccountBtn = document.getElementById('close-account-modal');
+    if (closeAccountBtn) {
+      eventManager.addEventListener(closeAccountBtn, 'click', () => {
+        modalManager.close('bulk-account-modal');
       });
     }
   }
@@ -237,6 +294,9 @@ class BulkOperationsUI {
       case 'categorize':
         this.showCategoryModal();
         break;
+      case 'update-account':
+        this.showAccountUpdateModal();
+        break;
       case 'delete':
         this.confirmBulkDelete(count);
         break;
@@ -262,6 +322,63 @@ class BulkOperationsUI {
     }
 
     modalManager.open('bulk-category-modal');
+  }
+
+  showAccountUpdateModal() {
+    // Populate account dropdown
+    const accountSelect = document.getElementById('bulk-account-select');
+    if (accountSelect) {
+      this.populateBulkAccountDropdown(accountSelect);
+    }
+
+    // Update count
+    const countElement = document.getElementById('account-update-count');
+    if (countElement) {
+      countElement.textContent = this.selectedTransactions.size;
+    }
+
+    modalManager.open('bulk-account-modal');
+  }
+
+  populateBulkAccountDropdown(selectElement) {
+    // Clear existing options
+    selectElement.innerHTML = '<option value="">— Choose an account —</option>';
+
+    // Get app state
+    const appState = window.appState || { appData: { cashAccounts: [], debtAccounts: [] } };
+    const { cashAccounts, debtAccounts } = appState.appData;
+
+    // Add cash accounts
+    const activeCashAccounts = cashAccounts.filter(a => a.isActive);
+    if (activeCashAccounts.length > 0) {
+      const cashGroup = document.createElement('optgroup');
+      cashGroup.label = 'Cash Accounts';
+      
+      activeCashAccounts.forEach(account => {
+        const option = document.createElement('option');
+        option.value = `cash_${account.id}`;
+        option.textContent = account.name;
+        cashGroup.appendChild(option);
+      });
+      
+      selectElement.appendChild(cashGroup);
+    }
+
+    // Add credit card accounts
+    const creditCards = debtAccounts.filter(a => a.type === 'Credit Card');
+    if (creditCards.length > 0) {
+      const creditGroup = document.createElement('optgroup');
+      creditGroup.label = 'Credit Cards';
+      
+      creditCards.forEach(account => {
+        const option = document.createElement('option');
+        option.value = `cc_${account.id}`;
+        option.textContent = `${account.name} (Credit Card)`;
+        creditGroup.appendChild(option);
+      });
+      
+      selectElement.appendChild(creditGroup);
+    }
   }
 
   async applyBulkCategory() {
@@ -308,6 +425,78 @@ class BulkOperationsUI {
       this.hideProgressModal();
       showError(`Failed to categorize transactions: ${error.message}`);
       debug.error('Bulk categorize error:', error);
+    }
+  }
+
+  async applyBulkAccountUpdate() {
+    const accountSelect = document.getElementById('bulk-account-select');
+    if (!accountSelect || !accountSelect.value) {
+      showError('Please select an account');
+      return;
+    }
+
+    const selectedAccount = accountSelect.value;
+    const transactionIds = Array.from(this.selectedTransactions);
+
+    // Parse account type and ID
+    let accountId = null;
+    let debtAccountId = null;
+    
+    if (selectedAccount.startsWith('cash_')) {
+      accountId = parseInt(selectedAccount.replace('cash_', ''));
+    } else if (selectedAccount.startsWith('cc_')) {
+      debtAccountId = parseInt(selectedAccount.replace('cc_', ''));
+    }
+
+    modalManager.close('bulk-account-modal');
+    this.showProgressModal('Updating account for transactions...', transactionIds.length);
+
+    try {
+      // Prepare updates - we need to set the correct account field and clear the other
+      const updates = transactionIds.map(id => {
+        const updateData = {};
+        
+        if (accountId) {
+          // Updating to a cash account
+          updateData.account_id = accountId;
+          updateData.debt_account_id = null;
+        } else if (debtAccountId) {
+          // Updating to a credit card account
+          updateData.account_id = null;
+          updateData.debt_account_id = debtAccountId;
+        }
+        
+        return {
+          id,
+          updates: updateData,
+        };
+      });
+
+      // Use TransactionManager's batch update
+      const results = await transactionManager.updateMultipleTransactions(updates, {
+        onProgress: progress => {
+          this.updateProgress(progress.processed, progress.total);
+        },
+      });
+
+      this.hideProgressModal();
+
+      if (results.failed.length > 0) {
+        showError(
+          `Updated ${results.successful.length} transactions. ${results.failed.length} failed.`
+        );
+      } else {
+        showSuccess(`Successfully updated account for ${results.successful.length} transactions`);
+      }
+
+      // Clear selection and refresh
+      this.cancelBulkSelection();
+      window.dispatchEvent(new CustomEvent('transaction:updated'));
+      window.dispatchEvent(new CustomEvent('transactions:refresh'));
+    } catch (error) {
+      this.hideProgressModal();
+      showError(`Failed to update accounts: ${error.message}`);
+      debug.error('Bulk account update error:', error);
     }
   }
 
