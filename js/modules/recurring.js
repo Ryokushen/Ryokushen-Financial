@@ -418,7 +418,7 @@ async function payRecurringBill(id, appState, onUpdate) {
         // Use atomic operation to create transaction and update balance
         savedTransaction = await transactionManager.createTransactionWithBalanceUpdate(
           transaction,
-          { accountType: 'debt', accountId: debtAccountId, amount: bill.amount }
+          [{ accountType: 'debt', accountId: debtAccountId, amount: bill.amount }]
         );
 
         appState.appData.transactions.unshift({
