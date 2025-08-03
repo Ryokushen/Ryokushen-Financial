@@ -247,13 +247,34 @@ export async function handleSavingsGoalTransactionDeletion(transaction, appState
     return;
   }
 
-  // Find the savings goal by matching the linked account
-  const goal = appState.appData.savingsGoals.find(
+  let goal = null;
+  let isDepositTransaction = false;
+
+  // First, try to find the goal by matching the linked account (for deposit transactions)
+  goal = appState.appData.savingsGoals.find(
     g => g.linkedAccountId === transaction.account_id
   );
+  
+  if (goal && transaction.amount > 0) {
+    // This is the deposit transaction to the savings goal
+    isDepositTransaction = true;
+  } else if (!goal && goalNameMatch[1]) {
+    // This might be the withdrawal transaction, try to find goal by name
+    const goalName = goalNameMatch[1].trim();
+    goal = appState.appData.savingsGoals.find(
+      g => g.name === goalName
+    );
+  }
 
   if (!goal) {
     debug.warn('Could not find savings goal for transaction:', transaction.description);
+    return;
+  }
+
+  // Only process deposit transactions (positive amounts to the goal account)
+  // The withdrawal transaction doesn't affect the goal's current amount
+  if (!isDepositTransaction) {
+    debug.log('Skipping withdrawal transaction for savings goal reversal');
     return;
   }
 
