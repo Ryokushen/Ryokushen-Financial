@@ -911,6 +911,140 @@ class FinancialDatabase {
             this.handleError('getDebtHistoricalChange', error);
         }
     }
+
+    // ==========================================
+    // ATOMIC TRANSACTION SUPPORT
+    // ==========================================
+
+    /**
+     * Transfer funds between accounts atomically
+     * @param {string} fromAccountId - Source account ID
+     * @param {string} toAccountId - Destination account ID
+     * @param {number} amount - Amount to transfer
+     * @param {string} description - Transfer description
+     * @returns {Promise<Object>} Transfer result with transaction IDs
+     */
+    async transferFunds(fromAccountId, toAccountId, amount, description) {
+        return this.executeWithRetry(async () => {
+            const userId = await this.getCurrentUserId();
+            const { data, error } = await this.supabase
+                .rpc('transfer_funds', {
+                    p_from_account_id: fromAccountId,
+                    p_to_account_id: toAccountId,
+                    p_amount: amount,
+                    p_description: description || 'Transfer',
+                    p_user_id: userId
+                });
+
+            if (error) throw error;
+            
+            const result = data?.[0];
+            if (!result?.success) {
+                throw new Error(result?.message || 'Transfer failed');
+            }
+            
+            return result;
+        }, 'transferFunds');
+    }
+
+    /**
+     * Process recurring payment atomically
+     * @param {string} billId - Recurring bill ID
+     * @returns {Promise<Object>} Payment result with transaction ID and next due date
+     */
+    async processRecurringPayment(billId) {
+        return this.executeWithRetry(async () => {
+            const userId = await this.getCurrentUserId();
+            const { data, error } = await this.supabase
+                .rpc('process_recurring_payment', {
+                    p_bill_id: billId,
+                    p_user_id: userId
+                });
+
+            if (error) throw error;
+            
+            const result = data?.[0];
+            if (!result?.success) {
+                throw new Error(result?.message || 'Payment processing failed');
+            }
+            
+            return result;
+        }, 'processRecurringPayment');
+    }
+
+    /**
+     * Import transactions in bulk atomically
+     * @param {Array} transactions - Array of transaction objects
+     * @returns {Promise<Object>} Import result with counts
+     */
+    async bulkImportTransactions(transactions) {
+        return this.executeWithRetry(async () => {
+            const userId = await this.getCurrentUserId();
+            const { data, error } = await this.supabase
+                .rpc('bulk_import_transactions', {
+                    p_transactions: JSON.stringify(transactions),
+                    p_user_id: userId
+                });
+
+            if (error) throw error;
+            
+            const result = data?.[0];
+            if (!result?.success) {
+                throw new Error(result?.message || 'Bulk import failed');
+            }
+            
+            return result;
+        }, 'bulkImportTransactions');
+    }
+
+    /**
+     * Execute operation in a transaction-like manner with automatic rollback
+     * @param {Function} operation - Async function to execute
+     * @param {Function} rollback - Async function to rollback changes
+     * @param {string} operationName - Name for logging
+     * @returns {Promise<any>} Operation result
+     */
+    async executeInTransaction(operation, rollback, operationName = 'Transaction') {
+        try {
+            const result = await operation();
+            return result;
+        } catch (error) {
+            debug.error(`${operationName} failed, attempting rollback`, error);
+            
+            if (rollback) {
+                try {
+                    await rollback();
+                    debug.log(`${operationName} rollback successful`);
+                } catch (rollbackError) {
+                    debug.error(`${operationName} rollback failed`, rollbackError);
+                    throw new Error(`${operationName} failed and rollback failed: ${error.message}`);
+                }
+            }
+            
+            throw error;
+        }
+    }
+
+    /**
+     * Check if RPC functions are available (for migration status)
+     * @returns {Promise<Object>} Status of each RPC function
+     */
+    async checkTransactionSupport() {
+        const functions = ['transfer_funds', 'process_recurring_payment', 'bulk_import_transactions'];
+        const status = {};
+        
+        for (const func of functions) {
+            try {
+                // Try to get function info - this will fail if function doesn't exist
+                const { error } = await this.supabase.rpc(func, {});
+                status[func] = !error || !error.message.includes('not exist');
+            } catch (error) {
+                status[func] = false;
+            }
+        }
+        
+        return status;
+    }
 }
 
 const db = new FinancialDatabase();

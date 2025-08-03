@@ -116,6 +116,21 @@ import { cashFlowSankey } from './modules/cashFlowSankey.js';
     });
 
     async function initializeApp() {
+        // Check transaction support status
+        try {
+            const transactionStatus = await db.checkTransactionSupport();
+            const allSupported = Object.values(transactionStatus).every(status => status);
+            
+            if (!allSupported) {
+                console.warn('Database transaction support not fully available:', transactionStatus);
+                console.info('Please run migrations from /migrations/001_transaction_support.sql');
+            } else {
+                debug.log('Database transaction support verified');
+            }
+        } catch (error) {
+            console.warn('Could not verify transaction support:', error);
+        }
+        
         // Setup modal manager
         const { setupCommonModals } = await import('./modules/modalManager.js');
         setupCommonModals();
