@@ -381,8 +381,46 @@ async function payRecurringBill(id, appState, onUpdate) {
   ) {
     loadingState.showOperationLock(`Processing payment for ${bill.name}...`);
     try {
-      // Use atomic payment processing
-      const result = await db.processRecurringPayment(bill.id);
+      let result;
+      
+      try {
+        // Try to use atomic payment processing
+        result = await db.processRecurringPayment(bill.id);
+      } catch (error) {
+        // If RPC function doesn't exist, fall back to manual payment creation
+        if (error.message?.includes('404') || error.message?.includes('not exist')) {
+          debug.warn('Atomic recurring payment not available, falling back to manual creation');
+          
+          // Create transaction manually
+          const transactionData = {
+            date: new Date().toISOString().split('T')[0],
+            description: bill.name,
+            category: bill.category,
+            amount: paymentMethod === 'credit' ? bill.amount : -bill.amount,
+            cleared: true
+          };
+          
+          if (paymentMethod === 'cash') {
+            transactionData.account_id = bill.account_id;
+          } else {
+            transactionData.debt_account_id = bill.debt_account_id || bill.debtAccountId;
+          }
+          
+          const savedTransaction = await transactionManager.addTransaction(transactionData);
+          
+          // Update next due date manually
+          const nextDue = getNextDueDate(bill.next_due || bill.nextDue, bill.frequency);
+          await db.updateRecurringBill(bill.id, { next_due: nextDue });
+          
+          result = {
+            success: true,
+            transaction_id: savedTransaction.id,
+            next_due_date: nextDue
+          };
+        } else {
+          throw error; // Re-throw if it's not a missing function error
+        }
+      }
       
       if (result.success) {
         // Update the bill in appState with new next due date

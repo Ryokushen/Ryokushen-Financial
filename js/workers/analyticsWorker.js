@@ -5,9 +5,6 @@
  * to avoid blocking the main UI thread
  */
 
-// Import financial math functions
-self.importScripts('../modules/financialMath.js');
-
 // Message handler
 self.addEventListener('message', async (event) => {
   const { type, data, id } = event.data;

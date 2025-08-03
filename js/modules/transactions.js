@@ -945,17 +945,18 @@ async function addLinkedTransaction(fromTransactionData, toAccountValue, appStat
     const balanceChanges = [];
 
     try {
-      // For transfers between accounts, use atomic transfer function
+      // For transfers between accounts, use atomic transfer function if available
       if (fromTransactionData.category === 'Transfer' && transaction1.account_id && transaction2.account_id) {
-        // Use atomic transfer for cash-to-cash transfers
-        const result = await db.transferFunds(
-          transaction1.account_id,
-          transaction2.account_id,
-          Math.abs(fromTransactionData.amount),
-          baseDescription
-        );
-        
-        if (result.success) {
+        try {
+          // Try to use atomic transfer for cash-to-cash transfers
+          const result = await db.transferFunds(
+            transaction1.account_id,
+            transaction2.account_id,
+            Math.abs(fromTransactionData.amount),
+            baseDescription
+          );
+          
+          if (result.success) {
           // Load the created transactions
           const [fromTx, toTx] = await Promise.all([
             db.getTransactionById(result.from_transaction_id),
@@ -972,6 +973,25 @@ async function addLinkedTransaction(fromTransactionData, toAccountValue, appStat
           );
         } else {
           throw new Error(result.message || 'Transfer failed');
+        }
+        } catch (error) {
+          // If RPC function doesn't exist (404), fall back to regular transaction creation
+          if (error.message?.includes('404') || error.message?.includes('not exist')) {
+            debug.warn('Atomic transfer not available, falling back to regular transactions');
+            const saved = await transactionManager.addLinkedTransactions(transaction1, transaction2);
+            savedTransactions.push(...saved);
+            
+            // Update balances manually
+            await updateCashAccountBalance(transaction1.account_id, transaction1.amount, appState);
+            await updateCashAccountBalance(transaction2.account_id, transaction2.amount, appState);
+            
+            balanceChanges.push(
+              { type: 'cash', id: transaction1.account_id, amount: transaction1.amount },
+              { type: 'cash', id: transaction2.account_id, amount: transaction2.amount }
+            );
+          } else {
+            throw error; // Re-throw if it's not a missing function error
+          }
         }
       } else {
         // Use existing logic for payments and other complex transfers
