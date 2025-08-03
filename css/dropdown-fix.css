@@ -27,7 +27,8 @@ select:not(.settings-container select):hover {
 }
 
 select:not(.settings-container select):focus {
-  outline: none !important;
+  outline: 2px solid var(--color-primary, #3b82f6) !important;
+  outline-offset: 2px !important;
   border-color: var(--color-primary, #3b82f6) !important;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
   background: #2c3e50 !important;

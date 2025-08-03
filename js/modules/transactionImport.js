@@ -207,7 +207,7 @@ class TransactionImport {
    */
   async processFile(file) {
     try {
-      // Validate file type
+      // Validate file type by extension
       const validTypes = ['.csv', '.qfx', '.qif'];
       const fileExt = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
 
@@ -216,8 +216,35 @@ class TransactionImport {
         return;
       }
 
+      // Validate file size (max 10MB)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        showError('File size must be less than 10MB');
+        return;
+      }
+
+      // Validate MIME type
+      const validMimeTypes = ['text/csv', 'text/plain', 'application/vnd.intu.qfx', 'application/x-qif'];
+      if (file.type && !validMimeTypes.includes(file.type) && !file.type.startsWith('text/')) {
+        showError('Invalid file type. Please select a valid CSV, QFX, or QIF file');
+        return;
+      }
+
       // Read file
       const text = await this.readFile(file);
+      
+      // Validate file content based on type
+      if (fileExt === '.csv' && !this.isValidCSV(text)) {
+        showError('Invalid CSV file format');
+        return;
+      } else if (fileExt === '.qfx' && !text.includes('OFXHEADER')) {
+        showError('Invalid QFX file format');
+        return;
+      } else if (fileExt === '.qif' && !text.includes('!Type:')) {
+        showError('Invalid QIF file format');
+        return;
+      }
+      
       this.fileData = {
         name: file.name,
         type: fileExt.substring(1).toUpperCase(),
@@ -882,6 +909,28 @@ class TransactionImport {
     window.dispatchEvent(new CustomEvent('transaction:added'));
 
     showSuccess(`Successfully imported ${result.successful} transactions`);
+  }
+
+  /**
+   * Validate CSV content
+   */
+  isValidCSV(text) {
+    if (!text || text.trim().length === 0) return false;
+    
+    // Check if it has at least one line with comma-separated values
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return false; // Need at least header and one data row
+    
+    // Check if first line has commas (likely a header)
+    const firstLine = lines[0];
+    if (!firstLine.includes(',')) return false;
+    
+    // Basic check for consistent column count
+    const headerColumns = firstLine.split(',').length;
+    const hasConsistentColumns = lines.slice(1, Math.min(5, lines.length))
+      .every(line => line.split(',').length === headerColumns);
+    
+    return hasConsistentColumns;
   }
 
   /**
