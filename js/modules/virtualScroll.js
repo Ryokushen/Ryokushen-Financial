@@ -20,6 +20,9 @@ export class VirtualScroll {
     this.visibleStart = 0;
     this.visibleEnd = 0;
     this.scrollHandler = null;
+    this.intersectionObserver = null;
+    this.lastRenderTime = 0;
+    this.renderDebounceId = null;
     
     this.init();
   }
@@ -100,40 +103,74 @@ export class VirtualScroll {
     // Only re-render if range changed significantly
     if (Math.abs(this.visibleStart - visibleStart) > 2 || 
         Math.abs(this.visibleEnd - visibleEnd) > 2) {
-      this.render();
+      // Debounce rapid renders
+      if (this.renderDebounceId) {
+        clearTimeout(this.renderDebounceId);
+      }
+      
+      const now = performance.now();
+      const timeSinceLastRender = now - this.lastRenderTime;
+      
+      // If we rendered recently, delay the next render
+      if (timeSinceLastRender < 16) { // ~60fps
+        this.renderDebounceId = setTimeout(() => {
+          this.render();
+          this.lastRenderTime = performance.now();
+        }, 16 - timeSinceLastRender);
+      } else {
+        this.render();
+        this.lastRenderTime = now;
+      }
     }
   }
   
   render() {
-    // Clear viewport
-    this.viewport.innerHTML = '';
-    
     // Calculate offset for visible items
     const offsetY = this.visibleStart * this.rowHeight;
     this.viewport.style.transform = `translateY(${offsetY}px)`;
     
-    // Render visible items
-    const fragment = document.createDocumentFragment();
+    // Reuse existing DOM nodes when possible
+    const existingNodes = Array.from(this.viewport.children);
+    const neededCount = this.visibleEnd - this.visibleStart;
     
-    for (let i = this.visibleStart; i < this.visibleEnd; i++) {
-      const item = this.items[i];
-      if (!item) continue;
-      
-      const element = this.renderItem(item, i);
-      if (element) {
-        // Ensure proper height
-        element.style.height = `${this.rowHeight}px`;
-        element.style.position = 'relative';
-        
-        // Add ARIA attributes
-        element.setAttribute('role', 'row');
-        element.setAttribute('aria-rowindex', i + 1);
-        
-        fragment.appendChild(element);
-      }
+    // Remove excess nodes
+    while (existingNodes.length > neededCount) {
+      const node = existingNodes.pop();
+      this.viewport.removeChild(node);
     }
     
-    this.viewport.appendChild(fragment);
+    // Update or create nodes
+    for (let i = 0; i < neededCount; i++) {
+      const itemIndex = this.visibleStart + i;
+      const item = this.items[itemIndex];
+      if (!item) continue;
+      
+      let element = existingNodes[i];
+      
+      if (element) {
+        // Update existing element
+        const newElement = this.renderItem(item, itemIndex);
+        if (newElement && newElement !== element) {
+          // Replace only if renderItem returns a new element
+          element.replaceWith(newElement);
+          element = newElement;
+        }
+      } else {
+        // Create new element
+        element = this.renderItem(item, itemIndex);
+        if (element) {
+          this.viewport.appendChild(element);
+        }
+      }
+      
+      if (element) {
+        // Ensure proper height and attributes
+        element.style.height = `${this.rowHeight}px`;
+        element.style.position = 'relative';
+        element.setAttribute('role', 'row');
+        element.setAttribute('aria-rowindex', itemIndex + 1);
+      }
+    }
     
     // Update ARIA live region
     this.updateAccessibility();
@@ -173,6 +210,14 @@ export class VirtualScroll {
       eventManager.removeEventListener(this.wrapper, 'scroll', this.scrollHandler);
     }
     
+    if (this.renderDebounceId) {
+      clearTimeout(this.renderDebounceId);
+    }
+    
+    if (this.intersectionObserver) {
+      this.intersectionObserver.disconnect();
+    }
+    
     if (this.container) {
       this.container.innerHTML = '';
     }
@@ -180,6 +225,8 @@ export class VirtualScroll {
     this.items = [];
     this.visibleStart = 0;
     this.visibleEnd = 0;
+    this.scrollHandler = null;
+    this.intersectionObserver = null;
   }
   
   /**

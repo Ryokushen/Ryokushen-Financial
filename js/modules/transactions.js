@@ -1525,13 +1525,26 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
 
   // For very large transaction lists, use virtual scrolling
   if (transactions.length > 100) {
+    // Clean up existing virtual scroll if present
+    if (tbody.virtualScroll) {
+      tbody.virtualScroll.destroy();
+      tbody.virtualScroll = null;
+    }
+    
     // Use new virtual scroll component
     import('./virtualScroll.js').then(({ VirtualScroll }) => {
+      // Double check we still need virtual scroll (in case of rapid updates)
+      if (transactions.length <= 100) {
+        renderTransactionsNormal(tbody, transactions, appState);
+        return;
+      }
+      
       const virtualScroll = new VirtualScroll({
         container: tbody.parentElement,
         items: transactions,
         rowHeight: 40,
-        visibleHeight: 600,
+        visibleHeight: Math.min(600, window.innerHeight - 200), // Adaptive height
+        bufferSize: 10, // Increase buffer for smoother scrolling
         renderItem: (transaction, index) => {
           const row = document.createElement('tr');
           row.className = 'transaction-row';
@@ -1552,8 +1565,20 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
     });
     return;
   }
+  
+  // Clean up virtual scroll if we don't need it anymore
+  if (tbody.virtualScroll) {
+    tbody.virtualScroll.destroy();
+    tbody.virtualScroll = null;
+  }
 
-  // For smaller lists, render all at once
+  // For smaller lists, use normal rendering
+  renderTransactionsNormal(tbody, transactions, appState);
+}
+
+function renderTransactionsNormal(tbody, transactions, appState) {
+  const { appData } = appState;
+  
   tbody.innerHTML = transactions
     .map(t => {
       // Handle both cash account transactions and credit card transactions with improved fallbacks
