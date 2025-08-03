@@ -8,6 +8,7 @@ import { addMoney, subtractMoney, sumMoney, convertToMonthlyPrecise } from './fi
 import { TimeBudgetWidget } from './widgets/timeBudgetWidget.js';
 import { getCategoryIcon } from './categories.js';
 import db from '../database.js';
+import { loadingState } from './loadingState.js';
 
 // Initialize time budget widget
 let timeBudgetWidget = null;
@@ -80,12 +81,15 @@ function calculateTrend(current, previous) {
 
 // Fetch historical comparison data from database
 async function fetchHistoricalComparison() {
+  loadingState.setModuleLoading('dashboard-metrics', true, 'Loading historical data...');
   try {
     historicalComparison = await db.getSnapshotComparison(currentComparisonPeriod);
     return historicalComparison;
   } catch (error) {
     console.warn('Failed to fetch historical comparison:', error);
     return null;
+  } finally {
+    loadingState.setModuleLoading('dashboard-metrics', false);
   }
 }
 

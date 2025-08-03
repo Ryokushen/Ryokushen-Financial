@@ -346,6 +346,7 @@ async function deleteRecurringBill(id, appState, onUpdate) {
   }
 
   if (confirm(`Are you sure you want to delete "${bill.name}"?`)) {
+    loadingState.showOperationLock(`Deleting ${bill.name}...`);
     try {
       await db.deleteRecurringBill(id);
       appState.appData.recurringBills = appState.appData.recurringBills.filter(b => b.id !== id);
@@ -353,9 +354,11 @@ async function deleteRecurringBill(id, appState, onUpdate) {
       // Dispatch event for calendar update
       window.dispatchEvent(new CustomEvent('recurring:deleted', { detail: { id } }));
 
+      loadingState.hideOperationLock();
       onUpdate();
       announceToScreenReader('Recurring bill deleted.');
     } catch (error) {
+      loadingState.hideOperationLock();
       debug.error('Error deleting recurring bill:', error);
       showError('Failed to delete recurring bill.');
     }

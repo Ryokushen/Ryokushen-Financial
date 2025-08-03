@@ -173,6 +173,7 @@ async function deleteInvestmentAccount(id, appState, onUpdate) {
       'Are you sure you want to delete this account? This will also unlink any savings goals.'
     )
   ) {
+    loadingState.showOperationLock('Deleting investment account...');
     try {
       const linkedGoals = appState.appData.savingsGoals.filter(goal => goal.linkedAccountId === id);
 
@@ -199,9 +200,11 @@ async function deleteInvestmentAccount(id, appState, onUpdate) {
         a => a.id !== id
       );
 
+      loadingState.hideOperationLock();
       await onUpdate();
       announceToScreenReader('Investment account deleted');
     } catch (error) {
+      loadingState.hideOperationLock();
       debug.error('Error deleting investment account:', error);
       showError('Failed to delete investment account. Please try again.');
     }
