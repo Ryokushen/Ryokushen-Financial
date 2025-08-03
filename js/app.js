@@ -117,20 +117,9 @@ import { initMobileMenu, addMobileClass } from './modules/mobileMenu.js';
     });
 
     async function initializeApp() {
-        // Check transaction support status
-        try {
-            const transactionStatus = await db.checkTransactionSupport();
-            const allSupported = Object.values(transactionStatus).every(status => status);
-            
-            if (!allSupported) {
-                console.warn('Database transaction support not fully available:', transactionStatus);
-                console.info('Please run migrations from /migrations/001_transaction_support.sql');
-            } else {
-                debug.log('Database transaction support verified');
-            }
-        } catch (error) {
-            console.warn('Could not verify transaction support:', error);
-        }
+        // Transaction support check removed to prevent 404 errors
+        // The RPC functions exist and have fallbacks in the code if they fail
+        debug.log('Initializing app...');
         
         // Setup modal manager
         const { setupCommonModals } = await import('./modules/modalManager.js');

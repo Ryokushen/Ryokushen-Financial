@@ -1037,51 +1037,6 @@ class FinancialDatabase {
         }
     }
 
-    /**
-     * Check if RPC functions are available (for migration status)
-     * @returns {Promise<Object>} Status of each RPC function
-     */
-    async checkTransactionSupport() {
-        try {
-            // Check if functions exist by querying pg_proc
-            const { data, error } = await this.supabase.rpc('check_functions_exist', {
-                function_names: ['transfer_funds', 'process_recurring_payment', 'bulk_import_transactions']
-            });
-            
-            if (error) {
-                // If check_functions_exist doesn't exist, fall back to checking individually
-                // This approach avoids calling the actual functions with invalid parameters
-                const functions = ['transfer_funds', 'process_recurring_payment', 'bulk_import_transactions'];
-                const status = {};
-                
-                // For now, assume all functions exist since we've verified they do
-                // This prevents the 404 errors on app startup
-                for (const func of functions) {
-                    status[func] = true;
-                }
-                
-                return status;
-            }
-            
-            // Convert array result to object
-            const status = {};
-            if (data && Array.isArray(data)) {
-                data.forEach(item => {
-                    status[item.function_name] = item.exists;
-                });
-            }
-            
-            return status;
-        } catch (error) {
-            debug.warn('Could not check transaction support:', error);
-            // Return all true to prevent warnings since we know the functions exist
-            return {
-                transfer_funds: true,
-                process_recurring_payment: true,
-                bulk_import_transactions: true
-            };
-        }
-    }
 }
 
 const db = new FinancialDatabase();
