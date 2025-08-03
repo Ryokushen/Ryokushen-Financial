@@ -7,6 +7,7 @@ import { validateForm, ValidationSchemas, ValidationRules } from './validation.j
 import { safeParseFloat, formatCurrency } from './utils.js';
 import { addMoney, subtractMoney, sumMoney, averageMoney } from './financialMath.js';
 import { dataIndex } from './dataIndex.js';
+import { analyticsProcessor } from './analyticsProcessor.js';
 
 /**
  * TransactionManager - Centralized system for managing all transaction operations
@@ -4538,7 +4539,17 @@ class TransactionManager {
    * @param {Array<number>} values - Array of numeric values
    * @returns {Object} Statistics including mean, stdDev, min, max
    */
-  calculateStatistics(values) {
+  async calculateStatistics(values) {
+    // Use Web Worker for large datasets
+    if (values && values.length > 1000) {
+      try {
+        return await analyticsProcessor.calculateStatistics(values);
+      } catch (error) {
+        debug.warn('Failed to use Web Worker for statistics, falling back:', error);
+      }
+    }
+    
+    // Fallback to synchronous calculation for small datasets
     if (!values || values.length === 0) {
       return { mean: 0, stdDev: 0, min: 0, max: 0, count: 0 };
     }
