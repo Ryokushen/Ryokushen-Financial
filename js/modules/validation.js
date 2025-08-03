@@ -519,12 +519,25 @@ export function validateFormWithCrossFields(formData, validationSchema, crossFie
   return { errors: allErrors, hasErrors };
 }
 
-// Real-time validation setup
-export function setupRealtimeValidation(formId, validationSchema) {
+// Real-time validation setup with enhanced feedback
+export function setupRealtimeValidation(formId, validationSchema, options = {}) {
   const form = document.getElementById(formId);
   if (!form) {
     return;
   }
+
+  const {
+    validateOnInput = true,
+    validateOnBlur = true,
+    showSuccessState = true,
+    debounceTime = 300,
+    crossFieldValidator = null,
+    asyncValidators = {}
+  } = options;
+
+  // Track validation state
+  const validationState = {};
+  const debounceTimers = {};
 
   // Add input event listeners for real-time validation
   Object.keys(validationSchema).forEach(fieldName => {
@@ -533,18 +546,181 @@ export function setupRealtimeValidation(formId, validationSchema) {
       return;
     }
 
-    eventManager.addEventListener(field, 'blur', () => {
-      const error = validateField(field.value, validationSchema[fieldName]);
-      if (error) {
-        showFieldError(field.id || fieldName, error);
-      } else {
-        clearFieldError(field.id || fieldName);
+    // Initialize field state
+    validationState[fieldName] = { isValid: true, isDirty: false };
+
+    // Blur event - always validate
+    if (validateOnBlur) {
+      eventManager.addEventListener(field, 'blur', async () => {
+        validationState[fieldName].isDirty = true;
+        await validateFieldWithFeedback(field, fieldName, validationSchema[fieldName], {
+          showSuccessState,
+          asyncValidator: asyncValidators[fieldName],
+          formData: getFormData(form),
+          crossFieldValidator
+        });
+      });
+    }
+
+    // Input event - validate with debounce
+    if (validateOnInput) {
+      eventManager.addEventListener(field, 'input', () => {
+        // Clear existing timer
+        if (debounceTimers[fieldName]) {
+          clearTimeout(debounceTimers[fieldName]);
+        }
+
+        // Show loading state if async validation
+        if (asyncValidators[fieldName] && field.value) {
+          showFieldLoading(field.id || fieldName);
+        }
+
+        // Set new timer
+        debounceTimers[fieldName] = setTimeout(async () => {
+          if (validationState[fieldName].isDirty || field.value) {
+            await validateFieldWithFeedback(field, fieldName, validationSchema[fieldName], {
+              showSuccessState,
+              asyncValidator: asyncValidators[fieldName],
+              formData: getFormData(form),
+              crossFieldValidator
+            });
+          }
+        }, debounceTime);
+      });
+    }
+
+    // Focus event - clear error if field is empty
+    eventManager.addEventListener(field, 'focus', () => {
+      if (!field.value && !validationState[fieldName].isDirty) {
+        clearFieldFeedback(field.id || fieldName);
       }
     });
-
-    eventManager.addEventListener(field, 'input', () => {
-      // Clear error on input
-      clearFieldError(field.id || fieldName);
-    });
   });
+
+  // Return validation state getter for form-level validation
+  return {
+    getValidationState: () => validationState,
+    validateAll: async () => {
+      const results = await Promise.all(
+        Object.keys(validationSchema).map(async fieldName => {
+          const field = form.querySelector(`[name="${fieldName}"], #${fieldName}`);
+          if (field) {
+            validationState[fieldName].isDirty = true;
+            return validateFieldWithFeedback(field, fieldName, validationSchema[fieldName], {
+              showSuccessState,
+              asyncValidator: asyncValidators[fieldName],
+              formData: getFormData(form),
+              crossFieldValidator
+            });
+          }
+          return true;
+        })
+      );
+      return results.every(result => result);
+    }
+  };
+}
+
+// Enhanced field validation with visual feedback
+async function validateFieldWithFeedback(field, fieldName, rules, options = {}) {
+  const { showSuccessState, asyncValidator, formData, crossFieldValidator } = options;
+  
+  // Synchronous validation
+  const error = validateField(field.value, rules);
+  
+  if (error) {
+    showFieldError(field.id || fieldName, error);
+    return false;
+  }
+
+  // Async validation if provided
+  if (asyncValidator && field.value) {
+    try {
+      showFieldLoading(field.id || fieldName);
+      const asyncError = await asyncValidator(field.value, formData);
+      if (asyncError) {
+        showFieldError(field.id || fieldName, asyncError);
+        return false;
+      }
+    } catch (e) {
+      debug.error('Async validation error:', e);
+    }
+  }
+
+  // Cross-field validation if provided
+  if (crossFieldValidator && formData) {
+    const crossFieldErrors = crossFieldValidator(formData);
+    if (crossFieldErrors[fieldName]) {
+      showFieldError(field.id || fieldName, crossFieldErrors[fieldName]);
+      return false;
+    }
+  }
+
+  // All validations passed
+  if (showSuccessState && field.value) {
+    showFieldSuccess(field.id || fieldName);
+  } else {
+    clearFieldFeedback(field.id || fieldName);
+  }
+  
+  return true;
+}
+
+// Show field loading state
+export function showFieldLoading(fieldId) {
+  const field = document.getElementById(fieldId);
+  if (!field) return;
+
+  clearFieldFeedback(fieldId);
+  field.classList.add('field-loading');
+
+  // Add loading indicator
+  let loadingEl = field.parentElement.querySelector('.field-loading-indicator');
+  if (!loadingEl) {
+    loadingEl = document.createElement('div');
+    loadingEl.className = 'field-loading-indicator';
+    loadingEl.innerHTML = '<span class="spinner"></span> Validating...';
+    field.parentElement.appendChild(loadingEl);
+  }
+}
+
+// Show field success state
+export function showFieldSuccess(fieldId) {
+  const field = document.getElementById(fieldId);
+  if (!field) return;
+
+  clearFieldFeedback(fieldId);
+  field.classList.add('field-success');
+
+  // Add success indicator
+  let successEl = field.parentElement.querySelector('.field-success-indicator');
+  if (!successEl) {
+    successEl = document.createElement('div');
+    successEl.className = 'field-success-indicator';
+    successEl.innerHTML = '✓';
+    field.parentElement.appendChild(successEl);
+  }
+}
+
+// Clear all field feedback
+export function clearFieldFeedback(fieldId) {
+  const field = document.getElementById(fieldId);
+  if (!field) return;
+
+  field.classList.remove('field-error', 'field-success', 'field-loading');
+
+  const indicators = field.parentElement.querySelectorAll(
+    '.field-error-message, .field-success-indicator, .field-loading-indicator'
+  );
+  indicators.forEach(el => el.remove());
+}
+
+// Helper to get form data
+function getFormData(form) {
+  const formData = new FormData(form);
+  const data = {};
+  for (const [key, value] of formData.entries()) {
+    data[key] = value;
+  }
+  return data;
 }
