@@ -873,15 +873,13 @@ class PerformanceDashboard {
    */
   async getTopExpensesChartData() {
     try {
-      // Calculate date range
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - this.dateRange);
+      // Get date range
+      const { startDate, endDate } = this.getDateRange();
 
       // Get transactions for the period
       const searchResult = await transactionManager.searchTransactions({
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
+        startDate: startDate,
+        endDate: endDate,
         // Remove type filter to get all transactions, then filter manually
       });
 
