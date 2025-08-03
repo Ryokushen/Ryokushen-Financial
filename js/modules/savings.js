@@ -498,15 +498,8 @@ export function renderSavingsGoals(appState) {
       const linkedAccount = cashAccount || investmentAccount;
       const accountDeleted = !linkedAccount;
 
-      // Calculate current amount based on linked account balance
-      let currentAmount = 0;
-      if (cashAccount) {
-        // For cash accounts, get the balance from the cache or calculate it
-        currentAmount = appState.balanceCache.get(cashAccount.id) || cashAccount.balance || 0;
-      } else if (investmentAccount) {
-        // For investment accounts, use the stored balance
-        currentAmount = investmentAccount.balance || 0;
-      }
+      // Use the goal's tracked current amount, not the entire account balance
+      const currentAmount = goal.currentAmount || 0;
 
       const progress = goal.targetAmount > 0 ? (currentAmount / goal.targetAmount) * 100 : 0;
       const clampedProgress = Math.min(progress, 100);

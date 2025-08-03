@@ -431,26 +431,31 @@ export const calendarUI = {
   },
 
   async openPayScheduleModal() {
-    debug.log('CalendarUI: Opening pay schedule modal');
+    try {
+      debug.log('CalendarUI: Opening pay schedule modal');
 
-    const modal = document.getElementById('pay-schedule-modal');
-    if (!modal) {
-      debug.error('CalendarUI: Pay schedule modal not found');
-      return;
+      const modal = document.getElementById('pay-schedule-modal');
+      if (!modal) {
+        debug.error('CalendarUI: Pay schedule modal not found');
+        return;
+      }
+
+      // Load existing schedules
+      await this.loadExistingSchedules();
+
+      // Setup form event listeners
+      this.setupPayScheduleForm();
+
+      // Show modal
+      modal.style.display = 'block';
+      setTimeout(() => modal.classList.add('modal--open'), 10);
+
+      // Focus on first input
+      document.getElementById('pay-schedule-name')?.focus();
+    } catch (error) {
+      debug.error('CalendarUI: Error opening pay schedule modal', error);
+      showError('Failed to open pay schedule modal');
     }
-
-    // Load existing schedules
-    await this.loadExistingSchedules();
-
-    // Setup form event listeners
-    this.setupPayScheduleForm();
-
-    // Show modal
-    modal.style.display = 'block';
-    setTimeout(() => modal.classList.add('modal--open'), 10);
-
-    // Focus on first input
-    document.getElementById('pay-schedule-name')?.focus();
   },
 
   async loadExistingSchedules() {
@@ -631,8 +636,14 @@ export const calendarUI = {
   },
 
   async editPaySchedule(id) {
-    // TODO: Implement edit functionality
-    debug.log('CalendarUI: Edit pay schedule', id);
+    try {
+      // TODO: Implement edit functionality
+      debug.log('CalendarUI: Edit pay schedule', id);
+      showInfo('Edit functionality coming soon');
+    } catch (error) {
+      debug.error('CalendarUI: Error editing pay schedule', error);
+      showError('Failed to edit pay schedule');
+    }
   },
 
   async deletePaySchedule(id) {
