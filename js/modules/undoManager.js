@@ -1,7 +1,7 @@
 // js/modules/undoManager.js - Undo/Redo System for Critical Operations
 
 import { debug } from './debug.js';
-import { showSuccess, showInfo, showError } from './ui.js';
+import { showSuccess, showError } from './ui.js';
 import { eventManager } from './eventManager.js';
 
 /**
@@ -84,7 +84,7 @@ class UndoManager {
       this.saveToSession();
       
       // Show feedback
-      showInfo(`Undid: ${command.description}`);
+      showSuccess(`Undid: ${command.description}`);
       
       return true;
       
@@ -123,7 +123,7 @@ class UndoManager {
       this.saveToSession();
       
       // Show feedback
-      showInfo(`Redid: ${command.description}`);
+      showSuccess(`Redid: ${command.description}`);
       
       return true;
       
