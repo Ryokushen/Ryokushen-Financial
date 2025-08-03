@@ -8,6 +8,7 @@ import { safeParseFloat, formatCurrency } from './utils.js';
 import { addMoney, subtractMoney, sumMoney, averageMoney } from './financialMath.js';
 import { dataIndex } from './dataIndex.js';
 import { analyticsProcessor } from './analyticsProcessor.js';
+import { undoManager, TransactionCommand } from './undoManager.js';
 
 /**
  * TransactionManager - Centralized system for managing all transaction operations
@@ -599,6 +600,38 @@ class TransactionManager {
   }
 
   // ========== CORE CRUD OPERATIONS ==========
+
+  /**
+   * Add a new transaction with undo support
+   * @param {Object} transactionData - Transaction data  
+   * @param {Object} options - Additional options
+   * @returns {Promise<Object>} Created transaction
+   */
+  async addTransactionWithUndo(transactionData, options = {}) {
+    // Create and execute command through undoManager
+    const command = new TransactionCommand(transactionData, 'add', this);
+    await undoManager.execute(command);
+    return command.savedTransaction;
+  }
+
+  /**
+   * Delete a transaction with undo support
+   * @param {number} id - Transaction ID
+   * @param {Object} options - Additional options  
+   * @returns {Promise<boolean>} Success status
+   */
+  async deleteTransactionWithUndo(id, options = {}) {
+    // Get full transaction data first
+    const transaction = await this.getTransaction(id);
+    if (!transaction) {
+      throw new Error(`Transaction ${id} not found`);
+    }
+    
+    // Create and execute command through undoManager
+    const command = new TransactionCommand(transaction, 'delete', this);
+    await undoManager.execute(command);
+    return true;
+  }
 
   /**
    * Add a new transaction

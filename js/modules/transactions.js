@@ -1126,11 +1126,8 @@ async function addNewTransaction(transactionData, appState, onUpdate) {
       });
     }
 
-    // Use TransactionManager for atomic operation
-    const savedTransaction = await transactionManager.createTransactionWithBalanceUpdate(
-      transactionData,
-      balanceUpdates
-    );
+    // Use TransactionManager with undo support
+    const savedTransaction = await transactionManager.addTransactionWithUndo(transactionData);
 
     // Update app state
     const newTransaction = {
@@ -1664,8 +1661,8 @@ async function deleteTransaction(id, appState, onUpdate) {
         });
       }
 
-      // Use TransactionManager for atomic deletion
-      await transactionManager.deleteTransactionWithBalanceReversal(id, balanceReversals);
+      // Use TransactionManager with undo support
+      await transactionManager.deleteTransactionWithUndo(id);
 
       // Check if this was a recurring bill payment and revert the due date
       await handleRecurringBillReversion(transactionToDelete, appState);

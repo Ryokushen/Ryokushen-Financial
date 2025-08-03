@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Undo/Redo System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        button.secondary {
+            background: #2196F3;
+        }
+        #log {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #4CAF50;
+            padding-left: 10px;
+        }
+        .error {
+            border-left-color: #f44336;
+            color: #ff9999;
+        }
+        .info {
+            border-left-color: #2196F3;
+            color: #87CEEB;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Undo/Redo System</h1>
+        
+        <div class="toolbar-actions">
+            <!-- Undo/Redo buttons will be added here by the system -->
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <h2>Test Actions</h2>
+            <button id="test-add">Add Test Transaction</button>
+            <button id="test-delete">Delete Last Transaction</button>
+            <button id="test-batch">Batch Operation (Add 3)</button>
+            <button id="clear-history">Clear Undo History</button>
+        </div>
+        
+        <div id="log">
+            <h3>Log</h3>
+        </div>
+    </div>
+    
+    <script type="module">
+        // Mock dependencies
+        window.debug = {
+            log: (...args) => console.log(...args),
+            warn: (...args) => console.warn(...args),
+            error: (...args) => console.error(...args)
+        };
+        
+        // Mock UI functions
+        window.showInfo = (msg) => addLog(msg, 'info');
+        window.showError = (msg) => addLog(msg, 'error');
+        window.showSuccess = (msg) => addLog(msg, 'success');
+        
+        // Mock eventManager
+        window.eventManager = {
+            addEventListener: (element, event, handler) => {
+                element.addEventListener(event, handler);
+            }
+        };
+        
+        // Log function
+        function addLog(message, type = '') {
+            const log = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        // Mock TransactionManager
+        class MockTransactionManager {
+            constructor() {
+                this.transactions = [];
+                this.nextId = 1;
+            }
+            
+            async addTransaction(data, options = {}) {
+                const transaction = {
+                    id: this.nextId++,
+                    ...data,
+                    timestamp: new Date().toISOString()
+                };
+                this.transactions.push(transaction);
+                addLog(`Added transaction #${transaction.id}: ${transaction.description}`);
+                return transaction;
+            }
+            
+            async deleteTransaction(id, options = {}) {
+                const index = this.transactions.findIndex(t => t.id === id);
+                if (index !== -1) {
+                    const deleted = this.transactions.splice(index, 1)[0];
+                    addLog(`Deleted transaction #${id}: ${deleted.description}`);
+                    return true;
+                }
+                throw new Error(`Transaction ${id} not found`);
+            }
+            
+            async getTransaction(id) {
+                return this.transactions.find(t => t.id === id) || null;
+            }
+        }
+        
+        // Import and test
+        import { undoManager, TransactionCommand, BatchCommand } from './js/modules/undoManager.js';
+        
+        const mockTransactionManager = new MockTransactionManager();
+        let transactionCounter = 1;
+        
+        // Test functions
+        async function addTestTransaction() {
+            try {
+                const transactionData = {
+                    description: `Test Transaction ${transactionCounter++}`,
+                    amount: Math.floor(Math.random() * 100) + 10,
+                    category: 'Test',
+                    date: new Date().toISOString().split('T')[0]
+                };
+                
+                const command = new TransactionCommand(transactionData, 'add', mockTransactionManager);
+                await undoManager.execute(command);
+                
+                addLog(`Created transaction with command: ${command.description}`, 'success');
+                updateStatus();
+            } catch (error) {
+                addLog(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function deleteLastTransaction() {
+            try {
+                const lastTransaction = mockTransactionManager.transactions[mockTransactionManager.transactions.length - 1];
+                if (!lastTransaction) {
+                    addLog('No transactions to delete', 'error');
+                    return;
+                }
+                
+                const command = new TransactionCommand(lastTransaction, 'delete', mockTransactionManager);
+                await undoManager.execute(command);
+                
+                addLog(`Deleted transaction with command: ${command.description}`, 'success');
+                updateStatus();
+            } catch (error) {
+                addLog(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function batchOperation() {
+            try {
+                const commands = [];
+                for (let i = 0; i < 3; i++) {
+                    const transactionData = {
+                        description: `Batch Transaction ${i + 1}`,
+                        amount: (i + 1) * 10,
+                        category: 'Batch',
+                        date: new Date().toISOString().split('T')[0]
+                    };
+                    commands.push(new TransactionCommand(transactionData, 'add', mockTransactionManager));
+                }
+                
+                const batchCommand = new BatchCommand('Add 3 batch transactions', commands);
+                await undoManager.execute(batchCommand);
+                
+                addLog(`Executed batch command: ${batchCommand.description}`, 'success');
+                updateStatus();
+            } catch (error) {
+                addLog(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function updateStatus() {
+            const status = undoManager.getStatus();
+            addLog(`Status - Can undo: ${status.canUndo}, Can redo: ${status.canRedo}`, 'info');
+            if (status.lastUndo) {
+                addLog(`Last undoable: ${status.lastUndo}`, 'info');
+            }
+            
+            // Show current transactions
+            addLog(`Current transactions: ${mockTransactionManager.transactions.length}`, 'info');
+            mockTransactionManager.transactions.forEach(t => {
+                addLog(`  - #${t.id}: ${t.description} ($${t.amount})`, '');
+            });
+        }
+        
+        // Setup event listeners
+        document.getElementById('test-add').addEventListener('click', addTestTransaction);
+        document.getElementById('test-delete').addEventListener('click', deleteLastTransaction);
+        document.getElementById('test-batch').addEventListener('click', batchOperation);
+        document.getElementById('clear-history').addEventListener('click', () => {
+            undoManager.clear();
+            addLog('Undo/redo history cleared', 'info');
+            updateStatus();
+        });
+        
+        // Listen for undo status changes
+        window.addEventListener('undo:statusChanged', (event) => {
+            addLog(`Undo status changed`, 'info');
+        });
+        
+        // Initial log
+        addLog('Undo/Redo test page loaded', 'success');
+        addLog('Use Ctrl+Z for undo, Ctrl+Y for redo', 'info');
+        updateStatus();
+    </script>
+</body>
+</html>
