@@ -1315,6 +1315,17 @@ small:not(.settings-container small) {
   font-size: var(--font-size-xs);
 }
 
+/* Form hint for date range modal */
+.form-hint {
+  color: #94a3b8;
+  font-size: var(--font-size-sm);
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+}
+
 /* Checkboxes and toggles */
 input[type="checkbox"] {
   width: auto !important;

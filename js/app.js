@@ -27,6 +27,7 @@ import { calendar } from './modules/calendar.js';
 import { eventManager } from './modules/eventManager.js';
 import { populateAllCategoryDropdowns } from './modules/categories.js';
 import { cashFlowSankey } from './modules/cashFlowSankey.js';
+import { initMobileMenu, addMobileClass } from './modules/mobileMenu.js';
 
 // Initialize app after auth is ready
 (async function initApp() {
@@ -578,6 +579,10 @@ import { cashFlowSankey } from './modules/cashFlowSankey.js';
     }
 
     function setupEventListeners() {
+        // Initialize mobile menu
+        initMobileMenu();
+        addMobileClass();
+        
         const onUpdate = () => {
             // Recalculate account balances for cash accounts
             calculateAccountBalances();

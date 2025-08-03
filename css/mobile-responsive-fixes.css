@@ -1,0 +1,420 @@
+/* mobile-responsive-fixes.css - Fixes for mobile responsiveness issues */
+
+/* ===== GENERAL RESPONSIVE IMPROVEMENTS ===== */
+
+/* Convert fixed widths to responsive units */
+.sankey-diagram {
+    min-width: 100%; /* Changed from 1000px */
+    overflow-x: auto; /* Allow horizontal scroll on mobile */
+}
+
+.zoom-btn {
+    width: 2rem; /* Changed from 32px */
+    height: 2rem; /* Use rem for better scaling */
+}
+
+.sankey-node {
+    min-width: min(150px, 25vw); /* Responsive min-width */
+}
+
+.sankey-node-content {
+    min-width: min(180px, 30vw); /* Responsive min-width */
+}
+
+/* ===== MOBILE-FIRST LAYOUT ADJUSTMENTS ===== */
+
+/* Base mobile styles */
+@media (max-width: 768px) {
+    /* Make containers full width on mobile */
+    .app-container,
+    .main-content,
+    .content-area {
+        padding: 0.5rem;
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+    
+    /* Stack layouts vertically on mobile */
+    .dashboard-grid,
+    .two-column,
+    .three-column {
+        grid-template-columns: 1fr !important;
+        gap: 1rem;
+    }
+    
+    /* Adjust card layouts */
+    .card,
+    .metric-card,
+    .bill-card {
+        padding: 1rem;
+        margin: 0.5rem 0;
+    }
+    
+    /* Make tables scrollable */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    table {
+        min-width: 100%;
+    }
+    
+    /* Adjust button sizes for touch */
+    .btn,
+    button {
+        min-height: 44px; /* iOS touch target size */
+        padding: 0.75rem 1rem;
+    }
+    
+    /* Icon buttons should be larger on mobile */
+    .icon-btn {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0.5rem;
+    }
+    
+    /* Modal adjustments */
+    .modal {
+        margin: 0;
+        max-height: 100vh;
+        width: 100%;
+    }
+    
+    .modal-content {
+        margin: 0;
+        max-width: 100%;
+        border-radius: 0;
+        max-height: 100vh;
+        overflow-y: auto;
+    }
+    
+    /* Form adjustments */
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="email"],
+    select,
+    textarea {
+        width: 100%;
+        font-size: 16px; /* Prevent zoom on iOS */
+        padding: 0.75rem;
+    }
+    
+    /* Navigation adjustments */
+    .sidebar {
+        position: fixed;
+        left: -100%;
+        width: 80%;
+        max-width: 300px;
+        z-index: 1000;
+        transition: left 0.3s ease;
+    }
+    
+    .sidebar.mobile-open {
+        left: 0;
+    }
+    
+    /* Tab navigation */
+    .tab-nav {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        white-space: nowrap;
+        padding-bottom: 0.5rem;
+    }
+    
+    .tab-nav button {
+        flex-shrink: 0;
+    }
+    
+    /* Chart adjustments */
+    .chart-container {
+        height: 300px; /* Fixed height for mobile */
+    }
+    
+    /* Analytics grid */
+    .analytics-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Transaction list adjustments */
+    .transaction-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .transaction-amount {
+        align-self: flex-end;
+    }
+    
+    /* Recurring bills grid */
+    #recurring-bills-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Investment holdings */
+    .holdings-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Debt accounts grid */
+    .debt-accounts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== TABLET ADJUSTMENTS ===== */
+@media (min-width: 769px) and (max-width: 1024px) {
+    /* Two column layout for tablets */
+    .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .three-column {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    /* Modal width adjustment */
+    .modal-content {
+        max-width: 90%;
+    }
+}
+
+/* ===== TOUCH-FRIENDLY IMPROVEMENTS ===== */
+
+/* Increase tap targets */
+@media (pointer: coarse) {
+    /* All clickable elements should be at least 44x44px */
+    a,
+    button,
+    input[type="checkbox"],
+    input[type="radio"],
+    .clickable {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* Add padding to small buttons */
+    .btn-small {
+        padding: 0.5rem 1rem;
+    }
+    
+    /* Checkbox and radio adjustments */
+    input[type="checkbox"],
+    input[type="radio"] {
+        width: 20px;
+        height: 20px;
+    }
+    
+    /* Dropdown adjustments */
+    select {
+        padding-right: 2.5rem; /* More space for touch */
+    }
+}
+
+/* ===== LANDSCAPE MOBILE ===== */
+@media (max-width: 768px) and (orientation: landscape) {
+    /* Reduce vertical spacing in landscape */
+    .card {
+        padding: 0.75rem;
+    }
+    
+    .form-group {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Reduce header height */
+    .app-header {
+        padding: 0.5rem 1rem;
+    }
+}
+
+/* ===== SWIPE GESTURES ===== */
+
+/* Enable horizontal scrolling for certain elements */
+.swipeable-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+}
+
+.swipeable-item {
+    scroll-snap-align: start;
+}
+
+/* ===== LOADING STATES FOR MOBILE ===== */
+
+/* Better loading indicators for mobile */
+@media (max-width: 768px) {
+    .loading-overlay {
+        background-color: rgba(0, 0, 0, 0.8);
+    }
+    
+    .spinner {
+        width: 50px;
+        height: 50px;
+    }
+}
+
+/* ===== FIX SPECIFIC ISSUES ===== */
+
+/* Fix cash flow sankey for mobile */
+@media (max-width: 768px) {
+    .cash-flow-sankey {
+        padding: 0.5rem;
+    }
+    
+    .sankey-diagram {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .sankey-scroll-wrapper {
+        max-width: 100vw;
+    }
+    
+    /* Make nodes stack vertically on very small screens */
+    @media (max-width: 480px) {
+        .sankey-column {
+            flex-direction: column;
+            min-width: 100%;
+        }
+    }
+}
+
+/* Fix overflow issues */
+* {
+    max-width: 100vw;
+}
+
+/* Prevent horizontal scroll */
+body {
+    overflow-x: hidden;
+}
+
+/* ===== MOBILE MENU TOGGLE ===== */
+
+.mobile-menu-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    z-index: 10;
+}
+
+.mobile-menu-toggle span {
+    width: 30px;
+    height: 3px;
+    background: var(--color-text, #ffffff);
+    border-radius: 10px;
+    transition: all 0.3s;
+}
+
+.mobile-menu-toggle.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.mobile-menu-toggle.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.mobile-menu-toggle.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -6px);
+}
+
+@media (max-width: 768px) {
+    .mobile-menu-toggle {
+        display: flex;
+    }
+    
+    .header-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+    
+    .header-content h1 {
+        font-size: 1.25rem;
+        flex: 1;
+        text-align: center;
+    }
+    
+    .user-actions {
+        display: none; /* Hide on mobile, show in menu */
+    }
+    
+    /* Mobile navigation overlay */
+    .tab-nav {
+        position: fixed;
+        top: 60px;
+        left: -100%;
+        width: 80%;
+        max-width: 300px;
+        height: calc(100vh - 60px);
+        background: var(--background-secondary, #1a1a1a);
+        flex-direction: column;
+        align-items: stretch;
+        padding: 1rem;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+        transition: left 0.3s ease;
+        z-index: 999;
+        overflow-y: auto;
+    }
+    
+    .tab-nav.mobile-open {
+        left: 0;
+    }
+    
+    .tab-nav .tab-btn {
+        width: 100%;
+        justify-content: flex-start;
+        padding: 1rem;
+        margin: 0.25rem 0;
+    }
+}
+
+/* ===== ACCESSIBILITY IMPROVEMENTS ===== */
+
+/* Focus states for mobile */
+@media (max-width: 768px) {
+    :focus {
+        outline: 3px solid var(--color-primary);
+        outline-offset: 2px;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .btn {
+        border: 2px solid currentColor;
+    }
+}
+
+/* ===== PERFORMANCE OPTIMIZATIONS ===== */
+
+/* Reduce animations on mobile for better performance */
+@media (max-width: 768px) {
+    * {
+        animation-duration: 0.2s !important;
+        transition-duration: 0.2s !important;
+    }
+}
+
+/* Disable hover effects on touch devices */
+@media (hover: none) {
+    .btn:hover,
+    .card:hover {
+        transform: none;
+    }
+}

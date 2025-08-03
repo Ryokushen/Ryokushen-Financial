@@ -8,6 +8,7 @@ import { isPrivacyMode } from './privacy.js';
 import { showError, showSuccess } from './ui.js';
 import { simpleCharts } from './simpleCharts.js';
 import { addMoney, sumMoney } from './financialMath.js';
+import { modalManager } from './modalManager.js';
 
 class PerformanceDashboard {
   constructor() {
@@ -15,6 +16,9 @@ class PerformanceDashboard {
     this.currentView = 'trends';
     this.currentDashboardView = 'metrics'; // Track metrics vs charts view
     this.dateRange = 30; // Default to last 30 days
+    this.customStartDate = null;
+    this.customEndDate = null;
+    this.isCustomRange = false;
     this.data = {
       trends: null,
       categories: null,
@@ -187,6 +191,161 @@ class PerformanceDashboard {
     if (exportBtn) {
       exportBtn.addEventListener('click', () => this.exportChart());
     }
+
+    // Setup date range modal
+    this.setupDateRangeModal();
+  }
+
+  /**
+   * Setup date range modal and its event handlers
+   */
+  setupDateRangeModal() {
+    // Register modal with modalManager
+    modalManager.register('date-range-modal', {
+      onOpen: () => {
+        // Pre-populate dates based on current range
+        const endDate = new Date();
+        const startDate = new Date();
+        
+        if (this.isCustomRange && this.customStartDate && this.customEndDate) {
+          // Use existing custom dates
+          document.getElementById('date-range-start').value = this.customStartDate;
+          document.getElementById('date-range-end').value = this.customEndDate;
+        } else {
+          // Calculate based on current dateRange
+          startDate.setDate(startDate.getDate() - this.dateRange);
+          document.getElementById('date-range-start').value = startDate.toISOString().split('T')[0];
+          document.getElementById('date-range-end').value = endDate.toISOString().split('T')[0];
+        }
+        
+        this.updateDateRangeHint();
+      }
+    });
+
+    // Handle form submission
+    const dateRangeForm = document.getElementById('date-range-form');
+    if (dateRangeForm) {
+      dateRangeForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.applyCustomDateRange();
+      });
+    }
+
+    // Handle cancel button
+    const cancelBtn = document.getElementById('cancel-date-range-btn');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        modalManager.close('date-range-modal');
+      });
+    }
+
+    // Handle date changes to update hint
+    const startInput = document.getElementById('date-range-start');
+    const endInput = document.getElementById('date-range-end');
+    if (startInput && endInput) {
+      startInput.addEventListener('change', () => this.updateDateRangeHint());
+      endInput.addEventListener('change', () => this.updateDateRangeHint());
+    }
+  }
+
+  /**
+   * Update the hint text showing the date range duration
+   */
+  updateDateRangeHint() {
+    const startInput = document.getElementById('date-range-start');
+    const endInput = document.getElementById('date-range-end');
+    const hintElement = document.getElementById('date-range-hint');
+    
+    if (!startInput.value || !endInput.value || !hintElement) {
+      return;
+    }
+    
+    const startDate = new Date(startInput.value);
+    const endDate = new Date(endInput.value);
+    const diffTime = Math.abs(endDate - startDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (endDate < startDate) {
+      hintElement.textContent = 'End date must be after start date';
+      hintElement.style.color = '#ef4444';
+    } else if (diffDays > 730) { // More than 2 years
+      hintElement.textContent = 'Date range cannot exceed 2 years';
+      hintElement.style.color = '#ef4444';
+    } else {
+      hintElement.textContent = `${diffDays} day${diffDays !== 1 ? 's' : ''} selected`;
+      hintElement.style.color = '#94a3b8';
+    }
+  }
+
+  /**
+   * Apply the custom date range
+   */
+  async applyCustomDateRange() {
+    const startInput = document.getElementById('date-range-start');
+    const endInput = document.getElementById('date-range-end');
+    
+    if (!startInput.value || !endInput.value) {
+      showError('Please select both start and end dates');
+      return;
+    }
+    
+    const startDate = new Date(startInput.value);
+    const endDate = new Date(endInput.value);
+    
+    // Validate dates
+    if (endDate < startDate) {
+      showError('End date must be after start date');
+      return;
+    }
+    
+    const diffTime = Math.abs(endDate - startDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 730) { // More than 2 years
+      showError('Date range cannot exceed 2 years');
+      return;
+    }
+    
+    // Store custom dates
+    this.customStartDate = startInput.value;
+    this.customEndDate = endInput.value;
+    this.dateRange = diffDays;
+    this.isCustomRange = true;
+    
+    // Update button text to show custom range
+    document.querySelectorAll('.date-range-btn').forEach(btn => {
+      if (btn.dataset.range === 'custom') {
+        btn.classList.add('active');
+        const rangeText = `${formatDate(startDate)} - ${formatDate(endDate)}`;
+        btn.textContent = rangeText.length > 20 ? `Custom (${diffDays}d)` : rangeText;
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+    
+    // Close modal and reload data
+    modalManager.close('date-range-modal');
+    await this.loadDashboardData();
+  }
+
+  /**
+   * Get the current date range based on settings
+   */
+  getDateRange() {
+    if (this.isCustomRange && this.customStartDate && this.customEndDate) {
+      return {
+        startDate: this.customStartDate,
+        endDate: this.customEndDate
+      };
+    } else {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - this.dateRange);
+      return {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+      };
+    }
   }
 
   /**
@@ -305,11 +464,21 @@ class PerformanceDashboard {
 
     // Update date range
     if (range === 'custom') {
-      // TODO: Show date picker modal
+      // Show date picker modal
+      modalManager.open('date-range-modal');
       return;
     }
 
+    // Reset custom range flag when selecting preset range
+    this.isCustomRange = false;
     this.dateRange = parseInt(range);
+    
+    // Reset custom button text
+    const customBtn = document.querySelector('.date-range-btn[data-range="custom"]');
+    if (customBtn) {
+      customBtn.textContent = 'Custom Range';
+    }
+    
     await this.loadDashboardData();
   }
 

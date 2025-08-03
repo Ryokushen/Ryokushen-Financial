@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="css/cash-flow-sankey.css">
     <link rel="stylesheet" href="css/pay-calculator.css">
     <link rel="stylesheet" href="css/data-integrity.css">
+    <link rel="stylesheet" href="css/mobile-responsive-fixes.css">
 </head>
 
 <body>
@@ -36,6 +37,11 @@
     <div class="container">
         <header class="header">
             <div class="header-content">
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle navigation menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
                 <h1>Ryokushen Financial</h1>
                 <div class="user-actions">
                     <span class="user-email" id="user-email"></span>
@@ -2232,6 +2238,37 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn--secondary" id="close-advanced-search-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Date Range Modal for Analytics -->
+    <div id="date-range-modal" class="modal" tabindex="-1" role="dialog" aria-labelledby="date-range-modal-title">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 id="date-range-modal-title">Custom Date Range</h3>
+                <button class="close-btn" id="close-date-range-modal" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="date-range-form">
+                    <div class="form-group">
+                        <label class="form-label" for="date-range-start">Start Date</label>
+                        <input type="date" id="date-range-start" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="date-range-end">End Date</label>
+                        <input type="date" id="date-range-end" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <div class="form-hint" id="date-range-hint">
+                            <!-- Dynamic hint will be shown here -->
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn--secondary" id="cancel-date-range-btn">Cancel</button>
+                        <button type="submit" class="btn btn--primary" id="apply-date-range-btn">Apply</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
