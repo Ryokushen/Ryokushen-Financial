@@ -542,7 +542,7 @@ import { cashFlowSankey } from './modules/cashFlowSankey.js';
         appState.appData.transactions.forEach(transaction => {
             if (transaction.account_id && balanceMap.has(transaction.account_id)) {
                 const currentBalance = balanceMap.get(transaction.account_id);
-                balanceMap.set(transaction.account_id, currentBalance + transaction.amount);
+                balanceMap.set(transaction.account_id, addMoney(currentBalance, transaction.amount));
             }
         });
 

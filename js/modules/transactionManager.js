@@ -5,7 +5,7 @@ import { debug } from './debug.js';
 import { eventManager } from './eventManager.js';
 import { validateForm, ValidationSchemas, ValidationRules } from './validation.js';
 import { safeParseFloat, formatCurrency } from './utils.js';
-import { addMoney, subtractMoney } from './financialMath.js';
+import { addMoney, subtractMoney, sumMoney, averageMoney } from './financialMath.js';
 import { dataIndex } from './dataIndex.js';
 
 /**
@@ -1967,10 +1967,10 @@ class TransactionManager {
       const amount = t.amount;
 
       if (amount > 0) {
-        stats.totalIncome += amount;
+        stats.totalIncome = addMoney(stats.totalIncome, amount);
         stats.largestIncome = Math.max(stats.largestIncome, amount);
       } else {
-        stats.totalExpenses += Math.abs(amount);
+        stats.totalExpenses = addMoney(stats.totalExpenses, Math.abs(amount));
         stats.largestExpense = Math.max(stats.largestExpense, Math.abs(amount));
       }
 
@@ -1980,7 +1980,7 @@ class TransactionManager {
         stats.categoryTotals[t.category] = 0;
       }
       stats.categoryCounts[t.category]++;
-      stats.categoryTotals[t.category] += amount;
+      stats.categoryTotals[t.category] = addMoney(stats.categoryTotals[t.category], amount);
 
       // Monthly statistics
       const monthKey = t.date.substring(0, 7); // YYYY-MM
@@ -1988,15 +1988,15 @@ class TransactionManager {
         stats.monthlyTotals[monthKey] = { income: 0, expenses: 0, net: 0 };
       }
       if (amount > 0) {
-        stats.monthlyTotals[monthKey].income += amount;
+        stats.monthlyTotals[monthKey].income = addMoney(stats.monthlyTotals[monthKey].income, amount);
       } else {
-        stats.monthlyTotals[monthKey].expenses += Math.abs(amount);
+        stats.monthlyTotals[monthKey].expenses = addMoney(stats.monthlyTotals[monthKey].expenses, Math.abs(amount));
       }
-      stats.monthlyTotals[monthKey].net += amount;
+      stats.monthlyTotals[monthKey].net = addMoney(stats.monthlyTotals[monthKey].net, amount);
     });
 
     // Calculate derived statistics
-    stats.netAmount = stats.totalIncome - stats.totalExpenses;
+    stats.netAmount = subtractMoney(stats.totalIncome, stats.totalExpenses);
     stats.averageTransaction =
       stats.totalTransactions > 0 ? stats.netAmount / stats.totalTransactions : 0;
 
@@ -2776,10 +2776,7 @@ class TransactionManager {
     // Amount statistics
     const amounts = transactions.map(t => Math.abs(t.amount)).filter(a => a > 0);
 
-    const averageAmount =
-      amounts.length > 0
-        ? Math.round((amounts.reduce((sum, a) => sum + a, 0) / amounts.length) * 100) / 100
-        : null;
+    const averageAmount = amounts.length > 0 ? averageMoney(amounts) : null;
 
     // Most common values
     const mostCommonCategory =
@@ -3007,13 +3004,9 @@ class TransactionManager {
 
       // Calculate totals before pagination
       const totalCount = filtered.length;
-      const totalAmount = filtered.reduce((sum, t) => sum + parseFloat(t.amount), 0);
-      const totalIncome = filtered
-        .filter(t => parseFloat(t.amount) > 0)
-        .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-      const totalExpense = filtered
-        .filter(t => parseFloat(t.amount) < 0)
-        .reduce((sum, t) => sum + Math.abs(parseFloat(t.amount)), 0);
+      const totalAmount = sumMoney(filtered.map(t => t.amount));
+      const totalIncome = sumMoney(filtered.filter(t => t.amount > 0).map(t => t.amount));
+      const totalExpense = sumMoney(filtered.filter(t => t.amount < 0).map(t => Math.abs(t.amount)));
 
       // Apply pagination
       const paginated = filtered.slice(offset, offset + limit);

@@ -487,8 +487,8 @@ function updateFocusCharts(appData) {
     if (!expenseByCategory[category]) {
       expenseByCategory[category] = 0;
     }
-    expenseByCategory[category] += Math.abs(t.amount);
-    totalExpenses += Math.abs(t.amount);
+    expenseByCategory[category] = addMoney(expenseByCategory[category], Math.abs(t.amount));
+    totalExpenses = addMoney(totalExpenses, Math.abs(t.amount));
   });
 
   // Sort by amount and take top 5

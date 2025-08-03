@@ -7,6 +7,7 @@ import { eventManager } from './eventManager.js';
 import { isPrivacyMode } from './privacy.js';
 import { showError, showSuccess } from './ui.js';
 import { simpleCharts } from './simpleCharts.js';
+import { addMoney, sumMoney } from './financialMath.js';
 
 class PerformanceDashboard {
   constructor() {
@@ -727,8 +728,8 @@ class PerformanceDashboard {
           // Include regular expenses (negative) and all debt payments
           const category = transaction.category || 'Uncategorized';
           const amount = Math.abs(transaction.amount);
-          expensesByCategory[category] = (expensesByCategory[category] || 0) + amount;
-          totalExpenses += amount;
+          expensesByCategory[category] = addMoney(expensesByCategory[category] || 0, amount);
+          totalExpenses = addMoney(totalExpenses, amount);
         }
       });
 
