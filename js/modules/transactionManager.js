@@ -3672,20 +3672,34 @@ class TransactionManager {
   async getSpendingTrends(options = {}) {
     try {
       const startTime = Date.now();
-      const { months = 12, categories = [], groupBy = 'month', includeIncome = false } = options;
+      const { 
+        months = 12, 
+        startDate: customStartDate, 
+        endDate: customEndDate,
+        categories = [], 
+        groupBy = 'month', 
+        includeIncome = false 
+      } = options;
+
+      // Determine date range - use custom dates if provided, otherwise use months
+      let startDate, endDate;
+      if (customStartDate && customEndDate) {
+        startDate = new Date(customStartDate);
+        endDate = new Date(customEndDate);
+      } else {
+        endDate = new Date();
+        startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - months);
+      }
 
       // Check analytics cache first
-      const cacheKey = `spending_trends_${months}_${groupBy}_${includeIncome}_${categories.join(',')}`;
+      const dateKey = customStartDate ? `${customStartDate}_${customEndDate}` : `months_${months}`;
+      const cacheKey = `spending_trends_${dateKey}_${groupBy}_${includeIncome}_${categories.join(',')}`;
       const cached = await this.getAnalyticsFromCache(cacheKey);
       if (cached) {
         debug.log('Analytics cache hit for spending trends');
         return cached;
       }
-
-      // Calculate date range
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setMonth(startDate.getMonth() - months);
 
       // Get transactions in date range
       const transactions = await database.getTransactions();
@@ -3829,19 +3843,34 @@ class TransactionManager {
    */
   async getMerchantAnalysis(options = {}) {
     try {
-      const { months = 6, minTransactions = 2, limit = 20 } = options;
+      const { 
+        months = 6, 
+        startDate: customStartDate,
+        endDate: customEndDate,
+        minTransactions = 2, 
+        limit = 20 
+      } = options;
+
+      // Determine date range - use custom dates if provided, otherwise use months
+      let startDate, endDate;
+      if (customStartDate && customEndDate) {
+        startDate = new Date(customStartDate);
+        endDate = new Date(customEndDate);
+      } else {
+        endDate = new Date();
+        startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - months);
+      }
 
       // Check cache
-      const cacheKey = `merchant_analysis_${months}_${minTransactions}_${limit}`;
+      const dateKey = customStartDate ? `${customStartDate}_${customEndDate}` : `months_${months}`;
+      const cacheKey = `merchant_analysis_${dateKey}_${minTransactions}_${limit}`;
       const cached = await this.getAnalyticsFromCache(cacheKey);
       if (cached) {
         return cached;
       }
 
       // Get transactions
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setMonth(startDate.getMonth() - months);
 
       const transactions = await database.getTransactions();
       const filtered = transactions.filter(t => {
@@ -4132,14 +4161,22 @@ class TransactionManager {
         sensitivity = 'medium',
         categories = [],
         lookbackDays = 90,
+        startDate: customStartDate,
+        endDate: customEndDate,
         methods = ['zscore', 'iqr'],
         includePositive = true,
       } = options;
 
-      // Get transactions for analysis
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - lookbackDays);
+      // Determine date range - use custom dates if provided, otherwise use lookbackDays
+      let startDate, endDate;
+      if (customStartDate && customEndDate) {
+        startDate = new Date(customStartDate);
+        endDate = new Date(customEndDate);
+      } else {
+        endDate = new Date();
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - lookbackDays);
+      }
 
       const searchResult = await this.searchTransactions({
         dateRange: {

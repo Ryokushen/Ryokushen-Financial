@@ -494,15 +494,20 @@ class PerformanceDashboard {
     this.showLoadingState();
 
     try {
+      // Get the actual date range
+      const { startDate, endDate } = this.getDateRange();
+      
       // Batch all data requests for efficiency
       const [trends, anomalies, predictions, insights, merchants, dataQuality, systemMetrics] =
         await Promise.all([
           transactionManager.getSpendingTrends({
-            months: Math.ceil(this.dateRange / 30),
+            startDate,
+            endDate,
             groupBy: 'month',
           }),
           transactionManager.detectAnomalies({
-            lookbackDays: this.dateRange,
+            startDate,
+            endDate,
             sensitivity: 'medium',
           }),
           transactionManager.predictMonthlySpending({
@@ -511,7 +516,8 @@ class PerformanceDashboard {
           }),
           transactionManager.getTransactionInsights(),
           transactionManager.getMerchantAnalysis({
-            months: Math.ceil(this.dateRange / 30),
+            startDate,
+            endDate,
             limit: 10,
           }),
           transactionManager.getDataQualityReport(),
@@ -520,7 +526,8 @@ class PerformanceDashboard {
 
       // Get category data separately
       const categoryTrends = await transactionManager.getSpendingTrends({
-        months: Math.ceil(this.dateRange / 30),
+        startDate,
+        endDate,
         groupBy: 'category',
       });
 
