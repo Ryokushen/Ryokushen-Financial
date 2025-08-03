@@ -378,95 +378,46 @@ async function payRecurringBill(id, appState, onUpdate) {
   ) {
     loadingState.showOperationLock(`Processing payment for ${bill.name}...`);
     try {
-      let savedTransaction;
-
-      if (paymentMethod === 'cash') {
-        // Cash payment using TransactionManager
-        const transaction = {
-          date: new Date().toISOString().split('T')[0],
-          account_id: bill.account_id,
-          category: bill.category,
-          description: `${bill.name} (Recurring)`,
-          amount: -bill.amount,
-          cleared: true,
-        };
-
-        savedTransaction = await transactionManager.addTransaction(transaction);
-        appState.appData.transactions.unshift({
-          ...savedTransaction,
-          amount: parseFloat(savedTransaction.amount),
-        });
-
-        // Balance will be recalculated automatically for cash accounts
-      } else if (paymentMethod === 'credit') {
-        // Credit card payment using TransactionManager with atomic balance update
-        const debtAccountId = bill.debtAccountId || bill.debt_account_id;
-        if (!debtAccountId) {
-          showError('No credit card account found for this bill.');
-          return;
+      // Use atomic payment processing
+      const result = await db.processRecurringPayment(bill.id);
+      
+      if (result.success) {
+        // Update the bill in appState with new next due date
+        bill.nextDue = result.next_due_date;
+        bill.next_due = result.next_due_date;
+        
+        // Load the created transaction
+        const savedTransaction = await db.getTransactionById(result.transaction_id);
+        if (savedTransaction) {
+          appState.appData.transactions.unshift({
+            ...savedTransaction,
+            amount: parseFloat(savedTransaction.amount),
+          });
         }
-
-        // Create a debt transaction with atomic balance update
-        const transaction = {
-          date: new Date().toISOString().split('T')[0],
-          account_id: null, // No cash account involved
-          category: bill.category,
-          description: `${bill.name} (Recurring - Credit Card)`,
-          amount: -bill.amount, // Negative amount will be negated to positive by transactionManager
-          cleared: true,
-          debt_account_id: debtAccountId,
-        };
-
-        // Use atomic operation to create transaction and update balance
-        savedTransaction = await transactionManager.createTransactionWithBalanceUpdate(
-          transaction,
-          [{ accountType: 'debt', accountId: debtAccountId, amount: -bill.amount }]
-        );
-
-        appState.appData.transactions.unshift({
-          ...savedTransaction,
-          amount: parseFloat(savedTransaction.amount),
-        });
-
-        // Update local debt account balance
-        const debtAccount = appState.appData.debtAccounts.find(d => d.id === debtAccountId);
-        if (debtAccount) {
-          // Fetch updated balance from database to ensure consistency
-          const updatedAccount = await db.getDebtAccountById(debtAccountId);
-          if (updatedAccount) {
-            debtAccount.balance = updatedAccount.balance;
-          }
-        }
-      }
-
-      // Update next due date
-      const newNextDue = getNextDueDate(bill.nextDue || bill.next_due, bill.frequency);
-      bill.nextDue = newNextDue;
-      bill.next_due = newNextDue;
-
-      await db.updateRecurringBill(bill.id, {
-        next_due: newNextDue,
-        active: bill.active,
-        payment_method: paymentMethod,
-        account_id: bill.account_id,
-        debt_account_id: bill.debtAccountId || bill.debt_account_id,
-      });
-
-      // Fetch the updated bill from database to ensure all fields are current
-      const updatedBill = await db.getRecurringBillById(bill.id);
-      if (updatedBill) {
-        // Update the bill in appState with all the latest data
+        
+        // Update the bill's next due date from the result
         const billIndex = appState.appData.recurringBills.findIndex(b => b.id === bill.id);
         if (billIndex !== -1) {
           appState.appData.recurringBills[billIndex] = {
-            ...updatedBill,
-            amount: parseFloat(updatedBill.amount),
-            nextDue: updatedBill.next_due,
-            paymentMethod: updatedBill.payment_method,
-            debtAccountId: updatedBill.debt_account_id,
-            active: updatedBill.active
+            ...appState.appData.recurringBills[billIndex],
+            nextDue: result.next_due_date,
+            next_due: result.next_due_date
           };
         }
+        
+        // Update local debt account balance if it was a credit card payment
+        if (paymentMethod === 'credit') {
+          const debtAccountId = bill.debtAccountId || bill.debt_account_id;
+          const debtAccount = appState.appData.debtAccounts.find(d => d.id === debtAccountId);
+          if (debtAccount) {
+            const updatedAccount = await db.getDebtAccountById(debtAccountId);
+            if (updatedAccount) {
+              debtAccount.balance = updatedAccount.balance;
+            }
+          }
+        }
+      } else {
+        throw new Error(result.message || 'Payment processing failed');
       }
 
       loadingState.hideOperationLock();
@@ -475,7 +426,7 @@ async function payRecurringBill(id, appState, onUpdate) {
     } catch (error) {
       loadingState.hideOperationLock();
       debug.error('Error paying bill:', error);
-      showError('Failed to record payment.');
+      showError(error.message || 'Failed to record payment.');
     }
   }
 }

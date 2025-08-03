@@ -228,6 +228,18 @@ class FinancialDatabase {
         } catch (error) { this.handleError('addTransaction', error); }
     }
 
+    async getTransactionById(id) {
+        return this.executeWithRetry(async () => {
+            const { data, error } = await this.supabase
+                .from('transactions')
+                .select('*')
+                .eq('id', id)
+                .single();
+            if (error) throw error;
+            return data;
+        }, 'getTransactionById');
+    }
+
     // NEW: Update transaction method
     async updateTransaction(id, updates) {
         try {

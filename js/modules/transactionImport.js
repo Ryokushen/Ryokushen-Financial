@@ -6,6 +6,7 @@ import { showError, showSuccess } from './ui.js';
 import { modalManager } from './modalManager.js';
 import { categories } from './categories.js';
 import { debug } from './debug.js';
+import db from '../database.js';
 
 /**
  * Transaction Import Module
@@ -856,12 +857,41 @@ class TransactionImport {
         transactionsToImport.push(transactionData);
       }
 
-      // Import using TransactionManager
-      const result = await transactionManager.importTransactions(transactionsToImport, 'array', {
-        onProgress: progress => {
-          this.updateProgress(progress);
-        },
-      });
+      // Try to use atomic bulk import if available
+      let result;
+      const useAtomicImport = false; // Set to true when RPC function is deployed
+      
+      if (useAtomicImport) {
+        // Use atomic bulk import
+        this.updateProgress({ percentage: 50, current: 0, total: transactionsToImport.length });
+        
+        try {
+          const atomicResult = await db.bulkImportTransactions(transactionsToImport);
+          
+          result = {
+            successful: atomicResult.imported_count,
+            failed: atomicResult.failed_count,
+            errors: atomicResult.success ? [] : [{ error: atomicResult.message }]
+          };
+          
+          this.updateProgress({ percentage: 100, current: transactionsToImport.length, total: transactionsToImport.length });
+        } catch (error) {
+          // Fall back to regular import
+          debug.warn('Atomic import failed, falling back to regular import:', error);
+          result = await transactionManager.importTransactions(transactionsToImport, 'array', {
+            onProgress: progress => {
+              this.updateProgress(progress);
+            },
+          });
+        }
+      } else {
+        // Use regular import with progress tracking
+        result = await transactionManager.importTransactions(transactionsToImport, 'array', {
+          onProgress: progress => {
+            this.updateProgress(progress);
+          },
+        });
+      }
 
       // Show results
       this.showResults(result);

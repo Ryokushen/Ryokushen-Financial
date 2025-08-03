@@ -945,43 +945,73 @@ async function addLinkedTransaction(fromTransactionData, toAccountValue, appStat
     const balanceChanges = [];
 
     try {
-      // Use transactionManager to save linked transactions
-      const saved = await transactionManager.addLinkedTransactions(transaction1, transaction2);
-      savedTransactions.push(...saved);
+      // For transfers between accounts, use atomic transfer function
+      if (fromTransactionData.category === 'Transfer' && transaction1.account_id && transaction2.account_id) {
+        // Use atomic transfer for cash-to-cash transfers
+        const result = await db.transferFunds(
+          transaction1.account_id,
+          transaction2.account_id,
+          Math.abs(fromTransactionData.amount),
+          baseDescription
+        );
+        
+        if (result.success) {
+          // Load the created transactions
+          const [fromTx, toTx] = await Promise.all([
+            db.getTransactionById(result.from_transaction_id),
+            db.getTransactionById(result.to_transaction_id)
+          ]);
+          
+          if (fromTx) savedTransactions.push(fromTx);
+          if (toTx) savedTransactions.push(toTx);
+          
+          // Record balance changes for UI update
+          balanceChanges.push(
+            { type: 'cash', id: transaction1.account_id, amount: -Math.abs(fromTransactionData.amount) },
+            { type: 'cash', id: transaction2.account_id, amount: Math.abs(fromTransactionData.amount) }
+          );
+        } else {
+          throw new Error(result.message || 'Transfer failed');
+        }
+      } else {
+        // Use existing logic for payments and other complex transfers
+        const saved = await transactionManager.addLinkedTransactions(transaction1, transaction2);
+        savedTransactions.push(...saved);
 
-      // Update balances for both transactions
-      // Transaction 1 balance update
-      if (transaction1.account_id) {
-        await updateCashAccountBalance(transaction1.account_id, transaction1.amount, appState);
-        balanceChanges.push({
-          type: 'cash',
-          id: transaction1.account_id,
-          amount: transaction1.amount,
-        });
-      } else if (transaction1.debt_account_id) {
-        await updateDebtAccountBalance(transaction1.debt_account_id, transaction1.amount, appState);
-        balanceChanges.push({
-          type: 'debt',
-          id: transaction1.debt_account_id,
-          amount: transaction1.amount,
-        });
-      }
+        // Update balances for both transactions
+        // Transaction 1 balance update
+        if (transaction1.account_id) {
+          await updateCashAccountBalance(transaction1.account_id, transaction1.amount, appState);
+          balanceChanges.push({
+            type: 'cash',
+            id: transaction1.account_id,
+            amount: transaction1.amount,
+          });
+        } else if (transaction1.debt_account_id) {
+          await updateDebtAccountBalance(transaction1.debt_account_id, transaction1.amount, appState);
+          balanceChanges.push({
+            type: 'debt',
+            id: transaction1.debt_account_id,
+            amount: transaction1.amount,
+          });
+        }
 
-      // Transaction 2 balance update
-      if (transaction2.account_id) {
-        await updateCashAccountBalance(transaction2.account_id, transaction2.amount, appState);
-        balanceChanges.push({
-          type: 'cash',
-          id: transaction2.account_id,
-          amount: transaction2.amount,
-        });
-      } else if (transaction2.debt_account_id) {
-        await updateDebtAccountBalance(transaction2.debt_account_id, transaction2.amount, appState);
-        balanceChanges.push({
-          type: 'debt',
-          id: transaction2.debt_account_id,
-          amount: transaction2.amount,
-        });
+        // Transaction 2 balance update
+        if (transaction2.account_id) {
+          await updateCashAccountBalance(transaction2.account_id, transaction2.amount, appState);
+          balanceChanges.push({
+            type: 'cash',
+            id: transaction2.account_id,
+            amount: transaction2.amount,
+          });
+        } else if (transaction2.debt_account_id) {
+          await updateDebtAccountBalance(transaction2.debt_account_id, transaction2.amount, appState);
+          balanceChanges.push({
+            type: 'debt',
+            id: transaction2.debt_account_id,
+            amount: transaction2.amount,
+          });
+        }
       }
 
       // Add both transactions to app state
