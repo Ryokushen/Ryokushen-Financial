@@ -1508,7 +1508,31 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
 
   // For very large transaction lists, use virtual scrolling
   if (transactions.length > 100) {
-    renderTransactionsVirtual(tbody, transactions, appState);
+    // Use new virtual scroll component
+    import('./virtualScroll.js').then(({ VirtualScroll }) => {
+      const virtualScroll = new VirtualScroll({
+        container: tbody.parentElement,
+        items: transactions,
+        rowHeight: 40,
+        visibleHeight: 600,
+        renderItem: (transaction, index) => {
+          const row = document.createElement('tr');
+          row.className = 'transaction-row';
+          row.innerHTML = createTransactionRowHTML(transaction, appData);
+          
+          // Add event listeners
+          setupTransactionRowEventListeners(row, transaction, appState);
+          
+          return row;
+        }
+      });
+      
+      // Store reference for cleanup
+      tbody.virtualScroll = virtualScroll;
+    }).catch(error => {
+      debug.error('Failed to load virtual scroll, using fallback:', error);
+      renderTransactionsVirtual(tbody, transactions, appState);
+    });
     return;
   }
 
@@ -1798,6 +1822,125 @@ function calculatePreviousDueDate(currentDateStr, frequency) {
   }
 
   return date.toISOString().split('T')[0];
+}
+
+// Helper function to create transaction row HTML
+function createTransactionRowHTML(transaction, appData) {
+  const dataIndex = window.dataIndex;
+  
+  // Handle both cash account transactions and credit card transactions
+  let accountName = 'Account Not Found';
+  
+  if (transaction.account_id) {
+    const account = dataIndex?.indexes?.cashAccountsById?.get(transaction.account_id) ||
+                   appData.cashAccounts.find(a => a.id === transaction.account_id);
+    if (account) {
+      accountName = escapeHtml(account.name);
+    } else {
+      accountName = `Deleted Account (${transaction.account_id.substring(0, 8)}...)`;
+    }
+  } else if (transaction.debt_account_id) {
+    const debtAccount = dataIndex?.indexes?.debtAccountsById?.get(transaction.debt_account_id) ||
+                       appData.debtAccounts.find(d => d.id === transaction.debt_account_id);
+    if (debtAccount) {
+      accountName = `${escapeHtml(debtAccount.name)} (Credit Card)`;
+    } else {
+      accountName = `Deleted Credit Card (${transaction.debt_account_id.substring(0, 8)}...)`;
+    }
+  }
+  
+  let description = escapeHtml(transaction.description);
+  
+  if (transaction.category === 'Debt') {
+    let debtAccountName = '';
+    if (transaction.debt_account_id) {
+      const debtAccount = appData.debtAccounts.find(d => d.id === transaction.debt_account_id);
+      if (debtAccount) {
+        debtAccountName = debtAccount.name;
+      }
+    } else if (transaction.debt_account) {
+      debtAccountName = transaction.debt_account;
+    }
+    
+    if (debtAccountName) {
+      description += ` (${escapeHtml(debtAccountName)})`;
+    }
+  }
+  
+  const amountClass = transaction.amount >= 0 ? 'text-success' : 'text-error';
+  const amountPrefix = transaction.amount >= 0 ? '+' : '';
+  const clearedIcon = transaction.cleared ? '✓' : '○';
+  const clearedClass = transaction.cleared ? 'cleared' : 'pending';
+  
+  return `
+    <td class="transaction-date">${formatDate(transaction.date)}</td>
+    <td class="transaction-account">${accountName}</td>
+    <td class="transaction-category">
+      <span class="category-badge" data-category="${escapeHtml(transaction.category)}">
+        ${getCategoryIcon(transaction.category)} ${escapeHtml(transaction.category)}
+      </span>
+    </td>
+    <td class="transaction-description">
+      ${description}
+      ${transaction.notes ? `<div class="transaction-notes" data-transaction-id="${transaction.id}">${escapeHtml(transaction.notes)}</div>` : ''}
+    </td>
+    <td class="transaction-amount ${amountClass}">
+      ${amountPrefix}${formatCurrency(Math.abs(transaction.amount))}
+    </td>
+    <td class="transaction-cleared ${clearedClass}" title="${transaction.cleared ? 'Cleared' : 'Pending'}">
+      <span class="cleared-icon">${clearedIcon}</span>
+    </td>
+    <td class="transaction-actions">
+      <button class="btn btn--small btn--secondary edit-transaction" data-id="${transaction.id}" title="Edit">
+        <span class="icon">✏️</span>
+      </button>
+      <button class="btn btn--small btn--danger delete-transaction" data-id="${transaction.id}" title="Delete">
+        <span class="icon">🗑️</span>
+      </button>
+    </td>
+  `;
+}
+
+// Helper function to setup event listeners on transaction row
+function setupTransactionRowEventListeners(row, transaction, appState) {
+  // Edit button
+  const editBtn = row.querySelector('.edit-transaction');
+  if (editBtn) {
+    eventManager.addEventListener(editBtn, 'click', () => {
+      editTransaction(transaction.id, appState.appData);
+    });
+  }
+  
+  // Delete button
+  const deleteBtn = row.querySelector('.delete-transaction');
+  if (deleteBtn) {
+    eventManager.addEventListener(deleteBtn, 'click', () => {
+      deleteTransaction(transaction.id, appState);
+    });
+  }
+  
+  // Clear toggle
+  const clearedCell = row.querySelector('.transaction-cleared');
+  if (clearedCell) {
+    eventManager.addEventListener(clearedCell, 'click', async () => {
+      try {
+        const updatedTransaction = await transactionManager.updateTransaction(transaction.id, {
+          ...transaction,
+          cleared: !transaction.cleared
+        });
+        
+        if (updatedTransaction) {
+          transaction.cleared = updatedTransaction.cleared;
+          clearedCell.className = `transaction-cleared ${transaction.cleared ? 'cleared' : 'pending'}`;
+          clearedCell.title = transaction.cleared ? 'Cleared' : 'Pending';
+          clearedCell.querySelector('.cleared-icon').textContent = transaction.cleared ? '✓' : '○';
+        }
+      } catch (error) {
+        debug.error('Failed to toggle cleared status:', error);
+        showError('Failed to update transaction');
+      }
+    });
+  }
 }
 
 // Virtual scrolling implementation
