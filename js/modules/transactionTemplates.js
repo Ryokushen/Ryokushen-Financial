@@ -7,6 +7,7 @@ import { formatCurrency, escapeHtml } from './utils.js';
 import { populateCategoryDropdown, getCategoryIcon } from './categories.js';
 import { debug } from './debug.js';
 import { loadingState } from './loadingState.js';
+import { debounce } from './performanceUtils.js';
 
 class TransactionTemplatesUI {
   constructor() {
@@ -57,11 +58,15 @@ class TransactionTemplatesUI {
       });
     }
 
-    // Template search
+    // Template search with debouncing
     const searchInput = document.getElementById('template-search');
     if (searchInput) {
+      const debouncedFilter = debounce((value) => {
+        this.filterTemplates(value);
+      }, 300);
+      
       eventManager.addEventListener(searchInput, 'input', e => {
-        this.filterTemplates(e.target.value);
+        debouncedFilter(e.target.value);
       });
     }
 

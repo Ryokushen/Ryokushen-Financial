@@ -24,7 +24,9 @@ export function announceToScreenReader(message) {
   }
 }
 
-export function showError(message) {
+let errorTimeout = null;
+
+export function showError(message, duration = 8000) {
   debug.error(message);
   announceToScreenReader(`Error: ${message}`);
 
@@ -32,14 +34,22 @@ export function showError(message) {
   const errorMessage = document.getElementById('error-message');
 
   if (errorBanner && errorMessage) {
+    // Clear any existing timeout
+    if (errorTimeout) {
+      clearTimeout(errorTimeout);
+    }
+    
     errorMessage.textContent = message;
     errorBanner.style.display = 'flex';
 
-    setTimeout(() => {
-      if (errorBanner.style.display === 'flex') {
-        errorBanner.style.display = 'none';
-      }
-    }, 5000);
+    // Only auto-hide for simple messages, complex errors stay visible
+    if (message.length < 100 && duration > 0) {
+      errorTimeout = setTimeout(() => {
+        if (errorBanner.style.display === 'flex') {
+          errorBanner.style.display = 'none';
+        }
+      }, duration);
+    }
   }
 }
 

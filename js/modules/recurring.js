@@ -13,6 +13,7 @@ import {
 import { showError, announceToScreenReader, openModal, closeModal } from './ui.js';
 import { debug } from './debug.js';
 import { subtractMoney, addMoney } from './financialMath.js';
+import { loadingState } from './loadingState.js';
 import {
   validateForm,
   ValidationSchemas,
@@ -375,6 +376,7 @@ async function payRecurringBill(id, appState, onUpdate) {
       `Pay ${bill.name} for ${formatCurrency(bill.amount)} via ${paymentMethod === 'credit' ? 'credit card' : 'cash account'}?`
     )
   ) {
+    loadingState.showOperationLock(`Processing payment for ${bill.name}...`);
     try {
       let savedTransaction;
 
@@ -467,9 +469,11 @@ async function payRecurringBill(id, appState, onUpdate) {
         }
       }
 
+      loadingState.hideOperationLock();
       onUpdate();
       announceToScreenReader('Payment recorded successfully.');
     } catch (error) {
+      loadingState.hideOperationLock();
       debug.error('Error paying bill:', error);
       showError('Failed to record payment.');
     }
