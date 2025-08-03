@@ -385,19 +385,36 @@ async function handleContributionSubmit(event, appState, onUpdate) {
     // Handle transfers between accounts
     if (isSourceCashAccount && isTargetCashAccount) {
       // Both are cash accounts - use linked transactions for proper transfer
+      const fromTransaction = {
+        date: new Date().toISOString().split('T')[0],
+        account_id: sourceAccountId,
+        category: 'Transfer',
+        description: `Transfer to ${targetAccount.name} [Savings Goal: ${goal.name}]`,
+        amount: -amount,
+        cleared: true
+      };
+
+      const toTransaction = {
+        date: new Date().toISOString().split('T')[0],
+        account_id: goal.linkedAccountId,
+        category: 'Transfer',
+        description: `Contribution to ${goal.name} [Savings Goal]`,
+        amount: amount,
+        cleared: true
+      };
+
       const linkedTransactions = await transactionManager.addLinkedTransactions(
-        sourceAccountId,
-        goal.linkedAccountId,
-        amount,
-        `Transfer to ${targetAccount.name} [Savings Goal: ${goal.name}]`,
-        `Contribution to ${goal.name} [Savings Goal]`
+        fromTransaction,
+        toTransaction
       );
 
       // Add both transactions to the UI
-      appState.appData.transactions.unshift(
-        { ...linkedTransactions.from, amount: parseFloat(linkedTransactions.from.amount) },
-        { ...linkedTransactions.to, amount: parseFloat(linkedTransactions.to.amount) }
-      );
+      if (linkedTransactions && linkedTransactions.length === 2) {
+        appState.appData.transactions.unshift(
+          { ...linkedTransactions[0], amount: parseFloat(linkedTransactions[0].amount) },
+          { ...linkedTransactions[1], amount: parseFloat(linkedTransactions[1].amount) }
+        );
+      }
     } else if (isSourceCashAccount) {
       // Source is cash, target is investment - create withdrawal only
       const withdrawal = {
