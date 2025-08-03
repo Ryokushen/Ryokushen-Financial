@@ -432,8 +432,8 @@ class PerformanceDashboard {
     try {
       // Check if we have data to render
       if (this.data && this.data.trends) {
-        // Rendering chart with trends data
-        simpleCharts.renderDataChart('trends', this.data.trends);
+        // Use the proper renderChart method which respects the current view
+        this.renderChart();
         this.chartsInitialized = true;
         // Chart rendered successfully
       } else {
@@ -441,7 +441,7 @@ class PerformanceDashboard {
         // Load data if not available
         this.loadDashboardData().then(() => {
           if (this.data && this.data.trends) {
-            simpleCharts.renderDataChart('trends', this.data.trends);
+            this.renderChart();
             this.chartsInitialized = true;
           }
         });
