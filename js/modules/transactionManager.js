@@ -2970,10 +2970,10 @@ class TransactionManager {
         }
 
         // Date range filter
-        if (startDate && new Date(transaction.date) < startDate) {
+        if (startDate && new Date(transaction.date) < new Date(startDate)) {
           return false;
         }
-        if (endDate && new Date(transaction.date) > endDate) {
+        if (endDate && new Date(transaction.date) > new Date(endDate)) {
           return false;
         }
 
