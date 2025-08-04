@@ -38,7 +38,7 @@ export function showError(message, duration = 8000) {
     if (errorTimeout) {
       clearTimeout(errorTimeout);
     }
-    
+
     errorMessage.textContent = message;
     errorBanner.style.display = 'flex';
 

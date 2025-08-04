@@ -532,7 +532,7 @@ export function setupRealtimeValidation(formId, validationSchema, options = {}) 
     showSuccessState = true,
     debounceTime = 300,
     crossFieldValidator = null,
-    asyncValidators = {}
+    asyncValidators = {},
   } = options;
 
   // Track validation state
@@ -552,13 +552,18 @@ export function setupRealtimeValidation(formId, validationSchema, options = {}) 
     // Blur event - always validate
     if (validateOnBlur) {
       eventManager.addEventListener(field, 'blur', async () => {
-        validationState[fieldName].isDirty = true;
-        await validateFieldWithFeedback(field, fieldName, validationSchema[fieldName], {
-          showSuccessState,
-          asyncValidator: asyncValidators[fieldName],
-          formData: getFormData(form),
-          crossFieldValidator
-        });
+        try {
+          validationState[fieldName].isDirty = true;
+          await validateFieldWithFeedback(field, fieldName, validationSchema[fieldName], {
+            showSuccessState,
+            asyncValidator: asyncValidators[fieldName],
+            formData: getFormData(form),
+            crossFieldValidator,
+          });
+        } catch (error) {
+          debug.error('Validation error on blur:', error);
+          showFieldError(field.id || fieldName, 'Validation failed. Please try again.');
+        }
       });
     }
 
@@ -577,13 +582,18 @@ export function setupRealtimeValidation(formId, validationSchema, options = {}) 
 
         // Set new timer
         debounceTimers[fieldName] = setTimeout(async () => {
-          if (validationState[fieldName].isDirty || field.value) {
-            await validateFieldWithFeedback(field, fieldName, validationSchema[fieldName], {
-              showSuccessState,
-              asyncValidator: asyncValidators[fieldName],
-              formData: getFormData(form),
-              crossFieldValidator
-            });
+          try {
+            if (validationState[fieldName].isDirty || field.value) {
+              await validateFieldWithFeedback(field, fieldName, validationSchema[fieldName], {
+                showSuccessState,
+                asyncValidator: asyncValidators[fieldName],
+                formData: getFormData(form),
+                crossFieldValidator,
+              });
+            }
+          } catch (error) {
+            debug.error('Validation error on input:', error);
+            showFieldError(field.id || fieldName, 'Validation failed. Please try again.');
           }
         }, debounceTime);
       });
@@ -610,24 +620,24 @@ export function setupRealtimeValidation(formId, validationSchema, options = {}) 
               showSuccessState,
               asyncValidator: asyncValidators[fieldName],
               formData: getFormData(form),
-              crossFieldValidator
+              crossFieldValidator,
             });
           }
           return true;
         })
       );
       return results.every(result => result);
-    }
+    },
   };
 }
 
 // Enhanced field validation with visual feedback
 async function validateFieldWithFeedback(field, fieldName, rules, options = {}) {
   const { showSuccessState, asyncValidator, formData, crossFieldValidator } = options;
-  
+
   // Synchronous validation
   const error = validateField(field.value, rules);
-  
+
   if (error) {
     showFieldError(field.id || fieldName, error);
     return false;
@@ -662,7 +672,7 @@ async function validateFieldWithFeedback(field, fieldName, rules, options = {}) 
   } else {
     clearFieldFeedback(field.id || fieldName);
   }
-  
+
   return true;
 }
 

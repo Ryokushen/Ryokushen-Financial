@@ -206,7 +206,7 @@ class PerformanceDashboard {
         // Pre-populate dates based on current range
         const endDate = new Date();
         const startDate = new Date();
-        
+
         if (this.isCustomRange && this.customStartDate && this.customEndDate) {
           // Use existing custom dates
           document.getElementById('date-range-start').value = this.customStartDate;
@@ -217,15 +217,15 @@ class PerformanceDashboard {
           document.getElementById('date-range-start').value = startDate.toISOString().split('T')[0];
           document.getElementById('date-range-end').value = endDate.toISOString().split('T')[0];
         }
-        
+
         this.updateDateRangeHint();
-      }
+      },
     });
 
     // Handle form submission
     const dateRangeForm = document.getElementById('date-range-form');
     if (dateRangeForm) {
-      dateRangeForm.addEventListener('submit', async (e) => {
+      dateRangeForm.addEventListener('submit', async e => {
         e.preventDefault();
         await this.applyCustomDateRange();
       });
@@ -255,20 +255,21 @@ class PerformanceDashboard {
     const startInput = document.getElementById('date-range-start');
     const endInput = document.getElementById('date-range-end');
     const hintElement = document.getElementById('date-range-hint');
-    
+
     if (!startInput.value || !endInput.value || !hintElement) {
       return;
     }
-    
+
     const startDate = new Date(startInput.value);
     const endDate = new Date(endInput.value);
     const diffTime = Math.abs(endDate - startDate);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (endDate < startDate) {
       hintElement.textContent = 'End date must be after start date';
       hintElement.style.color = '#ef4444';
-    } else if (diffDays > 730) { // More than 2 years
+    } else if (diffDays > 730) {
+      // More than 2 years
       hintElement.textContent = 'Date range cannot exceed 2 years';
       hintElement.style.color = '#ef4444';
     } else {
@@ -283,35 +284,36 @@ class PerformanceDashboard {
   async applyCustomDateRange() {
     const startInput = document.getElementById('date-range-start');
     const endInput = document.getElementById('date-range-end');
-    
+
     if (!startInput.value || !endInput.value) {
       showError('Please select both start and end dates');
       return;
     }
-    
+
     const startDate = new Date(startInput.value);
     const endDate = new Date(endInput.value);
-    
+
     // Validate dates
     if (endDate < startDate) {
       showError('End date must be after start date');
       return;
     }
-    
+
     const diffTime = Math.abs(endDate - startDate);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays > 730) { // More than 2 years
+
+    if (diffDays > 730) {
+      // More than 2 years
       showError('Date range cannot exceed 2 years');
       return;
     }
-    
+
     // Store custom dates
     this.customStartDate = startInput.value;
     this.customEndDate = endInput.value;
     this.dateRange = diffDays;
     this.isCustomRange = true;
-    
+
     // Update button text to show custom range
     document.querySelectorAll('.date-range-btn').forEach(btn => {
       if (btn.dataset.range === 'custom') {
@@ -322,7 +324,7 @@ class PerformanceDashboard {
         btn.classList.remove('active');
       }
     });
-    
+
     // Close modal and reload data
     modalManager.close('date-range-modal');
     await this.loadDashboardData();
@@ -335,7 +337,7 @@ class PerformanceDashboard {
     if (this.isCustomRange && this.customStartDate && this.customEndDate) {
       return {
         startDate: this.customStartDate,
-        endDate: this.customEndDate
+        endDate: this.customEndDate,
       };
     } else {
       const endDate = new Date();
@@ -343,7 +345,7 @@ class PerformanceDashboard {
       startDate.setDate(startDate.getDate() - this.dateRange);
       return {
         startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0]
+        endDate: endDate.toISOString().split('T')[0],
       };
     }
   }
@@ -472,13 +474,13 @@ class PerformanceDashboard {
     // Reset custom range flag when selecting preset range
     this.isCustomRange = false;
     this.dateRange = parseInt(range);
-    
+
     // Reset custom button text
     const customBtn = document.querySelector('.date-range-btn[data-range="custom"]');
     if (customBtn) {
       customBtn.textContent = 'Custom Range';
     }
-    
+
     await this.loadDashboardData();
   }
 
@@ -496,7 +498,7 @@ class PerformanceDashboard {
     try {
       // Get the actual date range
       const { startDate, endDate } = this.getDateRange();
-      
+
       // Batch all data requests for efficiency
       const [trends, anomalies, predictions, insights, merchants, dataQuality, systemMetrics] =
         await Promise.all([
@@ -735,19 +737,35 @@ class PerformanceDashboard {
    * Get chart data based on current view
    */
   async getChartData() {
-    switch (this.currentView) {
-      case 'trends':
-        return this.getTrendsChartData();
-      case 'categories':
-        return this.getCategoriesChartData();
-      case 'merchants':
-        return this.getMerchantsChartData();
-      case 'topExpenses':
-        return await this.getTopExpensesChartData();
-      case 'forecast':
-        return this.getForecastChartData();
-      default:
-        return this.getTrendsChartData();
+    try {
+      switch (this.currentView) {
+        case 'trends':
+          return this.getTrendsChartData();
+        case 'categories':
+          return this.getCategoriesChartData();
+        case 'merchants':
+          return this.getMerchantsChartData();
+        case 'topExpenses':
+          return await this.getTopExpensesChartData();
+        case 'forecast':
+          return this.getForecastChartData();
+        default:
+          return this.getTrendsChartData();
+      }
+    } catch (error) {
+      console.error('Error getting chart data:', error);
+      // Return empty chart data to prevent rendering errors
+      return {
+        labels: [],
+        datasets: [
+          {
+            label: 'Error loading data',
+            data: [],
+            borderColor: 'rgba(239, 68, 68, 0.8)',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          },
+        ],
+      };
     }
   }
 

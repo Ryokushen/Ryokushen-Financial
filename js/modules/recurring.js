@@ -382,7 +382,7 @@ async function payRecurringBill(id, appState, onUpdate) {
     loadingState.showOperationLock(`Processing payment for ${bill.name}...`);
     try {
       let result;
-      
+
       try {
         // Try to use atomic payment processing
         result = await db.processRecurringPayment(bill.id);
@@ -390,43 +390,43 @@ async function payRecurringBill(id, appState, onUpdate) {
         // If RPC function doesn't exist, fall back to manual payment creation
         if (error.message?.includes('404') || error.message?.includes('not exist')) {
           debug.warn('Atomic recurring payment not available, falling back to manual creation');
-          
+
           // Create transaction manually
           const transactionData = {
             date: new Date().toISOString().split('T')[0],
             description: bill.name,
             category: bill.category,
             amount: paymentMethod === 'credit' ? bill.amount : -bill.amount,
-            cleared: true
+            cleared: true,
           };
-          
+
           if (paymentMethod === 'cash') {
             transactionData.account_id = bill.account_id;
           } else {
             transactionData.debt_account_id = bill.debt_account_id || bill.debtAccountId;
           }
-          
+
           const savedTransaction = await transactionManager.addTransaction(transactionData);
-          
+
           // Update next due date manually
           const nextDue = getNextDueDate(bill.next_due || bill.nextDue, bill.frequency);
           await db.updateRecurringBill(bill.id, { next_due: nextDue });
-          
+
           result = {
             success: true,
             transaction_id: savedTransaction.id,
-            next_due_date: nextDue
+            next_due_date: nextDue,
           };
         } else {
           throw error; // Re-throw if it's not a missing function error
         }
       }
-      
+
       if (result.success) {
         // Update the bill in appState with new next due date
         bill.nextDue = result.next_due_date;
         bill.next_due = result.next_due_date;
-        
+
         // Load the created transaction
         const savedTransaction = await db.getTransactionById(result.transaction_id);
         if (savedTransaction) {
@@ -435,17 +435,17 @@ async function payRecurringBill(id, appState, onUpdate) {
             amount: parseFloat(savedTransaction.amount),
           });
         }
-        
+
         // Update the bill's next due date from the result
         const billIndex = appState.appData.recurringBills.findIndex(b => b.id === bill.id);
         if (billIndex !== -1) {
           appState.appData.recurringBills[billIndex] = {
             ...appState.appData.recurringBills[billIndex],
             nextDue: result.next_due_date,
-            next_due: result.next_due_date
+            next_due: result.next_due_date,
           };
         }
-        
+
         // Update local debt account balance if it was a credit card payment
         if (paymentMethod === 'credit') {
           const debtAccountId = bill.debtAccountId || bill.debt_account_id;

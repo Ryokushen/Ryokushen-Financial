@@ -13,7 +13,7 @@ class AnalyticsProcessor {
     this.workerReady = false;
     this.initWorker();
   }
-  
+
   /**
    * Initialize the Web Worker
    */
@@ -21,11 +21,11 @@ class AnalyticsProcessor {
     try {
       // Create worker
       this.worker = new Worker('/js/workers/analyticsWorker.js');
-      
+
       // Set up message handler
-      this.worker.addEventListener('message', (event) => {
+      this.worker.addEventListener('message', event => {
         const { type, id, data, error } = event.data;
-        
+
         if (type === 'result' || type === 'error') {
           const request = this.pendingRequests.get(id);
           if (request) {
@@ -38,29 +38,28 @@ class AnalyticsProcessor {
           }
         }
       });
-      
+
       // Set up error handler
-      this.worker.addEventListener('error', (error) => {
+      this.worker.addEventListener('error', error => {
         debug.error('Analytics worker error:', error);
         // Reject all pending requests
         for (const request of this.pendingRequests.values()) {
           request.reject(new Error('Worker crashed'));
         }
         this.pendingRequests.clear();
-        
+
         // Attempt to restart worker
         setTimeout(() => this.initWorker(), 1000);
       });
-      
+
       this.workerReady = true;
       debug.log('Analytics worker initialized');
-      
     } catch (error) {
       debug.error('Failed to initialize analytics worker:', error);
       this.workerReady = false;
     }
   }
-  
+
   /**
    * Send a request to the worker
    * @private
@@ -70,13 +69,13 @@ class AnalyticsProcessor {
       // Fallback to main thread
       return this.fallbackCalculation(type, data);
     }
-    
+
     const id = ++this.requestId;
-    
+
     return new Promise((resolve, reject) => {
       // Store the promise handlers
       this.pendingRequests.set(id, { resolve, reject });
-      
+
       // Set timeout
       const timeout = setTimeout(() => {
         if (this.pendingRequests.has(id)) {
@@ -84,7 +83,7 @@ class AnalyticsProcessor {
           reject(new Error('Worker timeout'));
         }
       }, 30000); // 30 second timeout
-      
+
       // Send message to worker
       try {
         this.worker.postMessage({ type, data, id });
@@ -95,7 +94,7 @@ class AnalyticsProcessor {
       }
     });
   }
-  
+
   /**
    * Analyze transactions using Web Worker
    */
@@ -104,7 +103,7 @@ class AnalyticsProcessor {
     if (transactions.length < 500) {
       return this.fallbackCalculation('analyzeTransactions', { transactions, options });
     }
-    
+
     try {
       return await this.sendRequest('analyzeTransactions', { transactions, options });
     } catch (error) {
@@ -112,7 +111,7 @@ class AnalyticsProcessor {
       return this.fallbackCalculation('analyzeTransactions', { transactions, options });
     }
   }
-  
+
   /**
    * Calculate trends using Web Worker
    */
@@ -124,7 +123,7 @@ class AnalyticsProcessor {
       return this.fallbackCalculation('calculateTrends', { transactions, groupBy, options });
     }
   }
-  
+
   /**
    * Calculate statistics using Web Worker
    */
@@ -133,14 +132,14 @@ class AnalyticsProcessor {
     if (values.length < 1000) {
       return this.calculateStatisticsSync(values);
     }
-    
+
     try {
       return await this.sendRequest('calculateStatistics', values);
     } catch (error) {
       return this.calculateStatisticsSync(values);
     }
   }
-  
+
   /**
    * Predict future spending
    */
@@ -152,7 +151,7 @@ class AnalyticsProcessor {
       return this.fallbackCalculation('predictSpending', { transactions, daysAhead });
     }
   }
-  
+
   /**
    * Analyze categories
    */
@@ -164,7 +163,7 @@ class AnalyticsProcessor {
       return this.fallbackCalculation('analyzeCategories', { transactions, options });
     }
   }
-  
+
   /**
    * Calculate cash flow
    */
@@ -176,14 +175,14 @@ class AnalyticsProcessor {
       return this.fallbackCalculation('calculateCashFlow', { transactions, interval });
     }
   }
-  
+
   /**
    * Fallback calculations for when worker is not available
    * @private
    */
   fallbackCalculation(type, data) {
     debug.log(`Running ${type} in main thread (fallback)`);
-    
+
     switch (type) {
       case 'analyzeTransactions':
         return this.analyzeTransactionsSync(data.transactions, data.options);
@@ -199,7 +198,7 @@ class AnalyticsProcessor {
         throw new Error(`Unknown calculation type: ${type}`);
     }
   }
-  
+
   /**
    * Synchronous statistics calculation
    * @private
@@ -208,31 +207,31 @@ class AnalyticsProcessor {
     if (!values || values.length === 0) {
       return { mean: 0, stdDev: 0, min: 0, max: 0, median: 0, count: 0 };
     }
-    
+
     const n = values.length;
     const sorted = [...values].sort((a, b) => a - b);
     const mean = values.reduce((sum, val) => sum + val, 0) / n;
-    
-    const variance = values.reduce((sum, val) => {
-      const diff = val - mean;
-      return sum + (diff * diff);
-    }, 0) / n;
-    
+
+    const variance =
+      values.reduce((sum, val) => {
+        const diff = val - mean;
+        return sum + diff * diff;
+      }, 0) / n;
+
     const stdDev = Math.sqrt(variance);
-    const median = n % 2 === 0
-      ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2
-      : sorted[Math.floor(n / 2)];
-    
+    const median =
+      n % 2 === 0 ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2 : sorted[Math.floor(n / 2)];
+
     return {
       mean,
       stdDev,
       min: sorted[0],
       max: sorted[n - 1],
       median,
-      count: n
+      count: n,
     };
   }
-  
+
   /**
    * Synchronous transaction analysis (simplified)
    * @private
@@ -241,63 +240,60 @@ class AnalyticsProcessor {
     const categoryTotals = {};
     let totalIncome = 0;
     let totalExpenses = 0;
-    
+
     for (const t of transactions) {
       const category = t.category || 'Uncategorized';
       if (!categoryTotals[category]) {
         categoryTotals[category] = { total: 0, count: 0 };
       }
-      
+
       categoryTotals[category].total += Math.abs(t.amount);
       categoryTotals[category].count++;
-      
+
       if (t.amount > 0) {
         totalIncome += t.amount;
       } else {
         totalExpenses += Math.abs(t.amount);
       }
     }
-    
+
     return {
       summary: {
         totalTransactions: transactions.length,
         totalIncome,
-        totalExpenses
+        totalExpenses,
       },
-      categoryStats: categoryTotals
+      categoryStats: categoryTotals,
     };
   }
-  
+
   /**
    * Synchronous trends calculation
    * @private
    */
   calculateTrendsSync(transactions, groupBy = 'month', options = {}) {
     const groups = {};
-    
+
     for (const t of transactions) {
-      const key = groupBy === 'month' 
-        ? t.date.substring(0, 7)
-        : t.category || 'Uncategorized';
-        
+      const key = groupBy === 'month' ? t.date.substring(0, 7) : t.category || 'Uncategorized';
+
       if (!groups[key]) {
         groups[key] = [];
       }
       groups[key].push(t);
     }
-    
+
     const trends = Object.entries(groups).map(([label, txns]) => ({
       label,
       value: txns.reduce((sum, t) => sum + Math.abs(t.amount), 0),
       count: txns.length,
-      average: txns.length > 0 
-        ? txns.reduce((sum, t) => sum + Math.abs(t.amount), 0) / txns.length 
-        : 0
+      average:
+        txns.length > 0 ? txns.reduce((sum, t) => sum + Math.abs(t.amount), 0) / txns.length : 0,
     }));
-    
+
     return trends.sort((a, b) => b.value - a.value);
   }
-  
+
   /**
    * Simplified spending prediction
    * @private
@@ -307,21 +303,21 @@ class AnalyticsProcessor {
     const totalExpenses = expenses.reduce((sum, t) => sum + Math.abs(t.amount), 0);
     const dayCount = 30; // Simplified - assume last 30 days
     const dailyAverage = totalExpenses / dayCount;
-    
+
     return {
       projectionDays: daysAhead,
       totalProjectedSpending: dailyAverage * daysAhead,
-      confidence: 50 // Simplified confidence
+      confidence: 50, // Simplified confidence
     };
   }
-  
+
   /**
    * Simplified category analysis
    * @private
    */
   analyzeCategoriesSync(transactions, options = {}) {
     const categories = {};
-    
+
     for (const t of transactions) {
       const category = t.category || 'Uncategorized';
       if (!categories[category]) {
@@ -329,55 +325,55 @@ class AnalyticsProcessor {
           total: 0,
           income: 0,
           expenses: 0,
-          transactionCount: 0
+          transactionCount: 0,
         };
       }
-      
+
       const cat = categories[category];
       cat.total += t.amount;
       cat.transactionCount++;
-      
+
       if (t.amount > 0) {
         cat.income += t.amount;
       } else {
         cat.expenses += Math.abs(t.amount);
       }
     }
-    
+
     return categories;
   }
-  
+
   /**
    * Simplified cash flow calculation
    * @private
    */
   calculateCashFlowSync(transactions, interval = 'daily') {
     const flows = {};
-    
+
     for (const t of transactions) {
       const key = interval === 'daily' ? t.date : t.date.substring(0, 7);
-      
+
       if (!flows[key]) {
         flows[key] = {
           date: key,
           inflow: 0,
           outflow: 0,
-          net: 0
+          net: 0,
         };
       }
-      
+
       if (t.amount > 0) {
         flows[key].inflow += t.amount;
       } else {
         flows[key].outflow += Math.abs(t.amount);
       }
-      
+
       flows[key].net = flows[key].inflow - flows[key].outflow;
     }
-    
+
     return Object.values(flows).sort((a, b) => a.date.localeCompare(b.date));
   }
-  
+
   /**
    * Terminate the worker
    */
@@ -387,7 +383,7 @@ class AnalyticsProcessor {
       this.worker = null;
       this.workerReady = false;
     }
-    
+
     // Reject any pending requests
     for (const request of this.pendingRequests.values()) {
       request.reject(new Error('Worker terminated'));

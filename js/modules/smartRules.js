@@ -22,97 +22,125 @@ class SmartRules {
 
       // Listen for events that might need rule re-evaluation
       eventManager.addEventListener(window, 'transaction:added', async event => {
-        debug.log('SmartRules: Received transaction:added event', event.detail);
+        try {
+          debug.log('SmartRules: Received transaction:added event', event.detail);
 
-        if (event.detail && event.detail.transaction) {
-          // For new transactions, check config to determine if we should force processing
-          const isNewTransaction = true; // transaction:added always indicates a new transaction
-          const forceProcess = isNewTransaction && this.config.processAllNewTransactions;
+          if (event.detail && event.detail.transaction) {
+            // For new transactions, check config to determine if we should force processing
+            const isNewTransaction = true; // transaction:added always indicates a new transaction
+            const forceProcess = isNewTransaction && this.config.processAllNewTransactions;
 
-          debug.log('SmartRules: Processing new transaction', {
-            transactionId: event.detail.transaction.id,
-            category: event.detail.transaction.category,
-            description: event.detail.transaction.description,
-            forceProcess,
-            isNewTransaction,
-          });
+            debug.log('SmartRules: Processing new transaction', {
+              transactionId: event.detail.transaction.id,
+              category: event.detail.transaction.category,
+              description: event.detail.transaction.description,
+              forceProcess,
+              isNewTransaction,
+            });
 
-          await this.processTransaction(event.detail.transaction, forceProcess, isNewTransaction);
-        } else {
-          console.error(
-            'SmartRules: Invalid event detail structure for transaction:added',
-            event.detail
-          );
+            await this.processTransaction(event.detail.transaction, forceProcess, isNewTransaction);
+          } else {
+            console.error(
+              'SmartRules: Invalid event detail structure for transaction:added',
+              event.detail
+            );
+          }
+        } catch (error) {
+          debug.error('SmartRules: Error processing transaction:added event', error);
         }
       });
 
       // Listen for transaction:created:withBalance event (fired by TransactionManager)
       eventManager.addEventListener(window, 'transaction:created:withBalance', async event => {
-        debug.log('SmartRules: Received transaction:created:withBalance event', event.detail);
+        try {
+          debug.log('SmartRules: Received transaction:created:withBalance event', event.detail);
 
-        if (event.detail && event.detail.transaction) {
-          // For new transactions, always process regardless of category
-          const isNewTransaction = true;
-          const forceProcess = true; // Force processing for newly created transactions
+          if (event.detail && event.detail.transaction) {
+            // For new transactions, always process regardless of category
+            const isNewTransaction = true;
+            const forceProcess = true; // Force processing for newly created transactions
 
-          await this.processTransaction(event.detail.transaction, forceProcess, isNewTransaction);
-        } else {
-          console.error(
-            'SmartRules: Invalid event detail structure for transaction:created:withBalance',
-            event.detail
-          );
+            await this.processTransaction(event.detail.transaction, forceProcess, isNewTransaction);
+          } else {
+            console.error(
+              'SmartRules: Invalid event detail structure for transaction:created:withBalance',
+              event.detail
+            );
+          }
+        } catch (error) {
+          debug.error('SmartRules: Error processing transaction:created:withBalance event', error);
         }
       });
 
       eventManager.addEventListener(window, 'transaction:updated', async event => {
-        debug.log('SmartRules: Received transaction:updated event', event.detail);
-        if (event.detail && event.detail.transaction) {
-          await this.processTransaction(event.detail.transaction);
-        } else {
-          console.error(
-            'SmartRules: Invalid event detail structure for transaction:updated',
-            event.detail
-          );
+        try {
+          debug.log('SmartRules: Received transaction:updated event', event.detail);
+          if (event.detail && event.detail.transaction) {
+            await this.processTransaction(event.detail.transaction);
+          } else {
+            console.error(
+              'SmartRules: Invalid event detail structure for transaction:updated',
+              event.detail
+            );
+          }
+        } catch (error) {
+          debug.error('SmartRules: Error processing transaction:updated event', error);
         }
       });
 
       // Listen for batch events from imports and bulk operations
       eventManager.addEventListener(window, 'transaction:added:batch', async event => {
-        debug.log('SmartRules: Received transaction:added:batch event', event.detail);
-        if (event.detail && Array.isArray(event.detail)) {
-          let processed = 0;
-          const isNewTransaction = true; // Batch adds are new transactions
-          const forceProcess = isNewTransaction && this.config.processAllNewTransactions;
+        try {
+          debug.log('SmartRules: Received transaction:added:batch event', event.detail);
+          if (event.detail && Array.isArray(event.detail)) {
+            let processed = 0;
+            const isNewTransaction = true; // Batch adds are new transactions
+            const forceProcess = isNewTransaction && this.config.processAllNewTransactions;
 
-          for (const item of event.detail) {
-            if (item.transaction) {
-              await this.processTransaction(item.transaction, forceProcess, isNewTransaction);
-              processed++;
+            for (const item of event.detail) {
+              if (item.transaction) {
+                try {
+                  await this.processTransaction(item.transaction, forceProcess, isNewTransaction);
+                  processed++;
+                } catch (error) {
+                  debug.error('SmartRules: Error processing transaction in batch', error);
+                }
+              }
             }
+            debug.log(`SmartRules: Processed ${processed} transactions from batch`);
           }
-          debug.log(`SmartRules: Processed ${processed} transactions from batch`);
+        } catch (error) {
+          debug.error('SmartRules: Error processing transaction:added:batch event', error);
         }
       });
 
       eventManager.addEventListener(window, 'transactions:batchAdded', async event => {
-        debug.log('SmartRules: Received transactions:batchAdded event', event.detail);
-        if (event.detail && event.detail.transactions) {
-          let processed = 0;
-          const isNewTransaction = true; // Batch adds are new transactions
-          const forceProcess = isNewTransaction && this.config.processAllNewTransactions;
+        try {
+          debug.log('SmartRules: Received transactions:batchAdded event', event.detail);
+          if (event.detail && event.detail.transactions) {
+            let processed = 0;
+            const isNewTransaction = true; // Batch adds are new transactions
+            const forceProcess = isNewTransaction && this.config.processAllNewTransactions;
 
-          for (const transaction of event.detail.transactions) {
-            await this.processTransaction(transaction, forceProcess, isNewTransaction);
-            processed++;
+            for (const transaction of event.detail.transactions) {
+              try {
+                await this.processTransaction(transaction, forceProcess, isNewTransaction);
+                processed++;
+              } catch (error) {
+                debug.error('SmartRules: Error processing transaction in batch', error);
+              }
+            }
+            debug.log(`SmartRules: Processed ${processed} transactions from batch`);
+
+            // Dispatch completion event for UI feedback
+            window.dispatchEvent(
+              new CustomEvent('smartrules:batchProcessed', {
+                detail: { processed, total: event.detail.transactions.length },
+              })
+            );
           }
-          debug.log(`SmartRules: Processed ${processed} transactions from batch`);
-
-          // Dispatch completion event for UI feedback
-          window.dispatchEvent(
-            new CustomEvent('smartrules:batchProcessed', {
-              detail: { processed, total: event.detail.transactions.length },
-            })
-          );
+        } catch (error) {
+          debug.error('SmartRules: Error processing transactions:batchAdded event', error);
         }
       });
 

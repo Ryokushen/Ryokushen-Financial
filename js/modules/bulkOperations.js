@@ -147,7 +147,7 @@ class BulkOperationsUI {
     modalManager.register('bulk-progress-modal');
     modalManager.register('bulk-category-modal');
     modalManager.register('bulk-account-modal');
-    
+
     // Setup modal listeners after dynamic creation
     modalManager.setupModalListeners('bulk-category-modal');
     modalManager.setupModalListeners('bulk-account-modal');
@@ -353,14 +353,14 @@ class BulkOperationsUI {
     if (activeCashAccounts.length > 0) {
       const cashGroup = document.createElement('optgroup');
       cashGroup.label = 'Cash Accounts';
-      
+
       activeCashAccounts.forEach(account => {
         const option = document.createElement('option');
         option.value = `cash_${account.id}`;
         option.textContent = account.name;
         cashGroup.appendChild(option);
       });
-      
+
       selectElement.appendChild(cashGroup);
     }
 
@@ -369,14 +369,14 @@ class BulkOperationsUI {
     if (creditCards.length > 0) {
       const creditGroup = document.createElement('optgroup');
       creditGroup.label = 'Credit Cards';
-      
+
       creditCards.forEach(account => {
         const option = document.createElement('option');
         option.value = `cc_${account.id}`;
         option.textContent = `${account.name} (Credit Card)`;
         creditGroup.appendChild(option);
       });
-      
+
       selectElement.appendChild(creditGroup);
     }
   }
@@ -441,7 +441,7 @@ class BulkOperationsUI {
     // Parse account type and ID
     let accountId = null;
     let debtAccountId = null;
-    
+
     if (selectedAccount.startsWith('cash_')) {
       accountId = parseInt(selectedAccount.replace('cash_', ''));
     } else if (selectedAccount.startsWith('cc_')) {
@@ -455,7 +455,7 @@ class BulkOperationsUI {
       // Prepare updates - we need to set the correct account field and clear the other
       const updates = transactionIds.map(id => {
         const updateData = {};
-        
+
         if (accountId) {
           // Updating to a cash account
           updateData.account_id = accountId;
@@ -465,7 +465,7 @@ class BulkOperationsUI {
           updateData.account_id = null;
           updateData.debt_account_id = debtAccountId;
         }
-        
+
         return {
           id,
           updates: updateData,

@@ -82,39 +82,39 @@ export function populateAccountFilterDropdown(appState) {
   }
 
   const { cashAccounts, debtAccounts } = appState.appData;
-  
+
   // Clear existing options
   filterSelect.innerHTML = '<option value="">— All Accounts —</option>';
-  
+
   // Add cash accounts
   const activeCashAccounts = cashAccounts.filter(a => a.isActive);
   if (activeCashAccounts.length > 0) {
     const cashGroup = document.createElement('optgroup');
     cashGroup.label = 'Cash Accounts';
-    
+
     activeCashAccounts.forEach(account => {
       const option = document.createElement('option');
       option.value = account.id;
       option.textContent = account.name;
       cashGroup.appendChild(option);
     });
-    
+
     filterSelect.appendChild(cashGroup);
   }
-  
+
   // Add credit card accounts
   const creditCards = debtAccounts.filter(a => a.type === 'Credit Card');
   if (creditCards.length > 0) {
     const creditGroup = document.createElement('optgroup');
     creditGroup.label = 'Credit Cards';
-    
+
     creditCards.forEach(account => {
       const option = document.createElement('option');
       option.value = account.id;
       option.textContent = `${account.name} (Credit Card)`;
       creditGroup.appendChild(option);
     });
-    
+
     filterSelect.appendChild(creditGroup);
   }
 }
@@ -946,7 +946,11 @@ async function addLinkedTransaction(fromTransactionData, toAccountValue, appStat
 
     try {
       // For transfers between accounts, use atomic transfer function if available
-      if (fromTransactionData.category === 'Transfer' && transaction1.account_id && transaction2.account_id) {
+      if (
+        fromTransactionData.category === 'Transfer' &&
+        transaction1.account_id &&
+        transaction2.account_id
+      ) {
         try {
           // Try to use atomic transfer for cash-to-cash transfers
           const result = await db.transferFunds(
@@ -955,36 +959,47 @@ async function addLinkedTransaction(fromTransactionData, toAccountValue, appStat
             Math.abs(fromTransactionData.amount),
             baseDescription
           );
-          
+
           if (result.success) {
-          // Load the created transactions
-          const [fromTx, toTx] = await Promise.all([
-            db.getTransactionById(result.from_transaction_id),
-            db.getTransactionById(result.to_transaction_id)
-          ]);
-          
-          if (fromTx) savedTransactions.push(fromTx);
-          if (toTx) savedTransactions.push(toTx);
-          
-          // Record balance changes for UI update
-          balanceChanges.push(
-            { type: 'cash', id: transaction1.account_id, amount: -Math.abs(fromTransactionData.amount) },
-            { type: 'cash', id: transaction2.account_id, amount: Math.abs(fromTransactionData.amount) }
-          );
-        } else {
-          throw new Error(result.message || 'Transfer failed');
-        }
+            // Load the created transactions
+            const [fromTx, toTx] = await Promise.all([
+              db.getTransactionById(result.from_transaction_id),
+              db.getTransactionById(result.to_transaction_id),
+            ]);
+
+            if (fromTx) savedTransactions.push(fromTx);
+            if (toTx) savedTransactions.push(toTx);
+
+            // Record balance changes for UI update
+            balanceChanges.push(
+              {
+                type: 'cash',
+                id: transaction1.account_id,
+                amount: -Math.abs(fromTransactionData.amount),
+              },
+              {
+                type: 'cash',
+                id: transaction2.account_id,
+                amount: Math.abs(fromTransactionData.amount),
+              }
+            );
+          } else {
+            throw new Error(result.message || 'Transfer failed');
+          }
         } catch (error) {
           // If RPC function doesn't exist (404), fall back to regular transaction creation
           if (error.message?.includes('404') || error.message?.includes('not exist')) {
             debug.warn('Atomic transfer not available, falling back to regular transactions');
-            const saved = await transactionManager.addLinkedTransactions(transaction1, transaction2);
+            const saved = await transactionManager.addLinkedTransactions(
+              transaction1,
+              transaction2
+            );
             savedTransactions.push(...saved);
-            
+
             // Update balances manually
             await updateCashAccountBalance(transaction1.account_id, transaction1.amount, appState);
             await updateCashAccountBalance(transaction2.account_id, transaction2.amount, appState);
-            
+
             balanceChanges.push(
               { type: 'cash', id: transaction1.account_id, amount: transaction1.amount },
               { type: 'cash', id: transaction2.account_id, amount: transaction2.amount }
@@ -1008,7 +1023,11 @@ async function addLinkedTransaction(fromTransactionData, toAccountValue, appStat
             amount: transaction1.amount,
           });
         } else if (transaction1.debt_account_id) {
-          await updateDebtAccountBalance(transaction1.debt_account_id, transaction1.amount, appState);
+          await updateDebtAccountBalance(
+            transaction1.debt_account_id,
+            transaction1.amount,
+            appState
+          );
           balanceChanges.push({
             type: 'debt',
             id: transaction1.debt_account_id,
@@ -1025,7 +1044,11 @@ async function addLinkedTransaction(fromTransactionData, toAccountValue, appStat
             amount: transaction2.amount,
           });
         } else if (transaction2.debt_account_id) {
-          await updateDebtAccountBalance(transaction2.debt_account_id, transaction2.amount, appState);
+          await updateDebtAccountBalance(
+            transaction2.debt_account_id,
+            transaction2.amount,
+            appState
+          );
           balanceChanges.push({
             type: 'debt',
             id: transaction2.debt_account_id,
@@ -1465,7 +1488,11 @@ const VISIBLE_ROWS = 50; // Number of rows to render at once
 const BUFFER_ROWS = 10; // Extra rows to render for smooth scrolling
 let visibleStartIndex = 0;
 
-export function renderTransactions(appState, categoryFilter = currentCategoryFilter, accountFilter = currentAccountFilter) {
+export function renderTransactions(
+  appState,
+  categoryFilter = currentCategoryFilter,
+  accountFilter = currentAccountFilter
+) {
   const { appData } = appState;
   const tbody = document.getElementById('transactions-table-body');
   if (!tbody) {
@@ -1484,7 +1511,7 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
 
   // Get transactions based on filters
   let transactions;
-  
+
   if (categoryFilter && accountFilter) {
     // Both filters active - need to filter by both
     const categoryTransactions = dataIndex.getTransactionsByCategory(categoryFilter);
@@ -1499,11 +1526,13 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
   } else if (accountFilter) {
     // Only account filter - need to handle both cash and credit card transactions
     const accountTransactions = dataIndex.getTransactionsByAccount(accountFilter);
-    
+
     // Also check for credit card transactions
     const allTransactions = [...appData.transactions];
-    const creditCardTransactions = allTransactions.filter(t => String(t.debt_account_id) === accountFilter);
-    
+    const creditCardTransactions = allTransactions.filter(
+      t => String(t.debt_account_id) === accountFilter
+    );
+
     // Combine and deduplicate
     const combinedMap = new Map();
     [...accountTransactions, ...creditCardTransactions].forEach(t => {
@@ -1530,42 +1559,44 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
       tbody.virtualScroll.destroy();
       tbody.virtualScroll = null;
     }
-    
+
     // Use new virtual scroll component
-    import('./virtualScroll.js').then(({ VirtualScroll }) => {
-      // Double check we still need virtual scroll (in case of rapid updates)
-      if (transactions.length <= 100) {
-        renderTransactionsNormal(tbody, transactions, appState);
-        return;
-      }
-      
-      const virtualScroll = new VirtualScroll({
-        container: tbody.parentElement,
-        items: transactions,
-        rowHeight: 40,
-        visibleHeight: Math.min(600, window.innerHeight - 200), // Adaptive height
-        bufferSize: 10, // Increase buffer for smoother scrolling
-        renderItem: (transaction, index) => {
-          const row = document.createElement('tr');
-          row.className = 'transaction-row';
-          row.innerHTML = createTransactionRowHTML(transaction, appData);
-          
-          // Add event listeners
-          setupTransactionRowEventListeners(row, transaction, appState);
-          
-          return row;
+    import('./virtualScroll.js')
+      .then(({ VirtualScroll }) => {
+        // Double check we still need virtual scroll (in case of rapid updates)
+        if (transactions.length <= 100) {
+          renderTransactionsNormal(tbody, transactions, appState);
+          return;
         }
+
+        const virtualScroll = new VirtualScroll({
+          container: tbody.parentElement,
+          items: transactions,
+          rowHeight: 40,
+          visibleHeight: Math.min(600, window.innerHeight - 200), // Adaptive height
+          bufferSize: 10, // Increase buffer for smoother scrolling
+          renderItem: (transaction, index) => {
+            const row = document.createElement('tr');
+            row.className = 'transaction-row';
+            row.innerHTML = createTransactionRowHTML(transaction, appData);
+
+            // Add event listeners
+            setupTransactionRowEventListeners(row, transaction, appState);
+
+            return row;
+          },
+        });
+
+        // Store reference for cleanup
+        tbody.virtualScroll = virtualScroll;
+      })
+      .catch(error => {
+        debug.error('Failed to load virtual scroll, using fallback:', error);
+        renderTransactionsVirtual(tbody, transactions, appState);
       });
-      
-      // Store reference for cleanup
-      tbody.virtualScroll = virtualScroll;
-    }).catch(error => {
-      debug.error('Failed to load virtual scroll, using fallback:', error);
-      renderTransactionsVirtual(tbody, transactions, appState);
-    });
     return;
   }
-  
+
   // Clean up virtual scroll if we don't need it anymore
   if (tbody.virtualScroll) {
     tbody.virtualScroll.destroy();
@@ -1578,7 +1609,7 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
 
 function renderTransactionsNormal(tbody, transactions, appState) {
   const { appData } = appState;
-  
+
   tbody.innerHTML = transactions
     .map(t => {
       // Handle both cash account transactions and credit card transactions with improved fallbacks
@@ -1869,30 +1900,32 @@ function calculatePreviousDueDate(currentDateStr, frequency) {
 // Helper function to create transaction row HTML
 function createTransactionRowHTML(transaction, appData) {
   const dataIndex = window.dataIndex;
-  
+
   // Handle both cash account transactions and credit card transactions
   let accountName = 'Account Not Found';
-  
+
   if (transaction.account_id) {
-    const account = dataIndex?.indexes?.cashAccountsById?.get(transaction.account_id) ||
-                   appData.cashAccounts.find(a => a.id === transaction.account_id);
+    const account =
+      dataIndex?.indexes?.cashAccountsById?.get(transaction.account_id) ||
+      appData.cashAccounts.find(a => a.id === transaction.account_id);
     if (account) {
       accountName = escapeHtml(account.name);
     } else {
       accountName = `Deleted Account (${transaction.account_id.substring(0, 8)}...)`;
     }
   } else if (transaction.debt_account_id) {
-    const debtAccount = dataIndex?.indexes?.debtAccountsById?.get(transaction.debt_account_id) ||
-                       appData.debtAccounts.find(d => d.id === transaction.debt_account_id);
+    const debtAccount =
+      dataIndex?.indexes?.debtAccountsById?.get(transaction.debt_account_id) ||
+      appData.debtAccounts.find(d => d.id === transaction.debt_account_id);
     if (debtAccount) {
       accountName = `${escapeHtml(debtAccount.name)} (Credit Card)`;
     } else {
       accountName = `Deleted Credit Card (${transaction.debt_account_id.substring(0, 8)}...)`;
     }
   }
-  
+
   let description = escapeHtml(transaction.description);
-  
+
   if (transaction.category === 'Debt') {
     let debtAccountName = '';
     if (transaction.debt_account_id) {
@@ -1903,17 +1936,17 @@ function createTransactionRowHTML(transaction, appData) {
     } else if (transaction.debt_account) {
       debtAccountName = transaction.debt_account;
     }
-    
+
     if (debtAccountName) {
       description += ` (${escapeHtml(debtAccountName)})`;
     }
   }
-  
+
   const amountClass = transaction.amount >= 0 ? 'text-success' : 'text-error';
   const amountPrefix = transaction.amount >= 0 ? '+' : '';
   const clearedIcon = transaction.cleared ? '✓' : '○';
   const clearedClass = transaction.cleared ? 'cleared' : 'pending';
-  
+
   return `
     <td class="transaction-date">${formatDate(transaction.date)}</td>
     <td class="transaction-account">${accountName}</td>
@@ -1952,7 +1985,7 @@ function setupTransactionRowEventListeners(row, transaction, appState) {
       editTransaction(transaction.id, appState.appData);
     });
   }
-  
+
   // Delete button
   const deleteBtn = row.querySelector('.delete-transaction');
   if (deleteBtn) {
@@ -1960,7 +1993,7 @@ function setupTransactionRowEventListeners(row, transaction, appState) {
       deleteTransaction(transaction.id, appState);
     });
   }
-  
+
   // Clear toggle
   const clearedCell = row.querySelector('.transaction-cleared');
   if (clearedCell) {
@@ -1968,9 +2001,9 @@ function setupTransactionRowEventListeners(row, transaction, appState) {
       try {
         const updatedTransaction = await transactionManager.updateTransaction(transaction.id, {
           ...transaction,
-          cleared: !transaction.cleared
+          cleared: !transaction.cleared,
         });
-        
+
         if (updatedTransaction) {
           transaction.cleared = updatedTransaction.cleared;
           clearedCell.className = `transaction-cleared ${transaction.cleared ? 'cleared' : 'pending'}`;

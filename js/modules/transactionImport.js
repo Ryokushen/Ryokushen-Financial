@@ -225,7 +225,12 @@ class TransactionImport {
       }
 
       // Validate MIME type
-      const validMimeTypes = ['text/csv', 'text/plain', 'application/vnd.intu.qfx', 'application/x-qif'];
+      const validMimeTypes = [
+        'text/csv',
+        'text/plain',
+        'application/vnd.intu.qfx',
+        'application/x-qif',
+      ];
       if (file.type && !validMimeTypes.includes(file.type) && !file.type.startsWith('text/')) {
         showError('Invalid file type. Please select a valid CSV, QFX, or QIF file');
         return;
@@ -233,7 +238,7 @@ class TransactionImport {
 
       // Read file
       const text = await this.readFile(file);
-      
+
       // Validate file content based on type
       if (fileExt === '.csv' && !this.isValidCSV(text)) {
         showError('Invalid CSV file format');
@@ -245,7 +250,7 @@ class TransactionImport {
         showError('Invalid QIF file format');
         return;
       }
-      
+
       this.fileData = {
         name: file.name,
         type: fileExt.substring(1).toUpperCase(),
@@ -860,21 +865,25 @@ class TransactionImport {
       // Try to use atomic bulk import if available
       let result;
       const useAtomicImport = false; // Set to true when RPC function is deployed
-      
+
       if (useAtomicImport) {
         // Use atomic bulk import
         this.updateProgress({ percentage: 50, current: 0, total: transactionsToImport.length });
-        
+
         try {
           const atomicResult = await db.bulkImportTransactions(transactionsToImport);
-          
+
           result = {
             successful: atomicResult.imported_count,
             failed: atomicResult.failed_count,
-            errors: atomicResult.success ? [] : [{ error: atomicResult.message }]
+            errors: atomicResult.success ? [] : [{ error: atomicResult.message }],
           };
-          
-          this.updateProgress({ percentage: 100, current: transactionsToImport.length, total: transactionsToImport.length });
+
+          this.updateProgress({
+            percentage: 100,
+            current: transactionsToImport.length,
+            total: transactionsToImport.length,
+          });
         } catch (error) {
           // Fall back to regular import
           debug.warn('Atomic import failed, falling back to regular import:', error);
@@ -946,20 +955,21 @@ class TransactionImport {
    */
   isValidCSV(text) {
     if (!text || text.trim().length === 0) return false;
-    
+
     // Check if it has at least one line with comma-separated values
     const lines = text.trim().split('\n');
     if (lines.length < 2) return false; // Need at least header and one data row
-    
+
     // Check if first line has commas (likely a header)
     const firstLine = lines[0];
     if (!firstLine.includes(',')) return false;
-    
+
     // Basic check for consistent column count
     const headerColumns = firstLine.split(',').length;
-    const hasConsistentColumns = lines.slice(1, Math.min(5, lines.length))
+    const hasConsistentColumns = lines
+      .slice(1, Math.min(5, lines.length))
       .every(line => line.split(',').length === headerColumns);
-    
+
     return hasConsistentColumns;
   }
 

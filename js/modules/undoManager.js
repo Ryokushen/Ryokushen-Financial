@@ -13,11 +13,11 @@ class UndoManager {
     this.redoStack = [];
     this.maxStackSize = 20; // Keep last 20 operations
     this.isExecuting = false;
-    
+
     this.setupKeyboardShortcuts();
     this.setupUI();
   }
-  
+
   /**
    * Execute a command and add it to the undo stack
    */
@@ -26,30 +26,29 @@ class UndoManager {
       debug.warn('Command execution already in progress');
       return;
     }
-    
+
     try {
       this.isExecuting = true;
-      
+
       // Execute the command
       await command.execute();
-      
+
       // Add to undo stack
       this.undoStack.push(command);
-      
+
       // Limit stack size
       if (this.undoStack.length > this.maxStackSize) {
         this.undoStack.shift();
       }
-      
+
       // Clear redo stack (new action invalidates redo history)
       this.redoStack = [];
-      
+
       // Update UI
       this.updateUI();
-      
+
       // Store in session storage
       this.saveToSession();
-      
     } catch (error) {
       debug.error('Command execution failed:', error);
       throw error;
@@ -57,7 +56,7 @@ class UndoManager {
       this.isExecuting = false;
     }
   }
-  
+
   /**
    * Undo the last operation
    */
@@ -66,28 +65,27 @@ class UndoManager {
       debug.log('Nothing to undo or operation in progress');
       return false;
     }
-    
+
     try {
       this.isExecuting = true;
-      
+
       // Pop from undo stack
       const command = this.undoStack.pop();
-      
+
       // Execute undo
       await command.undo();
-      
+
       // Push to redo stack
       this.redoStack.push(command);
-      
+
       // Update UI
       this.updateUI();
       this.saveToSession();
-      
+
       // Show feedback
       showSuccess(`Undid: ${command.description}`);
-      
+
       return true;
-      
     } catch (error) {
       debug.error('Undo failed:', error);
       showError('Failed to undo operation');
@@ -96,7 +94,7 @@ class UndoManager {
       this.isExecuting = false;
     }
   }
-  
+
   /**
    * Redo the last undone operation
    */
@@ -105,28 +103,27 @@ class UndoManager {
       debug.log('Nothing to redo or operation in progress');
       return false;
     }
-    
+
     try {
       this.isExecuting = true;
-      
+
       // Pop from redo stack
       const command = this.redoStack.pop();
-      
+
       // Execute the command again
       await command.execute();
-      
+
       // Push back to undo stack
       this.undoStack.push(command);
-      
+
       // Update UI
       this.updateUI();
       this.saveToSession();
-      
+
       // Show feedback
       showSuccess(`Redid: ${command.description}`);
-      
+
       return true;
-      
     } catch (error) {
       debug.error('Redo failed:', error);
       showError('Failed to redo operation');
@@ -135,7 +132,7 @@ class UndoManager {
       this.isExecuting = false;
     }
   }
-  
+
   /**
    * Clear all undo/redo history
    */
@@ -145,7 +142,7 @@ class UndoManager {
     this.updateUI();
     this.clearSession();
   }
-  
+
   /**
    * Get current undo/redo status
    */
@@ -156,21 +153,21 @@ class UndoManager {
       undoCount: this.undoStack.length,
       redoCount: this.redoStack.length,
       lastUndo: this.undoStack[this.undoStack.length - 1]?.description || null,
-      lastRedo: this.redoStack[this.redoStack.length - 1]?.description || null
+      lastRedo: this.redoStack[this.redoStack.length - 1]?.description || null,
     };
   }
-  
+
   /**
    * Setup keyboard shortcuts
    */
   setupKeyboardShortcuts() {
-    eventManager.addEventListener(document, 'keydown', (e) => {
+    eventManager.addEventListener(document, 'keydown', e => {
       // Ctrl/Cmd + Z for undo
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         this.undo();
       }
-      
+
       // Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y for redo
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
@@ -178,7 +175,7 @@ class UndoManager {
       }
     });
   }
-  
+
   /**
    * Setup UI elements
    */
@@ -192,24 +189,24 @@ class UndoManager {
       undoBtn.innerHTML = '↶ Undo';
       undoBtn.title = 'Undo (Ctrl+Z)';
       undoBtn.disabled = true;
-      
+
       const redoBtn = document.createElement('button');
       redoBtn.id = 'redo-btn';
       redoBtn.className = 'btn btn--small btn--secondary';
       redoBtn.innerHTML = '↷ Redo';
       redoBtn.title = 'Redo (Ctrl+Y)';
       redoBtn.disabled = true;
-      
+
       eventManager.addEventListener(undoBtn, 'click', () => this.undo());
       eventManager.addEventListener(redoBtn, 'click', () => this.redo());
-      
+
       toolbar.appendChild(undoBtn);
       toolbar.appendChild(redoBtn);
     }
-    
+
     this.updateUI();
   }
-  
+
   /**
    * Update UI buttons
    */
@@ -217,21 +214,21 @@ class UndoManager {
     const undoBtn = document.getElementById('undo-btn');
     const redoBtn = document.getElementById('redo-btn');
     const status = this.getStatus();
-    
+
     if (undoBtn) {
       undoBtn.disabled = !status.canUndo;
       undoBtn.title = status.lastUndo ? `Undo: ${status.lastUndo} (Ctrl+Z)` : 'Undo (Ctrl+Z)';
     }
-    
+
     if (redoBtn) {
       redoBtn.disabled = !status.canRedo;
       redoBtn.title = status.lastRedo ? `Redo: ${status.lastRedo} (Ctrl+Y)` : 'Redo (Ctrl+Y)';
     }
-    
+
     // Dispatch event for other UI components
     window.dispatchEvent(new CustomEvent('undo:statusChanged', { detail: status }));
   }
-  
+
   /**
    * Save state to session storage
    */
@@ -239,14 +236,14 @@ class UndoManager {
     try {
       const state = {
         undoStack: this.undoStack.map(cmd => this.serializeCommand(cmd)),
-        redoStack: this.redoStack.map(cmd => this.serializeCommand(cmd))
+        redoStack: this.redoStack.map(cmd => this.serializeCommand(cmd)),
       };
       sessionStorage.setItem('undoState', JSON.stringify(state));
     } catch (error) {
       debug.warn('Failed to save undo state:', error);
     }
   }
-  
+
   /**
    * Load state from session storage
    */
@@ -263,14 +260,14 @@ class UndoManager {
       debug.warn('Failed to load undo state:', error);
     }
   }
-  
+
   /**
    * Clear session storage
    */
   clearSession() {
     sessionStorage.removeItem('undoState');
   }
-  
+
   /**
    * Serialize a command for storage
    */
@@ -278,7 +275,7 @@ class UndoManager {
     return {
       type: command.constructor.name,
       description: command.description,
-      data: command.serialize ? command.serialize() : {}
+      data: command.serialize ? command.serialize() : {},
     };
   }
 }
@@ -291,15 +288,15 @@ export class Command {
     this.description = description;
     this.executed = false;
   }
-  
+
   async execute() {
     throw new Error('Execute method must be implemented');
   }
-  
+
   async undo() {
     throw new Error('Undo method must be implemented');
   }
-  
+
   serialize() {
     return {};
   }
@@ -310,9 +307,10 @@ export class Command {
  */
 export class TransactionCommand extends Command {
   constructor(transaction, operation, transactionManager) {
-    const desc = operation === 'add' 
-      ? `Add transaction: ${transaction.description || 'New Transaction'}`
-      : `Delete transaction: ${transaction.description || 'Transaction'}`;
+    const desc =
+      operation === 'add'
+        ? `Add transaction: ${transaction.description || 'New Transaction'}`
+        : `Delete transaction: ${transaction.description || 'Transaction'}`;
     super(desc);
     this.transaction = transaction;
     this.operation = operation; // 'add' or 'delete'
@@ -320,13 +318,13 @@ export class TransactionCommand extends Command {
     this.savedTransaction = null;
     this.skipUndo = false; // Flag to skip undo if needed
   }
-  
+
   async execute() {
     try {
       if (this.operation === 'add') {
         // When executing add, save the transaction
         this.savedTransaction = await this.transactionManager.addTransaction(this.transaction, {
-          skipUndo: true // Prevent recursive undo tracking
+          skipUndo: true, // Prevent recursive undo tracking
         });
       } else if (this.operation === 'delete') {
         // When executing delete, save full transaction data first
@@ -339,7 +337,7 @@ export class TransactionCommand extends Command {
           this.transaction = fullTransaction; // Store full data for undo
         }
         await this.transactionManager.deleteTransaction(this.transaction.id, {
-          skipUndo: true
+          skipUndo: true,
         });
       }
       this.executed = true;
@@ -348,13 +346,13 @@ export class TransactionCommand extends Command {
       throw error;
     }
   }
-  
+
   async undo() {
     try {
       if (this.operation === 'add' && this.savedTransaction) {
         // Undo add by deleting
         await this.transactionManager.deleteTransaction(this.savedTransaction.id, {
-          skipUndo: true
+          skipUndo: true,
         });
         this.savedTransaction = null;
       } else if (this.operation === 'delete') {
@@ -362,7 +360,7 @@ export class TransactionCommand extends Command {
         const transactionData = { ...this.transaction };
         delete transactionData.id; // Remove ID so database creates new one
         this.savedTransaction = await this.transactionManager.addTransaction(transactionData, {
-          skipUndo: true
+          skipUndo: true,
         });
       }
     } catch (error) {
@@ -370,12 +368,12 @@ export class TransactionCommand extends Command {
       throw error;
     }
   }
-  
+
   serialize() {
     return {
       transaction: this.transaction,
       operation: this.operation,
-      savedTransaction: this.savedTransaction
+      savedTransaction: this.savedTransaction,
     };
   }
 }
@@ -392,7 +390,7 @@ export class AccountUpdateCommand extends Command {
     this.newData = newData;
     this.database = database;
   }
-  
+
   async execute() {
     switch (this.accountType) {
       case 'cash':
@@ -407,7 +405,7 @@ export class AccountUpdateCommand extends Command {
     }
     this.executed = true;
   }
-  
+
   async undo() {
     switch (this.accountType) {
       case 'cash':
@@ -431,14 +429,14 @@ export class BatchCommand extends Command {
     super(description);
     this.commands = commands;
   }
-  
+
   async execute() {
     for (const command of this.commands) {
       await command.execute();
     }
     this.executed = true;
   }
-  
+
   async undo() {
     // Undo in reverse order
     for (let i = this.commands.length - 1; i >= 0; i--) {

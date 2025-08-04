@@ -603,7 +603,7 @@ class TransactionManager {
 
   /**
    * Add a new transaction with undo support
-   * @param {Object} transactionData - Transaction data  
+   * @param {Object} transactionData - Transaction data
    * @param {Object} options - Additional options
    * @returns {Promise<Object>} Created transaction
    */
@@ -617,7 +617,7 @@ class TransactionManager {
   /**
    * Delete a transaction with undo support
    * @param {number} id - Transaction ID
-   * @param {Object} options - Additional options  
+   * @param {Object} options - Additional options
    * @returns {Promise<boolean>} Success status
    */
   async deleteTransactionWithUndo(id, options = {}) {
@@ -626,7 +626,7 @@ class TransactionManager {
     if (!transaction) {
       throw new Error(`Transaction ${id} not found`);
     }
-    
+
     // Create and execute command through undoManager
     const command = new TransactionCommand(transaction, 'delete', this);
     await undoManager.execute(command);
@@ -2022,9 +2022,15 @@ class TransactionManager {
         stats.monthlyTotals[monthKey] = { income: 0, expenses: 0, net: 0 };
       }
       if (amount > 0) {
-        stats.monthlyTotals[monthKey].income = addMoney(stats.monthlyTotals[monthKey].income, amount);
+        stats.monthlyTotals[monthKey].income = addMoney(
+          stats.monthlyTotals[monthKey].income,
+          amount
+        );
       } else {
-        stats.monthlyTotals[monthKey].expenses = addMoney(stats.monthlyTotals[monthKey].expenses, Math.abs(amount));
+        stats.monthlyTotals[monthKey].expenses = addMoney(
+          stats.monthlyTotals[monthKey].expenses,
+          Math.abs(amount)
+        );
       }
       stats.monthlyTotals[monthKey].net = addMoney(stats.monthlyTotals[monthKey].net, amount);
     });
@@ -3040,7 +3046,9 @@ class TransactionManager {
       const totalCount = filtered.length;
       const totalAmount = sumMoney(filtered.map(t => t.amount));
       const totalIncome = sumMoney(filtered.filter(t => t.amount > 0).map(t => t.amount));
-      const totalExpense = sumMoney(filtered.filter(t => t.amount < 0).map(t => Math.abs(t.amount)));
+      const totalExpense = sumMoney(
+        filtered.filter(t => t.amount < 0).map(t => Math.abs(t.amount))
+      );
 
       // Apply pagination
       const paginated = filtered.slice(offset, offset + limit);
@@ -3672,13 +3680,13 @@ class TransactionManager {
   async getSpendingTrends(options = {}) {
     try {
       const startTime = Date.now();
-      const { 
-        months = 12, 
-        startDate: customStartDate, 
+      const {
+        months = 12,
+        startDate: customStartDate,
         endDate: customEndDate,
-        categories = [], 
-        groupBy = 'month', 
-        includeIncome = false 
+        categories = [],
+        groupBy = 'month',
+        includeIncome = false,
       } = options;
 
       // Determine date range - use custom dates if provided, otherwise use months
@@ -3843,12 +3851,12 @@ class TransactionManager {
    */
   async getMerchantAnalysis(options = {}) {
     try {
-      const { 
-        months = 6, 
+      const {
+        months = 6,
         startDate: customStartDate,
         endDate: customEndDate,
-        minTransactions = 2, 
-        limit = 20 
+        minTransactions = 2,
+        limit = 20,
       } = options;
 
       // Determine date range - use custom dates if provided, otherwise use months
@@ -4618,7 +4626,7 @@ class TransactionManager {
         debug.warn('Failed to use Web Worker for statistics, falling back:', error);
       }
     }
-    
+
     // Fallback to synchronous calculation for small datasets
     if (!values || values.length === 0) {
       return { mean: 0, stdDev: 0, min: 0, max: 0, count: 0 };

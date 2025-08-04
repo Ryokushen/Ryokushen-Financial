@@ -18,6 +18,7 @@ import {
 } from './formUtils.js';
 import { eventManager } from './eventManager.js';
 import { transactionManager } from './transactionManager.js';
+import loadingState from './loadingState.js';
 
 export function setupEventListeners(appState, onUpdate) {
   const addCashAccountBtn = document.getElementById('add-cash-account-btn');
@@ -87,6 +88,8 @@ async function handleCashAccountSubmit(event, appState, onUpdate) {
   // Clear previous errors
   clearFormErrors('cash-account-form');
 
+  const submitButton = event.target.querySelector('button[type="submit"]');
+
   try {
     const accountId = document.getElementById('cash-account-id').value;
     const accountData = {
@@ -119,6 +122,9 @@ async function handleCashAccountSubmit(event, appState, onUpdate) {
       showError('Please correct the errors in the form.');
       return;
     }
+
+    // Start loading state
+    loadingState.startButtonLoading(submitButton, accountId ? 'Updating...' : 'Creating...');
 
     if (accountId) {
       await db.updateCashAccount(parseInt(accountId), accountData);
@@ -163,8 +169,12 @@ async function handleCashAccountSubmit(event, appState, onUpdate) {
     closeModal('cash-account-modal');
     onUpdate();
     announceToScreenReader('Account saved successfully');
+    loadingState.showButtonSuccess(submitButton, 'Saved!');
   } catch (error) {
     showError('Failed to save account.');
+    if (submitButton) {
+      loadingState.stopButtonLoading(submitButton);
+    }
   }
 }
 
@@ -179,6 +189,9 @@ async function deleteCashAccount(id, appState, onUpdate) {
       `Are you sure you want to delete "${account.name}"? This will also delete ALL associated transactions.`
     )
   ) {
+    // Show operation lock for potentially long operation
+    loadingState.showOperationLock('Deleting account and transactions...');
+
     try {
       // Get all transactions for this account before deletion
       const accountTransactions = appState.appData.transactions.filter(t => t.account_id === id);
@@ -199,8 +212,10 @@ async function deleteCashAccount(id, appState, onUpdate) {
       );
 
       onUpdate();
+      loadingState.hideOperationLock();
       announceToScreenReader('Cash account and transactions deleted');
     } catch (error) {
+      loadingState.hideOperationLock();
       showError('Failed to delete cash account.');
     }
   }

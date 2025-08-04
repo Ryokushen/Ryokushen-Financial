@@ -67,7 +67,7 @@ function averageMoney(amounts) {
  */
 function convertToMonthlyPrecise(amount, frequency) {
   const monthlyAmount = parseFloat(amount) || 0;
-  
+
   switch (frequency?.toLowerCase()) {
     case 'weekly':
       return multiplyMoney(monthlyAmount, 52 / 12);
@@ -96,5 +96,5 @@ self.financialMath = {
   divideMoney,
   sumMoney,
   averageMoney,
-  convertToMonthlyPrecise
+  convertToMonthlyPrecise,
 };

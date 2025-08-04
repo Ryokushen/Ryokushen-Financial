@@ -9,6 +9,7 @@ import { formatCurrency, escapeHtml, formatDate } from './utils.js';
 import { showError, showSuccess } from './ui.js';
 import { transactionManager } from './transactionManager.js';
 import { debug } from './debug.js';
+import loadingState from './loadingState.js';
 
 /**
  * Show a modal with orphaned transactions and options to fix them
@@ -176,6 +177,9 @@ async function deleteAllOrphanedTransactions(orphanedData, onUpdate) {
     return;
   }
 
+  // Show operation lock for potentially long operation
+  loadingState.showOperationLock('Deleting orphaned transactions...');
+
   try {
     const allOrphaned = [
       ...orphanedData.cashAccountTransactions,
@@ -188,6 +192,7 @@ async function deleteAllOrphanedTransactions(orphanedData, onUpdate) {
     // Delete using transaction manager
     await transactionManager.deleteTransactions(transactionIds);
 
+    loadingState.hideOperationLock();
     showSuccess(`Successfully deleted ${transactionIds.length} orphaned transactions`);
     document.getElementById('orphaned-transactions-modal').remove();
 
@@ -196,6 +201,7 @@ async function deleteAllOrphanedTransactions(orphanedData, onUpdate) {
       await onUpdate();
     }
   } catch (error) {
+    loadingState.hideOperationLock();
     debug.error('Error deleting orphaned transactions:', error);
     showError('Failed to delete orphaned transactions. Please try again.');
   }
@@ -243,6 +249,9 @@ async function reassignSelectedTransactions(appData, onUpdate) {
     return;
   }
 
+  // Show operation lock for potentially long operation
+  loadingState.showOperationLock('Reassigning transactions...');
+
   try {
     // Update each transaction
     for (const { transactionId, newAccountId } of reassignments) {
@@ -256,6 +265,7 @@ async function reassignSelectedTransactions(appData, onUpdate) {
       }
     }
 
+    loadingState.hideOperationLock();
     showSuccess(`Successfully reassigned ${reassignments.length} transactions`);
     document.getElementById('orphaned-transactions-modal').remove();
 
@@ -264,6 +274,7 @@ async function reassignSelectedTransactions(appData, onUpdate) {
       await onUpdate();
     }
   } catch (error) {
+    loadingState.hideOperationLock();
     debug.error('Error reassigning transactions:', error);
     showError('Failed to reassign transactions. Please try again.');
   }

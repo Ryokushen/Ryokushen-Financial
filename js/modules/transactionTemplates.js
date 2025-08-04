@@ -61,10 +61,10 @@ class TransactionTemplatesUI {
     // Template search with debouncing
     const searchInput = document.getElementById('template-search');
     if (searchInput) {
-      const debouncedFilter = debounce((value) => {
+      const debouncedFilter = debounce(value => {
         this.filterTemplates(value);
       }, 300);
-      
+
       eventManager.addEventListener(searchInput, 'input', e => {
         debouncedFilter(e.target.value);
       });

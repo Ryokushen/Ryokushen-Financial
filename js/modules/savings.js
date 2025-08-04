@@ -251,19 +251,15 @@ export async function handleSavingsGoalTransactionDeletion(transaction, appState
   let isDepositTransaction = false;
 
   // First, try to find the goal by matching the linked account (for deposit transactions)
-  goal = appState.appData.savingsGoals.find(
-    g => g.linkedAccountId === transaction.account_id
-  );
-  
+  goal = appState.appData.savingsGoals.find(g => g.linkedAccountId === transaction.account_id);
+
   if (goal && transaction.amount > 0) {
     // This is the deposit transaction to the savings goal
     isDepositTransaction = true;
   } else if (!goal && goalNameMatch[1]) {
     // This might be the withdrawal transaction, try to find goal by name
     const goalName = goalNameMatch[1].trim();
-    goal = appState.appData.savingsGoals.find(
-      g => g.name === goalName
-    );
+    goal = appState.appData.savingsGoals.find(g => g.name === goalName);
   }
 
   if (!goal) {
@@ -412,7 +408,7 @@ async function handleContributionSubmit(event, appState, onUpdate) {
         category: 'Transfer',
         description: `Transfer to ${targetAccount.name} [Savings Goal: ${goal.name}]`,
         amount: -amount,
-        cleared: true
+        cleared: true,
       };
 
       const toTransaction = {
@@ -421,7 +417,7 @@ async function handleContributionSubmit(event, appState, onUpdate) {
         category: 'Transfer',
         description: `Contribution to ${goal.name} [Savings Goal]`,
         amount: amount,
-        cleared: true
+        cleared: true,
       };
 
       const linkedTransactions = await transactionManager.addLinkedTransactions(

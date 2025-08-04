@@ -76,7 +76,7 @@ export class DataIndex {
           }
           this.indexes.transactionsByAccount.get(accountId).push(transaction);
         }
-        
+
         // By debt account (credit cards)
         if (transaction.debt_account_id) {
           if (!this.indexes.transactionsByAccount.has(transaction.debt_account_id)) {
