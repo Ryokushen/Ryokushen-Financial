@@ -340,6 +340,7 @@ body {
     /* Ensure header has relative positioning for dropdown */
     .header {
         position: relative;
+        overflow: visible !important; /* Override overflow:hidden to show dropdown */
     }
     
     .header-content {
@@ -364,11 +365,11 @@ body {
     .tab-nav {
         position: absolute;
         top: 100%;
-        right: 1rem;
+        left: 1rem;
         width: calc(100% - 2rem);
         max-width: 320px;
         max-height: calc(100vh - 80px);
-        background: var(--background-primary, #ffffff);
+        background: var(--background, #0a0a0b);
         flex-direction: column;
         align-items: stretch;
         padding: 0.5rem;
@@ -380,7 +381,7 @@ body {
         transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s ease;
         z-index: 1000;
         overflow-y: auto;
-        border: 1px solid var(--border-color, #e5e7eb);
+        border: 1px solid var(--glass-border);
     }
     
     /* Dropdown arrow/caret */
@@ -388,12 +389,12 @@ body {
         content: '';
         position: absolute;
         top: -8px;
-        right: 20px;
+        left: 20px;
         width: 16px;
         height: 16px;
-        background: var(--background-primary, #ffffff);
-        border-top: 1px solid var(--border-color, #e5e7eb);
-        border-left: 1px solid var(--border-color, #e5e7eb);
+        background: var(--background, #0a0a0b);
+        border-top: 1px solid var(--glass-border);
+        border-left: 1px solid var(--glass-border);
         transform: rotate(45deg);
         z-index: -1;
     }
@@ -402,6 +403,7 @@ body {
         transform: translateY(0);
         opacity: 1;
         visibility: visible;
+        display: flex !important; /* Ensure it's displayed as flex */
     }
     
     .tab-nav .tab-btn {
@@ -409,7 +411,7 @@ body {
         justify-content: flex-start;
         padding: 1rem;
         margin: 0.25rem 0;
-        color: var(--text-primary, #333333);
+        color: var(--color-text, #ffffff);
         background: transparent;
     }
     
