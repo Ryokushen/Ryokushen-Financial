@@ -418,6 +418,41 @@ body {
     }
 }
 
+/* ===== TRANSACTION TABLE HORIZONTAL SCROLL ===== */
+
+@media (max-width: 768px) {
+    /* Enable horizontal scrolling for transaction table */
+    .transactions-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -1rem; /* Extend to edges of screen */
+        padding: 0 1rem;
+    }
+    
+    /* Ensure table maintains its full width */
+    .transactions-table {
+        min-width: 600px; /* Minimum width to show all columns */
+    }
+    
+    /* Visual indicator that table is scrollable */
+    .transactions-table-container {
+        position: relative;
+    }
+    
+    /* Optional: Add scroll hint gradient on right edge */
+    .transactions-table-container::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 30px;
+        background: linear-gradient(to right, transparent, var(--background));
+        pointer-events: none;
+        opacity: 0.8;
+    }
+}
+
 /* ===== ACCESSIBILITY IMPROVEMENTS ===== */
 
 /* Focus states for mobile */
