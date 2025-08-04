@@ -337,11 +337,17 @@ body {
         display: flex;
     }
     
+    /* Ensure header has relative positioning for dropdown */
+    .header {
+        position: relative;
+    }
+    
     .header-content {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
+        position: relative;
     }
     
     .header-content h1 {
@@ -354,27 +360,48 @@ body {
         display: none; /* Hide on mobile, show in menu */
     }
     
-    /* Mobile navigation overlay */
+    /* Mobile navigation dropdown */
     .tab-nav {
-        position: fixed;
-        top: 60px;
-        left: -100%;
-        width: 80%;
-        max-width: 300px;
-        height: calc(100vh - 60px);
+        position: absolute;
+        top: 100%;
+        right: 1rem;
+        width: calc(100% - 2rem);
+        max-width: 320px;
+        max-height: calc(100vh - 80px);
         background: var(--background-primary, #ffffff);
         flex-direction: column;
         align-items: stretch;
-        padding: 1rem;
-        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
-        transition: left 0.3s ease;
-        z-index: 999;
+        padding: 0.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        transform: translateY(-10px);
+        opacity: 0;
+        visibility: hidden;
+        transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s ease;
+        z-index: 1000;
         overflow-y: auto;
-        border-right: 1px solid var(--border-color, #e5e7eb);
+        border: 1px solid var(--border-color, #e5e7eb);
     }
     
-    .tab-nav.mobile-open {
-        left: 0;
+    /* Dropdown arrow/caret */
+    .tab-nav::before {
+        content: '';
+        position: absolute;
+        top: -8px;
+        right: 20px;
+        width: 16px;
+        height: 16px;
+        background: var(--background-primary, #ffffff);
+        border-top: 1px solid var(--border-color, #e5e7eb);
+        border-left: 1px solid var(--border-color, #e5e7eb);
+        transform: rotate(45deg);
+        z-index: -1;
+    }
+    
+    .tab-nav.dropdown-open {
+        transform: translateY(0);
+        opacity: 1;
+        visibility: visible;
     }
     
     .tab-nav .tab-btn {
@@ -394,6 +421,27 @@ body {
     .tab-nav .tab-btn.active {
         background: var(--color-primary, #6366f1);
         color: white;
+    }
+    
+    /* Mobile menu backdrop */
+    .mobile-menu-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 999;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+        pointer-events: none;
+    }
+    
+    .mobile-menu-backdrop.active {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
     }
 }
 

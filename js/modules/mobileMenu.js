@@ -8,32 +8,54 @@ import { eventManager } from './eventManager.js';
 export function initMobileMenu() {
   const menuToggle = document.getElementById('mobile-menu-toggle');
   const tabNav = document.querySelector('.tab-nav');
+  let backdrop = document.querySelector('.mobile-menu-backdrop');
 
   if (!menuToggle || !tabNav) {
     return;
   }
 
+  // Create backdrop if it doesn't exist
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.className = 'mobile-menu-backdrop';
+    document.body.appendChild(backdrop);
+  }
+
   // Toggle menu on button click
   eventManager.addEventListener(menuToggle, 'click', e => {
     e.stopPropagation();
-    menuToggle.classList.toggle('active');
-    tabNav.classList.toggle('mobile-open');
-
-    // Toggle body scroll
-    if (tabNav.classList.contains('mobile-open')) {
-      document.body.style.overflow = 'hidden';
+    const isOpen = tabNav.classList.contains('dropdown-open');
+    
+    if (isOpen) {
+      closeDropdown();
     } else {
-      document.body.style.overflow = '';
+      openDropdown();
     }
   });
 
-  // Close menu when clicking outside
+  function openDropdown() {
+    menuToggle.classList.add('active');
+    tabNav.classList.add('dropdown-open');
+    backdrop.classList.add('active');
+    menuToggle.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeDropdown() {
+    menuToggle.classList.remove('active');
+    tabNav.classList.remove('dropdown-open');
+    backdrop.classList.remove('active');
+    menuToggle.setAttribute('aria-expanded', 'false');
+  }
+
+  // Close menu when clicking outside or on backdrop
   eventManager.addEventListener(document, 'click', e => {
     if (!tabNav.contains(e.target) && !menuToggle.contains(e.target)) {
-      menuToggle.classList.remove('active');
-      tabNav.classList.remove('mobile-open');
-      document.body.style.overflow = '';
+      closeDropdown();
     }
+  });
+
+  eventManager.addEventListener(backdrop, 'click', () => {
+    closeDropdown();
   });
 
   // Close menu when tab is selected
@@ -41,9 +63,7 @@ export function initMobileMenu() {
   tabButtons.forEach(btn => {
     eventManager.addEventListener(btn, 'click', () => {
       if (window.innerWidth <= 768) {
-        menuToggle.classList.remove('active');
-        tabNav.classList.remove('mobile-open');
-        document.body.style.overflow = '';
+        closeDropdown();
       }
     });
   });
@@ -55,47 +75,24 @@ export function initMobileMenu() {
     resizeTimeout = setTimeout(() => {
       if (window.innerWidth > 768) {
         // Reset menu state on larger screens
-        menuToggle.classList.remove('active');
-        tabNav.classList.remove('mobile-open');
-        document.body.style.overflow = '';
+        closeDropdown();
       }
     }, 250);
   });
 
-  // Handle swipe gestures
-  let touchStartX = 0;
-  let touchEndX = 0;
-
-  eventManager.addEventListener(tabNav, 'touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-  });
-
-  eventManager.addEventListener(tabNav, 'touchend', e => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-  });
-
-  function handleSwipe() {
-    const swipeThreshold = 50;
-    const swipeDistance = touchStartX - touchEndX;
-
-    // Swipe left to close
-    if (swipeDistance > swipeThreshold) {
-      menuToggle.classList.remove('active');
-      tabNav.classList.remove('mobile-open');
-      document.body.style.overflow = '';
-    }
-  }
-
   // Add keyboard navigation
   eventManager.addEventListener(document, 'keydown', e => {
-    if (e.key === 'Escape' && tabNav.classList.contains('mobile-open')) {
-      menuToggle.classList.remove('active');
-      tabNav.classList.remove('mobile-open');
-      document.body.style.overflow = '';
+    if (e.key === 'Escape' && tabNav.classList.contains('dropdown-open')) {
+      closeDropdown();
       menuToggle.focus(); // Return focus to toggle button
     }
   });
+
+  // Initialize ARIA attributes
+  menuToggle.setAttribute('aria-expanded', 'false');
+  menuToggle.setAttribute('aria-controls', 'mobile-navigation');
+  tabNav.setAttribute('id', 'mobile-navigation');
+  tabNav.setAttribute('aria-labelledby', 'mobile-menu-toggle');
 }
 
 /**
