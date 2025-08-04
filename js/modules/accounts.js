@@ -18,7 +18,7 @@ import {
 } from './formUtils.js';
 import { eventManager } from './eventManager.js';
 import { transactionManager } from './transactionManager.js';
-import loadingState from './loadingState.js';
+import { loadingState } from './loadingState.js';
 
 export function setupEventListeners(appState, onUpdate) {
   const addCashAccountBtn = document.getElementById('add-cash-account-btn');
