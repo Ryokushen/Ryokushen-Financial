@@ -362,7 +362,7 @@ body {
         width: 80%;
         max-width: 300px;
         height: calc(100vh - 60px);
-        background: var(--background-secondary, #1a1a1a);
+        background: var(--background-primary, #ffffff);
         flex-direction: column;
         align-items: stretch;
         padding: 1rem;
@@ -370,6 +370,7 @@ body {
         transition: left 0.3s ease;
         z-index: 999;
         overflow-y: auto;
+        border-right: 1px solid var(--border-color, #e5e7eb);
     }
     
     .tab-nav.mobile-open {
@@ -381,6 +382,18 @@ body {
         justify-content: flex-start;
         padding: 1rem;
         margin: 0.25rem 0;
+        color: var(--text-primary, #333333);
+        background: transparent;
+    }
+    
+    .tab-nav .tab-btn:hover {
+        background: var(--glass-hover, rgba(0, 0, 0, 0.05));
+        color: var(--color-primary, #6366f1);
+    }
+    
+    .tab-nav .tab-btn.active {
+        background: var(--color-primary, #6366f1);
+        color: white;
     }
 }
 
