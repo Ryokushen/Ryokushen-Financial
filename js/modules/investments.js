@@ -420,7 +420,7 @@ async function updateAllStockPrices(appState, onUpdate) {
 }
 
 async function updateSingleHolding(symbol, appState, onUpdate) {
-  try {
+  const operation = async () => {
     // Ensure services are initialized
     const services = initializeServices();
     if (!holdingsUpdater) {
@@ -431,7 +431,7 @@ async function updateSingleHolding(symbol, appState, onUpdate) {
       showError(
         'Stock price updates require a Finnhub API key. Get a free key at finnhub.io and configure it in Settings.'
       );
-      return;
+      throw new Error('Stock API not configured');
     }
 
     // Check if it's a mutual fund
@@ -439,19 +439,40 @@ async function updateSingleHolding(symbol, appState, onUpdate) {
       showError(
         `${symbol} is a mutual fund and cannot be updated with Finnhub free tier. Consider using ETFs instead.`
       );
-      return;
+      throw new Error('Mutual fund not supported');
     }
 
     const success = await holdingsUpdater.updateHoldingBySymbol(symbol);
     if (success) {
       await onUpdate();
       announceToScreenReader(`Updated ${symbol}`);
+      return true;
     } else {
-      showError(`Failed to update ${symbol}. Symbol may not be found.`);
+      throw new Error(`Failed to update ${symbol}. Symbol may not be found.`);
     }
+  };
+
+  try {
+    // Find the button for this symbol
+    const button = document.querySelector(`button[data-symbol="${symbol}"]`);
+    const buttonId = button ? button.id || `btn-update-${symbol}` : null;
+    
+    await loadingState.executeWithLoading(
+      `updateHolding-${symbol}`,
+      operation,
+      {
+        buttonId: buttonId,
+        loadingText: '...',
+        successText: '✓',
+        errorText: '✗',
+        showButtonStatus: true
+      }
+    );
   } catch (error) {
     debug.error(`Error updating ${symbol}:`, error);
-    showError(`Failed to update ${symbol}: ${error.message || 'Unknown error'}`);
+    if (error.message !== 'Stock API not configured' && error.message !== 'Mutual fund not supported') {
+      showError(`Failed to update ${symbol}: ${error.message || 'Unknown error'}`);
+    }
   }
 }
 
@@ -697,7 +718,7 @@ export function renderInvestmentAccountsEnhanced(appState) {
                                 <div class="holding-icon">${holdingIcon}</div>
                                 <div class="holding-symbol-info">
                                     <div class="symbol">${escapeHtml(h.symbol)}${isMutualFund ? ' <span style="font-size: var(--font-size-xs); opacity: 0.7;">(Fund)</span>' : ''}</div>
-                                    <div class="type">${h.company || 'Stock'}</div>
+                                     <div class="type">${escapeHtml(h.company || 'Stock')}</div>
                                 </div>
                             </div>
                             <div>${h.shares.toFixed(3)} shares</div>
@@ -962,7 +983,8 @@ function calculateExtraContribution(appState) {
 
     // Display results
     const resultsDiv = document.getElementById('contribution-results');
-    resultsDiv.innerHTML = `
+    if (resultsDiv) {
+      resultsDiv.innerHTML = `
         <h5>Extra Contribution Results</h5>
         <p>Starting Value: ${formatCurrency(currentValue)}</p>
         <p>Extra Monthly Contribution: ${formatCurrency(extraAmount)}</p>
@@ -991,12 +1013,15 @@ function calculateExtraContribution(appState) {
               )
               .join('')}
         </div>
-    `;
-
-    resultsDiv.style.display = 'block';
+      `;
+      resultsDiv.style.display = 'block';
+    }
 
     // Show charts
-    document.querySelector('.investment-charts').style.display = 'block';
+    const chartsSection = document.querySelector('.investment-charts');
+    if (chartsSection) {
+      chartsSection.style.display = 'block';
+    }
 
     // Update charts if function exists
     if (window.updateInvestmentCharts) {
@@ -1069,7 +1094,8 @@ function calculateRetirementGoal(appState) {
 
     // Display results
     const resultsDiv = document.getElementById('retirement-results');
-    resultsDiv.innerHTML = `
+    if (resultsDiv) {
+      resultsDiv.innerHTML = `
             <h5>Retirement Planning Results</h5>
             <p>Current Age: ${currentAge}, Retirement Age: ${retirementAge} (${results.scenarios[0].yearsToRetirement} years)</p>
             <p>Current Portfolio Value: ${formatCurrency(currentPortfolioValue)}</p>
@@ -1118,12 +1144,15 @@ function calculateRetirementGoal(appState) {
                   })
                   .join('')}
             </div>
-        `;
-
-    resultsDiv.style.display = 'block';
+          `;
+      resultsDiv.style.display = 'block';
+    }
 
     // Show charts
-    document.querySelector('.investment-charts').style.display = 'block';
+    const chartsSection = document.querySelector('.investment-charts');
+    if (chartsSection) {
+      chartsSection.style.display = 'block';
+    }
 
     // Update charts if function exists
     if (window.updateInvestmentCharts) {
@@ -1176,7 +1205,8 @@ function calculatePortfolioGrowth(appState) {
 
   // Display results
   const resultsDiv = document.getElementById('growth-results');
-  resultsDiv.innerHTML = `
+  if (resultsDiv) {
+    resultsDiv.innerHTML = `
         <h5>Portfolio Growth Projection</h5>
         <p>Current Portfolio Value: ${formatCurrency(currentPortfolioValue)}</p>
         <p>Monthly Contribution: ${formatCurrency(monthlyContrib)}</p>
@@ -1206,11 +1236,14 @@ function calculatePortfolioGrowth(appState) {
               .join('')}
         </div>
     `;
-
-  resultsDiv.style.display = 'block';
+    resultsDiv.style.display = 'block';
+  }
 
   // Show charts
-  document.querySelector('.investment-charts').style.display = 'block';
+  const chartsSection = document.querySelector('.investment-charts');
+  if (chartsSection) {
+    chartsSection.style.display = 'block';
+  }
 
   // Update charts if function exists
   if (window.updateInvestmentCharts) {
