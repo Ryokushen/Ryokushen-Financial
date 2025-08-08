@@ -509,6 +509,22 @@ body {
         width: 100%;
     }
 
+    /* Wrap the actions button group and make buttons responsive */
+    .transactions-header > div:last-child {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2, 0.5rem);
+        width: 100%;
+    }
+
+    .transactions-header > div:last-child .btn {
+        flex: 1 1 calc(50% - var(--space-2, 0.5rem));
+        min-width: 140px;
+        max-width: 100%;
+        box-sizing: border-box;
+        white-space: nowrap;
+    }
+
     /* Compress table header columns to match mobile rows and prevent overflow */
     .table-header {
         grid-template-columns: minmax(0, 1fr) 100px 70px;
@@ -540,11 +556,35 @@ body {
         width: 28px;
         height: 28px;
     }
+
+    /* Reduce actions column min width so two rows of icons can fit */
+    .table-row {
+        grid-template-columns: minmax(0, 1fr) 90px 80px;
+        column-gap: var(--space-2, 0.5rem);
+    }
+
+    .table-row.bulk-selectable {
+        grid-template-columns: 28px minmax(0, 1fr) 90px 80px;
+    }
+
+    /* Make checkboxes an appropriate size on mobile (override global tap-target rule) */
+    input[type="checkbox"],
+    .form-checkbox {
+        width: 18px !important;
+        height: 18px !important;
+        min-width: 18px !important;
+        min-height: 18px !important;
+    }
 }
 
 @media (max-width: 480px) {
     /* On very small phones, make filter selects stack more comfortably */
     .transaction-filters {
         flex-direction: column;
+    }
+
+    .transactions-header > div:last-child .btn {
+        flex: 1 1 100%;
+        min-width: 0;
     }
 }
