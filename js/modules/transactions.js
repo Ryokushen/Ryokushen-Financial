@@ -1,7 +1,7 @@
 // js/modules/transactions.js
 import db from '../database.js';
 import { safeParseFloat, escapeHtml, formatDate, formatCurrency, getNextDueDate } from './utils.js';
-import { showError, announceToScreenReader } from './ui.js';
+import { showError, announceToScreenReader, showSuccess } from './ui.js';
 import {
   validateForm,
   ValidationSchemas,
@@ -82,39 +82,39 @@ export function populateAccountFilterDropdown(appState) {
   }
 
   const { cashAccounts, debtAccounts } = appState.appData;
-  
+
   // Clear existing options
   filterSelect.innerHTML = '<option value="">— All Accounts —</option>';
-  
+
   // Add cash accounts
   const activeCashAccounts = cashAccounts.filter(a => a.isActive);
   if (activeCashAccounts.length > 0) {
     const cashGroup = document.createElement('optgroup');
     cashGroup.label = 'Cash Accounts';
-    
+
     activeCashAccounts.forEach(account => {
       const option = document.createElement('option');
       option.value = account.id;
       option.textContent = account.name;
       cashGroup.appendChild(option);
     });
-    
+
     filterSelect.appendChild(cashGroup);
   }
-  
+
   // Add credit card accounts
   const creditCards = debtAccounts.filter(a => a.type === 'Credit Card');
   if (creditCards.length > 0) {
     const creditGroup = document.createElement('optgroup');
     creditGroup.label = 'Credit Cards';
-    
+
     creditCards.forEach(account => {
       const option = document.createElement('option');
       option.value = account.id;
       option.textContent = `${account.name} (Credit Card)`;
       creditGroup.appendChild(option);
     });
-    
+
     filterSelect.appendChild(creditGroup);
   }
 }
@@ -1063,13 +1063,13 @@ function getAccountName(accountId, debtAccountId, appState) {
       return account.name;
     }
     // Provide more helpful fallback with partial account ID
-    return `Deleted Account (${accountId.substring(0, 8)}...)`;
+    return `Deleted Account (${String(accountId).slice(0, 8)}...)`;
   } else if (debtAccountId) {
     const debtAccount = appState.appData.debtAccounts.find(d => d.id === debtAccountId);
     if (debtAccount) {
       return debtAccount.name;
     }
-    return `Deleted Credit Card (${debtAccountId.substring(0, 8)}...)`;
+    return `Deleted Credit Card (${String(debtAccountId).slice(0, 8)}...)`;
   }
   return 'Account Not Found';
 }
@@ -1418,7 +1418,11 @@ const VISIBLE_ROWS = 50; // Number of rows to render at once
 const BUFFER_ROWS = 10; // Extra rows to render for smooth scrolling
 let visibleStartIndex = 0;
 
-export function renderTransactions(appState, categoryFilter = currentCategoryFilter, accountFilter = currentAccountFilter) {
+export function renderTransactions(
+  appState,
+  categoryFilter = currentCategoryFilter,
+  accountFilter = currentAccountFilter
+) {
   const { appData } = appState;
   const tbody = document.getElementById('transactions-table-body');
   if (!tbody) {
@@ -1437,7 +1441,7 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
 
   // Get transactions based on filters
   let transactions;
-  
+
   if (categoryFilter && accountFilter) {
     // Both filters active - need to filter by both
     const categoryTransactions = dataIndex.getTransactionsByCategory(categoryFilter);
@@ -1451,12 +1455,17 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
     transactions = dataIndex.getTransactionsByCategory(categoryFilter);
   } else if (accountFilter) {
     // Only account filter - need to handle both cash and credit card transactions
-    const accountTransactions = dataIndex.getTransactionsByAccount(accountFilter);
-    
+    const parsedAccountId = Number.parseInt(accountFilter, 10);
+    const accountTransactions = dataIndex.getTransactionsByAccount(
+      Number.isNaN(parsedAccountId) ? accountFilter : parsedAccountId
+    );
+
     // Also check for credit card transactions
     const allTransactions = [...appData.transactions];
-    const creditCardTransactions = allTransactions.filter(t => String(t.debt_account_id) === accountFilter);
-    
+    const creditCardTransactions = allTransactions.filter(
+      t => String(t.debt_account_id) === accountFilter
+    );
+
     // Combine and deduplicate
     const combinedMap = new Map();
     [...accountTransactions, ...creditCardTransactions].forEach(t => {
@@ -1497,7 +1506,7 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
           accountName = escapeHtml(account.name);
         } else {
           // Provide more helpful fallback with partial account ID
-          accountName = `Deleted Account (${t.account_id.substring(0, 8)}...)`;
+          accountName = `Deleted Account (${String(t.account_id).slice(0, 8)}...)`;
         }
       } else if (t.debt_account_id) {
         // Credit card transaction - show the credit card name - use index for O(1) lookup
@@ -1507,7 +1516,7 @@ export function renderTransactions(appState, categoryFilter = currentCategoryFil
         if (debtAccount) {
           accountName = `${escapeHtml(debtAccount.name)} (Credit Card)`;
         } else {
-          accountName = `Deleted Credit Card (${t.debt_account_id.substring(0, 8)}...)`;
+          accountName = `Deleted Credit Card (${String(t.debt_account_id).slice(0, 8)}...)`;
         }
       }
 
@@ -1869,7 +1878,7 @@ function createTransactionRow(t, appData) {
       accountName = escapeHtml(account.name);
     } else {
       // Provide more helpful fallback with partial account ID
-      accountName = `Deleted Account (${t.account_id.substring(0, 8)}...)`;
+      accountName = `Deleted Account (${String(t.account_id).slice(0, 8)}...)`;
     }
   } else if (t.debt_account_id) {
     const debtAccount =
@@ -1878,7 +1887,7 @@ function createTransactionRow(t, appData) {
     if (debtAccount) {
       accountName = `${escapeHtml(debtAccount.name)} (Credit Card)`;
     } else {
-      accountName = `Deleted Credit Card (${t.debt_account_id.substring(0, 8)}...)`;
+      accountName = `Deleted Credit Card (${String(t.debt_account_id).slice(0, 8)}...)`;
     }
   }
 

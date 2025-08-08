@@ -76,7 +76,7 @@ export class DataIndex {
           }
           this.indexes.transactionsByAccount.get(accountId).push(transaction);
         }
-        
+
         // By debt account (credit cards)
         if (transaction.debt_account_id) {
           if (!this.indexes.transactionsByAccount.has(transaction.debt_account_id)) {
@@ -288,6 +288,88 @@ export class DataIndex {
     }
 
     return transactions;
+  }
+
+  /**
+   * Incremental updates for transactions to keep indexes fresh
+   */
+  addTransaction(transaction) {
+    try {
+      // Account index (cash)
+      if (transaction.account_id) {
+        if (!this.indexes.transactionsByAccount.has(transaction.account_id)) {
+          this.indexes.transactionsByAccount.set(transaction.account_id, []);
+        }
+        this.indexes.transactionsByAccount.get(transaction.account_id).unshift(transaction);
+      }
+      // Account index (debt)
+      if (transaction.debt_account_id) {
+        if (!this.indexes.transactionsByAccount.has(transaction.debt_account_id)) {
+          this.indexes.transactionsByAccount.set(transaction.debt_account_id, []);
+        }
+        this.indexes.transactionsByAccount.get(transaction.debt_account_id).unshift(transaction);
+      }
+      // Date index
+      const dateKey = transaction.date.split('T')[0];
+      if (!this.indexes.transactionsByDate.has(dateKey)) {
+        this.indexes.transactionsByDate.set(dateKey, []);
+      }
+      this.indexes.transactionsByDate.get(dateKey).unshift(transaction);
+      // Category index
+      if (transaction.category) {
+        if (!this.indexes.transactionsByCategory.has(transaction.category)) {
+          this.indexes.transactionsByCategory.set(transaction.category, []);
+        }
+        this.indexes.transactionsByCategory.get(transaction.category).unshift(transaction);
+      }
+      // Merchant index
+      const merchant = this.extractMerchant(transaction.description);
+      if (merchant) {
+        if (!this.indexes.transactionsByMerchant.has(merchant)) {
+          this.indexes.transactionsByMerchant.set(merchant, []);
+        }
+        this.indexes.transactionsByMerchant.get(merchant).unshift(transaction);
+      }
+    } catch (e) {
+      debug.warn('DataIndex.addTransaction failed, consider rebuildIndexes()', e);
+    }
+  }
+
+  updateTransaction(id, updatedTransaction) {
+    try {
+      // Remove then re-add to keep ordering simple
+      this.removeTransaction(id);
+      this.addTransaction(updatedTransaction);
+    } catch (e) {
+      debug.warn('DataIndex.updateTransaction failed, consider rebuildIndexes()', e);
+    }
+  }
+
+  removeTransaction(id) {
+    try {
+      // Remove from account-based indexes
+      for (const [key, arr] of this.indexes.transactionsByAccount) {
+        const idx = arr.findIndex(t => t.id === id);
+        if (idx !== -1) arr.splice(idx, 1);
+      }
+      // Remove from date index
+      for (const [key, arr] of this.indexes.transactionsByDate) {
+        const idx = arr.findIndex(t => t.id === id);
+        if (idx !== -1) arr.splice(idx, 1);
+      }
+      // Remove from category index
+      for (const [key, arr] of this.indexes.transactionsByCategory) {
+        const idx = arr.findIndex(t => t.id === id);
+        if (idx !== -1) arr.splice(idx, 1);
+      }
+      // Remove from merchant index
+      for (const [key, arr] of this.indexes.transactionsByMerchant) {
+        const idx = arr.findIndex(t => t.id === id);
+        if (idx !== -1) arr.splice(idx, 1);
+      }
+    } catch (e) {
+      debug.warn('DataIndex.removeTransaction failed, consider rebuildIndexes()', e);
+    }
   }
 
   /**

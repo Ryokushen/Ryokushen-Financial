@@ -404,7 +404,8 @@ class TransactionManager {
   }
 
   invalidateCacheByPattern(pattern) {
-    const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+    // If pattern looks like a regex (starts with ^ or contains special chars), use as-is
+    const regex = pattern instanceof RegExp ? pattern : new RegExp(pattern.replace(/\*/g, '.*'));
     for (const key of this.cache.keys()) {
       if (regex.test(key)) {
         this.cache.delete(key);
@@ -635,7 +636,8 @@ class TransactionManager {
       const savedTransaction = await database.addTransaction(prepared);
 
       // Clear relevant caches
-      this.invalidateCacheByPattern('transactions:*');
+      this.invalidateCacheByPattern('^transactions:');
+      this.invalidateCache('all_transactions');
       this.invalidateCache(`transaction:${savedTransaction.id}`);
 
       // Update indexes if available
@@ -728,7 +730,8 @@ class TransactionManager {
       const updatedTransaction = await database.updateTransaction(id, prepared);
 
       // Clear relevant caches
-      this.invalidateCacheByPattern('transactions:*');
+      this.invalidateCacheByPattern('^transactions:');
+      this.invalidateCache('all_transactions');
       this.invalidateCache(`transaction:${id}`);
 
       // Update indexes if available
@@ -809,7 +812,8 @@ class TransactionManager {
       await database.deleteTransaction(id);
 
       // Clear relevant caches
-      this.invalidateCacheByPattern('transactions:*');
+      this.invalidateCacheByPattern('^transactions:');
+      this.invalidateCache('all_transactions');
       this.invalidateCache(`transaction:${id}`);
 
       // Update indexes if available
