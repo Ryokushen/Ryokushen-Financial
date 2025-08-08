@@ -830,7 +830,7 @@ class TransactionImport {
       }
 
       // Import using TransactionManager
-      const result = await transactionManager.importTransactions(transactionsToImport, 'array', {
+      const result = await transactionManager.importTransactions(transactionsToImport, {
         onProgress: progress => {
           this.updateProgress(progress);
         },
@@ -862,16 +862,24 @@ class TransactionImport {
   showResults(result) {
     this.showStep('complete');
 
-    document.getElementById('success-count').textContent = result.successful;
-    document.getElementById('failed-count').textContent = result.failed;
+    document.getElementById('success-count').textContent =
+      result.totalSuccess ?? result.successful?.length ?? 0;
+    document.getElementById('failed-count').textContent =
+      result.totalFailed ?? result.failed?.length ?? 0;
 
-    if (result.errors.length > 0) {
+    const errorsArray = Array.isArray(result.failed)
+      ? result.failed
+      : Array.isArray(result.errors)
+        ? result.errors
+        : [];
+    if (errorsArray.length > 0) {
       const errorList = document.getElementById('error-list');
       errorList.innerHTML = '';
 
-      result.errors.slice(0, 10).forEach(error => {
+      errorsArray.slice(0, 10).forEach(error => {
         const li = document.createElement('li');
-        li.textContent = error.error;
+        const message = error?.error || error?.message || 'Unknown import error';
+        li.textContent = message;
         errorList.appendChild(li);
       });
 

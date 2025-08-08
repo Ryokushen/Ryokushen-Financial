@@ -232,7 +232,12 @@ class AdvancedSearch {
       // Check if using query builder
       if (this.queryTextarea.value.trim()) {
         // Use complex query search
-        results = await transactionManager.searchWithQuery(this.queryTextarea.value.trim());
+        const queryResult = await transactionManager.searchWithQuery(
+          this.queryTextarea.value.trim()
+        );
+        results = Array.isArray(queryResult)
+          ? queryResult
+          : queryResult?.transactions || queryResult || [];
       } else if (this.searchText.value.trim()) {
         // Use text search
         results = await transactionManager.searchByDescription(this.searchText.value.trim(), {
@@ -242,7 +247,9 @@ class AdvancedSearch {
         // Use filter search
         const filters = this.buildFilters();
         if (Object.keys(filters).length > 0) {
-          results = await transactionManager.searchTransactions(filters);
+          const searchResult = await transactionManager.searchTransactions(filters);
+          // searchTransactions returns { transactions, metadata }
+          results = Array.isArray(searchResult) ? searchResult : searchResult?.transactions || [];
         } else {
           showError('Please enter search criteria');
           return;
@@ -465,6 +472,9 @@ class AdvancedSearch {
     }
     if (criteria.filters?.amountMin || criteria.filters?.amountMax) {
       parts.push('Amount range');
+    }
+    if (criteria.filters?.accountId || criteria.filters?.debtAccountId) {
+      parts.push('Account filter');
     }
     return parts.join(', ') || 'No criteria';
   }
