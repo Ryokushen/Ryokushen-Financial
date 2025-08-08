@@ -161,6 +161,13 @@
     border-right: 1px solid var(--glass-border) !important;
 }
 
+/* High-specificity fix: ensure pay calculator inputs keep right-side rounding
+   despite global overrides in styles-redesign.css */
+.pay-form .input-group .form-control:not(.settings-container .form-control) {
+    border-radius: 0 var(--radius-md) var(--radius-md) 0 !important;
+    border-right: 1px solid var(--glass-border) !important;
+}
+
 /* Ensure form groups have proper spacing */
 .pay-form .form-group {
     margin-bottom: var(--space-3);
