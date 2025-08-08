@@ -332,7 +332,8 @@ import { cashFlowSankey } from './modules/cashFlowSankey.js';
                 ...b,
                 amount: b.amount != null ? parseFloat(b.amount) : 0,
                 nextDue: b.next_due,
-                active: b.active !== undefined ? b.active : true,
+                // Ensure backward compatibility: respect either `active` or legacy `is_active`
+                active: b.active !== undefined ? b.active : (b.is_active !== undefined ? b.is_active : true),
                 paymentMethod: b.payment_method || 'cash', // Default to cash for backward compatibility
                 debtAccountId: b.debt_account_id, // Add debt account ID field
                 // Keep original field names for TransactionManager compatibility
