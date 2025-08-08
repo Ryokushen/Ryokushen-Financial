@@ -1,7 +1,8 @@
 /* ===== DROPDOWN CONTRAST FIX - OPTION 1 (DARK THEME CONSISTENT) ===== */
 
 /* Ensure all select dropdowns and their options have proper dark theme contrast */
-select:not(.settings-container select) {
+/* Scope to app shell instead of complex :not() */
+.app-container select:not(.settings-container select) {
   background: #2c3e50 !important;
   color: #ecf0f1 !important;
   border: 1px solid #4a5f7a !important;
@@ -13,7 +14,7 @@ select:not(.settings-container select) {
 }
 
 /* Style all option elements for proper contrast */
-select:not(.settings-container select) option {
+.app-container select:not(.settings-container select) option {
   background: #2c3e50 !important;
   color: #ecf0f1 !important;
   padding: 8px 12px !important;
@@ -21,12 +22,12 @@ select:not(.settings-container select) option {
 }
 
 /* Hover states for better UX */
-select:not(.settings-container select):hover {
+.app-container select:not(.settings-container select):hover {
   background: #34495e !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
-select:not(.settings-container select):focus {
+.app-container select:not(.settings-container select):focus {
   outline: 2px solid var(--color-primary, #3b82f6) !important;
   outline-offset: 2px !important;
   border-color: var(--color-primary, #3b82f6) !important;
@@ -102,35 +103,25 @@ select:not(.settings-container select):focus {
 }
 
 /* Webkit-specific styling for better cross-browser support */
-select:not(.settings-container select)::-webkit-scrollbar {
+.app-container select:not(.settings-container select)::-webkit-scrollbar {
   width: 8px;
 }
 
-select:not(.settings-container select)::-webkit-scrollbar-track {
+.app-container select:not(.settings-container select)::-webkit-scrollbar-track {
   background: #2c3e50;
 }
 
-select:not(.settings-container select)::-webkit-scrollbar-thumb {
+.app-container select:not(.settings-container select)::-webkit-scrollbar-thumb {
   background: #4a5f7a;
   border-radius: 4px;
 }
 
-select:not(.settings-container select)::-webkit-scrollbar-thumb:hover {
+.app-container select:not(.settings-container select)::-webkit-scrollbar-thumb:hover {
   background: #5a6f8a;
 }
 
 /* Firefox-specific styling */
-@-moz-document url-prefix() {
-  select:not(.settings-container select) {
-    background: #2c3e50 !important;
-    color: #ecf0f1 !important;
-  }
-  
-  select:not(.settings-container select) option {
-    background: #2c3e50 !important;
-    color: #ecf0f1 !important;
-  }
-}
+/* Firefox respects the standard rules above; non-standard @-moz-document removed */
 
 /* High specificity override for any stubborn dropdowns */
 body .form-control[id*="account"],

@@ -40,8 +40,12 @@
 .take-home-display {
     text-align: center;
     margin-bottom: var(--space-4);
-    background: linear-gradient(135deg, var(--primary-color)10, var(--accent-color)10);
-    border: 1px solid var(--primary-color)20;
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--primary-color) 10%, transparent),
+        color-mix(in srgb, var(--accent-color) 10%, transparent)
+    );
+    border: 1px solid color-mix(in srgb, var(--primary-color) 20%, transparent);
 }
 
 .take-home-label {

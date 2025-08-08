@@ -329,8 +329,7 @@
 .priority-badge {
   display: inline-block;
   padding: 0.125rem 0.5rem;
-  background: var(--color-primary);
-  background-opacity: 0.1;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   color: var(--color-primary);
   border-radius: 12px;
   font-size: 0.75rem;

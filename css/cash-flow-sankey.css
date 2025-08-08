@@ -53,7 +53,7 @@
 }
 
 .period-btn.active {
-    background: var(--primary);
+    background: var(--color-primary);
     color: white;
 }
 
