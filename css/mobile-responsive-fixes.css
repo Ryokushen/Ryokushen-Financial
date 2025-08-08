@@ -545,11 +545,13 @@ body {
     .table-header.bulk-selectable > :nth-child(5)  /* Status */
     { display: none; }
 
-    /* Ensure quick action buttons fit within the Actions cell */
+    /* Ensure quick action buttons stay on a single horizontal row */
     .quick-actions {
         justify-content: flex-start;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         gap: var(--space-1, 0.25rem);
+        align-self: start;
+        width: max-content;
     }
 
     .icon-btn {
@@ -557,15 +559,23 @@ body {
         height: 28px;
     }
 
-    /* Reduce actions column min width so two rows of icons can fit */
+    /* Use two-row grid so quick-actions can live under the details cell */
     .table-row {
         grid-template-columns: minmax(0, 1fr) 90px 80px;
+        grid-template-rows: auto auto;
         column-gap: var(--space-2, 0.5rem);
+        row-gap: var(--space-1, 0.25rem);
+        align-items: start;
     }
 
     .table-row.bulk-selectable {
         grid-template-columns: 28px minmax(0, 1fr) 90px 80px;
+        grid-template-rows: auto auto;
     }
+
+    /* Place quick-actions under the transaction details (col 1). For bulk rows, under col 2 */
+    .table-row .quick-actions { grid-column: 1 / 2; grid-row: 2; }
+    .table-row.bulk-selectable .quick-actions { grid-column: 2 / 3; grid-row: 2; }
 
     /* Make checkboxes an appropriate size on mobile (override global tap-target rule) */
     input[type="checkbox"],
