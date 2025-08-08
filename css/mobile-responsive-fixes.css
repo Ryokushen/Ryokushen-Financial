@@ -487,3 +487,64 @@ body {
         transform: none;
     }
 }
+
+/* ===== TRANSACTIONS TAB: MOBILE LAYOUT FIXES ===== */
+@media (max-width: 768px) {
+    /* Stack header and ensure filters/buttons don't overflow */
+    .transactions-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-2, 0.5rem);
+    }
+
+    .transaction-filters {
+        width: 100%;
+        max-width: none;
+        gap: var(--space-2, 0.5rem);
+        flex-wrap: wrap;
+    }
+
+    .transaction-filters select {
+        min-width: 0; /* override desktop min-width */
+        width: 100%;
+    }
+
+    /* Compress table header columns to match mobile rows and prevent overflow */
+    .table-header {
+        grid-template-columns: minmax(0, 1fr) 100px 70px;
+        column-gap: var(--space-2, 0.5rem);
+        font-size: var(--font-size-xs, 0.75rem);
+    }
+
+    .table-header.bulk-selectable {
+        grid-template-columns: 32px minmax(0, 1fr) 100px 70px;
+    }
+
+    /* Hide less critical header labels on mobile to avoid horizontal overflow */
+    .table-header:not(.bulk-selectable) > :nth-child(3), /* Amount or Date */
+    .table-header:not(.bulk-selectable) > :nth-child(4)  /* Date or Status */
+    { display: none; }
+
+    .table-header.bulk-selectable > :nth-child(4), /* Date */
+    .table-header.bulk-selectable > :nth-child(5)  /* Status */
+    { display: none; }
+
+    /* Ensure quick action buttons fit within the Actions cell */
+    .quick-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: var(--space-1, 0.25rem);
+    }
+
+    .icon-btn {
+        width: 28px;
+        height: 28px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* On very small phones, make filter selects stack more comfortably */
+    .transaction-filters {
+        flex-direction: column;
+    }
+}
