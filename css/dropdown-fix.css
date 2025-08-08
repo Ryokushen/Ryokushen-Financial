@@ -1,8 +1,8 @@
 /* ===== DROPDOWN CONTRAST FIX - OPTION 1 (DARK THEME CONSISTENT) ===== */
 
 /* Ensure all select dropdowns and their options have proper dark theme contrast */
-/* Scope to app shell instead of complex :not() */
-.app-container select:not(.settings-container select) {
+/* Scope to app shell and explicitly override settings separately */
+.app-container select {
   background: #2c3e50 !important;
   color: #ecf0f1 !important;
   border: 1px solid #4a5f7a !important;
@@ -14,7 +14,7 @@
 }
 
 /* Style all option elements for proper contrast */
-.app-container select:not(.settings-container select) option {
+.app-container select option {
   background: #2c3e50 !important;
   color: #ecf0f1 !important;
   padding: 8px 12px !important;
@@ -22,12 +22,12 @@
 }
 
 /* Hover states for better UX */
-.app-container select:not(.settings-container select):hover {
+.app-container select:hover {
   background: #34495e !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
-.app-container select:not(.settings-container select):focus {
+.app-container select:focus {
   outline: 2px solid var(--color-primary, #3b82f6) !important;
   outline-offset: 2px !important;
   border-color: var(--color-primary, #3b82f6) !important;
@@ -84,13 +84,13 @@
 }
 
 /* Fix for dropdowns in modal dialogs */
-.modal select:not(.settings-container select) {
+.modal select {
   background: #2c3e50 !important;
   color: #ecf0f1 !important;
   border: 1px solid #4a5f7a !important;
 }
 
-.modal select:not(.settings-container select) option {
+.modal select option {
   background: #2c3e50 !important;
   color: #ecf0f1 !important;
 }
@@ -103,20 +103,20 @@
 }
 
 /* Webkit-specific styling for better cross-browser support */
-.app-container select:not(.settings-container select)::-webkit-scrollbar {
+.app-container select::-webkit-scrollbar {
   width: 8px;
 }
 
-.app-container select:not(.settings-container select)::-webkit-scrollbar-track {
+.app-container select::-webkit-scrollbar-track {
   background: #2c3e50;
 }
 
-.app-container select:not(.settings-container select)::-webkit-scrollbar-thumb {
+.app-container select::-webkit-scrollbar-thumb {
   background: #4a5f7a;
   border-radius: 4px;
 }
 
-.app-container select:not(.settings-container select)::-webkit-scrollbar-thumb:hover {
+.app-container select::-webkit-scrollbar-thumb:hover {
   background: #5a6f8a;
 }
 
@@ -143,4 +143,12 @@ body select[id*="recurring"] option,
 body select[id*="debt"] option {
   background: #2c3e50 !important;
   color: #ecf0f1 !important;
+}
+
+/* Explicitly keep settings page selects in light theme per redesign */
+.settings-container select,
+.settings-container select option {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+  border: 1px solid var(--settings-border-color) !important;
 }

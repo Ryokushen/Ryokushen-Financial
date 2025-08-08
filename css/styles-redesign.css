@@ -66,6 +66,27 @@
     BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   /* Button text color for primary variants */
   --color-btn-primary-text: #ffffff;
+
+  /* Legacy token aliases for compatibility with older CSS files */
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-light: #94a3b8;
+  --color-text: #e2e8f0;
+  --color-text-secondary: #94a3b8;
+  --bg-light: var(--glass-bg);
+  --bg-lighter: rgba(255, 255, 255, 0.03);
+  --border-color: var(--glass-border);
+  --primary-light: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  --danger-color: var(--color-danger);
+  --warning-color: var(--color-warning);
+  --color-surface: var(--glass-bg);
+  --color-border: var(--glass-border);
+  --color-error: var(--color-danger);
+  --color-info: var(--color-primary);
+  --spacing-xs: var(--space-1);
+  --spacing-sm: var(--space-2);
+  --spacing-md: var(--space-3);
+  --spacing-lg: var(--space-4);
 }
 
 /* ===== BASE STYLES ===== */

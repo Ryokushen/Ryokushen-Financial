@@ -167,7 +167,12 @@
 
 /* High-specificity fix: ensure pay calculator inputs keep right-side rounding
    despite global overrides in styles-redesign.css */
-.pay-form .input-group .form-control:not(.settings-container .form-control) {
+/* Equivalent to previous intent without invalid complex :not() */
+.settings-container .pay-form .input-group .form-control {
+    /* Do not alter settings page styling */
+}
+
+.pay-form .input-group .form-control {
     border-radius: 0 var(--radius-md) var(--radius-md) 0 !important;
     border-right: 1px solid var(--glass-border) !important;
 }
@@ -284,7 +289,7 @@
 .disclaimer {
     margin-top: var(--space-6);
     background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--warning-color)30;
+    border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent);
 }
 
 .disclaimer-text {

@@ -242,11 +242,11 @@
 }
 
 .sankey-stat-value.positive {
-    color: var(--success);
+    color: var(--color-success);
 }
 
 .sankey-stat-value.negative {
-    color: var(--danger);
+    color: var(--color-danger);
 }
 
 .sankey-tooltip {
