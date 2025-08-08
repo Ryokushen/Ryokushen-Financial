@@ -35,12 +35,7 @@ select:not(.settings-container select):focus {
   color: #ecf0f1 !important;
 }
 
-/* Specific targeting for form control class */
-.form-control:not(.settings-container .form-control) {
-  background: #2c3e50 !important;
-  color: #ecf0f1 !important;
-  border: 1px solid #4a5f7a !important;
-}
+/* Removed broad .form-control override to prevent conflicts with component CSS */
 
 /* Target specific dropdown IDs from your form */
 #transaction-account,
