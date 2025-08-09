@@ -144,8 +144,8 @@ export class StockApiService {
         timestamp: Date.now(),
       };
 
-      // Cache the result
-      this.cache.set(symbol.toUpperCase(), result);
+      // Cache the result with timestamp
+      this.cache.set(symbol.toUpperCase(), { ...result, cachedAt: Date.now() });
 
       return result;
     } catch (error) {
@@ -217,7 +217,7 @@ export class StockApiService {
       return null;
     }
 
-    const isExpired = Date.now() - cached.timestamp > this.cacheExpiry;
+    const isExpired = Date.now() - cached.cachedAt > this.cacheExpiry;
     if (isExpired) {
       this.cache.delete(symbol.toUpperCase());
       return null;

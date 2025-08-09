@@ -22,7 +22,7 @@ class PrivacyManager {
   constructor() {
     this.isPrivate = this.loadPrivacyState();
     this.listeners = new Set();
-    this.blurredElements = new WeakMap();
+    this.blurredElements = new WeakMap(); // Confirmed using WeakMap for auto-cleanup
     this.temporarilyRevealed = new WeakSet();
     this.isInitialized = false;
     this.biometricEnabled = this.loadBiometricPreference();
