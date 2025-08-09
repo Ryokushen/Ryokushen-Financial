@@ -49,7 +49,7 @@ The Ryokushen Financial web application exhibits performance issues that impact 
   - **Impact**: 5-10% JS execution improvement
   - **Effort**: 1 hour
 
-- [ ] **Extract Duplicate Utilities**
+- [x] **Extract Duplicate Utilities**
   - **Issue**: `formatCurrency` duplicated in 5+ files
   - **Location**: Multiple modules
   - **Solution**: Create single utility module
@@ -65,7 +65,7 @@ The Ryokushen Financial web application exhibits performance issues that impact 
 
 ### Quick Performance Fixes
 
-- [ ] **Add Image Lazy Loading**
+- [x] **Add Image Lazy Loading**
   - **Issue**: All images load immediately
   - **Location**: Throughout HTML/JS
   - **Solution**: Add `loading="lazy"` attribute
