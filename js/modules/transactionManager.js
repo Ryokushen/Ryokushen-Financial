@@ -1933,13 +1933,16 @@ class TransactionManager {
       const existingTransactions = await this.getTransactions();
       const duplicates = [];
 
+      // Create a Map for O(1) duplicate lookups instead of O(n)
+      const existingPatterns = new Map();
+      existingTransactions.forEach(tx => {
+        const pattern = `${tx.date}|${tx.amount}|${tx.description}`;
+        existingPatterns.set(pattern, tx);
+      });
+
       transformedData = transformedData.filter(data => {
-        const isDuplicate = existingTransactions.some(
-          existing =>
-            existing.date === data.date &&
-            existing.amount === data.amount &&
-            existing.description === data.description
-        );
+        const pattern = `${data.date}|${data.amount}|${data.description}`;
+        const isDuplicate = existingPatterns.has(pattern);
 
         if (isDuplicate) {
           duplicates.push(data);
