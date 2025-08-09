@@ -135,34 +135,25 @@
 
 /* Input Group Styling for Pay Calculator */
 .pay-form .input-group {
-    display: inline-flex;
-    position: relative;
-    align-items: stretch;
-    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    width: 100%; // Ensure full width
 }
 
 .pay-form .input-group-addon {
-    display: flex;
-    align-items: center;
-    padding: var(--space-2) var(--space-3);
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-md) 0 0 var(--radius-md);
-    color: #94a3b8;
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    white-space: nowrap;
+    padding: 0.75rem 1rem;
+    background: var(--color-background-tertiary);
+    border: 1px solid var(--color-border);
     border-right: none;
-    box-sizing: border-box;
+    border-radius: 4px 0 0 4px;
+    font-size: 1rem;
 }
 
 .pay-form .input-group .form-control {
-    width: auto;
-    min-width: 150px;
-    box-sizing: border-box !important;
-    border-radius: 0 var(--radius-md) var(--radius-md) 0 !important;
-    border-left: none !important;
-    border-right: 1px solid var(--glass-border) !important;
+    flex: 1; // Take remaining space
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+    min-width: 0; // Prevent overflow
 }
 
 /* High-specificity fix: ensure pay calculator inputs keep right-side rounding
