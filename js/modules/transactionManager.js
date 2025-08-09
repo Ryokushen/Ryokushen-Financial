@@ -2517,7 +2517,7 @@ class TransactionManager {
         // Validate the date
         if (isNaN(lastPaidDate.getTime())) {
           debug.warn('Invalid last_paid_date for bill:', bill.name, bill.last_paid_date);
-          nextDue = new Date(today);
+          return null; // Return null for invalid dates
         } else {
           nextDue = lastPaidDate;
         }
@@ -2527,7 +2527,7 @@ class TransactionManager {
         // Validate the date
         if (isNaN(storedNextDue.getTime())) {
           debug.warn('Invalid next_due_date for bill:', bill.name, bill.next_due_date);
-          nextDue = new Date(today);
+          return null; // Return null for invalid dates
         } else {
           nextDue = storedNextDue;
 
@@ -4061,40 +4061,8 @@ class TransactionManager {
    * @private
    */
   async getAnalyticsFromCache(key) {
-    // Temporarily disable cache due to 406 errors
+    // Cache disabled - returns null
     return null;
-
-    /* Commented out while cache is disabled
-    try {
-      // Sanitize the cache key to ensure it's URL-safe
-      const sanitizedKey = key.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 100);
-
-      const user = await database.getCurrentUserId();
-      const { data, error } = await database.supabase
-        .from('transaction_analytics_cache')
-        .select('*')
-        .eq('user_id', user)
-        .eq('metric_type', sanitizedKey)
-        .single();
-
-      if (error) {
-        // Cache miss is expected, not an error
-        return null;
-      }
-
-      if (data && data.computed_data) {
-        const age = (Date.now() - new Date(data.last_computed).getTime()) / 1000;
-        if (age < data.ttl) {
-          return data.computed_data;
-        }
-      }
-
-      return null;
-    } catch (error) {
-      // Cache lookup failed
-      return null;
-    }
-    */
   }
 
   /**
@@ -4102,27 +4070,8 @@ class TransactionManager {
    * @private
    */
   async cacheAnalyticsResult(key, data, ttl = 3600) {
-    // Temporarily disable cache due to 406 errors
+    // Cache disabled - no-op
     return;
-
-    /* Commented out while cache is disabled
-    try {
-      // Sanitize the cache key to ensure it's URL-safe
-      const sanitizedKey = key.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 100);
-
-      const user = await database.getCurrentUserId();
-      await database.supabase.from('transaction_analytics_cache').upsert({
-        user_id: user,
-        metric_type: sanitizedKey,
-        date_range: { start: new Date().toISOString() },
-        computed_data: data,
-        ttl,
-      });
-    } catch (error) {
-      // Cache write failed
-      debug.error('Failed to cache analytics result', error);
-    }
-    */
   }
 
   /**
@@ -4652,8 +4601,6 @@ class TransactionManager {
       count: n,
     };
   }
-
-  // Removed duplicate calculateStatistics method
 
   /**
    * Calculate IQR (Interquartile Range) statistics
