@@ -515,11 +515,13 @@ class TransactionManager {
     // Clear existing timeout
     if (this.eventBatchTimeout) {
       clearTimeout(this.eventBatchTimeout);
+      this.eventBatchTimeout = null;
     }
 
     // Set new timeout
     this.eventBatchTimeout = setTimeout(() => {
       this.flushEventQueue();
+      this.eventBatchTimeout = null;
     }, this.eventBatchDelay);
   }
 
