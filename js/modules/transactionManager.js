@@ -566,20 +566,55 @@ class TransactionManager {
    * Record operation for history tracking
    */
   recordOperation(type, data, result) {
+    // Store only essential data to prevent memory bloat
     const operation = {
       id: Date.now(),
       type,
-      data,
-      result,
+      // Store only IDs or summary data, not full objects
+      data: this.summarizeOperationData(data),
+      result: result?.success !== undefined ? { success: result.success } : result,
       timestamp: new Date().toISOString(),
     };
 
     this.operationHistory.unshift(operation);
 
-    // Limit history size
+    // Limit history size more efficiently
     if (this.operationHistory.length > this.maxHistorySize) {
-      this.operationHistory = this.operationHistory.slice(0, this.maxHistorySize);
+      this.operationHistory.length = this.maxHistorySize;
     }
+  }
+
+  /**
+   * Summarize operation data to reduce memory usage
+   * @private
+   */
+  summarizeOperationData(data) {
+    if (!data) return null;
+    
+    // For arrays, store count and sample IDs
+    if (Array.isArray(data)) {
+      return {
+        count: data.length,
+        ids: data.slice(0, 3).map(item => item?.id || item),
+      };
+    }
+    
+    // For objects with ID, store only essential fields
+    if (typeof data === 'object' && data.id) {
+      return {
+        id: data.id,
+        amount: data.amount,
+        date: data.date,
+      };
+    }
+    
+    // For other data, store as-is if small, otherwise summarize
+    const dataStr = JSON.stringify(data);
+    if (dataStr.length > 100) {
+      return { summary: 'Large data object', size: dataStr.length };
+    }
+    
+    return data;
   }
 
   /**
