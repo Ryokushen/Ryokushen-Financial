@@ -5,6 +5,8 @@
  * Set window.DEBUG = true to enable debug logging
  */
 
+import { isProduction } from '../config.js';
+
 // Check if debug mode is enabled
 const isDebugMode = () => {
   return (
@@ -16,11 +18,7 @@ const isDebugMode = () => {
 
 // Create a debug logger that only logs when debug mode is enabled
 export const debug = {
-  log: (...args) => {
-    if (isDebugMode()) {
-      console.log('[DEBUG]', ...args);
-    }
-  },
+  log: (...args) => !isProduction && console.log('[DEBUG]', ...args),
 
   info: (...args) => {
     if (isDebugMode()) {
@@ -28,20 +26,9 @@ export const debug = {
     }
   },
 
-  warn: (...args) => {
-    if (isDebugMode()) {
-      console.warn('[WARN]', ...args);
-    }
-  },
+  warn: (...args) => !isProduction && console.warn('[WARN]', ...args),
 
-  error: (...args) => {
-    // Always log errors, but add debug prefix in debug mode
-    if (isDebugMode()) {
-      console.error('[ERROR]', ...args);
-    } else {
-      console.error(...args);
-    }
-  },
+  error: (...args) => !isProduction && console.error('[ERROR]', ...args),
 
   table: data => {
     if (isDebugMode()) {

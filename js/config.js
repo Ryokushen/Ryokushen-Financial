@@ -224,3 +224,5 @@ window.openApiKeyModal = function () {
     }
   }
 };
+
+export const isProduction = !window.location.hostname.includes('localhost');
