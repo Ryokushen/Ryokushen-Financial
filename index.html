@@ -1753,6 +1753,13 @@
 
                     <div class="form-section">
                         <h4>Conditions</h4>
+                        <div class="form-group">
+                            <label class="form-label" for="condition-logic">Condition Logic</label>
+                            <select id="condition-logic" class="form-control">
+                                <option value="AND">All conditions must match (AND)</option>
+                                <option value="OR">Any condition must match (OR)</option>
+                            </select>
+                        </div>
                         <div class="condition-builder" id="condition-builder">
                             <div class="condition-item" data-condition-id="0">
                                 <select class="form-control condition-field" required>
@@ -1773,9 +1780,16 @@
                                 </select>
                                 <input type="text" class="form-control condition-value" required 
                                        placeholder="Value">
+                                <button type="button" class="btn btn--sm btn--outline btn-remove-condition" style="display: none;">Remove</button>
                             </div>
                         </div>
-                        <div class="form-text mt-8">All conditions must match (AND logic)</div>
+                        <button type="button" id="add-condition-btn" class="btn btn--sm btn--secondary mt-8">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Add Condition
+                        </button>
                     </div>
 
                     <div class="form-section">

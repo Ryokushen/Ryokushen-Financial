@@ -113,11 +113,28 @@ export const rulesUI = {
       });
     }
 
-    // Field change handler for dynamic operators
-    const conditionField = document.querySelector('.condition-field');
-    if (conditionField) {
-      eventManager.addEventListener(conditionField, 'change', e => {
-        this.updateOperatorOptions(e.target);
+    // Field change handler for dynamic operators (delegated for dynamic conditions)
+    const conditionBuilder = document.getElementById('condition-builder');
+    if (conditionBuilder) {
+      eventManager.addEventListener(conditionBuilder, 'change', e => {
+        if (e.target.classList.contains('condition-field')) {
+          this.updateOperatorOptions(e.target);
+        }
+      });
+      
+      // Handle remove condition buttons
+      eventManager.addEventListener(conditionBuilder, 'click', e => {
+        if (e.target.classList.contains('btn-remove-condition')) {
+          this.removeCondition(e.target);
+        }
+      });
+    }
+    
+    // Add condition button
+    const addConditionBtn = document.getElementById('add-condition-btn');
+    if (addConditionBtn) {
+      eventManager.addEventListener(addConditionBtn, 'click', () => {
+        this.addCondition();
       });
     }
 
@@ -384,6 +401,12 @@ export const rulesUI = {
       title.textContent = 'Create Smart Rule';
       document.getElementById('rule-priority').value = '0';
       document.getElementById('rule-enabled').checked = true;
+      document.getElementById('condition-logic').value = 'AND';
+      
+      // Reset condition builder to single empty condition
+      const conditionBuilder = document.getElementById('condition-builder');
+      conditionBuilder.innerHTML = '';
+      this.addCondition();
     }
 
     openModal('rule-modal');
@@ -405,13 +428,57 @@ export const rulesUI = {
       document.getElementById('rule-priority').value = rule.priority || 0;
       document.getElementById('rule-enabled').checked = rule.enabled;
 
-      // Populate condition (simplified for MVP - single condition)
-      if (rule.conditions && rule.conditions.items && rule.conditions.items[0]) {
-        const condition = rule.conditions.items[0];
-        document.querySelector('.condition-field').value = condition.field;
-        this.updateOperatorOptions(document.querySelector('.condition-field'));
-        document.querySelector('.condition-operator').value = condition.operator;
-        document.querySelector('.condition-value').value = condition.value;
+      // Clear existing conditions
+      const conditionBuilder = document.getElementById('condition-builder');
+      conditionBuilder.innerHTML = '';
+      
+      // Set condition logic type
+      if (rule.conditions && rule.conditions.type) {
+        document.getElementById('condition-logic').value = rule.conditions.type;
+      }
+      
+      // Populate conditions
+      if (rule.conditions && rule.conditions.items && rule.conditions.items.length > 0) {
+        rule.conditions.items.forEach((condition, index) => {
+          const conditionItem = document.createElement('div');
+          conditionItem.className = 'condition-item';
+          conditionItem.dataset.conditionId = index;
+          conditionItem.innerHTML = `
+            <select class="form-control condition-field" required>
+              <option value="">Select Field</option>
+              <option value="description">Description</option>
+              <option value="amount">Amount</option>
+              <option value="category">Category</option>
+              <option value="type">Transaction Type</option>
+            </select>
+            <select class="form-control condition-operator" required>
+              <option value="">Select Operator</option>
+              <option value="contains">Contains</option>
+              <option value="equals">Equals</option>
+              <option value="starts_with">Starts With</option>
+              <option value="ends_with">Ends With</option>
+              <option value="greater_than">Greater Than</option>
+              <option value="less_than">Less Than</option>
+            </select>
+            <input type="text" class="form-control condition-value" required placeholder="Value">
+            <button type="button" class="btn btn--sm btn--outline btn-remove-condition">Remove</button>
+          `;
+          
+          conditionBuilder.appendChild(conditionItem);
+          
+          // Set values
+          const fieldSelect = conditionItem.querySelector('.condition-field');
+          fieldSelect.value = condition.field;
+          this.updateOperatorOptions(fieldSelect);
+          conditionItem.querySelector('.condition-operator').value = condition.operator;
+          conditionItem.querySelector('.condition-value').value = condition.value;
+        });
+        
+        // Update remove button visibility
+        this.updateRemoveButtons();
+      } else {
+        // Add default empty condition if none exist
+        this.addCondition();
       }
 
       // Populate action (simplified for MVP - single action)
@@ -464,6 +531,63 @@ export const rulesUI = {
     }
   },
 
+  addCondition() {
+    const conditionBuilder = document.getElementById('condition-builder');
+    const conditionItems = conditionBuilder.querySelectorAll('.condition-item');
+    const newId = conditionItems.length;
+    
+    const newCondition = document.createElement('div');
+    newCondition.className = 'condition-item';
+    newCondition.dataset.conditionId = newId;
+    newCondition.innerHTML = `
+      <select class="form-control condition-field" required>
+        <option value="">Select Field</option>
+        <option value="description">Description</option>
+        <option value="amount">Amount</option>
+        <option value="category">Category</option>
+        <option value="type">Transaction Type</option>
+      </select>
+      <select class="form-control condition-operator" required>
+        <option value="">Select Operator</option>
+        <option value="contains">Contains</option>
+        <option value="equals">Equals</option>
+        <option value="starts_with">Starts With</option>
+        <option value="ends_with">Ends With</option>
+        <option value="greater_than">Greater Than</option>
+        <option value="less_than">Less Than</option>
+      </select>
+      <input type="text" class="form-control condition-value" required placeholder="Value">
+      <button type="button" class="btn btn--sm btn--outline btn-remove-condition">Remove</button>
+    `;
+    
+    conditionBuilder.appendChild(newCondition);
+    
+    // Show remove buttons if there's more than one condition
+    this.updateRemoveButtons();
+  },
+  
+  removeCondition(button) {
+    const conditionItem = button.closest('.condition-item');
+    const conditionBuilder = document.getElementById('condition-builder');
+    
+    // Don't remove if it's the last condition
+    if (conditionBuilder.querySelectorAll('.condition-item').length > 1) {
+      conditionItem.remove();
+      this.updateRemoveButtons();
+    }
+  },
+  
+  updateRemoveButtons() {
+    const conditionBuilder = document.getElementById('condition-builder');
+    const conditionItems = conditionBuilder.querySelectorAll('.condition-item');
+    const removeButtons = conditionBuilder.querySelectorAll('.btn-remove-condition');
+    
+    // Show/hide remove buttons based on number of conditions
+    removeButtons.forEach(button => {
+      button.style.display = conditionItems.length > 1 ? 'inline-block' : 'none';
+    });
+  },
+
   updateActionValueInput(actionType) {
     const valueGroup = document.getElementById('action-value-group');
     const label = valueGroup.querySelector('label');
@@ -507,22 +631,35 @@ export const rulesUI = {
     try {
       const ruleId = document.getElementById('rule-id').value;
 
+      // Collect all conditions
+      const conditionItems = document.querySelectorAll('.condition-item');
+      const conditions = [];
+      
+      conditionItems.forEach(item => {
+        const field = item.querySelector('.condition-field').value;
+        const operator = item.querySelector('.condition-operator').value;
+        const value = item.querySelector('.condition-value').value.trim();
+        
+        if (field && operator && value) {
+          conditions.push({
+            field,
+            operator,
+            value,
+            case_sensitive: false,
+          });
+        }
+      });
+
       // Build rule data
+      const conditionLogic = document.getElementById('condition-logic').value;
       const ruleData = {
         name: document.getElementById('rule-name').value.trim(),
         description: document.getElementById('rule-description').value.trim(),
         priority: parseInt(document.getElementById('rule-priority').value) || 0,
         enabled: document.getElementById('rule-enabled').checked,
         conditions: {
-          type: 'AND', // MVP: Single condition only
-          items: [
-            {
-              field: document.querySelector('.condition-field').value,
-              operator: document.querySelector('.condition-operator').value,
-              value: document.querySelector('.condition-value').value.trim(),
-              case_sensitive: false,
-            },
-          ],
+          type: conditionLogic, // Use selected logic (AND/OR)
+          items: conditions,
         },
         actions: [
           {
@@ -538,11 +675,20 @@ export const rulesUI = {
         return;
       }
 
-      if (
-        !ruleData.conditions.items[0].field ||
-        !ruleData.conditions.items[0].operator ||
-        !ruleData.conditions.items[0].value
-      ) {
+      if (conditions.length === 0) {
+        showError('Please add at least one condition');
+        return;
+      }
+      
+      // Check if any condition is incomplete
+      const incompleteCondition = Array.from(conditionItems).some(item => {
+        const field = item.querySelector('.condition-field').value;
+        const operator = item.querySelector('.condition-operator').value;
+        const value = item.querySelector('.condition-value').value.trim();
+        return (!field || !operator || !value);
+      });
+      
+      if (incompleteCondition) {
         showError('Please complete all condition fields');
         return;
       }
