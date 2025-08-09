@@ -7238,6 +7238,30 @@ body select[id*="debt"] option {
 
 body.privacy-mode [data-sensitive="true"] .take-home-amount {
     filter: blur(8px);
+}
+
+/* Strong, scoped overrides for Salary tab input groups */
+.salary-container .pay-form .input-group {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+.salary-container .pay-form .input-group .input-group-addon {
+    display: flex;
+    align-items: center;
+}
+.salary-container .pay-form .input-group .form-control {
+    flex: 1;
+    min-width: 0;
+    border-left: none !important;
+    border-right: 1px solid var(--glass-border) !important;
+    border-top-right-radius: var(--radius-md) !important;
+    border-bottom-right-radius: var(--radius-md) !important;
+}
+/* Ensure parent containers don’t clip borders/outlines */
+.salary-container .pay-section {
+    overflow: visible;
 }/* Data Integrity Modal Styles */
 
 .modal-overlay {
