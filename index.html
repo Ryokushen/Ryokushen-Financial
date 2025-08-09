@@ -11,16 +11,20 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
 
+    <!-- Combined styles with optimal loading -->
     <link rel="preload" href="css/combined-styles.css" as="style" onload="this.rel='stylesheet'">
-    <link rel="stylesheet" href="css/debt-enhancements.css">
-    <link rel="stylesheet" href="css/privacy.css">
-    <link rel="stylesheet" href="css/rules.css">
-    <link rel="stylesheet" href="css/calendar.css">
+    <noscript><link rel="stylesheet" href="css/combined-styles.css"></noscript>
+    
+    <!-- Module-specific styles loaded only when needed -->
+    <link rel="stylesheet" href="css/debt-enhancements.css" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="css/privacy.css" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="css/rules.css" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="css/calendar.css" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="css/dropdown-fix.css">
-    <link rel="stylesheet" href="css/performance-dashboard.css">
-    <link rel="stylesheet" href="css/cash-flow-sankey.css">
-    <link rel="stylesheet" href="css/pay-calculator.css">
-    <link rel="stylesheet" href="css/data-integrity.css">
+    <link rel="stylesheet" href="css/performance-dashboard.css" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="css/cash-flow-sankey.css" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="css/pay-calculator.css" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="css/data-integrity.css" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="css/mobile-responsive-fixes.css">
 </head>
 
