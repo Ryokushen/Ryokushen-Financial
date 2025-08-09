@@ -562,6 +562,12 @@ class FinancialDatabase {
                 notes: bill.notes || null,
                 active: bill.active !== undefined ? bill.active : true
             };
+            // Strip undefined values to avoid overwriting existing columns with null/undefined
+            Object.keys(billData).forEach(key => {
+                if (billData[key] === undefined) {
+                    delete billData[key];
+                }
+            });
 
             const { data, error } = await this.supabase.from('recurring_bills').update(billData).eq('id', id).select().single();
             if (error) throw error;

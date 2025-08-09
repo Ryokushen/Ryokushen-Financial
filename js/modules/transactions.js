@@ -1136,13 +1136,13 @@ function getAccountName(accountId, debtAccountId, appState) {
       return account.name;
     }
     // Provide more helpful fallback with partial account ID
-    return `Deleted Account (${accountId.substring(0, 8)}...)`;
+    return `Deleted Account (${String(accountId).slice(0, 8)}...)`;
   } else if (debtAccountId) {
     const debtAccount = appState.appData.debtAccounts.find(d => d.id === debtAccountId);
     if (debtAccount) {
       return debtAccount.name;
     }
-    return `Deleted Credit Card (${debtAccountId.substring(0, 8)}...)`;
+    return `Deleted Credit Card (${String(debtAccountId).slice(0, 8)}...)`;
   }
   return 'Account Not Found';
 }
@@ -1624,7 +1624,7 @@ function renderTransactionsNormal(tbody, transactions, appState) {
           accountName = escapeHtml(account.name);
         } else {
           // Provide more helpful fallback with partial account ID
-          accountName = `Deleted Account (${t.account_id.substring(0, 8)}...)`;
+          accountName = `Deleted Account (${String(t.account_id).slice(0, 8)}...)`;
         }
       } else if (t.debt_account_id) {
         // Credit card transaction - show the credit card name - use index for O(1) lookup
@@ -1634,7 +1634,7 @@ function renderTransactionsNormal(tbody, transactions, appState) {
         if (debtAccount) {
           accountName = `${escapeHtml(debtAccount.name)} (Credit Card)`;
         } else {
-          accountName = `Deleted Credit Card (${t.debt_account_id.substring(0, 8)}...)`;
+          accountName = `Deleted Credit Card (${String(t.debt_account_id).slice(0, 8)}...)`;
         }
       }
 
@@ -1911,7 +1911,7 @@ function createTransactionRowHTML(transaction, appData) {
     if (account) {
       accountName = escapeHtml(account.name);
     } else {
-      accountName = `Deleted Account (${transaction.account_id.substring(0, 8)}...)`;
+      accountName = `Deleted Account (${String(transaction.account_id).slice(0, 8)}...)`;
     }
   } else if (transaction.debt_account_id) {
     const debtAccount =
@@ -1920,7 +1920,7 @@ function createTransactionRowHTML(transaction, appData) {
     if (debtAccount) {
       accountName = `${escapeHtml(debtAccount.name)} (Credit Card)`;
     } else {
-      accountName = `Deleted Credit Card (${transaction.debt_account_id.substring(0, 8)}...)`;
+      accountName = `Deleted Credit Card (${String(transaction.debt_account_id).slice(0, 8)}...)`;
     }
   }
 
@@ -2117,7 +2117,7 @@ function createTransactionRow(t, appData) {
       accountName = escapeHtml(account.name);
     } else {
       // Provide more helpful fallback with partial account ID
-      accountName = `Deleted Account (${t.account_id.substring(0, 8)}...)`;
+      accountName = `Deleted Account (${String(t.account_id).slice(0, 8)}...)`;
     }
   } else if (t.debt_account_id) {
     const debtAccount =
@@ -2126,7 +2126,7 @@ function createTransactionRow(t, appData) {
     if (debtAccount) {
       accountName = `${escapeHtml(debtAccount.name)} (Credit Card)`;
     } else {
-      accountName = `Deleted Credit Card (${t.debt_account_id.substring(0, 8)}...)`;
+      accountName = `Deleted Credit Card (${String(t.debt_account_id).slice(0, 8)}...)`;
     }
   }
 

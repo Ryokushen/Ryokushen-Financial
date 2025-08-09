@@ -241,14 +241,14 @@ function renderRecentTransactions(appData) {
           accountName = escapeHtml(cashAccount.name);
         } else {
           // Provide more helpful fallback with account ID
-          accountName = `Deleted Account (${t.account_id.substring(0, 8)}...)`;
+          accountName = `Deleted Account (${String(t.account_id).slice(0, 8)}...)`;
         }
       } else if (t.debt_account_id) {
         const debtAccount = appData.debtAccounts.find(d => d.id === t.debt_account_id);
         if (debtAccount) {
           accountName = `${escapeHtml(debtAccount.name)} (Credit Card)`;
         } else {
-          accountName = `Deleted Credit Card (${t.debt_account_id.substring(0, 8)}...)`;
+          accountName = `Deleted Credit Card (${String(t.debt_account_id).slice(0, 8)}...)`;
         }
       }
 
