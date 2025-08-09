@@ -11,6 +11,62 @@ import { analyticsProcessor } from './analyticsProcessor.js';
 import { undoManager, TransactionCommand } from './undoManager.js';
 
 /**
+ * Simple LRU Cache implementation for better cache performance
+ */
+class LRUCache {
+  constructor(maxSize = 50) {
+    this.maxSize = maxSize;
+    this.cache = new Map();
+  }
+
+  get(key) {
+    if (!this.cache.has(key)) {
+      return undefined;
+    }
+    // Move to end (most recently used)
+    const value = this.cache.get(key);
+    this.cache.delete(key);
+    this.cache.set(key, value);
+    return value;
+  }
+
+  set(key, value) {
+    // Remove key if it exists (to reorder)
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    }
+    // Add to end (most recently used)
+    this.cache.set(key, value);
+    
+    // Evict least recently used if over capacity
+    if (this.cache.size > this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+  }
+
+  has(key) {
+    return this.cache.has(key);
+  }
+
+  delete(key) {
+    return this.cache.delete(key);
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+
+  get size() {
+    return this.cache.size;
+  }
+
+  keys() {
+    return this.cache.keys();
+  }
+}
+
+/**
  * TransactionManager - Centralized system for managing all transaction operations
  *
  * Features:
@@ -29,8 +85,8 @@ class TransactionManager {
     this.cache = new Map();
     this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
 
-    // Search result cache
-    this.searchCache = new Map();
+    // Search result cache with LRU eviction
+    this.searchCache = new LRUCache(50);
     this.searchCacheTimeout = 2 * 60 * 1000; // 2 minutes
     this.maxSearchCacheSize = 50;
 
@@ -453,7 +509,7 @@ class TransactionManager {
    * @private
    */
   getCachedSearchResults(key) {
-    const cached = this.searchCache.get(key);
+    const cached = this.searchCache.get(key); // LRU cache automatically reorders
 
     if (cached && Date.now() - cached.timestamp < this.searchCacheTimeout) {
       this.metrics.cacheHits++;
@@ -470,13 +526,7 @@ class TransactionManager {
    * @private
    */
   cacheSearchResults(key, results) {
-    // Limit cache size
-    if (this.searchCache.size >= this.maxSearchCacheSize) {
-      // Remove oldest entry
-      const firstKey = this.searchCache.keys().next().value;
-      this.searchCache.delete(firstKey);
-    }
-
+    // LRU cache handles size limiting automatically
     this.searchCache.set(key, {
       results,
       timestamp: Date.now(),
