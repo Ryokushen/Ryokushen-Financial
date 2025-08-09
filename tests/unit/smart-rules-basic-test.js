@@ -10,9 +10,9 @@ try {
   const modules = [
     'js/modules/smartRules.js',
     'js/modules/ruleEngine.js',
-    'sql/smart_rules_schema.sql'
+    'sql/smart_rules_schema.sql',
   ];
-  
+
   console.log('✓ Core modules created successfully');
   console.log('  - smartRules.js: Rule management and CRUD operations');
   console.log('  - ruleEngine.js: Pattern matching and action execution');
@@ -31,21 +31,25 @@ const exampleRule = {
   priority: 10,
   conditions: {
     type: 'AND',
-    items: [{
-      field: 'description',
-      operator: 'contains',
-      value: 'STARBUCKS',
-      case_sensitive: false
-    }]
+    items: [
+      {
+        field: 'description',
+        operator: 'contains',
+        value: 'STARBUCKS',
+        case_sensitive: false,
+      },
+    ],
   },
-  actions: [{
-    type: 'set_category',
-    value: 'Dining'
-  }],
+  actions: [
+    {
+      type: 'set_category',
+      value: 'Dining',
+    },
+  ],
   stats: {
     matches: 0,
-    last_matched: null
-  }
+    last_matched: null,
+  },
 };
 
 console.log('✓ Rule structure defined');
@@ -54,11 +58,18 @@ console.log(JSON.stringify(exampleRule, null, 2));
 // Test 3: Verify operator support
 console.log('\n3. Supported operators:');
 const operators = [
-  'contains', 'equals', 'equals_ignore_case',
-  'starts_with', 'ends_with',
-  'greater_than', 'less_than', 
-  'greater_than_or_equal', 'less_than_or_equal',
-  'between', 'regex', 'in_list'
+  'contains',
+  'equals',
+  'equals_ignore_case',
+  'starts_with',
+  'ends_with',
+  'greater_than',
+  'less_than',
+  'greater_than_or_equal',
+  'less_than_or_equal',
+  'between',
+  'regex',
+  'in_list',
 ];
 
 operators.forEach(op => {
@@ -71,7 +82,7 @@ const actions = [
   'set_category - Updates transaction category',
   'add_tag - Adds a tag to the description',
   'add_note - Appends a note to the description',
-  'alert - Triggers an alert event'
+  'alert - Triggers an alert event',
 ];
 
 actions.forEach(action => {

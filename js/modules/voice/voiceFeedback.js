@@ -6,23 +6,23 @@ import { debug } from '../debug.js';
  * VoiceFeedback - Manages visual and audio feedback for voice input
  */
 export class VoiceFeedback {
-    constructor() {
-        this.container = null;
-        this.elements = {};
-        this.animationFrame = null;
-        this.isRecording = false;
-        this.createFeedbackUI();
-    }
+  constructor() {
+    this.container = null;
+    this.elements = {};
+    this.animationFrame = null;
+    this.isRecording = false;
+    this.createFeedbackUI();
+  }
 
-    /**
-     * Create the feedback UI elements
-     */
-    createFeedbackUI() {
-        // Create container
-        this.container = document.createElement('div');
-        this.container.className = 'voice-feedback-container';
-        this.container.style.display = 'none';
-        this.container.innerHTML = `
+  /**
+   * Create the feedback UI elements
+   */
+  createFeedbackUI() {
+    // Create container
+    this.container = document.createElement('div');
+    this.container.className = 'voice-feedback-container';
+    this.container.style.display = 'none';
+    this.container.innerHTML = `
             <div class="voice-feedback-content">
                 <div class="voice-indicator">
                     <div class="voice-indicator-dot"></div>
@@ -39,33 +39,35 @@ export class VoiceFeedback {
             </div>
         `;
 
-        // Get element references
-        this.elements = {
-            indicator: this.container.querySelector('.voice-indicator'),
-            dot: this.container.querySelector('.voice-indicator-dot'),
-            waveform: this.container.querySelector('.voice-waveform path'),
-            statusText: this.container.querySelector('.voice-status-text'),
-            timer: this.container.querySelector('.voice-timer'),
-            transcript: this.container.querySelector('.voice-transcript'),
-            error: this.container.querySelector('.voice-error')
-        };
+    // Get element references
+    this.elements = {
+      indicator: this.container.querySelector('.voice-indicator'),
+      dot: this.container.querySelector('.voice-indicator-dot'),
+      waveform: this.container.querySelector('.voice-waveform path'),
+      statusText: this.container.querySelector('.voice-status-text'),
+      timer: this.container.querySelector('.voice-timer'),
+      transcript: this.container.querySelector('.voice-transcript'),
+      error: this.container.querySelector('.voice-error'),
+    };
 
-        // Append to body
-        document.body.appendChild(this.container);
+    // Append to body
+    document.body.appendChild(this.container);
 
-        // Add styles if not already present
-        this.injectStyles();
+    // Add styles if not already present
+    this.injectStyles();
+  }
+
+  /**
+   * Inject CSS styles for voice feedback
+   */
+  injectStyles() {
+    if (document.getElementById('voice-feedback-styles')) {
+      return;
     }
 
-    /**
-     * Inject CSS styles for voice feedback
-     */
-    injectStyles() {
-        if (document.getElementById('voice-feedback-styles')) return;
-
-        const styles = document.createElement('style');
-        styles.id = 'voice-feedback-styles';
-        styles.textContent = `
+    const styles = document.createElement('style');
+    styles.id = 'voice-feedback-styles';
+    styles.textContent = `
             .voice-feedback-container {
                 position: fixed;
                 bottom: 20px;
@@ -172,151 +174,153 @@ export class VoiceFeedback {
             }
         `;
 
-        document.head.appendChild(styles);
+    document.head.appendChild(styles);
+  }
+
+  /**
+   * Show the feedback UI
+   */
+  show() {
+    this.container.style.display = 'block';
+    this.resetUI();
+  }
+
+  /**
+   * Hide the feedback UI
+   */
+  hide() {
+    this.container.style.display = 'none';
+    this.stopRecording();
+  }
+
+  /**
+   * Start recording animation
+   */
+  startRecording() {
+    this.show();
+    this.isRecording = true;
+    this.elements.dot.classList.add('recording');
+    this.elements.statusText.textContent = 'Listening...';
+    this.startTimer();
+    this.animateWaveform();
+    debug.log('Voice recording started');
+  }
+
+  /**
+   * Stop recording animation
+   */
+  stopRecording() {
+    this.isRecording = false;
+    this.elements.dot.classList.remove('recording');
+    this.elements.statusText.textContent = 'Processing...';
+    this.stopTimer();
+    this.stopWaveformAnimation();
+    debug.log('Voice recording stopped');
+  }
+
+  /**
+   * Show transcript
+   */
+  showTranscript(text, isFinal = false) {
+    this.elements.transcript.textContent = text;
+    this.elements.transcript.classList.toggle('interim', !isFinal);
+
+    if (isFinal) {
+      this.elements.statusText.textContent = 'Complete';
+      setTimeout(() => this.hide(), 2000);
     }
+  }
 
-    /**
-     * Show the feedback UI
-     */
-    show() {
-        this.container.style.display = 'block';
-        this.resetUI();
+  /**
+   * Show error message
+   */
+  showError(message) {
+    this.elements.error.textContent = message;
+    this.elements.error.style.display = 'block';
+    this.elements.statusText.textContent = 'Error';
+    this.stopRecording();
+
+    setTimeout(() => {
+      this.hide();
+    }, 5000);
+  }
+
+  /**
+   * Reset UI to initial state
+   */
+  resetUI() {
+    this.elements.transcript.textContent = '';
+    this.elements.transcript.classList.remove('interim');
+    this.elements.error.style.display = 'none';
+    this.elements.error.textContent = '';
+    this.elements.timer.textContent = '0:00';
+  }
+
+  /**
+   * Start timer
+   */
+  startTimer() {
+    this.startTime = Date.now();
+    this.timerInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+      const minutes = Math.floor(elapsed / 60);
+      const seconds = elapsed % 60;
+      this.elements.timer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }, 100);
+  }
+
+  /**
+   * Stop timer
+   */
+  stopTimer() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
     }
+  }
 
-    /**
-     * Hide the feedback UI
-     */
-    hide() {
-        this.container.style.display = 'none';
-        this.stopRecording();
+  /**
+   * Animate waveform
+   */
+  animateWaveform() {
+    const animate = () => {
+      if (!this.isRecording) {
+        return;
+      }
+
+      const time = Date.now() / 1000;
+      const points = [];
+
+      for (let i = 0; i <= 60; i += 5) {
+        const y = 15 + Math.sin(i / 10 + time * 2) * 5 * Math.random();
+        points.push(`${i},${y}`);
+      }
+
+      this.elements.waveform.setAttribute('d', `M${points.join(' L')}`);
+      this.animationFrame = requestAnimationFrame(animate);
+    };
+
+    animate();
+  }
+
+  /**
+   * Stop waveform animation
+   */
+  stopWaveformAnimation() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+      this.elements.waveform.setAttribute('d', 'M0,15 L60,15');
     }
+  }
 
-    /**
-     * Start recording animation
-     */
-    startRecording() {
-        this.show();
-        this.isRecording = true;
-        this.elements.dot.classList.add('recording');
-        this.elements.statusText.textContent = 'Listening...';
-        this.startTimer();
-        this.animateWaveform();
-        debug.log('Voice recording started');
+  /**
+   * Clean up resources
+   */
+  destroy() {
+    this.stopRecording();
+    if (this.container && this.container.parentNode) {
+      this.container.parentNode.removeChild(this.container);
     }
-
-    /**
-     * Stop recording animation
-     */
-    stopRecording() {
-        this.isRecording = false;
-        this.elements.dot.classList.remove('recording');
-        this.elements.statusText.textContent = 'Processing...';
-        this.stopTimer();
-        this.stopWaveformAnimation();
-        debug.log('Voice recording stopped');
-    }
-
-    /**
-     * Show transcript
-     */
-    showTranscript(text, isFinal = false) {
-        this.elements.transcript.textContent = text;
-        this.elements.transcript.classList.toggle('interim', !isFinal);
-        
-        if (isFinal) {
-            this.elements.statusText.textContent = 'Complete';
-            setTimeout(() => this.hide(), 2000);
-        }
-    }
-
-    /**
-     * Show error message
-     */
-    showError(message) {
-        this.elements.error.textContent = message;
-        this.elements.error.style.display = 'block';
-        this.elements.statusText.textContent = 'Error';
-        this.stopRecording();
-        
-        setTimeout(() => {
-            this.hide();
-        }, 5000);
-    }
-
-    /**
-     * Reset UI to initial state
-     */
-    resetUI() {
-        this.elements.transcript.textContent = '';
-        this.elements.transcript.classList.remove('interim');
-        this.elements.error.style.display = 'none';
-        this.elements.error.textContent = '';
-        this.elements.timer.textContent = '0:00';
-    }
-
-    /**
-     * Start timer
-     */
-    startTimer() {
-        this.startTime = Date.now();
-        this.timerInterval = setInterval(() => {
-            const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
-            const minutes = Math.floor(elapsed / 60);
-            const seconds = elapsed % 60;
-            this.elements.timer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        }, 100);
-    }
-
-    /**
-     * Stop timer
-     */
-    stopTimer() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
-        }
-    }
-
-    /**
-     * Animate waveform
-     */
-    animateWaveform() {
-        const animate = () => {
-            if (!this.isRecording) return;
-
-            const time = Date.now() / 1000;
-            const points = [];
-            
-            for (let i = 0; i <= 60; i += 5) {
-                const y = 15 + Math.sin((i / 10) + time * 2) * 5 * Math.random();
-                points.push(`${i},${y}`);
-            }
-            
-            this.elements.waveform.setAttribute('d', `M${points.join(' L')}`);
-            this.animationFrame = requestAnimationFrame(animate);
-        };
-
-        animate();
-    }
-
-    /**
-     * Stop waveform animation
-     */
-    stopWaveformAnimation() {
-        if (this.animationFrame) {
-            cancelAnimationFrame(this.animationFrame);
-            this.animationFrame = null;
-            this.elements.waveform.setAttribute('d', 'M0,15 L60,15');
-        }
-    }
-
-    /**
-     * Clean up resources
-     */
-    destroy() {
-        this.stopRecording();
-        if (this.container && this.container.parentNode) {
-            this.container.parentNode.removeChild(this.container);
-        }
-    }
+  }
 }

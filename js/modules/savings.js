@@ -416,7 +416,7 @@ async function handleContributionSubmit(event, appState, onUpdate) {
         account_id: goal.linkedAccountId,
         category: 'Transfer',
         description: `Contribution to ${goal.name} [Savings Goal]`,
-        amount: amount,
+        amount,
         cleared: true,
       };
 

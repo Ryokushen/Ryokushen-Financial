@@ -456,21 +456,20 @@ async function updateSingleHolding(symbol, appState, onUpdate) {
     // Find the button for this symbol
     const button = document.querySelector(`button[data-symbol="${symbol}"]`);
     const buttonId = button ? button.id || `btn-update-${symbol}` : null;
-    
-    await loadingState.executeWithLoading(
-      `updateHolding-${symbol}`,
-      operation,
-      {
-        buttonId: buttonId,
-        loadingText: '...',
-        successText: '✓',
-        errorText: '✗',
-        showButtonStatus: true
-      }
-    );
+
+    await loadingState.executeWithLoading(`updateHolding-${symbol}`, operation, {
+      buttonId,
+      loadingText: '...',
+      successText: '✓',
+      errorText: '✗',
+      showButtonStatus: true,
+    });
   } catch (error) {
     debug.error(`Error updating ${symbol}:`, error);
-    if (error.message !== 'Stock API not configured' && error.message !== 'Mutual fund not supported') {
+    if (
+      error.message !== 'Stock API not configured' &&
+      error.message !== 'Mutual fund not supported'
+    ) {
       showError(`Failed to update ${symbol}: ${error.message || 'Unknown error'}`);
     }
   }

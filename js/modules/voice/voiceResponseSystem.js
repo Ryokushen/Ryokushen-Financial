@@ -9,47 +9,49 @@ import { eventManager } from '../eventManager.js';
  * Voice Response System - Handles visual and audio feedback for voice commands
  */
 export class VoiceResponseSystem {
-    constructor() {
-        this.responseContainer = null;
-        this.currentResponse = null;
-        this.initializeResponseUI();
+  constructor() {
+    this.responseContainer = null;
+    this.currentResponse = null;
+    this.initializeResponseUI();
+  }
+
+  /**
+   * Initialize response UI components
+   */
+  initializeResponseUI() {
+    this.createResponseContainer();
+    this.injectStyles();
+  }
+
+  /**
+   * Create response container
+   */
+  createResponseContainer() {
+    // Remove existing container
+    const existing = document.getElementById('voice-response-container');
+    if (existing) {
+      existing.remove();
     }
 
-    /**
-     * Initialize response UI components
-     */
-    initializeResponseUI() {
-        this.createResponseContainer();
-        this.injectStyles();
+    this.responseContainer = document.createElement('div');
+    this.responseContainer.id = 'voice-response-container';
+    this.responseContainer.className = 'voice-response-container';
+    this.responseContainer.style.display = 'none';
+
+    document.body.appendChild(this.responseContainer);
+  }
+
+  /**
+   * Inject CSS styles for response system
+   */
+  injectStyles() {
+    if (document.getElementById('voice-response-styles')) {
+      return;
     }
 
-    /**
-     * Create response container
-     */
-    createResponseContainer() {
-        // Remove existing container
-        const existing = document.getElementById('voice-response-container');
-        if (existing) {
-            existing.remove();
-        }
-
-        this.responseContainer = document.createElement('div');
-        this.responseContainer.id = 'voice-response-container';
-        this.responseContainer.className = 'voice-response-container';
-        this.responseContainer.style.display = 'none';
-
-        document.body.appendChild(this.responseContainer);
-    }
-
-    /**
-     * Inject CSS styles for response system
-     */
-    injectStyles() {
-        if (document.getElementById('voice-response-styles')) return;
-
-        const styles = document.createElement('style');
-        styles.id = 'voice-response-styles';
-        styles.textContent = `
+    const styles = document.createElement('style');
+    styles.id = 'voice-response-styles';
+    styles.textContent = `
             .voice-response-container {
                 position: fixed;
                 top: 80px;
@@ -263,62 +265,62 @@ export class VoiceResponseSystem {
             }
         `;
 
-        document.head.appendChild(styles);
+    document.head.appendChild(styles);
+  }
+
+  /**
+   * Display response for voice command result
+   */
+  displayResponse(result, autoHide = true) {
+    debug.log('Displaying voice response:', result);
+
+    this.currentResponse = result;
+    this.responseContainer.innerHTML = '';
+
+    const card = this.createResponseCard(result);
+    this.responseContainer.appendChild(card);
+    this.responseContainer.style.display = 'block';
+
+    // Announce response for accessibility
+    if (result.response && result.response.text) {
+      announceToScreenReader(result.response.text);
     }
 
-    /**
-     * Display response for voice command result
-     */
-    displayResponse(result, autoHide = true) {
-        debug.log('Displaying voice response:', result);
-
-        this.currentResponse = result;
-        this.responseContainer.innerHTML = '';
-
-        const card = this.createResponseCard(result);
-        this.responseContainer.appendChild(card);
-        this.responseContainer.style.display = 'block';
-
-        // Announce response for accessibility
-        if (result.response && result.response.text) {
-            announceToScreenReader(result.response.text);
-        }
-
-        // Auto-hide after delay (except for errors and help)
-        if (autoHide && !['error', 'help'].includes(result.type)) {
-            setTimeout(() => {
-                this.hideResponse();
-            }, 8000);
-        }
+    // Auto-hide after delay (except for errors and help)
+    if (autoHide && !['error', 'help'].includes(result.type)) {
+      setTimeout(() => {
+        this.hideResponse();
+      }, 8000);
     }
+  }
 
-    /**
-     * Create response card based on result type
-     */
-    createResponseCard(result) {
-        const card = document.createElement('div');
-        card.className = `voice-response-card ${result.type === 'error' ? 'voice-error-card' : ''}`;
+  /**
+   * Create response card based on result type
+   */
+  createResponseCard(result) {
+    const card = document.createElement('div');
+    card.className = `voice-response-card ${result.type === 'error' ? 'voice-error-card' : ''}`;
 
-        const header = this.createResponseHeader(result);
-        const body = this.createResponseBody(result);
+    const header = this.createResponseHeader(result);
+    const body = this.createResponseBody(result);
 
-        card.appendChild(header);
-        card.appendChild(body);
+    card.appendChild(header);
+    card.appendChild(body);
 
-        return card;
-    }
+    return card;
+  }
 
-    /**
-     * Create response header
-     */
-    createResponseHeader(result) {
-        const header = document.createElement('div');
-        header.className = 'voice-response-header';
+  /**
+   * Create response header
+   */
+  createResponseHeader(result) {
+    const header = document.createElement('div');
+    header.className = 'voice-response-header';
 
-        const icon = this.getResponseIcon(result.type);
-        const title = result.response?.title || this.getDefaultTitle(result.type);
+    const icon = this.getResponseIcon(result.type);
+    const title = result.response?.title || this.getDefaultTitle(result.type);
 
-        header.innerHTML = `
+    header.innerHTML = `
             <h3 class="voice-response-title">
                 <span class="voice-response-icon">${icon}</span>
                 ${escapeHtml(title)}
@@ -326,72 +328,72 @@ export class VoiceResponseSystem {
             <button class="voice-response-close" aria-label="Close response">&times;</button>
         `;
 
-        // Add close functionality
-        const closeBtn = header.querySelector('.voice-response-close');
-        if (closeBtn) {
-            eventManager.addEventListener(closeBtn, 'click', () => {
-                this.hideResponse();
-            });
-        }
-
-        return header;
+    // Add close functionality
+    const closeBtn = header.querySelector('.voice-response-close');
+    if (closeBtn) {
+      eventManager.addEventListener(closeBtn, 'click', () => {
+        this.hideResponse();
+      });
     }
 
-    /**
-     * Create response body with type-specific content
-     */
-    createResponseBody(result) {
-        const body = document.createElement('div');
-        body.className = 'voice-response-body';
+    return header;
+  }
 
-        switch (result.type) {
-            case 'balance':
-            case 'networth':
-            case 'debt':
-            case 'investments':
-                body.appendChild(this.createFinancialResponseBody(result));
-                break;
-            case 'spending':
-            case 'merchant_spending':
-                body.appendChild(this.createSpendingResponseBody(result));
-                break;
-            case 'health':
-                body.appendChild(this.createHealthResponseBody(result));
-                break;
-            case 'help':
-                body.appendChild(this.createHelpResponseBody(result));
-                break;
-            case 'navigation':
-            case 'action':
-            case 'settings':
-                body.appendChild(this.createActionResponseBody(result));
-                break;
-            case 'error':
-                body.appendChild(this.createErrorResponseBody(result));
-                break;
-            default:
-                body.appendChild(this.createDefaultResponseBody(result));
-        }
+  /**
+   * Create response body with type-specific content
+   */
+  createResponseBody(result) {
+    const body = document.createElement('div');
+    body.className = 'voice-response-body';
 
-        return body;
+    switch (result.type) {
+      case 'balance':
+      case 'networth':
+      case 'debt':
+      case 'investments':
+        body.appendChild(this.createFinancialResponseBody(result));
+        break;
+      case 'spending':
+      case 'merchant_spending':
+        body.appendChild(this.createSpendingResponseBody(result));
+        break;
+      case 'health':
+        body.appendChild(this.createHealthResponseBody(result));
+        break;
+      case 'help':
+        body.appendChild(this.createHelpResponseBody(result));
+        break;
+      case 'navigation':
+      case 'action':
+      case 'settings':
+        body.appendChild(this.createActionResponseBody(result));
+        break;
+      case 'error':
+        body.appendChild(this.createErrorResponseBody(result));
+        break;
+      default:
+        body.appendChild(this.createDefaultResponseBody(result));
     }
 
-    /**
-     * Create financial response body (balance, net worth, etc.)
-     */
-    createFinancialResponseBody(result) {
-        const container = document.createElement('div');
-        
-        container.innerHTML = `
+    return body;
+  }
+
+  /**
+   * Create financial response body (balance, net worth, etc.)
+   */
+  createFinancialResponseBody(result) {
+    const container = document.createElement('div');
+
+    container.innerHTML = `
             <div class="voice-response-text">${escapeHtml(result.response.text)}</div>
             <div class="voice-response-details">${escapeHtml(result.response.details)}</div>
         `;
 
-        // Add data visualization for complex responses
-        if (result.type === 'networth' && result.data) {
-            const dataGrid = document.createElement('div');
-            dataGrid.className = 'voice-response-data';
-            dataGrid.innerHTML = `
+    // Add data visualization for complex responses
+    if (result.type === 'networth' && result.data) {
+      const dataGrid = document.createElement('div');
+      dataGrid.className = 'voice-response-data';
+      dataGrid.innerHTML = `
                 <div class="voice-data-grid">
                     <div class="voice-data-item">
                         <div class="voice-data-label">Cash</div>
@@ -407,240 +409,243 @@ export class VoiceResponseSystem {
                     </div>
                 </div>
             `;
-            container.appendChild(dataGrid);
-        }
-
-        return container;
+      container.appendChild(dataGrid);
     }
 
-    /**
-     * Create spending response body
-     */
-    createSpendingResponseBody(result) {
-        const container = document.createElement('div');
-        
-        container.innerHTML = `
+    return container;
+  }
+
+  /**
+   * Create spending response body
+   */
+  createSpendingResponseBody(result) {
+    const container = document.createElement('div');
+
+    container.innerHTML = `
             <div class="voice-response-text">${escapeHtml(result.response.text)}</div>
             <div class="voice-response-details">${escapeHtml(result.response.details)}</div>
         `;
 
-        // Add recent transactions if available
-        if (result.data?.transactions && result.data.transactions.length > 0) {
-            const transactionsList = document.createElement('div');
-            transactionsList.className = 'voice-transactions-list';
-            transactionsList.innerHTML = '<div class="voice-data-label" style="margin-bottom: 8px;">Recent Transactions:</div>';
+    // Add recent transactions if available
+    if (result.data?.transactions && result.data.transactions.length > 0) {
+      const transactionsList = document.createElement('div');
+      transactionsList.className = 'voice-transactions-list';
+      transactionsList.innerHTML =
+        '<div class="voice-data-label" style="margin-bottom: 8px;">Recent Transactions:</div>';
 
-            result.data.transactions.forEach(transaction => {
-                const item = document.createElement('div');
-                item.className = 'voice-transaction-item';
-                item.innerHTML = `
+      result.data.transactions.forEach(transaction => {
+        const item = document.createElement('div');
+        item.className = 'voice-transaction-item';
+        item.innerHTML = `
                     <span class="voice-transaction-desc">${escapeHtml(transaction.description)}</span>
                     <span class="voice-transaction-amount negative">${formatCurrency(Math.abs(transaction.amount))}</span>
                 `;
-                transactionsList.appendChild(item);
-            });
+        transactionsList.appendChild(item);
+      });
 
-            container.appendChild(transactionsList);
-        }
-
-        return container;
+      container.appendChild(transactionsList);
     }
 
-    /**
-     * Create health response body
-     */
-    createHealthResponseBody(result) {
-        const container = document.createElement('div');
-        
-        container.innerHTML = `
+    return container;
+  }
+
+  /**
+   * Create health response body
+   */
+  createHealthResponseBody(result) {
+    const container = document.createElement('div');
+
+    container.innerHTML = `
             <div class="voice-response-text">${escapeHtml(result.response.text)}</div>
             <div class="voice-response-details">${escapeHtml(result.response.details)}</div>
         `;
 
-        if (result.data) {
-            const dataGrid = document.createElement('div');
-            dataGrid.className = 'voice-response-data';
-            
-            let gridItems = '';
-            if (result.data.savingsRate !== undefined) {
-                gridItems += `
+    if (result.data) {
+      const dataGrid = document.createElement('div');
+      dataGrid.className = 'voice-response-data';
+
+      let gridItems = '';
+      if (result.data.savingsRate !== undefined) {
+        gridItems += `
                     <div class="voice-data-item">
                         <div class="voice-data-label">Savings Rate</div>
                         <div class="voice-data-value">${result.data.savingsRate.toFixed(1)}%</div>
                     </div>
                 `;
-            }
-            if (result.data.emergencyRatio !== undefined && isFinite(result.data.emergencyRatio)) {
-                gridItems += `
+      }
+      if (result.data.emergencyRatio !== undefined && isFinite(result.data.emergencyRatio)) {
+        gridItems += `
                     <div class="voice-data-item">
                         <div class="voice-data-label">Emergency Fund</div>
                         <div class="voice-data-value">${result.data.emergencyRatio.toFixed(1)} months</div>
                     </div>
                 `;
-            }
+      }
 
-            if (gridItems) {
-                dataGrid.innerHTML = `<div class="voice-data-grid">${gridItems}</div>`;
-                container.appendChild(dataGrid);
-            }
-        }
-
-        return container;
+      if (gridItems) {
+        dataGrid.innerHTML = `<div class="voice-data-grid">${gridItems}</div>`;
+        container.appendChild(dataGrid);
+      }
     }
 
-    /**
-     * Create help response body
-     */
-    createHelpResponseBody(result) {
-        const container = document.createElement('div');
-        
-        container.innerHTML = `
+    return container;
+  }
+
+  /**
+   * Create help response body
+   */
+  createHelpResponseBody(result) {
+    const container = document.createElement('div');
+
+    container.innerHTML = `
             <div class="voice-response-text">${escapeHtml(result.response.text)}</div>
             <div class="voice-response-details">${escapeHtml(result.response.details)}</div>
         `;
 
-        if (result.data?.commands) {
-            const commandsList = document.createElement('div');
-            commandsList.className = 'voice-help-commands';
+    if (result.data?.commands) {
+      const commandsList = document.createElement('div');
+      commandsList.className = 'voice-help-commands';
 
-            result.data.commands.forEach(command => {
-                const commandItem = document.createElement('div');
-                commandItem.className = 'voice-help-command';
-                commandItem.textContent = command;
-                commandsList.appendChild(commandItem);
-            });
+      result.data.commands.forEach(command => {
+        const commandItem = document.createElement('div');
+        commandItem.className = 'voice-help-command';
+        commandItem.textContent = command;
+        commandsList.appendChild(commandItem);
+      });
 
-            container.appendChild(commandsList);
-        }
-
-        return container;
+      container.appendChild(commandsList);
     }
 
-    /**
-     * Create action response body (navigation, settings, etc.)
-     */
-    createActionResponseBody(result) {
-        const container = document.createElement('div');
-        
-        container.innerHTML = `
+    return container;
+  }
+
+  /**
+   * Create action response body (navigation, settings, etc.)
+   */
+  createActionResponseBody(result) {
+    const container = document.createElement('div');
+
+    container.innerHTML = `
             <div class="voice-response-text">${escapeHtml(result.response.text)}</div>
             <div class="voice-response-details">${escapeHtml(result.response.details)}</div>
         `;
 
-        return container;
-    }
+    return container;
+  }
 
-    /**
-     * Create error response body
-     */
-    createErrorResponseBody(result) {
-        const container = document.createElement('div');
-        
-        container.innerHTML = `
+  /**
+   * Create error response body
+   */
+  createErrorResponseBody(result) {
+    const container = document.createElement('div');
+
+    container.innerHTML = `
             <div class="voice-response-text">${escapeHtml(result.response.text)}</div>
             <div class="voice-response-details">${escapeHtml(result.response.details)}</div>
         `;
 
-        return container;
-    }
+    return container;
+  }
 
-    /**
-     * Create default response body
-     */
-    createDefaultResponseBody(result) {
-        const container = document.createElement('div');
-        
-        container.innerHTML = `
+  /**
+   * Create default response body
+   */
+  createDefaultResponseBody(result) {
+    const container = document.createElement('div');
+
+    container.innerHTML = `
             <div class="voice-response-text">${escapeHtml(result.response?.text || 'Command processed')}</div>
             <div class="voice-response-details">${escapeHtml(result.response?.details || '')}</div>
         `;
 
-        return container;
-    }
+    return container;
+  }
 
-    /**
-     * Get icon for response type
-     */
-    getResponseIcon(type) {
-        const icons = {
-            'balance': '💰',
-            'networth': '📊',
-            'debt': '💳',
-            'investments': '📈',
-            'spending': '🛍️',
-            'merchant_spending': '🏪',
-            'health': '❤️',
-            'navigation': '🧭',
-            'action': '⚡',
-            'settings': '⚙️',
-            'help': '❓',
-            'error': '⚠️'
-        };
-        return icons[type] || '💬';
-    }
+  /**
+   * Get icon for response type
+   */
+  getResponseIcon(type) {
+    const icons = {
+      balance: '💰',
+      networth: '📊',
+      debt: '💳',
+      investments: '📈',
+      spending: '🛍️',
+      merchant_spending: '🏪',
+      health: '❤️',
+      navigation: '🧭',
+      action: '⚡',
+      settings: '⚙️',
+      help: '❓',
+      error: '⚠️',
+    };
+    return icons[type] || '💬';
+  }
 
-    /**
-     * Get default title for response type
-     */
-    getDefaultTitle(type) {
-        const titles = {
-            'balance': 'Account Balance',
-            'networth': 'Net Worth',
-            'debt': 'Debt Summary',
-            'investments': 'Investment Portfolio',
-            'spending': 'Spending Analysis',
-            'merchant_spending': 'Merchant Spending',
-            'health': 'Financial Health',
-            'navigation': 'Navigation',
-            'action': 'Action Complete',
-            'settings': 'Settings',
-            'help': 'Voice Commands',
-            'error': 'Error'
-        };
-        return titles[type] || 'Voice Response';
-    }
+  /**
+   * Get default title for response type
+   */
+  getDefaultTitle(type) {
+    const titles = {
+      balance: 'Account Balance',
+      networth: 'Net Worth',
+      debt: 'Debt Summary',
+      investments: 'Investment Portfolio',
+      spending: 'Spending Analysis',
+      merchant_spending: 'Merchant Spending',
+      health: 'Financial Health',
+      navigation: 'Navigation',
+      action: 'Action Complete',
+      settings: 'Settings',
+      help: 'Voice Commands',
+      error: 'Error',
+    };
+    return titles[type] || 'Voice Response';
+  }
 
-    /**
-     * Hide response
-     */
-    hideResponse() {
-        if (this.responseContainer) {
-            const card = this.responseContainer.querySelector('.voice-response-card');
-            if (card) {
-                card.classList.add('auto-hiding');
-                setTimeout(() => {
-                    this.responseContainer.style.display = 'none';
-                    this.responseContainer.innerHTML = '';
-                }, 500);
-            } else {
-                this.responseContainer.style.display = 'none';
-            }
-        }
-        this.currentResponse = null;
+  /**
+   * Hide response
+   */
+  hideResponse() {
+    if (this.responseContainer) {
+      const card = this.responseContainer.querySelector('.voice-response-card');
+      if (card) {
+        card.classList.add('auto-hiding');
+        setTimeout(() => {
+          this.responseContainer.style.display = 'none';
+          this.responseContainer.innerHTML = '';
+        }, 500);
+      } else {
+        this.responseContainer.style.display = 'none';
+      }
     }
+    this.currentResponse = null;
+  }
 
-    /**
-     * Check if response is currently visible
-     */
-    isVisible() {
-        return this.responseContainer && 
-               this.responseContainer.style.display !== 'none' && 
-               this.currentResponse !== null;
-    }
+  /**
+   * Check if response is currently visible
+   */
+  isVisible() {
+    return (
+      this.responseContainer &&
+      this.responseContainer.style.display !== 'none' &&
+      this.currentResponse !== null
+    );
+  }
 
-    /**
-     * Clear all responses
-     */
-    clearAll() {
-        this.hideResponse();
-    }
+  /**
+   * Clear all responses
+   */
+  clearAll() {
+    this.hideResponse();
+  }
 
-    /**
-     * Update response (for real-time data updates)
-     */
-    updateResponse(newResult) {
-        if (this.isVisible() && this.currentResponse?.type === newResult.type) {
-            this.displayResponse(newResult, false);
-        }
+  /**
+   * Update response (for real-time data updates)
+   */
+  updateResponse(newResult) {
+    if (this.isVisible() && this.currentResponse?.type === newResult.type) {
+      this.displayResponse(newResult, false);
     }
+  }
 }

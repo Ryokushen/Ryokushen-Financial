@@ -13,46 +13,46 @@ import { eventManager } from '../eventManager.js';
  * Global Voice Interface - Central coordinator for all voice command functionality
  */
 export class GlobalVoiceInterface {
-    constructor(appState) {
-        this.appState = appState;
-        this.isListening = false;
-        this.isProcessing = false;
-        
-        // Initialize voice components
-        this.commandEngine = new VoiceCommandEngine();
-        this.analytics = new VoiceAnalytics(appState);
-        this.navigation = new VoiceNavigation(appState);
-        this.responseSystem = new VoiceResponseSystem();
-        
-        this.initializeGlobalInterface();
-        this.setupEventListeners();
+  constructor(appState) {
+    this.appState = appState;
+    this.isListening = false;
+    this.isProcessing = false;
+
+    // Initialize voice components
+    this.commandEngine = new VoiceCommandEngine();
+    this.analytics = new VoiceAnalytics(appState);
+    this.navigation = new VoiceNavigation(appState);
+    this.responseSystem = new VoiceResponseSystem();
+
+    this.initializeGlobalInterface();
+    this.setupEventListeners();
+  }
+
+  /**
+   * Initialize global voice interface UI
+   */
+  initializeGlobalInterface() {
+    this.createGlobalVoiceButton();
+    this.injectGlobalStyles();
+  }
+
+  /**
+   * Create global voice command button
+   */
+  createGlobalVoiceButton() {
+    // Remove existing button
+    const existing = document.getElementById('global-voice-btn');
+    if (existing) {
+      existing.remove();
     }
 
-    /**
-     * Initialize global voice interface UI
-     */
-    initializeGlobalInterface() {
-        this.createGlobalVoiceButton();
-        this.injectGlobalStyles();
-    }
+    const button = document.createElement('button');
+    button.id = 'global-voice-btn';
+    button.className = 'global-voice-btn';
+    button.setAttribute('aria-label', 'Voice commands');
+    button.setAttribute('title', 'Click for voice commands (Chrome/Safari only)');
 
-    /**
-     * Create global voice command button
-     */
-    createGlobalVoiceButton() {
-        // Remove existing button
-        const existing = document.getElementById('global-voice-btn');
-        if (existing) {
-            existing.remove();
-        }
-
-        const button = document.createElement('button');
-        button.id = 'global-voice-btn';
-        button.className = 'global-voice-btn';
-        button.setAttribute('aria-label', 'Voice commands');
-        button.setAttribute('title', 'Click for voice commands (Chrome/Safari only)');
-        
-        button.innerHTML = `
+    button.innerHTML = `
             <svg class="voice-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
@@ -62,27 +62,29 @@ export class GlobalVoiceInterface {
             <span class="voice-text">Voice</span>
         `;
 
-        // Add to header navigation
-        const header = document.querySelector('.header .tab-nav');
-        if (header) {
-            header.appendChild(button);
-        } else {
-            // Fallback - add to body
-            document.body.appendChild(button);
-        }
-
-        this.voiceButton = button;
+    // Add to header navigation
+    const header = document.querySelector('.header .tab-nav');
+    if (header) {
+      header.appendChild(button);
+    } else {
+      // Fallback - add to body
+      document.body.appendChild(button);
     }
 
-    /**
-     * Inject global voice interface styles
-     */
-    injectGlobalStyles() {
-        if (document.getElementById('global-voice-styles')) return;
+    this.voiceButton = button;
+  }
 
-        const styles = document.createElement('style');
-        styles.id = 'global-voice-styles';
-        styles.textContent = `
+  /**
+   * Inject global voice interface styles
+   */
+  injectGlobalStyles() {
+    if (document.getElementById('global-voice-styles')) {
+      return;
+    }
+
+    const styles = document.createElement('style');
+    styles.id = 'global-voice-styles';
+    styles.textContent = `
             .global-voice-btn {
                 background: var(--color-primary, #007bff);
                 color: white;
@@ -209,348 +211,351 @@ export class GlobalVoiceInterface {
             }
         `;
 
-        document.head.appendChild(styles);
+    document.head.appendChild(styles);
+  }
+
+  /**
+   * Setup event listeners
+   */
+  setupEventListeners() {
+    if (this.voiceButton) {
+      eventManager.addEventListener(
+        this.voiceButton,
+        'click',
+        this.handleVoiceButtonClick.bind(this)
+      );
     }
 
-    /**
-     * Setup event listeners
-     */
-    setupEventListeners() {
-        if (this.voiceButton) {
-            eventManager.addEventListener(this.voiceButton, 'click', this.handleVoiceButtonClick.bind(this));
-        }
+    // Keyboard shortcut (Ctrl/Cmd + K)
+    eventManager.addEventListener(document, 'keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k' && !e.shiftKey) {
+        e.preventDefault();
+        this.toggleVoiceCommand();
+      }
+    });
 
-        // Keyboard shortcut (Ctrl/Cmd + K)
-        eventManager.addEventListener(document, 'keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k' && !e.shiftKey) {
-                e.preventDefault();
-                this.toggleVoiceCommand();
-            }
-        });
+    // Check browser support
+    this.checkBrowserSupport();
+  }
 
-        // Check browser support
-        this.checkBrowserSupport();
+  /**
+   * Handle voice button click
+   */
+  async handleVoiceButtonClick() {
+    if (this.isListening) {
+      this.stopListening();
+    } else {
+      await this.startListening();
+    }
+  }
+
+  /**
+   * Start listening for voice commands
+   */
+  async startListening() {
+    if (!voiceInput.isSupported) {
+      this.showUnsupportedMessage();
+      return;
     }
 
-    /**
-     * Handle voice button click
-     */
-    async handleVoiceButtonClick() {
-        if (this.isListening) {
-            this.stopListening();
-        } else {
-            await this.startListening();
-        }
+    if (this.isListening || this.isProcessing) {
+      return;
     }
 
-    /**
-     * Start listening for voice commands
-     */
-    async startListening() {
-        if (!voiceInput.isSupported) {
-            this.showUnsupportedMessage();
-            return;
-        }
+    try {
+      this.setListeningState(true);
+      this.showStatusIndicator('🎤 Listening for voice command...', 'listening');
 
-        if (this.isListening || this.isProcessing) {
-            return;
-        }
+      const started = await voiceInput.startListening(null, {
+        onResult: this.handleVoiceResult.bind(this),
+        onError: this.handleVoiceError.bind(this),
+        onEnd: this.handleVoiceEnd.bind(this),
+      });
 
-        try {
-            this.setListeningState(true);
-            this.showStatusIndicator('🎤 Listening for voice command...', 'listening');
-
-            const started = await voiceInput.startListening(null, {
-                onResult: this.handleVoiceResult.bind(this),
-                onError: this.handleVoiceError.bind(this),
-                onEnd: this.handleVoiceEnd.bind(this)
-            });
-
-            if (started) {
-                announceToScreenReader('Voice command listening started. Speak your command now.');
-            } else {
-                this.setListeningState(false);
-                this.hideStatusIndicator();
-            }
-
-        } catch (error) {
-            debug.error('Error starting voice command:', error);
-            this.setListeningState(false);
-            this.hideStatusIndicator();
-            this.responseSystem.displayResponse({
-                type: 'error',
-                success: false,
-                response: {
-                    text: 'Failed to start voice recognition',
-                    title: 'Voice Error',
-                    details: 'Please check your microphone permissions and try again.'
-                }
-            });
-        }
-    }
-
-    /**
-     * Stop listening for voice commands
-     */
-    stopListening() {
-        if (this.isListening) {
-            voiceInput.stopListening();
-            this.setListeningState(false);
-            this.hideStatusIndicator();
-            announceToScreenReader('Voice command listening stopped');
-        }
-    }
-
-    /**
-     * Toggle voice command listening
-     */
-    async toggleVoiceCommand() {
-        if (this.isListening) {
-            this.stopListening();
-        } else {
-            await this.startListening();
-        }
-    }
-
-    /**
-     * Handle voice recognition result
-     */
-    async handleVoiceResult(result) {
-        if (result.isFinal) {
-            this.setListeningState(false);
-            this.setProcessingState(true);
-            this.showStatusIndicator('⚙️ Processing command...', 'processing');
-
-            const transcript = result.transcript.trim();
-            debug.log('Voice command received:', transcript);
-
-            try {
-                await this.processVoiceCommand(transcript);
-            } catch (error) {
-                debug.error('Error processing voice command:', error);
-                this.responseSystem.displayResponse({
-                    type: 'error',
-                    success: false,
-                    response: {
-                        text: 'Failed to process voice command',
-                        title: 'Processing Error',
-                        details: 'Please try again or rephrase your command.'
-                    }
-                });
-            } finally {
-                this.setProcessingState(false);
-                this.hideStatusIndicator();
-            }
-        }
-    }
-
-    /**
-     * Process voice command using command engine
-     */
-    async processVoiceCommand(transcript) {
-        // Parse command intent and parameters
-        const commandResult = this.commandEngine.processCommand(transcript);
-        
-        debug.log('Command analysis:', commandResult);
-
-        if (!commandResult.isCommand || commandResult.confidence < 0.5) {
-            // Not a recognized command
-            this.responseSystem.displayResponse({
-                type: 'error',
-                success: false,
-                response: {
-                    text: 'Command not recognized',
-                    title: 'Unknown Command',
-                    details: 'Try saying "help" to see available commands.'
-                }
-            });
-            return;
-        }
-
-        // Route command to appropriate handler
-        const { intent, parameters } = commandResult;
-        const category = this.commandEngine.getIntentCategory(intent);
-
-        let result;
-        switch (category) {
-            case 'query':
-                result = await this.analytics.processQuery(intent, parameters);
-                break;
-            case 'navigation':
-            case 'action':
-            case 'settings':
-            case 'general':
-                result = await this.navigation.processNavigation(intent, parameters);
-                break;
-            default:
-                result = {
-                    type: 'error',
-                    success: false,
-                    response: {
-                        text: 'Command category not supported',
-                        title: 'Unsupported Command',
-                        details: 'This type of command is not yet implemented.'
-                    }
-                };
-        }
-
-        // Display result
-        this.responseSystem.displayResponse(result);
-    }
-
-    /**
-     * Handle voice recognition error
-     */
-    handleVoiceError(error, message) {
+      if (started) {
+        announceToScreenReader('Voice command listening started. Speak your command now.');
+      } else {
         this.setListeningState(false);
+        this.hideStatusIndicator();
+      }
+    } catch (error) {
+      debug.error('Error starting voice command:', error);
+      this.setListeningState(false);
+      this.hideStatusIndicator();
+      this.responseSystem.displayResponse({
+        type: 'error',
+        success: false,
+        response: {
+          text: 'Failed to start voice recognition',
+          title: 'Voice Error',
+          details: 'Please check your microphone permissions and try again.',
+        },
+      });
+    }
+  }
+
+  /**
+   * Stop listening for voice commands
+   */
+  stopListening() {
+    if (this.isListening) {
+      voiceInput.stopListening();
+      this.setListeningState(false);
+      this.hideStatusIndicator();
+      announceToScreenReader('Voice command listening stopped');
+    }
+  }
+
+  /**
+   * Toggle voice command listening
+   */
+  async toggleVoiceCommand() {
+    if (this.isListening) {
+      this.stopListening();
+    } else {
+      await this.startListening();
+    }
+  }
+
+  /**
+   * Handle voice recognition result
+   */
+  async handleVoiceResult(result) {
+    if (result.isFinal) {
+      this.setListeningState(false);
+      this.setProcessingState(true);
+      this.showStatusIndicator('⚙️ Processing command...', 'processing');
+
+      const transcript = result.transcript.trim();
+      debug.log('Voice command received:', transcript);
+
+      try {
+        await this.processVoiceCommand(transcript);
+      } catch (error) {
+        debug.error('Error processing voice command:', error);
+        this.responseSystem.displayResponse({
+          type: 'error',
+          success: false,
+          response: {
+            text: 'Failed to process voice command',
+            title: 'Processing Error',
+            details: 'Please try again or rephrase your command.',
+          },
+        });
+      } finally {
         this.setProcessingState(false);
         this.hideStatusIndicator();
+      }
+    }
+  }
 
-        debug.error('Voice recognition error:', error);
-        
-        this.responseSystem.displayResponse({
-            type: 'error',
-            success: false,
-            response: {
-                text: message || 'Voice recognition error',
-                title: 'Voice Error',
-                details: 'Please check your microphone and try again.'
-            }
-        });
+  /**
+   * Process voice command using command engine
+   */
+  async processVoiceCommand(transcript) {
+    // Parse command intent and parameters
+    const commandResult = this.commandEngine.processCommand(transcript);
+
+    debug.log('Command analysis:', commandResult);
+
+    if (!commandResult.isCommand || commandResult.confidence < 0.5) {
+      // Not a recognized command
+      this.responseSystem.displayResponse({
+        type: 'error',
+        success: false,
+        response: {
+          text: 'Command not recognized',
+          title: 'Unknown Command',
+          details: 'Try saying "help" to see available commands.',
+        },
+      });
+      return;
     }
 
-    /**
-     * Handle voice recognition end
-     */
-    handleVoiceEnd() {
-        this.setListeningState(false);
-        if (!this.isProcessing) {
-            this.hideStatusIndicator();
-        }
+    // Route command to appropriate handler
+    const { intent, parameters } = commandResult;
+    const category = this.commandEngine.getIntentCategory(intent);
+
+    let result;
+    switch (category) {
+      case 'query':
+        result = await this.analytics.processQuery(intent, parameters);
+        break;
+      case 'navigation':
+      case 'action':
+      case 'settings':
+      case 'general':
+        result = await this.navigation.processNavigation(intent, parameters);
+        break;
+      default:
+        result = {
+          type: 'error',
+          success: false,
+          response: {
+            text: 'Command category not supported',
+            title: 'Unsupported Command',
+            details: 'This type of command is not yet implemented.',
+          },
+        };
     }
 
-    /**
-     * Set listening state
-     */
-    setListeningState(listening) {
-        this.isListening = listening;
-        
-        if (this.voiceButton) {
-            this.voiceButton.classList.toggle('listening', listening);
-            this.voiceButton.disabled = this.isProcessing;
-        }
+    // Display result
+    this.responseSystem.displayResponse(result);
+  }
+
+  /**
+   * Handle voice recognition error
+   */
+  handleVoiceError(error, message) {
+    this.setListeningState(false);
+    this.setProcessingState(false);
+    this.hideStatusIndicator();
+
+    debug.error('Voice recognition error:', error);
+
+    this.responseSystem.displayResponse({
+      type: 'error',
+      success: false,
+      response: {
+        text: message || 'Voice recognition error',
+        title: 'Voice Error',
+        details: 'Please check your microphone and try again.',
+      },
+    });
+  }
+
+  /**
+   * Handle voice recognition end
+   */
+  handleVoiceEnd() {
+    this.setListeningState(false);
+    if (!this.isProcessing) {
+      this.hideStatusIndicator();
+    }
+  }
+
+  /**
+   * Set listening state
+   */
+  setListeningState(listening) {
+    this.isListening = listening;
+
+    if (this.voiceButton) {
+      this.voiceButton.classList.toggle('listening', listening);
+      this.voiceButton.disabled = this.isProcessing;
+    }
+  }
+
+  /**
+   * Set processing state
+   */
+  setProcessingState(processing) {
+    this.isProcessing = processing;
+
+    if (this.voiceButton) {
+      this.voiceButton.classList.toggle('processing', processing);
+      this.voiceButton.disabled = processing;
+    }
+  }
+
+  /**
+   * Show status indicator
+   */
+  showStatusIndicator(message, type = '') {
+    let indicator = document.getElementById('voice-status-indicator');
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.id = 'voice-status-indicator';
+      indicator.className = 'voice-status-indicator';
+      document.body.appendChild(indicator);
     }
 
-    /**
-     * Set processing state
-     */
-    setProcessingState(processing) {
-        this.isProcessing = processing;
-        
-        if (this.voiceButton) {
-            this.voiceButton.classList.toggle('processing', processing);
-            this.voiceButton.disabled = processing;
-        }
+    indicator.textContent = message;
+    indicator.className = `voice-status-indicator ${type}`;
+    indicator.style.display = 'block';
+  }
+
+  /**
+   * Hide status indicator
+   */
+  hideStatusIndicator() {
+    const indicator = document.getElementById('voice-status-indicator');
+    if (indicator) {
+      indicator.style.display = 'none';
+    }
+  }
+
+  /**
+   * Check browser support
+   */
+  checkBrowserSupport() {
+    if (!voiceInput.isSupported) {
+      document.body.classList.add('no-voice-support');
+      if (this.voiceButton) {
+        this.voiceButton.disabled = true;
+        this.voiceButton.title = 'Voice commands not supported in this browser';
+      }
+    }
+  }
+
+  /**
+   * Show unsupported browser message
+   */
+  showUnsupportedMessage() {
+    this.responseSystem.displayResponse({
+      type: 'error',
+      success: false,
+      response: {
+        text: 'Voice commands not supported',
+        title: 'Browser Compatibility',
+        details: 'Please use Chrome or Safari for voice features.',
+      },
+    });
+  }
+
+  /**
+   * Update app state for all components
+   */
+  updateAppState(newAppState) {
+    this.appState = newAppState;
+    this.analytics.updateAppState(newAppState);
+    this.navigation.updateAppState(newAppState);
+  }
+
+  /**
+   * Show help
+   */
+  showHelp() {
+    const examples = this.commandEngine.getCommandExamples();
+    const commands = [];
+
+    Object.values(examples).forEach(categoryCommands => {
+      commands.push(...categoryCommands.slice(0, 2)); // 2 examples per category
+    });
+
+    this.responseSystem.displayResponse({
+      type: 'help',
+      success: true,
+      data: { commands: commands.slice(0, 8) }, // Limit to 8 total
+      response: {
+        text: 'Here are some voice commands you can try',
+        title: 'Voice Commands Help',
+        details: 'Speak naturally - I understand many variations!',
+      },
+    });
+  }
+
+  /**
+   * Cleanup resources
+   */
+  destroy() {
+    this.stopListening();
+
+    if (this.voiceButton && this.voiceButton.parentNode) {
+      this.voiceButton.parentNode.removeChild(this.voiceButton);
     }
 
-    /**
-     * Show status indicator
-     */
-    showStatusIndicator(message, type = '') {
-        let indicator = document.getElementById('voice-status-indicator');
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.id = 'voice-status-indicator';
-            indicator.className = 'voice-status-indicator';
-            document.body.appendChild(indicator);
-        }
-
-        indicator.textContent = message;
-        indicator.className = `voice-status-indicator ${type}`;
-        indicator.style.display = 'block';
-    }
-
-    /**
-     * Hide status indicator
-     */
-    hideStatusIndicator() {
-        const indicator = document.getElementById('voice-status-indicator');
-        if (indicator) {
-            indicator.style.display = 'none';
-        }
-    }
-
-    /**
-     * Check browser support
-     */
-    checkBrowserSupport() {
-        if (!voiceInput.isSupported) {
-            document.body.classList.add('no-voice-support');
-            if (this.voiceButton) {
-                this.voiceButton.disabled = true;
-                this.voiceButton.title = 'Voice commands not supported in this browser';
-            }
-        }
-    }
-
-    /**
-     * Show unsupported browser message
-     */
-    showUnsupportedMessage() {
-        this.responseSystem.displayResponse({
-            type: 'error',
-            success: false,
-            response: {
-                text: 'Voice commands not supported',
-                title: 'Browser Compatibility',
-                details: 'Please use Chrome or Safari for voice features.'
-            }
-        });
-    }
-
-    /**
-     * Update app state for all components
-     */
-    updateAppState(newAppState) {
-        this.appState = newAppState;
-        this.analytics.updateAppState(newAppState);
-        this.navigation.updateAppState(newAppState);
-    }
-
-    /**
-     * Show help
-     */
-    showHelp() {
-        const examples = this.commandEngine.getCommandExamples();
-        const commands = [];
-        
-        Object.values(examples).forEach(categoryCommands => {
-            commands.push(...categoryCommands.slice(0, 2)); // 2 examples per category
-        });
-
-        this.responseSystem.displayResponse({
-            type: 'help',
-            success: true,
-            data: { commands: commands.slice(0, 8) }, // Limit to 8 total
-            response: {
-                text: 'Here are some voice commands you can try',
-                title: 'Voice Commands Help',
-                details: 'Speak naturally - I understand many variations!'
-            }
-        });
-    }
-
-    /**
-     * Cleanup resources
-     */
-    destroy() {
-        this.stopListening();
-        
-        if (this.voiceButton && this.voiceButton.parentNode) {
-            this.voiceButton.parentNode.removeChild(this.voiceButton);
-        }
-
-        this.hideStatusIndicator();
-        this.responseSystem.clearAll();
-    }
+    this.hideStatusIndicator();
+    this.responseSystem.clearAll();
+  }
 }

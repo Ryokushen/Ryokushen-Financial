@@ -967,8 +967,12 @@ async function addLinkedTransaction(fromTransactionData, toAccountValue, appStat
               db.getTransactionById(result.to_transaction_id),
             ]);
 
-            if (fromTx) savedTransactions.push(fromTx);
-            if (toTx) savedTransactions.push(toTx);
+            if (fromTx) {
+              savedTransactions.push(fromTx);
+            }
+            if (toTx) {
+              savedTransactions.push(toTx);
+            }
 
             // Record balance changes for UI update
             balanceChanges.push(

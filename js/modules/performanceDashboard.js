@@ -903,8 +903,8 @@ class PerformanceDashboard {
 
       // Get transactions for the period
       const searchResult = await transactionManager.searchTransactions({
-        startDate: startDate,
-        endDate: endDate,
+        startDate,
+        endDate,
         // Remove type filter to get all transactions, then filter manually
       });
 

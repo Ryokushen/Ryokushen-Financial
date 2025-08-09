@@ -679,7 +679,9 @@ async function validateFieldWithFeedback(field, fieldName, rules, options = {}) 
 // Show field loading state
 export function showFieldLoading(fieldId) {
   const field = document.getElementById(fieldId);
-  if (!field) return;
+  if (!field) {
+    return;
+  }
 
   clearFieldFeedback(fieldId);
   field.classList.add('field-loading');
@@ -697,7 +699,9 @@ export function showFieldLoading(fieldId) {
 // Show field success state
 export function showFieldSuccess(fieldId) {
   const field = document.getElementById(fieldId);
-  if (!field) return;
+  if (!field) {
+    return;
+  }
 
   clearFieldFeedback(fieldId);
   field.classList.add('field-success');
@@ -715,7 +719,9 @@ export function showFieldSuccess(fieldId) {
 // Clear all field feedback
 export function clearFieldFeedback(fieldId) {
   const field = document.getElementById(fieldId);
-  if (!field) return;
+  if (!field) {
+    return;
+  }
 
   field.classList.remove('field-error', 'field-success', 'field-loading');
 

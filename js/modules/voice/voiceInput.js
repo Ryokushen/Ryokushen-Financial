@@ -13,406 +13,411 @@ import { ConfirmationDialog } from './confirmationDialog.js';
  * Handles voice recognition, state management, and integration with the app
  */
 export class VoiceInput {
-    constructor(options = {}) {
-        this.options = {
-            continuous: false,
-            interimResults: true,
-            maxAlternatives: 1,
-            lang: navigator.language || 'en-US',
-            ...options
-        };
+  constructor(options = {}) {
+    this.options = {
+      continuous: false,
+      interimResults: true,
+      maxAlternatives: 1,
+      lang: navigator.language || 'en-US',
+      ...options,
+    };
 
-        this.recognition = null;
-        this.feedback = new VoiceFeedback();
-        this.isSupported = this.checkSupport();
-        this.isListening = false;
-        this.currentTarget = null; // The input element to fill
-        this.smartMode = true; // Enable smart parsing by default
-        this.transactionExtractor = new TransactionExtractor();
-        this.formFiller = new SmartFormFiller();
-        this.confirmationDialog = new ConfirmationDialog();
-        this.callbacks = {
-            onResult: null,
-            onError: null,
-            onEnd: null,
-            onSmartParsed: null // New callback for smart parsing results
-        };
+    this.recognition = null;
+    this.feedback = new VoiceFeedback();
+    this.isSupported = this.checkSupport();
+    this.isListening = false;
+    this.currentTarget = null; // The input element to fill
+    this.smartMode = true; // Enable smart parsing by default
+    this.transactionExtractor = new TransactionExtractor();
+    this.formFiller = new SmartFormFiller();
+    this.confirmationDialog = new ConfirmationDialog();
+    this.callbacks = {
+      onResult: null,
+      onError: null,
+      onEnd: null,
+      onSmartParsed: null, // New callback for smart parsing results
+    };
 
-        if (this.isSupported) {
-            this.initialize();
+    if (this.isSupported) {
+      this.initialize();
+    }
+  }
+
+  /**
+   * Check if Web Speech API is supported
+   */
+  checkSupport() {
+    const hasAPI = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+
+    if (!hasAPI) {
+      debug.warn('Web Speech API not supported in this browser');
+    }
+
+    return hasAPI;
+  }
+
+  /**
+   * Initialize speech recognition
+   */
+  initialize() {
+    try {
+      this.recognition = new SpeechRecognitionWrapper(this.options);
+      this.setupEventHandlers();
+      debug.log('Voice input initialized successfully');
+    } catch (error) {
+      debug.error('Failed to initialize voice input:', error);
+      this.isSupported = false;
+    }
+  }
+
+  /**
+   * Setup event handlers for speech recognition
+   */
+  setupEventHandlers() {
+    if (!this.recognition) {
+      return;
+    }
+
+    // Handle recognition results
+    this.recognition.onResult(event => {
+      const result = this.processResults(event.results);
+      if (result) {
+        this.handleResult(result);
+      }
+    });
+
+    // Handle errors
+    this.recognition.onError(event => {
+      this.handleError(event.error);
+    });
+
+    // Handle recognition end
+    this.recognition.onEnd(() => {
+      this.isListening = false;
+      this.feedback.stopRecording();
+      if (this.callbacks.onEnd) {
+        this.callbacks.onEnd();
+      }
+    });
+
+    // Handle recognition start
+    this.recognition.onStart(() => {
+      this.isListening = true;
+      this.feedback.startRecording();
+    });
+
+    // Handle no match
+    this.recognition.onNoMatch(() => {
+      this.feedback.showError('No speech was detected. Please try again.');
+    });
+  }
+
+  /**
+   * Process recognition results
+   */
+  processResults(results) {
+    if (!results || results.length === 0) {
+      return null;
+    }
+
+    // Get the last result
+    const lastResult = results[results.length - 1];
+
+    if (lastResult.isFinal) {
+      // Final result - highest confidence
+      return {
+        transcript: lastResult[0].transcript,
+        confidence: lastResult[0].confidence,
+        isFinal: true,
+      };
+    } else {
+      // Interim result for live feedback
+      return {
+        transcript: lastResult[0].transcript,
+        confidence: lastResult[0].confidence,
+        isFinal: false,
+      };
+    }
+  }
+
+  /**
+   * Handle recognition result
+   */
+  handleResult(result) {
+    if (result.isFinal) {
+      // Final result - process with smart parsing if enabled
+      if (this.smartMode && this.isTransactionForm()) {
+        this.handleSmartTransaction(result.transcript);
+      } else {
+        // Basic mode - just fill the target input
+        if (this.currentTarget) {
+          this.updateTargetInput(result.transcript);
         }
+      }
+
+      this.feedback.showTranscript(result.transcript, true);
+
+      if (this.callbacks.onResult) {
+        this.callbacks.onResult(result);
+      }
+    } else {
+      // Interim result - show live feedback
+      this.feedback.showTranscript(result.transcript, false);
     }
+  }
 
-    /**
-     * Check if Web Speech API is supported
-     */
-    checkSupport() {
-        const hasAPI = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
-        
-        if (!hasAPI) {
-            debug.warn('Web Speech API not supported in this browser');
-        }
-        
-        return hasAPI;
-    }
+  /**
+   * Handle smart transaction parsing
+   */
+  async handleSmartTransaction(transcript) {
+    try {
+      debug.log('Processing smart transaction:', transcript);
 
-    /**
-     * Initialize speech recognition
-     */
-    initialize() {
-        try {
-            this.recognition = new SpeechRecognitionWrapper(this.options);
-            this.setupEventHandlers();
-            debug.log('Voice input initialized successfully');
-        } catch (error) {
-            debug.error('Failed to initialize voice input:', error);
-            this.isSupported = false;
-        }
-    }
+      // Extract transaction data
+      const extractedData = this.transactionExtractor.extractTransaction(transcript);
+      extractedData.originalText = transcript;
 
-    /**
-     * Setup event handlers for speech recognition
-     */
-    setupEventHandlers() {
-        if (!this.recognition) return;
+      // Validate extraction
+      const validation = this.transactionExtractor.validateExtraction(extractedData);
 
-        // Handle recognition results
-        this.recognition.onResult((event) => {
-            const result = this.processResults(event.results);
-            if (result) {
-                this.handleResult(result);
-            }
-        });
+      if (extractedData.confidence > 30) {
+        // Prepare suggestions
+        const suggestions = this.formFiller.prepareSuggestions(extractedData);
 
-        // Handle errors
-        this.recognition.onError((event) => {
-            this.handleError(event.error);
-        });
-
-        // Handle recognition end
-        this.recognition.onEnd(() => {
-            this.isListening = false;
-            this.feedback.stopRecording();
-            if (this.callbacks.onEnd) {
-                this.callbacks.onEnd();
-            }
-        });
-
-        // Handle recognition start
-        this.recognition.onStart(() => {
-            this.isListening = true;
-            this.feedback.startRecording();
-        });
-
-        // Handle no match
-        this.recognition.onNoMatch(() => {
-            this.feedback.showError('No speech was detected. Please try again.');
-        });
-    }
-
-    /**
-     * Process recognition results
-     */
-    processResults(results) {
-        if (!results || results.length === 0) return null;
-
-        // Get the last result
-        const lastResult = results[results.length - 1];
-        
-        if (lastResult.isFinal) {
-            // Final result - highest confidence
-            return {
-                transcript: lastResult[0].transcript,
-                confidence: lastResult[0].confidence,
-                isFinal: true
+        // Show confirmation dialog
+        this.confirmationDialog.show(extractedData, suggestions, {
+          onConfirm: async (formData, allowEdit) => {
+            // Update extracted data with confirmed values
+            const confirmedData = {
+              ...extractedData,
+              amount: parseFloat(formData.amount) || extractedData.amount,
+              category: formData.category || extractedData.category,
+              description: formData.description || extractedData.description,
+              date: formData.date || extractedData.date,
             };
-        } else {
-            // Interim result for live feedback
-            return {
-                transcript: lastResult[0].transcript,
-                confidence: lastResult[0].confidence,
-                isFinal: false
-            };
-        }
-    }
 
-    /**
-     * Handle recognition result
-     */
-    handleResult(result) {
-        if (result.isFinal) {
-            // Final result - process with smart parsing if enabled
-            if (this.smartMode && this.isTransactionForm()) {
-                this.handleSmartTransaction(result.transcript);
+            // Fill form with confirmed data
+            const fillResult = await this.formFiller.fillForm(confirmedData, {
+              showConfirmation: false, // Already confirmed
+              highlightFields: true,
+              announceChanges: true,
+            });
+
+            if (fillResult.success && this.callbacks.onSmartParsed) {
+              this.callbacks.onSmartParsed({
+                extractedData: confirmedData,
+                validation,
+                fillResult,
+                userConfirmed: true,
+              });
+            }
+
+            // If user wants to continue editing, focus on first field
+            if (allowEdit) {
+              const amountField = document.getElementById('transaction-amount');
+              if (amountField) {
+                amountField.focus();
+              }
             } else {
-                // Basic mode - just fill the target input
-                if (this.currentTarget) {
-                    this.updateTargetInput(result.transcript);
-                }
+              // If not editing, submit the form automatically
+              const transactionForm = document.getElementById('transaction-form');
+              if (transactionForm) {
+                debug.log('Submitting transaction form after voice confirmation');
+                // Trigger form submission
+                const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                transactionForm.dispatchEvent(submitEvent);
+              }
             }
-            
-            this.feedback.showTranscript(result.transcript, true);
-            
-            if (this.callbacks.onResult) {
-                this.callbacks.onResult(result);
+          },
+          onCancel: () => {
+            debug.log('User cancelled voice transaction confirmation');
+            // Optionally fill description with the transcript
+            if (this.currentTarget && this.currentTarget.id === 'transaction-description') {
+              this.updateTargetInput(transcript);
             }
-        } else {
-            // Interim result - show live feedback
-            this.feedback.showTranscript(result.transcript, false);
+          },
+        });
+      } else {
+        // Low confidence - fallback to basic description filling
+        debug.log('Low confidence extraction, falling back to basic mode');
+        if (this.currentTarget) {
+          this.updateTargetInput(transcript);
         }
+      }
+    } catch (error) {
+      debug.error('Error in smart transaction processing:', error);
+      // Fallback to basic mode
+      if (this.currentTarget) {
+        this.updateTargetInput(transcript);
+      }
+    }
+  }
+
+  /**
+   * Check if current context is a transaction form
+   */
+  isTransactionForm() {
+    // Check if we're in the transaction form context
+    return document.getElementById('transaction-form') !== null;
+  }
+
+  /**
+   * Handle recognition errors
+   */
+  handleError(error) {
+    let message = 'Voice input error';
+
+    switch (error) {
+      case 'no-speech':
+        message = 'No speech was detected. Please try again.';
+        break;
+      case 'audio-capture':
+        message = 'No microphone was found. Please check your device.';
+        break;
+      case 'not-allowed':
+        message = 'Microphone permission was denied. Please allow access.';
+        break;
+      case 'network':
+        message = 'Network error occurred. Please check your connection.';
+        break;
+      case 'aborted':
+        message = 'Voice input was cancelled.';
+        break;
+      default:
+        message = `Voice input error: ${error}`;
     }
 
-    /**
-     * Handle smart transaction parsing
-     */
-    async handleSmartTransaction(transcript) {
-        try {
-            debug.log('Processing smart transaction:', transcript);
-            
-            // Extract transaction data
-            const extractedData = this.transactionExtractor.extractTransaction(transcript);
-            extractedData.originalText = transcript;
-            
-            // Validate extraction
-            const validation = this.transactionExtractor.validateExtraction(extractedData);
-            
-            if (extractedData.confidence > 30) {
-                // Prepare suggestions
-                const suggestions = this.formFiller.prepareSuggestions(extractedData);
-                
-                // Show confirmation dialog
-                this.confirmationDialog.show(extractedData, suggestions, {
-                    onConfirm: async (formData, allowEdit) => {
-                        // Update extracted data with confirmed values
-                        const confirmedData = {
-                            ...extractedData,
-                            amount: parseFloat(formData.amount) || extractedData.amount,
-                            category: formData.category || extractedData.category,
-                            description: formData.description || extractedData.description,
-                            date: formData.date || extractedData.date
-                        };
-                        
-                        // Fill form with confirmed data
-                        const fillResult = await this.formFiller.fillForm(confirmedData, {
-                            showConfirmation: false, // Already confirmed
-                            highlightFields: true,
-                            announceChanges: true
-                        });
-                        
-                        if (fillResult.success && this.callbacks.onSmartParsed) {
-                            this.callbacks.onSmartParsed({
-                                extractedData: confirmedData,
-                                validation,
-                                fillResult,
-                                userConfirmed: true
-                            });
-                        }
-                        
-                        // If user wants to continue editing, focus on first field
-                        if (allowEdit) {
-                            const amountField = document.getElementById('transaction-amount');
-                            if (amountField) {
-                                amountField.focus();
-                            }
-                        } else {
-                            // If not editing, submit the form automatically
-                            const transactionForm = document.getElementById('transaction-form');
-                            if (transactionForm) {
-                                debug.log('Submitting transaction form after voice confirmation');
-                                // Trigger form submission
-                                const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-                                transactionForm.dispatchEvent(submitEvent);
-                            }
-                        }
-                    },
-                    onCancel: () => {
-                        debug.log('User cancelled voice transaction confirmation');
-                        // Optionally fill description with the transcript
-                        if (this.currentTarget && this.currentTarget.id === 'transaction-description') {
-                            this.updateTargetInput(transcript);
-                        }
-                    }
-                });
-                
-            } else {
-                // Low confidence - fallback to basic description filling
-                debug.log('Low confidence extraction, falling back to basic mode');
-                if (this.currentTarget) {
-                    this.updateTargetInput(transcript);
-                }
-            }
-            
-        } catch (error) {
-            debug.error('Error in smart transaction processing:', error);
-            // Fallback to basic mode
-            if (this.currentTarget) {
-                this.updateTargetInput(transcript);
-            }
-        }
+    debug.error('Voice input error:', error);
+    this.feedback.showError(message);
+
+    if (this.callbacks.onError) {
+      this.callbacks.onError(error, message);
+    }
+  }
+
+  /**
+   * Start listening for voice input
+   */
+  async startListening(targetElement = null, callbacks = {}) {
+    if (!this.isSupported) {
+      this.showUnsupportedBrowser();
+      return false;
     }
 
-    /**
-     * Check if current context is a transaction form
-     */
-    isTransactionForm() {
-        // Check if we're in the transaction form context
-        return document.getElementById('transaction-form') !== null;
+    if (this.isListening) {
+      debug.warn('Already listening for voice input');
+      return false;
     }
 
-    /**
-     * Handle recognition errors
-     */
-    handleError(error) {
-        let message = 'Voice input error';
-        
-        switch (error) {
-            case 'no-speech':
-                message = 'No speech was detected. Please try again.';
-                break;
-            case 'audio-capture':
-                message = 'No microphone was found. Please check your device.';
-                break;
-            case 'not-allowed':
-                message = 'Microphone permission was denied. Please allow access.';
-                break;
-            case 'network':
-                message = 'Network error occurred. Please check your connection.';
-                break;
-            case 'aborted':
-                message = 'Voice input was cancelled.';
-                break;
-            default:
-                message = `Voice input error: ${error}`;
-        }
-
-        debug.error('Voice input error:', error);
-        this.feedback.showError(message);
-        
-        if (this.callbacks.onError) {
-            this.callbacks.onError(error, message);
-        }
+    // Check microphone permission
+    const hasPermission = await this.checkMicrophonePermission();
+    if (!hasPermission) {
+      return false;
     }
 
-    /**
-     * Start listening for voice input
-     */
-    async startListening(targetElement = null, callbacks = {}) {
-        if (!this.isSupported) {
-            this.showUnsupportedBrowser();
-            return false;
-        }
+    this.currentTarget = targetElement;
+    this.callbacks = { ...this.callbacks, ...callbacks };
 
-        if (this.isListening) {
-            debug.warn('Already listening for voice input');
-            return false;
-        }
+    try {
+      await this.recognition.start();
+      return true;
+    } catch (error) {
+      debug.error('Failed to start voice recognition:', error);
+      this.handleError('start-error');
+      return false;
+    }
+  }
 
-        // Check microphone permission
-        const hasPermission = await this.checkMicrophonePermission();
-        if (!hasPermission) {
-            return false;
-        }
-
-        this.currentTarget = targetElement;
-        this.callbacks = { ...this.callbacks, ...callbacks };
-
-        try {
-            await this.recognition.start();
-            return true;
-        } catch (error) {
-            debug.error('Failed to start voice recognition:', error);
-            this.handleError('start-error');
-            return false;
-        }
+  /**
+   * Stop listening for voice input
+   */
+  stopListening() {
+    if (!this.isListening || !this.recognition) {
+      return;
     }
 
-    /**
-     * Stop listening for voice input
-     */
-    stopListening() {
-        if (!this.isListening || !this.recognition) {
-            return;
-        }
+    try {
+      this.recognition.stop();
+    } catch (error) {
+      debug.error('Error stopping voice recognition:', error);
+    }
+  }
 
-        try {
-            this.recognition.stop();
-        } catch (error) {
-            debug.error('Error stopping voice recognition:', error);
-        }
+  /**
+   * Check and request microphone permission
+   */
+  async checkMicrophonePermission() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+      return true;
+    } catch (error) {
+      debug.error('Microphone permission denied:', error);
+      this.handleError('not-allowed');
+      return false;
+    }
+  }
+
+  /**
+   * Update the target input element with transcribed text
+   */
+  updateTargetInput(text) {
+    if (!this.currentTarget) {
+      return;
     }
 
-    /**
-     * Check and request microphone permission
-     */
-    async checkMicrophonePermission() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            stream.getTracks().forEach(track => track.stop());
-            return true;
-        } catch (error) {
-            debug.error('Microphone permission denied:', error);
-            this.handleError('not-allowed');
-            return false;
-        }
-    }
+    const currentValue = this.currentTarget.value;
+    const newValue = currentValue ? `${currentValue} ${text}` : text;
 
-    /**
-     * Update the target input element with transcribed text
-     */
-    updateTargetInput(text) {
-        if (!this.currentTarget) return;
+    this.currentTarget.value = newValue;
 
-        const currentValue = this.currentTarget.value;
-        const newValue = currentValue ? `${currentValue} ${text}` : text;
-        
-        this.currentTarget.value = newValue;
-        
-        // Trigger input event for validation
-        const event = new Event('input', { bubbles: true });
-        this.currentTarget.dispatchEvent(event);
-    }
+    // Trigger input event for validation
+    const event = new Event('input', { bubbles: true });
+    this.currentTarget.dispatchEvent(event);
+  }
 
-    /**
-     * Show unsupported browser message
-     */
-    showUnsupportedBrowser() {
-        const message = 'Voice input is not supported in your browser. Please use Chrome or Safari for voice features.';
-        showError(message);
-        this.feedback.showError(message);
-    }
+  /**
+   * Show unsupported browser message
+   */
+  showUnsupportedBrowser() {
+    const message =
+      'Voice input is not supported in your browser. Please use Chrome or Safari for voice features.';
+    showError(message);
+    this.feedback.showError(message);
+  }
 
-    /**
-     * Check if currently listening
-     */
-    get listening() {
-        return this.isListening;
-    }
+  /**
+   * Check if currently listening
+   */
+  get listening() {
+    return this.isListening;
+  }
 
-    /**
-     * Toggle smart parsing mode
-     */
-    setSmartMode(enabled) {
-        this.smartMode = enabled;
-        debug.log(`Smart mode ${enabled ? 'enabled' : 'disabled'}`);
-    }
+  /**
+   * Toggle smart parsing mode
+   */
+  setSmartMode(enabled) {
+    this.smartMode = enabled;
+    debug.log(`Smart mode ${enabled ? 'enabled' : 'disabled'}`);
+  }
 
-    /**
-     * Get current smart mode status
-     */
-    isSmartModeEnabled() {
-        return this.smartMode;
-    }
+  /**
+   * Get current smart mode status
+   */
+  isSmartModeEnabled() {
+    return this.smartMode;
+  }
 
-    /**
-     * Clean up resources
-     */
-    destroy() {
-        if (this.recognition) {
-            this.stopListening();
-            this.recognition = null;
-        }
-        this.feedback.destroy();
+  /**
+   * Clean up resources
+   */
+  destroy() {
+    if (this.recognition) {
+      this.stopListening();
+      this.recognition = null;
     }
+    this.feedback.destroy();
+  }
 }
 
 // Export singleton instance

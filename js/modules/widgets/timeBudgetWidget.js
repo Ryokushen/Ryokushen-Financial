@@ -11,109 +11,109 @@ import { switchTab } from '../ui.js';
 import { eventManager } from '../eventManager.js';
 
 export class TimeBudgetWidget {
-    constructor(containerId) {
-        this.containerId = containerId;
-        this.container = null;
-        this.updateInterval = null;
-        this.appData = null;
+  constructor(containerId) {
+    this.containerId = containerId;
+    this.container = null;
+    this.updateInterval = null;
+    this.appData = null;
+  }
+
+  /**
+   * Initialize the widget
+   */
+  init(appData) {
+    this.appData = appData;
+    this.container = document.getElementById(this.containerId);
+    if (!this.container) {
+      debug.error(`Time budget widget container not found: ${this.containerId}`);
+      return;
     }
 
-    /**
-     * Initialize the widget
-     */
-    init(appData) {
-        this.appData = appData;
-        this.container = document.getElementById(this.containerId);
-        if (!this.container) {
-            debug.error(`Time budget widget container not found: ${this.containerId}`);
-            return;
-        }
+    this.render();
+    this.startAutoUpdate();
 
-        this.render();
-        this.startAutoUpdate();
-        
-        // Listen for wage config updates
-        eventManager.addEventListener(window, 'wage-config-updated', () => this.render());
-        
-        // Listen for transaction updates
-        eventManager.addEventListener(window, 'transaction-added', () => this.render());
-        eventManager.addEventListener(window, 'transaction-updated', () => this.render());
-        eventManager.addEventListener(window, 'transaction-deleted', () => this.render());
+    // Listen for wage config updates
+    eventManager.addEventListener(window, 'wage-config-updated', () => this.render());
+
+    // Listen for transaction updates
+    eventManager.addEventListener(window, 'transaction-added', () => this.render());
+    eventManager.addEventListener(window, 'transaction-updated', () => this.render());
+    eventManager.addEventListener(window, 'transaction-deleted', () => this.render());
+  }
+
+  /**
+   * Render the widget content
+   */
+  render() {
+    if (!this.container) {
+      return;
     }
 
-    /**
-     * Render the widget content
-     */
-    render() {
-        if (!this.container) return;
+    const isEnabled = timeBudgets.isEnabled();
+    const config = timeBudgets.getWageConfig();
 
-        const isEnabled = timeBudgets.isEnabled();
-        const config = timeBudgets.getWageConfig();
-
-        if (!isEnabled) {
-            this.container.innerHTML = this.renderDisabledState();
-            this.attachEventListeners();
-            return;
-        }
-
-        const timeMetrics = this.calculateTimeMetrics();
-        this.container.innerHTML = this.renderEnabledState(config, timeMetrics);
+    if (!isEnabled) {
+      this.container.innerHTML = this.renderDisabledState();
+      this.attachEventListeners();
+      return;
     }
 
-    /**
-     * Calculate time-based metrics from transactions
-     */
-    calculateTimeMetrics() {
-        if (!this.appData || !this.appData.transactions) {
-            return {
-                today: { hours: 0, minutes: 0, amount: 0 },
-                thisWeek: { hours: 0, minutes: 0, amount: 0 },
-                thisMonth: { hours: 0, minutes: 0, amount: 0 }
-            };
-        }
+    const timeMetrics = this.calculateTimeMetrics();
+    this.container.innerHTML = this.renderEnabledState(config, timeMetrics);
+  }
 
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - today.getDay());
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-        const metrics = {
-            today: this.calculatePeriodMetrics(today, now),
-            thisWeek: this.calculatePeriodMetrics(weekStart, now),
-            thisMonth: this.calculatePeriodMetrics(monthStart, now)
-        };
-
-        return metrics;
+  /**
+   * Calculate time-based metrics from transactions
+   */
+  calculateTimeMetrics() {
+    if (!this.appData || !this.appData.transactions) {
+      return {
+        today: { hours: 0, minutes: 0, amount: 0 },
+        thisWeek: { hours: 0, minutes: 0, amount: 0 },
+        thisMonth: { hours: 0, minutes: 0, amount: 0 },
+      };
     }
 
-    /**
-     * Calculate metrics for a specific time period
-     */
-    calculatePeriodMetrics(startDate, endDate) {
-        const expenses = this.appData.transactions.filter(t => {
-            const transDate = new Date(t.date);
-            return transDate >= startDate && 
-                   transDate <= endDate && 
-                   t.amount < 0;
-        });
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-        const totalAmount = Math.abs(sumMoney(expenses.map(t => t.amount)));
-        const timeData = timeBudgets.convertToTime(totalAmount);
+    const metrics = {
+      today: this.calculatePeriodMetrics(today, now),
+      thisWeek: this.calculatePeriodMetrics(weekStart, now),
+      thisMonth: this.calculatePeriodMetrics(monthStart, now),
+    };
 
-        return {
-            hours: timeData?.hours || 0,
-            minutes: timeData?.minutes || 0,
-            amount: totalAmount,
-            formatted: timeData?.formatted || '0m'
-        };
-    }
+    return metrics;
+  }
 
-    /**
-     * Render disabled state
-     */
-    renderDisabledState() {
-        return `
+  /**
+   * Calculate metrics for a specific time period
+   */
+  calculatePeriodMetrics(startDate, endDate) {
+    const expenses = this.appData.transactions.filter(t => {
+      const transDate = new Date(t.date);
+      return transDate >= startDate && transDate <= endDate && t.amount < 0;
+    });
+
+    const totalAmount = Math.abs(sumMoney(expenses.map(t => t.amount)));
+    const timeData = timeBudgets.convertToTime(totalAmount);
+
+    return {
+      hours: timeData?.hours || 0,
+      minutes: timeData?.minutes || 0,
+      amount: totalAmount,
+      formatted: timeData?.formatted || '0m',
+    };
+  }
+
+  /**
+   * Render disabled state
+   */
+  renderDisabledState() {
+    return `
             <div class="time-budget-widget disabled">
                 <div class="widget-header">
                     <h3>⏱️ Time Budgets</h3>
@@ -127,16 +127,16 @@ export class TimeBudgetWidget {
                 </div>
             </div>
         `;
-    }
+  }
 
-    /**
-     * Render enabled state with metrics
-     */
-    renderEnabledState(config, metrics) {
-        const hourlyRate = config.hourlyRate || 0;
-        const afterTaxRate = timeBudgets.calculateNetRate();
+  /**
+   * Render enabled state with metrics
+   */
+  renderEnabledState(config, metrics) {
+    const hourlyRate = config.hourlyRate || 0;
+    const afterTaxRate = timeBudgets.calculateNetRate();
 
-        return `
+    return `
             <div class="time-budget-widget enabled">
                 <div class="widget-header">
                     <h3>⏱️ Time Budgets</h3>
@@ -172,26 +172,32 @@ export class TimeBudgetWidget {
                 </div>
             </div>
         `;
-    }
+  }
 
-    /**
-     * Render time progress visualization
-     */
-    renderTimeProgress(monthMetrics) {
-        const totalHours = monthMetrics.hours + (monthMetrics.minutes / 60);
-        const workDaysInMonth = 22; // Average work days per month
-        const hoursPerDay = 8;
-        const totalWorkHours = workDaysInMonth * hoursPerDay;
-        const percentage = Math.min((totalHours / totalWorkHours) * 100, 100);
+  /**
+   * Render time progress visualization
+   */
+  renderTimeProgress(monthMetrics) {
+    const totalHours = monthMetrics.hours + monthMetrics.minutes / 60;
+    const workDaysInMonth = 22; // Average work days per month
+    const hoursPerDay = 8;
+    const totalWorkHours = workDaysInMonth * hoursPerDay;
+    const percentage = Math.min((totalHours / totalWorkHours) * 100, 100);
 
-        const getProgressColor = (pct) => {
-            if (pct < 20) return 'var(--color-success)';
-            if (pct < 40) return 'var(--color-primary)';
-            if (pct < 60) return 'var(--color-warning)';
-            return 'var(--color-error)';
-        };
+    const getProgressColor = pct => {
+      if (pct < 20) {
+        return 'var(--color-success)';
+      }
+      if (pct < 40) {
+        return 'var(--color-primary)';
+      }
+      if (pct < 60) {
+        return 'var(--color-warning)';
+      }
+      return 'var(--color-error)';
+    };
 
-        return `
+    return `
             <div class="progress-container">
                 <div class="progress-label">
                     <span>Time worked for expenses</span>
@@ -205,51 +211,51 @@ export class TimeBudgetWidget {
                 </div>
             </div>
         `;
+  }
+
+  /**
+   * Attach event listeners to widget elements
+   */
+  attachEventListeners() {
+    const settingsBtn = this.container.querySelector('.go-to-settings-btn');
+    if (settingsBtn) {
+      eventManager.addEventListener(settingsBtn, 'click', () => {
+        switchTab('settings', this.appData);
+      });
+    }
+  }
+
+  /**
+   * Start auto-updating the widget
+   */
+  startAutoUpdate() {
+    // Update every minute to keep time calculations fresh
+    this.updateInterval = setInterval(() => {
+      this.render();
+    }, 60000);
+  }
+
+  /**
+   * Destroy the widget and clean up
+   */
+  destroy() {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
     }
 
-    /**
-     * Attach event listeners to widget elements
-     */
-    attachEventListeners() {
-        const settingsBtn = this.container.querySelector('.go-to-settings-btn');
-        if (settingsBtn) {
-            eventManager.addEventListener(settingsBtn, 'click', () => {
-                switchTab('settings', this.appData);
-            });
-        }
+    if (this.container) {
+      this.container.innerHTML = '';
     }
+  }
 
-    /**
-     * Start auto-updating the widget
-     */
-    startAutoUpdate() {
-        // Update every minute to keep time calculations fresh
-        this.updateInterval = setInterval(() => {
-            this.render();
-        }, 60000);
-    }
-
-    /**
-     * Destroy the widget and clean up
-     */
-    destroy() {
-        if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-            this.updateInterval = null;
-        }
-        
-        if (this.container) {
-            this.container.innerHTML = '';
-        }
-    }
-
-    /**
-     * Update app data reference
-     */
-    updateAppData(appData) {
-        this.appData = appData;
-        this.render();
-    }
+  /**
+   * Update app data reference
+   */
+  updateAppData(appData) {
+    this.appData = appData;
+    this.render();
+  }
 }
 
 // Add widget styles

@@ -146,7 +146,9 @@ export class VirtualScroll {
     for (let i = 0; i < neededCount; i++) {
       const itemIndex = this.visibleStart + i;
       const item = this.items[itemIndex];
-      if (!item) continue;
+      if (!item) {
+        continue;
+      }
 
       let element = existingNodes[i];
 

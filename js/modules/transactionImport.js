@@ -954,15 +954,21 @@ class TransactionImport {
    * Validate CSV content
    */
   isValidCSV(text) {
-    if (!text || text.trim().length === 0) return false;
+    if (!text || text.trim().length === 0) {
+      return false;
+    }
 
     // Check if it has at least one line with comma-separated values
     const lines = text.trim().split('\n');
-    if (lines.length < 2) return false; // Need at least header and one data row
+    if (lines.length < 2) {
+      return false;
+    } // Need at least header and one data row
 
     // Check if first line has commas (likely a header)
     const firstLine = lines[0];
-    if (!firstLine.includes(',')) return false;
+    if (!firstLine.includes(',')) {
+      return false;
+    }
 
     // Basic check for consistent column count
     const headerColumns = firstLine.split(',').length;

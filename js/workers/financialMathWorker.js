@@ -41,7 +41,9 @@ function multiplyMoney(amount, multiplier) {
 function divideMoney(amount, divisor) {
   const a = parseFloat(amount) || 0;
   const d = parseFloat(divisor) || 1;
-  if (d === 0) return 0;
+  if (d === 0) {
+    return 0;
+  }
   return Math.round((a / d) * ROUNDING_FACTOR) / ROUNDING_FACTOR;
 }
 
@@ -49,7 +51,9 @@ function divideMoney(amount, divisor) {
  * Calculate sum of an array of monetary values
  */
 function sumMoney(amounts) {
-  if (!Array.isArray(amounts)) return 0;
+  if (!Array.isArray(amounts)) {
+    return 0;
+  }
   return amounts.reduce((sum, amount) => addMoney(sum, amount), 0);
 }
 
@@ -57,7 +61,9 @@ function sumMoney(amounts) {
  * Calculate average of monetary values
  */
 function averageMoney(amounts) {
-  if (!Array.isArray(amounts) || amounts.length === 0) return 0;
+  if (!Array.isArray(amounts) || amounts.length === 0) {
+    return 0;
+  }
   const sum = sumMoney(amounts);
   return divideMoney(sum, amounts.length);
 }

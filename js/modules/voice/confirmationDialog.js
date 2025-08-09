@@ -7,36 +7,36 @@ import { eventManager } from '../eventManager.js';
  * Confirmation Dialog for Voice-Parsed Transactions
  */
 export class ConfirmationDialog {
-    constructor() {
-        this.dialog = null;
-        this.currentData = null;
-        this.callbacks = {};
-    }
+  constructor() {
+    this.dialog = null;
+    this.currentData = null;
+    this.callbacks = {};
+  }
 
-    /**
-     * Show confirmation dialog for parsed transaction
-     */
-    show(extractedData, suggestions, callbacks = {}) {
-        this.currentData = extractedData;
-        this.callbacks = callbacks;
+  /**
+   * Show confirmation dialog for parsed transaction
+   */
+  show(extractedData, suggestions, callbacks = {}) {
+    this.currentData = extractedData;
+    this.callbacks = callbacks;
 
-        this.createDialog();
-        this.populateDialog(extractedData, suggestions);
-        this.showDialog();
+    this.createDialog();
+    this.populateDialog(extractedData, suggestions);
+    this.showDialog();
 
-        debug.log('Confirmation dialog shown for:', extractedData);
-    }
+    debug.log('Confirmation dialog shown for:', extractedData);
+  }
 
-    /**
-     * Create dialog HTML structure
-     */
-    createDialog() {
-        // Remove existing dialog
-        this.hide();
+  /**
+   * Create dialog HTML structure
+   */
+  createDialog() {
+    // Remove existing dialog
+    this.hide();
 
-        this.dialog = document.createElement('div');
-        this.dialog.className = 'voice-confirmation-dialog';
-        this.dialog.innerHTML = `
+    this.dialog = document.createElement('div');
+    this.dialog.className = 'voice-confirmation-dialog';
+    this.dialog.innerHTML = `
             <div class="voice-confirmation-overlay">
                 <div class="voice-confirmation-content">
                     <div class="voice-confirmation-header">
@@ -91,24 +91,26 @@ export class ConfirmationDialog {
             </div>
         `;
 
-        // Add styles
-        this.injectStyles();
+    // Add styles
+    this.injectStyles();
 
-        // Add event listeners
-        this.setupEventListeners();
+    // Add event listeners
+    this.setupEventListeners();
 
-        document.body.appendChild(this.dialog);
+    document.body.appendChild(this.dialog);
+  }
+
+  /**
+   * Inject CSS styles for the dialog
+   */
+  injectStyles() {
+    if (document.getElementById('voice-confirmation-styles')) {
+      return;
     }
 
-    /**
-     * Inject CSS styles for the dialog
-     */
-    injectStyles() {
-        if (document.getElementById('voice-confirmation-styles')) return;
-
-        const styles = document.createElement('style');
-        styles.id = 'voice-confirmation-styles';
-        styles.textContent = `
+    const styles = document.createElement('style');
+    styles.id = 'voice-confirmation-styles';
+    styles.textContent = `
             .voice-confirmation-dialog {
                 position: fixed;
                 top: 0;
@@ -312,180 +314,182 @@ export class ConfirmationDialog {
             }
         `;
 
-        document.head.appendChild(styles);
+    document.head.appendChild(styles);
+  }
+
+  /**
+   * Setup event listeners for dialog
+   */
+  setupEventListeners() {
+    // Overlay click to close - but not if clicking on content
+    const overlay = this.dialog.querySelector('.voice-confirmation-overlay');
+    if (overlay) {
+      eventManager.addEventListener(overlay, 'click', e => {
+        // Only close if clicking the overlay itself, not the content
+        if (e.target === overlay) {
+          this.hide();
+        }
+      });
     }
 
-    /**
-     * Setup event listeners for dialog
-     */
-    setupEventListeners() {
-        // Overlay click to close - but not if clicking on content
-        const overlay = this.dialog.querySelector('.voice-confirmation-overlay');
-        if (overlay) {
-            eventManager.addEventListener(overlay, 'click', (e) => {
-                // Only close if clicking the overlay itself, not the content
-                if (e.target === overlay) {
-                    this.hide();
-                }
-            });
-        }
-
-        // Footer buttons
-        const applyBtn = this.dialog.querySelector('#voice-confirm-apply');
-        if (applyBtn) {
-            eventManager.addEventListener(applyBtn, 'click', () => {
-                this.handleApply(false);
-            });
-        }
-
-        const editBtn = this.dialog.querySelector('#voice-confirm-edit');
-        if (editBtn) {
-            eventManager.addEventListener(editBtn, 'click', () => {
-                this.handleApply(true);
-            });
-        }
-
-        const cancelBtn = this.dialog.querySelector('#voice-confirm-cancel');
-        if (cancelBtn) {
-            eventManager.addEventListener(cancelBtn, 'click', () => {
-                this.hide();
-            });
-        }
-
-        // Escape key to close
-        eventManager.addEventListener(document, 'keydown', this.handleKeyDown.bind(this));
+    // Footer buttons
+    const applyBtn = this.dialog.querySelector('#voice-confirm-apply');
+    if (applyBtn) {
+      eventManager.addEventListener(applyBtn, 'click', () => {
+        this.handleApply(false);
+      });
     }
 
-    /**
-     * Handle keyboard events
-     */
-    handleKeyDown(e) {
-        if (e.key === 'Escape' && this.dialog) {
-            this.hide();
-        }
+    const editBtn = this.dialog.querySelector('#voice-confirm-edit');
+    if (editBtn) {
+      eventManager.addEventListener(editBtn, 'click', () => {
+        this.handleApply(true);
+      });
     }
 
-    /**
-     * Populate dialog with extracted data
-     */
-    populateDialog(extractedData, suggestions) {
-        // Original text
-        this.dialog.querySelector('#voice-original').textContent = extractedData.originalText;
-
-        // Confidence
-        this.dialog.querySelector('#voice-confidence').textContent = Math.round(extractedData.confidence || 0);
-
-        // Populate form fields
-        if (suggestions.amount) {
-            this.dialog.querySelector('#confirm-amount').value = suggestions.amount;
-        }
-
-        if (suggestions.description) {
-            this.dialog.querySelector('#confirm-description').value = suggestions.description;
-        }
-
-        if (suggestions.date) {
-            this.dialog.querySelector('#confirm-date').value = suggestions.date;
-        }
-
-        // Populate category dropdown
-        this.populateCategoryDropdown(suggestions.category);
-
-        // Show warnings if any
-        this.showValidationWarnings(extractedData);
-    }
-
-    /**
-     * Populate category dropdown with options
-     */
-    populateCategoryDropdown(selectedCategory) {
-        const categorySelect = this.dialog.querySelector('#confirm-category');
-        const originalCategorySelect = document.getElementById('transaction-category');
-
-        if (originalCategorySelect) {
-            // Copy options from main form
-            categorySelect.innerHTML = originalCategorySelect.innerHTML;
-            if (selectedCategory) {
-                categorySelect.value = selectedCategory;
-            }
-        }
-    }
-
-    /**
-     * Show validation warnings
-     */
-    showValidationWarnings(extractedData) {
-        const warningsDiv = this.dialog.querySelector('#voice-warnings');
-        const warningsList = this.dialog.querySelector('#voice-warnings-list');
-
-        const warnings = [];
-        
-        if (extractedData.confidence < 70) {
-            warnings.push('Low confidence in voice recognition');
-        }
-        
-        if (!extractedData.amount) {
-            warnings.push('No amount detected - please enter manually');
-        }
-        
-        if (!extractedData.category) {
-            warnings.push('No category detected - please select manually');
-        }
-
-        if (warnings.length > 0) {
-            warningsList.innerHTML = warnings.map(w => `<li>${w}</li>`).join('');
-            warningsDiv.style.display = 'block';
-        } else {
-            warningsDiv.style.display = 'none';
-        }
-    }
-
-    /**
-     * Handle apply button click
-     */
-    handleApply(allowEdit) {
-        const formData = {
-            amount: this.dialog.querySelector('#confirm-amount').value,
-            category: this.dialog.querySelector('#confirm-category').value,
-            description: this.dialog.querySelector('#confirm-description').value,
-            date: this.dialog.querySelector('#confirm-date').value
-        };
-
-        if (this.callbacks.onConfirm) {
-            this.callbacks.onConfirm(formData, allowEdit);
-        }
-
+    const cancelBtn = this.dialog.querySelector('#voice-confirm-cancel');
+    if (cancelBtn) {
+      eventManager.addEventListener(cancelBtn, 'click', () => {
         this.hide();
+      });
     }
 
-    /**
-     * Show the dialog
-     */
-    showDialog() {
-        if (this.dialog) {
-            this.dialog.style.display = 'flex';
-            // Focus first input
-            const firstInput = this.dialog.querySelector('input, select');
-            if (firstInput) {
-                setTimeout(() => firstInput.focus(), 100);
-            }
-        }
+    // Escape key to close
+    eventManager.addEventListener(document, 'keydown', this.handleKeyDown.bind(this));
+  }
+
+  /**
+   * Handle keyboard events
+   */
+  handleKeyDown(e) {
+    if (e.key === 'Escape' && this.dialog) {
+      this.hide();
+    }
+  }
+
+  /**
+   * Populate dialog with extracted data
+   */
+  populateDialog(extractedData, suggestions) {
+    // Original text
+    this.dialog.querySelector('#voice-original').textContent = extractedData.originalText;
+
+    // Confidence
+    this.dialog.querySelector('#voice-confidence').textContent = Math.round(
+      extractedData.confidence || 0
+    );
+
+    // Populate form fields
+    if (suggestions.amount) {
+      this.dialog.querySelector('#confirm-amount').value = suggestions.amount;
     }
 
-    /**
-     * Hide the dialog
-     */
-    hide() {
-        if (this.dialog) {
-            // EventManager will handle cleanup of event listeners when the DOM element is removed
-            if (this.dialog.parentNode) {
-                this.dialog.parentNode.removeChild(this.dialog);
-            }
-            this.dialog = null;
-        }
-
-        if (this.callbacks.onCancel) {
-            this.callbacks.onCancel();
-        }
+    if (suggestions.description) {
+      this.dialog.querySelector('#confirm-description').value = suggestions.description;
     }
+
+    if (suggestions.date) {
+      this.dialog.querySelector('#confirm-date').value = suggestions.date;
+    }
+
+    // Populate category dropdown
+    this.populateCategoryDropdown(suggestions.category);
+
+    // Show warnings if any
+    this.showValidationWarnings(extractedData);
+  }
+
+  /**
+   * Populate category dropdown with options
+   */
+  populateCategoryDropdown(selectedCategory) {
+    const categorySelect = this.dialog.querySelector('#confirm-category');
+    const originalCategorySelect = document.getElementById('transaction-category');
+
+    if (originalCategorySelect) {
+      // Copy options from main form
+      categorySelect.innerHTML = originalCategorySelect.innerHTML;
+      if (selectedCategory) {
+        categorySelect.value = selectedCategory;
+      }
+    }
+  }
+
+  /**
+   * Show validation warnings
+   */
+  showValidationWarnings(extractedData) {
+    const warningsDiv = this.dialog.querySelector('#voice-warnings');
+    const warningsList = this.dialog.querySelector('#voice-warnings-list');
+
+    const warnings = [];
+
+    if (extractedData.confidence < 70) {
+      warnings.push('Low confidence in voice recognition');
+    }
+
+    if (!extractedData.amount) {
+      warnings.push('No amount detected - please enter manually');
+    }
+
+    if (!extractedData.category) {
+      warnings.push('No category detected - please select manually');
+    }
+
+    if (warnings.length > 0) {
+      warningsList.innerHTML = warnings.map(w => `<li>${w}</li>`).join('');
+      warningsDiv.style.display = 'block';
+    } else {
+      warningsDiv.style.display = 'none';
+    }
+  }
+
+  /**
+   * Handle apply button click
+   */
+  handleApply(allowEdit) {
+    const formData = {
+      amount: this.dialog.querySelector('#confirm-amount').value,
+      category: this.dialog.querySelector('#confirm-category').value,
+      description: this.dialog.querySelector('#confirm-description').value,
+      date: this.dialog.querySelector('#confirm-date').value,
+    };
+
+    if (this.callbacks.onConfirm) {
+      this.callbacks.onConfirm(formData, allowEdit);
+    }
+
+    this.hide();
+  }
+
+  /**
+   * Show the dialog
+   */
+  showDialog() {
+    if (this.dialog) {
+      this.dialog.style.display = 'flex';
+      // Focus first input
+      const firstInput = this.dialog.querySelector('input, select');
+      if (firstInput) {
+        setTimeout(() => firstInput.focus(), 100);
+      }
+    }
+  }
+
+  /**
+   * Hide the dialog
+   */
+  hide() {
+    if (this.dialog) {
+      // EventManager will handle cleanup of event listeners when the DOM element is removed
+      if (this.dialog.parentNode) {
+        this.dialog.parentNode.removeChild(this.dialog);
+      }
+      this.dialog = null;
+    }
+
+    if (this.callbacks.onCancel) {
+      this.callbacks.onCancel();
+    }
+  }
 }

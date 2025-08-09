@@ -639,7 +639,7 @@ export const calendarUI = {
     try {
       // TODO: Implement edit functionality
       debug.log('CalendarUI: Edit pay schedule', id);
-      showInfo('Edit functionality coming soon');
+      showError('Edit functionality coming soon');
     } catch (error) {
       debug.error('CalendarUI: Error editing pay schedule', error);
       showError('Failed to edit pay schedule');
