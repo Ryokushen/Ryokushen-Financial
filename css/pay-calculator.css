@@ -361,3 +361,14 @@ body.privacy-mode [data-sensitive="true"] .take-home-amount {
 .salary-container .pay-section {
     overflow: visible;
 }
+
+/* Constrain horizontal width for Salary tab inputs */
+.salary-container .pay-form .form-group .input-group,
+.salary-container .pay-form .form-group .form-control {
+    max-width: 420px;
+}
+/* For full-width rows (like the long rate display), opt-in via a class instead */
+.salary-container .pay-form .form-group.full-width .input-group,
+.salary-container .pay-form .form-group.full-width .form-control {
+    max-width: none;
+}
