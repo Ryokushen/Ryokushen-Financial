@@ -7039,7 +7039,6 @@ body select[id*="debt"] option {
 .pay-form .input-group {
     display: flex;
     align-items: center;
-    width: 100%; // Ensure full width
 }
 
 .pay-form .input-group-addon {
@@ -7052,10 +7051,8 @@ body select[id*="debt"] option {
 }
 
 .pay-form .input-group .form-control {
-    flex: 1; // Take remaining space
     border-left: none;
     border-radius: 0 4px 4px 0;
-    min-width: 0; // Prevent overflow
 }
 
 /* High-specificity fix: ensure pay calculator inputs keep right-side rounding
