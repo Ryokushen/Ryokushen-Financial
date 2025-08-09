@@ -119,7 +119,7 @@ class TransactionManager {
    * @returns {Promise<Object|null>}
    */
   async getTransaction(id) {
-    const cacheKey = `transaction:${id}`;
+    const cacheKey = this.buildCacheKey('transaction', { id });
 
     // Check cache first
     const cached = this.getFromCache(cacheKey);
@@ -214,7 +214,7 @@ class TransactionManager {
   async getAllTransactions() {
     try {
       // Check cache first
-      const cacheKey = 'all_transactions';
+      const cacheKey = this.buildCacheKey('all_transactions', {});
       const cached = this.getFromCache(cacheKey);
       if (cached) {
         this.metrics.cacheHits++;
@@ -444,7 +444,8 @@ class TransactionManager {
    * @private
    */
   getSearchCacheKey(type, params) {
-    return `${type}:${JSON.stringify(params)}`;
+    // Use unified cache key builder
+    return this.buildCacheKey(`search_${type}`, params);
   }
 
   /**
@@ -494,13 +495,17 @@ class TransactionManager {
 
   /**
    * Build cache key from options
+   * Unified cache key generation for consistency
    */
-  buildCacheKey(prefix, options) {
+  buildCacheKey(prefix, options = {}) {
     const parts = [prefix];
     const sortedKeys = Object.keys(options).sort();
     for (const key of sortedKeys) {
-      if (options[key] !== undefined && options[key] !== null) {
-        parts.push(`${key}:${options[key]}`);
+      const value = options[key];
+      if (value !== undefined && value !== null) {
+        // Handle different value types
+        const serialized = typeof value === 'object' ? JSON.stringify(value) : String(value);
+        parts.push(`${key}:${serialized}`);
       }
     }
     return parts.join(':');
@@ -3704,7 +3709,12 @@ class TransactionManager {
 
       // Check analytics cache first
       const dateKey = customStartDate ? `${customStartDate}_${customEndDate}` : `months_${months}`;
-      const cacheKey = `spending_trends_${dateKey}_${groupBy}_${includeIncome}_${categories.join(',')}`;
+      const cacheKey = this.buildCacheKey('spending_trends', {
+        dateKey,
+        groupBy,
+        includeIncome,
+        categories: categories.join(',')
+      });
       const cached = await this.getAnalyticsFromCache(cacheKey);
       if (cached) {
         debug.log('Analytics cache hit for spending trends');
@@ -3874,7 +3884,11 @@ class TransactionManager {
 
       // Check cache
       const dateKey = customStartDate ? `${customStartDate}_${customEndDate}` : `months_${months}`;
-      const cacheKey = `merchant_analysis_${dateKey}_${minTransactions}_${limit}`;
+      const cacheKey = this.buildCacheKey('merchant_analysis', {
+        dateKey,
+        minTransactions,
+        limit
+      });
       const cached = await this.getAnalyticsFromCache(cacheKey);
       if (cached) {
         return cached;
