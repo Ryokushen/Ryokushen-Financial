@@ -17,6 +17,7 @@ import { debounce } from './performanceUtils.js';
 import { populateFormFromData, extractFormData } from './formUtils.js';
 import { timeBudgets } from './timeBudgets.js';
 import { eventManager } from './eventManager.js';
+import { delegationManager, setupTableDelegation } from './delegationManager.js';
 import { getCategoryIcon } from './categories.js';
 import { transactionManager } from './transactionManager.js';
 
@@ -329,27 +330,27 @@ export function setupEventListeners(appState, onUpdate) {
 
   const transactionsTableBody = document.getElementById('transactions-table-body');
   if (transactionsTableBody) {
-    eventManager.addEventListener(transactionsTableBody, 'click', event => {
-      const dataId = event.target.getAttribute('data-id');
-      if (!dataId) {
-        return;
-      } // Skip if no data-id attribute
-
-      const transactionId = parseInt(dataId);
-      if (isNaN(transactionId)) {
-        debug.error('Invalid transaction ID:', dataId);
-        return;
-      }
-
-      if (event.target.classList.contains('btn-delete-transaction')) {
-        event.stopPropagation();
-        deleteTransaction(transactionId, appState, onUpdate);
-      } else if (event.target.classList.contains('btn-edit-transaction')) {
-        event.stopPropagation();
-        editTransaction(transactionId, appState);
-      } else if (event.target.classList.contains('btn-template-transaction')) {
-        event.stopPropagation();
-        saveTransactionAsTemplate(transactionId, appState);
+    // Use delegation manager for better performance and memory management
+    setupTableDelegation(transactionsTableBody, {
+      onEdit: (id) => {
+        const transactionId = parseInt(id);
+        if (!isNaN(transactionId)) {
+          editTransaction(transactionId, appState);
+        }
+      },
+      onDelete: (id) => {
+        const transactionId = parseInt(id);
+        if (!isNaN(transactionId)) {
+          deleteTransaction(transactionId, appState, onUpdate);
+        }
+      },
+      customActions: {
+        template: (id) => {
+          const transactionId = parseInt(id);
+          if (!isNaN(transactionId)) {
+            saveTransactionAsTemplate(transactionId, appState);
+          }
+        }
       }
     });
   }
@@ -1700,9 +1701,9 @@ function renderTransactionsNormal(tbody, transactions, appState) {
             <div>${formatDate(t.date)}</div>
             <div>${statusBadge}</div>
             <div class="quick-actions">
-                <button class="icon-btn btn-edit-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''} title="${isEditing ? 'Editing...' : 'Edit'}">✏️</button>
-                <button class="icon-btn btn-template-transaction" data-id="${t.id}" title="Save as Template">📋</button>
-                <button class="icon-btn btn-delete-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''} title="Delete">🗑️</button>
+                <button class="icon-btn" data-action="edit" data-id="${t.id}" ${isEditing ? 'disabled' : ''} title="${isEditing ? 'Editing...' : 'Edit'}">✏️</button>
+                <button class="icon-btn" data-action="template" data-id="${t.id}" title="Save as Template">📋</button>
+                <button class="icon-btn" data-action="delete" data-id="${t.id}" ${isEditing ? 'disabled' : ''} title="Delete">🗑️</button>
             </div>
         </div>`;
     })
@@ -1982,21 +1983,8 @@ function createTransactionRowHTML(transaction, appData) {
 
 // Helper function to setup event listeners on transaction row
 function setupTransactionRowEventListeners(row, transaction, appState) {
-  // Edit button
-  const editBtn = row.querySelector('.edit-transaction');
-  if (editBtn) {
-    eventManager.addEventListener(editBtn, 'click', () => {
-      editTransaction(transaction.id, appState.appData);
-    });
-  }
-
-  // Delete button
-  const deleteBtn = row.querySelector('.delete-transaction');
-  if (deleteBtn) {
-    eventManager.addEventListener(deleteBtn, 'click', () => {
-      deleteTransaction(transaction.id, appState);
-    });
-  }
+  // Event listeners are now handled by delegation manager at the table level
+  // Individual button listeners removed for better performance
 
   // Clear toggle
   const clearedCell = row.querySelector('.transaction-cleared');
@@ -2176,10 +2164,10 @@ function createTransactionRow(t, appData) {
         <td class="${t.cleared ? 'status-cleared' : 'status-pending'}">${t.cleared ? 'Cleared' : 'Pending'}</td>
         <td>
             <div class="transaction-actions">
-                <button class="btn btn-small btn-edit-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>
+                <button class="btn btn-small" data-action="edit" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>
                     ${isEditing ? 'Editing...' : 'Edit'}
                 </button>
-                <button class="btn btn-small btn-delete-transaction" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>Delete</button>
+                <button class="btn btn-small" data-action="delete" data-id="${t.id}" ${isEditing ? 'disabled' : ''}>Delete</button>
             </div>
         </td>
     `;

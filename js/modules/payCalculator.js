@@ -6,6 +6,7 @@
 import { formatCurrency } from './utils.js';
 import { eventManager } from './eventManager.js';
 import { debug } from './debug.js';
+import { delegationManager } from './delegationManager.js';
 import { isPrivacyMode } from './privacy.js';
 import { showError, showSuccess } from './ui.js';
 
@@ -208,6 +209,9 @@ export const payCalculator = {
     document
       .getElementById('add-deduction-btn')
       ?.addEventListener('click', () => this.addDeduction());
+
+    // Set up delegation for dynamic earnings and deductions
+    this.setupDynamicItemDelegation();
   },
 
   /**
@@ -263,6 +267,37 @@ export const payCalculator = {
   },
 
   /**
+   * Set up delegation for dynamic items (earnings and deductions)
+   */
+  setupDynamicItemDelegation() {
+    // Set up delegation for earnings list
+    const earningsContainer = document.getElementById('earnings-list');
+    if (earningsContainer) {
+      delegationManager.setupDelegation(earningsContainer, {
+        handlers: {
+          'remove-earning': (e, target) => {
+            const id = parseInt(target.getAttribute('data-id'));
+            if (id) this.removeEarning(id);
+          }
+        }
+      });
+    }
+
+    // Set up delegation for deductions list
+    const deductionsContainer = document.getElementById('deductions-list');
+    if (deductionsContainer) {
+      delegationManager.setupDelegation(deductionsContainer, {
+        handlers: {
+          'remove-deduction': (e, target) => {
+            const id = parseInt(target.getAttribute('data-id'));
+            if (id) this.removeDeduction(id);
+          }
+        }
+      });
+    }
+  },
+
+  /**
    * Update state tax message
    */
   updateStateTaxMessage() {
@@ -295,6 +330,7 @@ export const payCalculator = {
 
     this.state.earnings.push(earning);
     this.renderEarnings();
+    this.setupDynamicItemDelegation(); // Re-setup delegation after rendering
   },
 
   /**
@@ -320,7 +356,7 @@ export const payCalculator = {
       <div class="dynamic-item card" data-earning-id="${earning.id}">
         <div class="item-header">
           <h4>Earning</h4>
-          <button class="btn btn--ghost remove-item-btn" onclick="window.payCalculator.removeEarning(${earning.id})">
+          <button class="btn btn--ghost remove-item-btn" data-action="remove-earning" data-id="${earning.id}">
             <span class="icon">🗑️</span>
           </button>
         </div>
@@ -381,6 +417,7 @@ export const payCalculator = {
 
     this.state.deductions.push(deduction);
     this.renderDeductions();
+    this.setupDynamicItemDelegation(); // Re-setup delegation after rendering
   },
 
   /**
@@ -406,7 +443,7 @@ export const payCalculator = {
       <div class="dynamic-item card" data-deduction-id="${deduction.id}">
         <div class="item-header">
           <h4>Deduction</h4>
-          <button class="btn btn--ghost remove-item-btn" onclick="window.payCalculator.removeDeduction(${deduction.id})">
+          <button class="btn btn--ghost remove-item-btn" data-action="remove-deduction" data-id="${deduction.id}">
             <span class="icon">🗑️</span>
           </button>
         </div>

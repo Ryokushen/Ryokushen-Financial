@@ -23,6 +23,7 @@ import {
 } from './validation.js';
 import { InvestmentCalculators } from './investmentCalculators.js';
 import { eventManager } from './eventManager.js';
+import { delegationManager, setupCardDelegation } from './delegationManager.js';
 
 // Initialize holdings updater (will be set with appState later)
 let holdingsUpdater = null;
@@ -695,7 +696,7 @@ export function renderInvestmentAccountsEnhanced(appState) {
                 <div class="holdings-list">
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) 0; margin-bottom: var(--space-2);">
                         <h4 style="font-size: var(--font-size-lg); margin: 0;">Holdings</h4>
-                        <button class="btn btn--primary btn--sm btn-add-holding" data-id="${account.id}">+ Add Holding</button>
+                        <button class="btn btn--primary btn--sm" data-action="add-holding" data-id="${account.id}">+ Add Holding</button>
                     </div>
                     ${
                       account.holdings.length > 0
@@ -726,9 +727,9 @@ export function renderInvestmentAccountsEnhanced(appState) {
                             <div>
                                 <div>${percentOfAccount}%</div>
                                 <div class="holdings-actions">
-                                    ${isValidSymbol && !isMutualFund ? `<button class="icon-btn btn-update-holding" data-symbol="${h.symbol}" title="Update price">📊</button>` : ''}
-                                    <button class="icon-btn btn-edit-holding" title="Edit">✏️</button>
-                                    <button class="icon-btn btn-delete-holding" title="Delete">🗑️</button>
+                                    ${isValidSymbol && !isMutualFund ? `<button class="icon-btn" data-action="update-holding" data-symbol="${h.symbol}" title="Update price">📊</button>` : ''}
+                                    <button class="icon-btn" data-action="edit-holding" title="Edit">✏️</button>
+                                    <button class="icon-btn" data-action="delete-holding" title="Delete">🗑️</button>
                                 </div>
                             </div>
                         </div>`;
@@ -738,8 +739,8 @@ export function renderInvestmentAccountsEnhanced(appState) {
                     }
                     
                     <div style="display: flex; gap: var(--space-3); margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--glass-border);">
-                        <button class="btn btn--secondary btn--sm btn-edit-account" data-id="${account.id}">Edit Account</button>
-                        <button class="btn btn--outline btn--sm btn-delete-account" data-id="${account.id}">Delete Account</button>
+                        <button class="btn btn--secondary btn--sm" data-action="edit" data-id="${account.id}">Edit Account</button>
+                        <button class="btn btn--outline btn--sm" data-action="delete" data-id="${account.id}">Delete Account</button>
                     </div>
                 </div>
             </div>
@@ -794,37 +795,35 @@ export function setupEventListeners(appState, onUpdate) {
 
   const investmentAccountsList = document.getElementById('investment-accounts-list');
   if (investmentAccountsList) {
+    // Use delegation manager for investment account actions
+    setupCardDelegation(investmentAccountsList, {
+      onEdit: (id) => openInvestmentAccountModal(appState.appData, parseInt(id)),
+      onDelete: (id) => deleteInvestmentAccount(parseInt(id), appState, onUpdate),
+      customActions: {
+        'add-holding': (id) => openHoldingModal(appState.appData, parseInt(id)),
+        'edit-holding': (id, card, e) => {
+          const holdingRow = e.target.closest('.holding-row');
+          const holdingId = parseInt(holdingRow.getAttribute('data-holding-id'));
+          openHoldingModal(appState.appData, parseInt(id), holdingId);
+        },
+        'delete-holding': (id, card, e) => {
+          const holdingRow = e.target.closest('.holding-row');
+          const holdingId = parseInt(holdingRow.getAttribute('data-holding-id'));
+          deleteHolding(parseInt(id), holdingId, appState, onUpdate);
+        },
+        'update-holding': (id, card, e) => {
+          const symbol = e.target.getAttribute('data-symbol');
+          updateSingleHolding(symbol, appState, onUpdate);
+        }
+      },
+      itemSelector: '.investment-account-card',
+      idAttribute: 'data-id'
+    });
+
+    // Prevent header click from triggering button actions
     eventManager.addEventListener(investmentAccountsList, 'click', event => {
-      const target = event.target;
-
-      // Prevent header click from triggering button actions
-      if (target.closest('.investment-account-header') && !target.closest('button')) {
+      if (event.target.closest('.investment-account-header') && !event.target.closest('button')) {
         return; // Let the inline onclick handler handle the expand/collapse
-      }
-
-      const accountEl = target.closest('.investment-account-card');
-      if (!accountEl) {
-        return;
-      }
-      const accountId = parseInt(accountEl.getAttribute('data-id'));
-
-      if (target.classList.contains('btn-edit-account')) {
-        openInvestmentAccountModal(appState.appData, accountId);
-      } else if (target.classList.contains('btn-delete-account')) {
-        deleteInvestmentAccount(accountId, appState, onUpdate);
-      } else if (target.classList.contains('btn-add-holding')) {
-        openHoldingModal(appState.appData, accountId);
-      } else if (target.classList.contains('btn-edit-holding')) {
-        const holdingRow = target.closest('.holding-row');
-        const holdingId = parseInt(holdingRow.getAttribute('data-holding-id'));
-        openHoldingModal(appState.appData, accountId, holdingId);
-      } else if (target.classList.contains('btn-delete-holding')) {
-        const holdingRow = target.closest('.holding-row');
-        const holdingId = parseInt(holdingRow.getAttribute('data-holding-id'));
-        deleteHolding(accountId, holdingId, appState, onUpdate);
-      } else if (target.classList.contains('btn-update-holding')) {
-        const symbol = target.getAttribute('data-symbol');
-        updateSingleHolding(symbol, appState, onUpdate);
       }
     });
   }

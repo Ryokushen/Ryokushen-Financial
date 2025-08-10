@@ -6,6 +6,7 @@ import { debug } from './debug.js';
 import { categories } from './categories.js';
 import database from '../database.js';
 import { eventManager } from './eventManager.js';
+import { delegationManager } from './delegationManager.js';
 
 export const rulesUI = {
   currentEditingRule: null,
@@ -146,19 +147,21 @@ export const rulesUI = {
       });
     }
 
-    // Rule list delegation
+    // Rule list delegation using delegation manager
     const rulesListContainer = document.getElementById('rules-list-container');
     if (rulesListContainer) {
+      delegationManager.setupListDelegation(rulesListContainer, {
+        onEdit: (id) => this.editRule(id),
+        onDelete: (id) => this.deleteRule(id),
+        itemSelector: '.rule-item',
+        idAttribute: 'data-rule-id'
+      });
+
+      // Handle toggle separately as it's a checkbox input
       eventManager.addEventListener(rulesListContainer, 'click', e => {
         if (e.target.classList.contains('rule-toggle-switch')) {
           const ruleId = e.target.closest('.rule-item').dataset.ruleId;
           this.toggleRule(ruleId, e.target.checked);
-        } else if (e.target.classList.contains('btn-edit-rule')) {
-          const ruleId = e.target.closest('.rule-item').dataset.ruleId;
-          this.editRule(ruleId);
-        } else if (e.target.classList.contains('btn-delete-rule')) {
-          const ruleId = e.target.closest('.rule-item').dataset.ruleId;
-          this.deleteRule(ruleId);
         }
       });
     }
@@ -254,8 +257,8 @@ export const rulesUI = {
               <input type="checkbox" class="rule-toggle-switch" ${rule.enabled ? 'checked' : ''}>
               <span class="slider"></span>
             </label>
-            <button class="btn btn--sm btn--secondary btn-edit-rule">Edit</button>
-            <button class="btn btn--sm btn--outline btn-delete-rule">Delete</button>
+            <button class="btn btn--sm btn--secondary" data-action="edit">Edit</button>
+            <button class="btn btn--sm btn--outline" data-action="delete">Delete</button>
           </div>
         </div>
         
