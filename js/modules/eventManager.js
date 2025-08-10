@@ -31,7 +31,7 @@ class EventManager {
     // Track it
     this.listeners.set(key, { element, event, handler, options });
 
-    debug.log(`EventManager: Added ${event} listener to ${element.id || element.tagName}`);
+    debug.trace(`EventManager: Added ${event} listener to ${element.id || element.tagName}`);
   }
 
   /**
@@ -48,7 +48,7 @@ class EventManager {
     if (listener) {
       listener.element.removeEventListener(listener.event, listener.handler, listener.options);
       this.listeners.delete(key);
-      debug.log(`EventManager: Removed ${event} listener from ${element.id || element.tagName}`);
+      debug.trace(`EventManager: Removed ${event} listener from ${element.id || element.tagName}`);
     }
   }
 
@@ -84,7 +84,7 @@ class EventManager {
       selector,
     });
 
-    debug.log(`EventManager: Added delegated ${event} listener for ${selector}`);
+    debug.trace(`EventManager: Added delegated ${event} listener for ${selector}`);
   }
 
   /**
@@ -101,7 +101,7 @@ class EventManager {
     if (listener) {
       listener.parentElement.removeEventListener(listener.event, listener.handler);
       this.delegatedListeners.delete(key);
-      debug.log(`EventManager: Removed delegated ${event} listener for ${selector}`);
+      debug.trace(`EventManager: Removed delegated ${event} listener for ${selector}`);
     }
   }
 
@@ -129,7 +129,7 @@ class EventManager {
       }
     }
 
-    debug.log(`EventManager: Removed all listeners for ${element.id || element.tagName}`);
+    debug.trace(`EventManager: Removed all listeners for ${element.id || element.tagName}`);
   }
 
   /**
@@ -148,7 +148,7 @@ class EventManager {
     }
     this.delegatedListeners.clear();
 
-    debug.log('EventManager: Removed all tracked listeners');
+    debug.trace('EventManager: Removed all tracked listeners');
   }
 
   /**

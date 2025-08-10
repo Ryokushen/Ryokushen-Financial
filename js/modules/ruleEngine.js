@@ -9,13 +9,13 @@ class RuleEngine {
       // String operators
       contains: (value, target) => {
         if (typeof value !== 'string' || typeof target !== 'string') {
-          debug.log(
+          debug.trace(
             `RuleEngine: contains operator - value or target not string. value: ${typeof value}, target: ${typeof target}`
           );
           return false;
         }
         const result = value.toLowerCase().includes(target.toLowerCase());
-        debug.log(`RuleEngine: contains check - "${value}" contains "${target}"? ${result}`);
+        debug.trace(`RuleEngine: contains check - "${value}" contains "${target}"? ${result}`);
         return result;
       },
 
@@ -87,19 +87,19 @@ class RuleEngine {
 
   // Process a transaction through all rules
   async process(transaction, rules) {
-    debug.log(`RuleEngine: Processing transaction through ${rules.length} rules`);
+    debug.info(`RuleEngine: Processing transaction through ${rules.length} rules`);
 
     for (const rule of rules) {
       if (!rule.enabled) {
-        debug.log(`RuleEngine: Skipping disabled rule "${rule.name}"`);
+        debug.trace(`RuleEngine: Skipping disabled rule "${rule.name}"`);
         continue;
       }
 
-      debug.log(`RuleEngine: Evaluating rule "${rule.name}"`);
+      debug.trace(`RuleEngine: Evaluating rule "${rule.name}"`);
       const matches = this.evaluateConditions(transaction, rule.conditions);
 
       if (matches) {
-        debug.log(`RuleEngine: Rule "${rule.name}" matched!`);
+        debug.info(`RuleEngine: Rule "${rule.name}" matched!`);
         // Apply actions
         const results = await this.applyActions(transaction, rule.actions);
 
@@ -110,11 +110,11 @@ class RuleEngine {
           actions: results,
         };
       } else {
-        debug.log(`RuleEngine: Rule "${rule.name}" did not match`);
+        debug.trace(`RuleEngine: Rule "${rule.name}" did not match`);
       }
     }
 
-    debug.log('RuleEngine: No rules matched the transaction');
+    debug.info('RuleEngine: No rules matched the transaction');
     return { matched: false };
   }
 
@@ -188,14 +188,14 @@ class RuleEngine {
     // Get the field value from the transaction
     let fieldValue = this.getFieldValue(transaction, field);
 
-    debug.log(
+    debug.trace(
       `RuleEngine: Evaluating condition - field: ${field}, operator: ${operator}, value: ${value}, fieldValue: ${fieldValue}`
     );
 
     // Special handling for empty/null/undefined values
     if (fieldValue === undefined || fieldValue === null) {
       fieldValue = ''; // Treat null/undefined as empty string
-      debug.log(
+      debug.trace(
         `RuleEngine: Field value is undefined/null for field: ${field}, treating as empty string`
       );
     }
@@ -214,7 +214,7 @@ class RuleEngine {
 
     // Apply the operator
     const result = operatorFn(fieldValue, value);
-    debug.log(`RuleEngine: Condition result: ${result}`);
+    debug.trace(`RuleEngine: Condition result: ${result}`);
     return result;
   }
 

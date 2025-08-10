@@ -60,12 +60,12 @@ class DelegationManager {
     // Store configuration for this container
     this.delegatedContainers.set(container, { handlers, selector, actionAttribute, events });
 
-    debug.log(`DelegationManager: Set up delegation on ${container.id || container.className || container.tagName}`);
+    debug.trace(`DelegationManager: Set up delegation on ${container.id || container.className || container.tagName}`);
 
     // Return cleanup function
     return () => {
       cleanupFunctions.forEach(cleanup => cleanup());
-      debug.log(`DelegationManager: Cleaned up delegation on ${container.id || container.className || container.tagName}`);
+      debug.trace(`DelegationManager: Cleaned up delegation on ${container.id || container.className || container.tagName}`);
     };
   }
 
