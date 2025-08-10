@@ -685,7 +685,7 @@ function renderBillsCardGrid(appState) {
       return;
     }
 
-    const id = card.getAttribute('data-id');
+    const id = parseInt(card.getAttribute('data-id'));
     if (!id) {
       return;
     }

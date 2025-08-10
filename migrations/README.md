@@ -5,6 +5,7 @@ This directory contains SQL migrations for the Ryokushen Financial application.
 ## Migration Files
 
 - `001_transaction_support.sql` - Adds atomic transaction support via RPC functions
+- `002_fix_recurring_payment_id_type.sql` - Fixes process_recurring_payment to accept INTEGER bill IDs
 
 ## How to Apply Migrations
 
@@ -56,7 +57,7 @@ Processes recurring bill payments atomically.
 
 ```sql
 SELECT * FROM process_recurring_payment(
-    p_bill_id := 'uuid',
+    p_bill_id := 123,  -- INTEGER (after migration 002)
     p_user_id := 'uuid'
 );
 ```
