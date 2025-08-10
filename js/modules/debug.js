@@ -258,9 +258,6 @@ if (storedGlobalLevel !== null) {
   globalLogLevel = parseInt(storedGlobalLevel, 10);
 }
 
-// Export log level for use in other modules
-export { LogLevel };
-
 // Add help to window for easy access
 if (!isProduction) {
   window.debugHelp = debug.help;
