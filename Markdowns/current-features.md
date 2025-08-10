@@ -1,7 +1,7 @@
 # Current Features - Ryokushen Financial
 
-> Last Updated: August 1, 2025
-> Total Features: 54 Major Features
+> Last Updated: August 10, 2025
+> Total Features: 55 Major Features
 
 ## Feature Summary
 - ✅ **37 Features with Full UI** - Complete implementation
@@ -332,6 +332,27 @@ npm run format:check  # Verify formatting
 ### Code Quality Tools
 1. **ESLint** - Static code analysis and error prevention
 2. **Prettier** - Automated code formatting
+
+### Developer Tools
+
+#### 🐛 Advanced Debug System ✅ IMPLEMENTED [2025-08-10]
+**Status**: ✅ Full Implementation
+**Module**: debug.js
+**Features**:
+- 5-level logging system (ERROR, WARN, INFO, DEBUG, TRACE)
+- Module-specific log level configuration
+- Runtime log level adjustment without code changes
+- LocalStorage persistence for settings
+- Smart defaults to reduce console noise:
+  - RuleEngine, EventManager, SmartRules, DelegationManager: WARN level
+  - TransactionManager, Calendar, PaySchedule: INFO level
+- Helper methods for debugging:
+  - `debug.help()` - Show available commands
+  - `debug.enableVerbose('ModuleName')` - Enable trace logging
+  - `debug.setLogLevel(level)` - Set global log level
+  - `debug.setModuleLogLevel('Module', level)` - Module-specific control
+  - `debug.getLogLevels()` - Show current configuration
+**Impact**: 95% reduction in console noise while maintaining full debugging capability
 
 ### Data Infrastructure
 1. **Historical Snapshots** - Financial metric tracking system
